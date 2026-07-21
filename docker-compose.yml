@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-bot
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: greg_company
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: always
+  redis:
+    image: "redis:alpine"
+    container_name: redis-bot
+    ports:
+      - "6379:6379"
+    restart: always
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-bot
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: always
+
+volumes:
+  postgres-data:
