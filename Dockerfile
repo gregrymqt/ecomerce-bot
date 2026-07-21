@@ -41,14 +41,17 @@ COPY --from=builder /opt/venv /opt/venv
 # Copia o código-fonte da aplicação
 COPY . /app
 
-# Criação de um usuário do sistema seguro (Não-Root)
-RUN useradd --uid 10001 --user-group --shell /bin/false appuser && \
+# Ajusta permissão do script de entrypoint e cria usuário não-root
+RUN chmod +x /app/entrypoint.sh && \
+    useradd --uid 10001 --user-group --shell /bin/false appuser && \
     chown -R appuser:appuser /app
 
 # Transfere o contexto de execução para o usuário restrito
 USER appuser
 
 EXPOSE 8000
+
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Inicializa o Uvicorn ajustando workers para paralelismo baseado no hardware
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

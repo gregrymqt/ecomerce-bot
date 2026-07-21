@@ -20,7 +20,7 @@ async def get_current_tenant_user(
 ):
     token = credentials.credentials
     
-    # 1. Validação de Blacklist idêntica ao Middleware do C#
+    # 1. Validação de Blacklist de tokens revogados no Redis
     if await is_token_blacklisted(token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -28,16 +28,14 @@ async def get_current_tenant_user(
         )
         
     try:
-        # 2. Decodificação respeitando o AuthServicesExtensions do C#
-        secret_key = settings.JWT__Key
+        # 2. Decodificação segura do Token JWT
+        secret_key = settings.JWT_SECRET_KEY
         if not secret_key:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
                 detail="JWT secret key missing in .env"
             )
             
-        # O algoritmo HS256 é utilizado e as validações de aud e iss são ignoradas (conforme C#)
-        # O PyJWT valida a expiração ('exp') rigorosamente por padrão (equivalente ao ClockSkew = Zero)
         payload = jwt.decode(
             token, 
             secret_key, 
@@ -55,7 +53,7 @@ async def get_current_tenant_user(
             detail="Token inválido."
         )
 
-    # 3. Blindagem de Isolamento do Cenário B (Múltiplas Lojas autorizadas)
+    # 3. Blindagem de Isolamento Multi-Tenant
     allowed_tenants = payload.get("tenants", [])
     if isinstance(allowed_tenants, str):
         allowed_tenants = [allowed_tenants]
@@ -67,3 +65,4 @@ async def get_current_tenant_user(
         )
         
     return payload
+

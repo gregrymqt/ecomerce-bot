@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     POSTGRES_URI: str = Field(
-        default="postgresql+asyncpg://postgres:postgres@localhost:5432/greg_company",
+        default="postgresql+asyncpg://postgres:postgres@localhost:5432/ecommerce_bot_db",
         validation_alias=AliasChoices("POSTGRES_URI", "POSTGRES_URI_PYTHON")
     )
     RABBITMQ_URL: str = Field(
@@ -14,10 +14,12 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str | None = None
     DISCORD_WEBHOOK_URL: str = ""
     AES_MASTER_KEY: str = Field(
+        default="",
         validation_alias=AliasChoices("AES_MASTER_KEY", "AES_KEY")
     )
-    JWT__Key: str = Field(
-        validation_alias=AliasChoices("JWT__KEY", "JWT__Key", "Jwt__Key")
+    JWT_SECRET_KEY: str = Field(
+        default="",
+        validation_alias=AliasChoices("JWT_SECRET_KEY", "JWT__KEY", "JWT__Key", "Jwt__Key")
     )
     REDIS_URL: str = "redis://localhost:6379"
     REDIS_PASSWORD: str | None = Field(
@@ -33,6 +35,11 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("GROQ_API_KEY", "Groq_API_KEY", "GROQ_KEY")
     )
 
+    @property
+    def JWT__Key(self) -> str:
+        """Propriedade para retrocompatibilidade com referencias legadas."""
+        return self.JWT_SECRET_KEY
+
     model_config = SettingsConfigDict(
         env_file=('../.env', '.env'),
         env_file_encoding='utf-8',
@@ -41,3 +48,4 @@ class Settings(BaseSettings):
     )
 
 settings = Settings()
+

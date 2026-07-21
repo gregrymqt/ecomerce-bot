@@ -3,8 +3,8 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.pool import NullPool
 from app.config.settings import settings
 
-# Lê a connection string das configurações centralizadas
-DATABASE_URL = settings.POSTGRES_URI
+DEFAULT_DB_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/ecommerce_bot_db"
+DATABASE_URL = settings.POSTGRES_URI if settings.POSTGRES_URI else DEFAULT_DB_URL
 
 # Se vier com o prefixo 'postgresql://', substitui para o driver assíncrono do 'asyncpg'
 if DATABASE_URL and DATABASE_URL.startswith("postgresql://"):

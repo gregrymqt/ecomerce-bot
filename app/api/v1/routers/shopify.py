@@ -71,9 +71,8 @@ async def sync_product_to_shopify(
             input_data = ShopifyProductSetInput.from_internal_data(product_data)
             csv_bytes = CsvExportService.generate_shopify_csv([input_data])
             
-            # Aqui, um serviço de Storage salvaria o buffer (csv_bytes) e retornaria a URL.
-            # Utilizando URL fictícia de download para atender ao contrato do MFE.
-            download_url = "https://greg-ecosystem.com/downloads/fallback/shopify-temp.csv"
+            # Fallback seguro com rota de exportacao nativa da API
+            download_url = "/api/v1/export?platform=shopify"
             
             return JSONResponse(
                 status_code=status.HTTP_202_ACCEPTED,

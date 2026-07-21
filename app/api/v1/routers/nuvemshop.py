@@ -32,7 +32,7 @@ async def get_nuvemshop_service(x_tenant_id: str = Header(..., alias="X-Tenant-I
     tenant = config.encrypted_keys or {}
     store_id = tenant.get("nuvemshop_store_id")
     raw_token = tenant.get("nuvemshop_access_token")
-    app_email = tenant.get("email", "suporte@gregcompany.com")
+    app_email = tenant.get("email", "suporte@ecommerce-bot.com")
 
     if not store_id or not raw_token:
         raise HTTPException(
@@ -70,7 +70,7 @@ async def create_product(
         # Mecanismo de Fallback: Gera CSV ao falhar persistentemente após os retries
         try:
             csv_bytes = CsvExportService.generate_nuvemshop_csv([product])
-            download_url = "https://greg-ecosystem.com/downloads/fallback/nuvemshop-temp.csv"
+            download_url = "/api/v1/export?platform=nuvemshop"
             
             return JSONResponse(
                 status_code=status.HTTP_202_ACCEPTED,
