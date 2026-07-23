@@ -16,7 +16,7 @@ class RedisCache:
         self.redis_client: Optional[redis.Redis] = None
         self._pool: Optional[redis.ConnectionPool] = None
 
-    async def connect(self):
+    async def connect(self) -> None:
         if not settings.REDIS_URL:
             logger.warning("REDIS_URL não configurada. Redis desabilitado.")
             return
@@ -50,7 +50,7 @@ class RedisCache:
             )
             self.redis_client = None
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         if self.redis_client:
             logger.info("Disconnecting from Redis...")
             await self.redis_client.aclose()

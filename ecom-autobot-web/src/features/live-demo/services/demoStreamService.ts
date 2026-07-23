@@ -1,13 +1,6 @@
-// src/features/live-demo/services/demoStreamService.ts
 import { apiClient } from '@/lib/apiClient';
 import { SSEClient } from '@/lib/sseClient';
-
-export interface DemoProgressPayload<TData = Record<string, unknown>> {
-  step: string;
-  message: string;
-  progress: number;
-  data?: TData;
-}
+import type { DemoProgressPayload, DemoResponsePayload } from '..';
 
 export class DemoStreamService {
   private sseClient = new SSEClient<DemoProgressPayload>();
@@ -15,9 +8,9 @@ export class DemoStreamService {
   /**
    * Dispara a requisição POST para a rota /demo enviando as URLs.
    */
-  async requestDemo(urls: string[]) {
-    const response = await apiClient.post('/demo', { urls });
-    return response.data; // { status: "enviado_para_fila" }
+  async requestDemo(urls: string[]): Promise<DemoResponsePayload> {
+    const response = await apiClient.post<DemoResponsePayload>('/demo', { urls });
+    return response.data;
   }
 
   /**

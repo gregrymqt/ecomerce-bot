@@ -1,23 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { demoStreamService, type DemoProgressPayload } from '../services/demoStreamService';
+import { demoStreamService } from '../services/demoStreamService';
 import { getErrorMessage } from '@/utils/errors';
-
-export interface UseDemoStreamReturn {
-  /** Histórico de todos os logs/mensagens recebidos via SSE */
-  logs: DemoProgressPayload[];
-  /** Porcentagem de progresso de 0 a 100 */
-  progress: number;
-  /** Indica se a transmissão está ativa e aguardando/processando */
-  isStreaming: boolean;
-  /** Mensagem de erro caso o POST ou o SSE falhem */
-  error: string | null;
-  /** Dispara o processo enviando as URLs para o backend */
-  startDemo: (urls: string[]) => Promise<void>;
-  /** Cancela manualmente a transmissão atual */
-  stopDemo: () => void;
-  /** Limpa o histórico de logs e reseta o estado */
-  resetDemo: () => void;
-}
+import type { UseDemoStreamReturn, DemoProgressPayload } from '../types/live-demo.type';
 
 export const useDemoStream = (): UseDemoStreamReturn => {
   const [logs, setLogs] = useState<DemoProgressPayload[]>([]);
