@@ -1,0 +1,94 @@
+import os
+import httpx
+import logging
+from datetime import datetime
+from typing import List, Optional
+import aio_pika
+
+from app.features.scraper.workers.exporter_worker import ExporterWorker
+from app.core.config.rabbitmq import get_rabbitmq_connection
+from app.features.scraper.schemas import ImportRequestMessage
+from app.core.config.settings import settings
+
+logger = logging.getLogger(__name__)
+
+class SystemService:
+    @staticmethod
+    async def process_demo_request(urls: List[str]):
+        connection = await get_rabbitmq_connection()
+        async with connection:
+            channel = await connection.channel()
+            
+            for url in urls:
+                msg_data = ImportRequestMessage(
+                    target_url=url,
+                    tenant_id="demo_tenant",
+                    product_id="demo"
+                )
+                
+                message = aio_pika.Message(
+                    body=msg_data.model_dump_json(by_alias=True).encode(),
+                    priority=10,
+                    delivery_mode=aio_pika.DeliveryMode.PERSISTENT
+                )
+                
+                await channel.default_exchange.publish(
+                    message,
+                    routing_key="ecommerce_demo"
+                )
+
+    @staticmethod
+    async def process_export(tenant_id: str, platform: str):
+        logger.info(f"Processando exportação para tenant: {tenant_id}, plataforma: {platform}")
+        exporter = ExporterWorker(tenant_id=tenant_id, platform=platform)
+        await exporter.export()
+
+
+class NotificationService:
+    def __init__(self):
+        self.discord_webhook_url = settings.DISCORD_WEBHOOK_URL
+
+    async def send_discord_alert(self, domain: str, error_type: str, example_url: Optional[str] = None):
+        if not self.discord_webhook_url:
+            logger.warning("DISCORD_WEBHOOK_URL não configurada. Alerta não enviado.")
+            return
+
+        embed = {
+            "title": "🚨 ALERTA: Falha Crítica de Scraping",
+            "description": f"Detectamos múltiplas falhas consecutivas ao tentar processar o domínio **{domain}**. Possível bloqueio (WAF/Cloudflare) ou mudança drástica de layout.",
+            "color": 16731051,
+            "fields": [
+                {
+                    "name": "🌐 Domínio Afetado",
+                    "value": domain,
+                    "inline": True
+                },
+                {
+                    "name": "⚠️ Tipo de Erro",
+                    "value": error_type,
+                    "inline": True
+                }
+            ],
+            "footer": {
+                "text": f"Ecommerce Bot System • {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            }
+        }
+
+        if example_url:
+            embed["fields"].append({
+                "name": "🔗 URL de Exemplo (Última Falha)",
+                "value": example_url,
+                "inline": False
+            })
+
+        payload = {
+            "embeds": [embed]
+        }
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            try:
+                response = await client.post(self.discord_webhook_url, json=payload)
+                response.raise_for_status()
+                logger.info(f"Alerta Discord enviado com sucesso para falhas no domínio {domain}")
+            except Exception as e:
+                logger.error(f"Falha ao enviar alerta para o Discord: {e}")
