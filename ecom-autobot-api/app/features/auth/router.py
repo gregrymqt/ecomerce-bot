@@ -6,7 +6,6 @@ from app.features.auth.schemas import (
     LoginRequest, 
     CreateUserRequest, 
     UpdateUserRequest, 
-    TokenResponse, 
     UserResponse, 
     LogoutResponse,
     AuthenticatedUser

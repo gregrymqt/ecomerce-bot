@@ -38,7 +38,6 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
       <label
         htmlFor={id}
         className={cn(
-          // Extended Touch Target Wrapper (min 44px touch height)
           'inline-flex items-start gap-3 p-1.5 -m-1.5 rounded-lg cursor-pointer min-h-[44px] select-none group',
           disabled && 'cursor-not-allowed opacity-60',
           className
@@ -56,17 +55,13 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             className="peer sr-only"
             {...props}
           />
-          {/* Custom Checkbox Box */}
           <div
             className={cn(
               'w-5 h-5 rounded border shadow-sm transition-all duration-150 flex items-center justify-center text-white',
-              // Focus ring when peer (hidden input) has focus
               'peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-500 peer-focus-visible:ring-offset-1',
-              // States: Checked / Indeterminate vs Unchecked
               checked || indeterminate
                 ? 'bg-indigo-600 border-indigo-600 dark:bg-indigo-600 dark:border-indigo-600'
                 : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 group-hover:border-slate-400 dark:group-hover:border-slate-600',
-              // Error State
               error && !checked && !indeterminate && 'border-red-500 text-red-500',
               disabled && 'opacity-60 cursor-not-allowed'
             )}

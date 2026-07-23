@@ -43,7 +43,6 @@ export const ToggleSwitch = forwardRef<HTMLButtonElement, ToggleSwitchProps>(
     return (
       <div
         className={cn(
-          // Touch target container min-h-[44px]
           'inline-flex items-start gap-3 p-1.5 -m-1.5 rounded-lg min-h-[44px] select-none cursor-pointer group',
           disabled && 'cursor-not-allowed opacity-60',
           className
@@ -58,18 +57,14 @@ export const ToggleSwitch = forwardRef<HTMLButtonElement, ToggleSwitchProps>(
           aria-checked={isChecked}
           disabled={disabled}
           className={cn(
-            // Switch Track
             'relative inline-flex h-6 w-11 shrink-0 rounded-full p-0.5 transition-colors duration-200 ease-in-out cursor-pointer mt-0.5',
-            // Focus state
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1',
-            // Colors: Checked vs Unchecked
             isChecked
               ? 'bg-indigo-600 dark:bg-indigo-600'
               : 'bg-slate-300 dark:bg-slate-700 group-hover:bg-slate-400 dark:group-hover:bg-slate-600',
             disabled && 'cursor-not-allowed'
           )}
         >
-          {/* Hidden input for HTML form submission compatibility if name is passed */}
           {name && (
             <input
               type="checkbox"
@@ -80,8 +75,6 @@ export const ToggleSwitch = forwardRef<HTMLButtonElement, ToggleSwitchProps>(
               tabIndex={-1}
             />
           )}
-
-          {/* Switch Knob / Thumb */}
           <span
             className={cn(
               'pointer-events-none inline-block h-5 w-5 rounded-full bg-white dark:bg-slate-100 shadow-md transform ring-0 transition duration-200 ease-in-out',
