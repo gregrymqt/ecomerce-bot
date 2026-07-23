@@ -1,11 +1,12 @@
 import asyncio
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 from pydantic import BaseModel, Field, ValidationError
 import json
 import html2text
 from bs4 import BeautifulSoup
 from openai import AsyncOpenAI
 import openai
+from app.features.scraper.schemas import ScrapedProductResult
 
 class ProductExtractionSchema(BaseModel):
     title: Optional[str] = Field(description="The name or title of the product.")
@@ -44,7 +45,7 @@ class MarkdownParserService:
     def _convert_to_markdown(self, clean_html: str) -> str:
         return self.html2text_converter.handle(clean_html)
 
-    async def parse(self, raw_html: str) -> Dict[str, Any]:
+    async def parse(self, raw_html: str) -> ScrapedProductResult:
         clean_html = self._sanitize_html(raw_html)
         markdown_text = self._convert_to_markdown(clean_html)
 
@@ -71,7 +72,14 @@ class MarkdownParserService:
             product_data = ProductExtractionSchema.model_validate_json(content)
             
             if product_data:
-                return product_data.model_dump()
+                return ScrapedProductResult(
+                    title=product_data.title,
+                    description=product_data.description,
+                    price=product_data.price,
+                    currency=product_data.currency,
+                    image_url=product_data.image_url,
+                    sku=product_data.sku,
+                )
             
             return self._empty_response()
 
@@ -84,12 +92,5 @@ class MarkdownParserService:
         except Exception as e:
             raise LLMParserException(f"Falha inesperada ao processar extração via LLM: {str(e)}") from e
 
-    def _empty_response(self) -> Dict[str, Any]:
-        return {
-            "title": None,
-            "description": None,
-            "price": None,
-            "currency": None,
-            "image_url": None,
-            "sku": None
-        }
+    def _empty_response(self) -> ScrapedProductResult:
+        return ScrapedProductResult()

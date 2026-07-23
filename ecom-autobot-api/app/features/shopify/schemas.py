@@ -191,6 +191,10 @@ class ShopifyMediaInput(BaseModel):
     alt: Optional[str] = Field(None, description="Texto alternativo gerado pela IA para SEO.")
     mediaContentType: str = "IMAGE"
 
+class ShopifyMediaAddRequest(BaseModel):
+    image_urls: List[str] = Field(..., min_length=1, description="Lista de URLs de imagem para adicionar")
+    alt_text: Optional[str] = Field(None, description="Texto alt padrão para as imagens")
+
 class ShopifyCreateMediaVariables(BaseModel):
     productId: str
     media: List[ShopifyMediaInput]
@@ -216,3 +220,4 @@ class ShopifyCreateMediaRequest(BaseModel):
     }
     """
     variables: ShopifyCreateMediaVariables
+

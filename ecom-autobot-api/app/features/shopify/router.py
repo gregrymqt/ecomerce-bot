@@ -1,8 +1,9 @@
-from typing import Optional, Dict, Any
+from typing import Optional
 from fastapi import APIRouter, Depends, Header, status
 
 from app.features.shopify.service import ShopifyService
 from app.core.security.auth import get_current_tenant_user
+from app.features.shopify.schemas import ShopifyMediaAddRequest
 
 router = APIRouter(
     prefix="/shopify", 
@@ -13,9 +14,9 @@ router = APIRouter(
 def get_shopify_service(x_tenant_id: str = Header(..., alias="X-Tenant-ID")) -> ShopifyService:
     return ShopifyService(tenant_id=x_tenant_id)
 
-@router.post("/products", status_code=status.HTTP_201_CREATED, response_model=Dict[str, Any])
+@router.post("/products", status_code=status.HTTP_201_CREATED, response_model=dict)
 async def sync_product_to_shopify(
-    product_data: Dict[str, Any], 
+    product_data: dict, 
     service: ShopifyService = Depends(get_shopify_service)
 ):
     return await service.sync_product(product_data)
@@ -23,15 +24,15 @@ async def sync_product_to_shopify(
 @router.post("/products/{product_id}/media", status_code=status.HTTP_201_CREATED)
 async def add_media_to_product(
     product_id: str,
-    media_payload: Dict[str, Any],
+    media_payload: ShopifyMediaAddRequest,
     service: ShopifyService = Depends(get_shopify_service)
 ):
     return await service.add_media_to_product(product_id, media_payload)
 
-@router.put("/products/{product_id}", response_model=Dict[str, Any])
+@router.put("/products/{product_id}", response_model=dict)
 async def update_shopify_product(
     product_id: str,
-    update_payload: Dict[str, Any],
+    update_payload: dict,
     service: ShopifyService = Depends(get_shopify_service)
 ):
     return await service.update_product(product_id, update_payload)
@@ -43,7 +44,7 @@ async def delete_shopify_product(
 ):
     return await service.delete_product(product_id)
 
-@router.get("/products", response_model=Dict[str, Any])
+@router.get("/products", response_model=dict)
 async def list_shopify_products(
     first: int = 10,
     after: Optional[str] = None,

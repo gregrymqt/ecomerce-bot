@@ -58,3 +58,17 @@ class NuvemshopProductRequest(BaseModel):
             ],
             images=[NuvemshopImageRequest(src=img) for img in data.get("images", [])]
         )
+
+class NuvemshopBatchStockPriceItem(BaseModel):
+    variant_id: int = Field(..., description="ID da variante na Nuvemshop")
+    price: Optional[float] = Field(None, description="Novo preço da variante")
+    promotional_price: Optional[float] = Field(None, description="Novo preço promocional")
+    stock: Optional[int] = Field(None, description="Quantidade em estoque")
+
+class NuvemshopProductUpdatePayload(BaseModel):
+    name: Optional[NuvemshopLocalizedString] = None
+    description: Optional[NuvemshopLocalizedString] = None
+    handle: Optional[NuvemshopLocalizedString] = None
+    published: Optional[bool] = None
+    brand: Optional[str] = None
+    tags: Optional[str] = None

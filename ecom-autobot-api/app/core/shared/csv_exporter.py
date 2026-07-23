@@ -1,7 +1,10 @@
 import csv
 import io
 import re
-from typing import List, Dict, Any
+from typing import List, Dict, Union, TypeVar
+from pydantic import BaseModel
+
+T = TypeVar("T")
 
 class CsvExportService:
     """
@@ -18,7 +21,7 @@ class CsvExportService:
         return re.sub(r'[\s_-]+', '-', slug).strip('-')
 
     @staticmethod
-    def generate_shopify_csv(products: List[Any]) -> bytes:
+    def generate_shopify_csv(products: List[Union[BaseModel, object]]) -> bytes:
         """
         Gera o payload em bytes de um CSV formatado para o Shopify.
         """
@@ -49,7 +52,7 @@ class CsvExportService:
         return output.getvalue().encode('utf-8-sig')
 
     @staticmethod
-    def generate_nuvemshop_csv(products: List[Any]) -> bytes:
+    def generate_nuvemshop_csv(products: List[Union[BaseModel, object]]) -> bytes:
         """
         Gera o payload em bytes de um CSV formatado para a Nuvemshop.
         """

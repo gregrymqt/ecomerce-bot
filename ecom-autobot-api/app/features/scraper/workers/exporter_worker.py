@@ -20,7 +20,7 @@ class ExporterWorker:
         self.tenant_id = tenant_id
         self.platform = platform.lower()
 
-    async def fetch_processed_products(self):
+    async def fetch_processed_products(self) -> list[Product]:
         try:
             async with AsyncSessionLocal() as session:
                 stmt = select(ProductModel).where(
@@ -42,7 +42,7 @@ class ExporterWorker:
             logger.error(f"Erro ao buscar produtos no PostgreSQL: {e}")
             return []
 
-    async def export(self):
+    async def export(self) -> None:
         logger.info(f"Iniciando processo de exportação para {self.platform.capitalize()}...")
         products = await self.fetch_processed_products()
 
@@ -86,7 +86,7 @@ class ExporterWorker:
         except Exception as e:
             logger.error(f"Erro crítico ao gerar o arquivo CSV: {e}")
 
-    async def mark_as_exported(self, product_skus):
+    async def mark_as_exported(self, product_skus: list[str]) -> None:
         if not product_skus:
             return
 

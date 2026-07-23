@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { authService } from '../services/authService';
 import { getTenantId, saveTenantId, clearTenantId } from '../utils/storage';
+import { getErrorMessage } from '@/utils/errors';
 import type {
   AuthenticatedUser,
   UserResponse,
@@ -94,8 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveTenantId(activeTenant);
       }
     } catch (err: unknown) {
-      const apiError = err as { response?: { data?: { detail?: string } }; message?: string };
-      const msg = apiError.response?.data?.detail || apiError.message || 'Erro ao realizar login';
+      const msg = getErrorMessage(err, 'Erro ao realizar login');
       setError(msg);
       setStatus('unauthenticated');
       throw err;
@@ -122,8 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveTenantId(activeTenant);
       }
     } catch (err: unknown) {
-      const apiError = err as { response?: { data?: { detail?: string } }; message?: string };
-      const msg = apiError.response?.data?.detail || apiError.message || 'Erro ao realizar cadastro';
+      const msg = getErrorMessage(err, 'Erro ao realizar cadastro');
       setError(msg);
       setStatus('unauthenticated');
       throw err;
@@ -167,8 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     } catch (err: unknown) {
-      const apiError = err as { response?: { data?: { detail?: string } }; message?: string };
-      const msg = apiError.response?.data?.detail || apiError.message || 'Erro ao atualizar perfil';
+      const msg = getErrorMessage(err, 'Erro ao atualizar perfil');
       setError(msg);
       throw err;
     } finally {

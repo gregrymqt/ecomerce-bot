@@ -1,6 +1,6 @@
 import httpx
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception
 
 from app.features.nuvemshop.schemas import NuvemshopProductRequest
@@ -53,7 +53,7 @@ class NuvemshopClient:
         retry=retry_if_exception(is_rate_limit_error),
         reraise=True
     )
-    async def create_product(self, product: NuvemshopProductRequest) -> Dict[str, Any]:
+    async def create_product(self, product: NuvemshopProductRequest) -> dict:
         url = f"{self.base_url}/products"
         payload = product.model_dump(by_alias=True, exclude_none=True)
         
@@ -70,7 +70,7 @@ class NuvemshopClient:
                     logger.error(f"Erro ao criar produto na Nuvemshop [Status {e.response.status_code}]: {e.response.text}")
                 raise e
 
-    async def get_product_by_id(self, product_id: int) -> Dict[str, Any]:
+    async def get_product_by_id(self, product_id: int) -> dict:
         url = f"{self.base_url}/products/{product_id}"
         async with httpx.AsyncClient() as client:
             try:
@@ -81,7 +81,7 @@ class NuvemshopClient:
                 logger.error(f"Erro ao buscar produto {product_id} na Nuvemshop: {e.response.text}")
                 raise e
 
-    async def get_product_by_sku(self, sku: str) -> Optional[Dict[str, Any]]:
+    async def get_product_by_sku(self, sku: str) -> Optional[dict]:
         url = f"{self.base_url}/products/sku/{sku}"
         async with httpx.AsyncClient() as client:
             try:
@@ -101,7 +101,7 @@ class NuvemshopClient:
         retry=retry_if_exception(is_rate_limit_error),
         reraise=True
     )
-    async def update_product_metadata(self, product_id: int, update_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def update_product_metadata(self, product_id: int, update_data: dict) -> dict:
         url = f"{self.base_url}/products/{product_id}"
         async with httpx.AsyncClient() as client:
             try:
@@ -122,7 +122,7 @@ class NuvemshopClient:
         retry=retry_if_exception(is_rate_limit_error),
         reraise=True
     )
-    async def update_stock_price_batch(self, batch_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def update_stock_price_batch(self, batch_data: List[dict]) -> List[dict]:
         url = f"{self.base_url}/products/stock-price"
         if len(batch_data) > 50:
             raise ValueError("A API da Nuvemshop permite o limite máximo de 50 variantes por lote no PATCH.")

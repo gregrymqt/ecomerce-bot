@@ -1,5 +1,5 @@
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
 
@@ -42,7 +42,7 @@ class NuvemshopService:
         self.client = client
         return self.client
 
-    async def create_product(self, product: NuvemshopProductRequest) -> Dict[str, Any]:
+    async def create_product(self, product: NuvemshopProductRequest) -> dict:
         client = await self._ensure_client()
         try:
             return await client.create_product(product)
@@ -65,7 +65,7 @@ class NuvemshopService:
                     detail=f"Falha de comunicação com o provedor Nuvemshop: {str(e)} | Erro no Fallback: {str(fallback_err)}"
                 )
 
-    async def get_product_by_id(self, product_id: int) -> Dict[str, Any]:
+    async def get_product_by_id(self, product_id: int) -> dict:
         client = await self._ensure_client()
         try:
             return await client.get_product_by_id(product_id)
@@ -75,7 +75,7 @@ class NuvemshopService:
                 detail=f"Produto com o ID {product_id} não foi encontrado na Nuvemshop."
             )
 
-    async def get_product_by_sku(self, sku: str) -> Dict[str, Any]:
+    async def get_product_by_sku(self, sku: str) -> dict:
         client = await self._ensure_client()
         product = await client.get_product_by_sku(sku)
         if not product:
@@ -85,7 +85,7 @@ class NuvemshopService:
             )
         return product
 
-    async def update_product_metadata(self, product_id: int, update_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def update_product_metadata(self, product_id: int, update_data: dict) -> dict:
         client = await self._ensure_client()
         try:
             return await client.update_product_metadata(product_id, update_data)
@@ -95,7 +95,7 @@ class NuvemshopService:
                 detail=f"Incapaz de atualizar o produto {product_id}. Verifique o payload. Erro: {str(e)}"
             )
 
-    async def update_stock_price_batch(self, batch_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def update_stock_price_batch(self, batch_data: List[dict]) -> List[dict]:
         client = await self._ensure_client()
         try:
             return await client.update_stock_price_batch(batch_data)

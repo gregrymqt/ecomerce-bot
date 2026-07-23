@@ -2,11 +2,11 @@
 import { apiClient } from '@/lib/apiClient';
 import { SSEClient } from '@/lib/sseClient';
 
-export interface DemoProgressPayload {
+export interface DemoProgressPayload<TData = Record<string, unknown>> {
   step: string;
   message: string;
   progress: number;
-  data?: any;
+  data?: TData;
 }
 
 export class DemoStreamService {

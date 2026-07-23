@@ -1,6 +1,6 @@
 import httpx
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Optional, List
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception
 
 from app.features.shopify.schemas import (
@@ -49,7 +49,7 @@ class ShopifyClient:
         retry=retry_if_exception(is_rate_limit_error),
         reraise=True
     )
-    async def sync_product(self, internal_product_data: dict) -> Dict[str, Any]:
+    async def sync_product(self, internal_product_data: dict) -> dict:
         input_data = ShopifyProductSetInput.from_internal_data(internal_product_data)
         graphql_req = ShopifyGraphQLRequest(
             variables=ShopifyGraphQLVariables(input=input_data)

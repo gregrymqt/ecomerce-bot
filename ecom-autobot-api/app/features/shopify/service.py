@@ -1,10 +1,10 @@
 import logging
-from typing import Dict, Any, Optional
+from typing import Optional
 from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
 
 from app.features.shopify.client import ShopifyClient
-from app.features.shopify.schemas import ShopifyProductSetInput
+from app.features.shopify.schemas import ShopifyProductSetInput, ShopifyMediaAddRequest
 from app.features.products.repositories import TenantConfigRepository
 from app.core.shared.csv_exporter import CsvExportService
 
@@ -33,7 +33,7 @@ class ShopifyService:
         self.client = ShopifyClient(shop_domain=shop_domain, access_token=access_token)
         return self.client
 
-    async def sync_product(self, product_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def sync_product(self, product_data: dict) -> dict:
         client = await self._ensure_client()
         try:
             return await client.sync_product(product_data)
@@ -62,10 +62,10 @@ class ShopifyService:
                     detail=f"Falha na execução da mutação no provedor Shopify: {str(e)} | Erro no Fallback de CSV: {str(fallback_err)}"
                 )
 
-    async def add_media_to_product(self, product_id: str, media_payload: Dict[str, Any]) -> dict:
+    async def add_media_to_product(self, product_id: str, media_payload: ShopifyMediaAddRequest) -> dict:
         client = await self._ensure_client()
-        urls = media_payload.get("image_urls", [])
-        alt = media_payload.get("alt_text")
+        urls = media_payload.image_urls
+        alt = media_payload.alt_text
         if not urls:
             raise HTTPException(status_code=400, detail="A lista 'image_urls' não pode estar vazia.")
             
@@ -76,7 +76,7 @@ class ShopifyService:
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
 
-    async def update_product(self, product_id: str, update_payload: Dict[str, Any]) -> dict:
+    async def update_product(self, product_id: str, update_payload: dict) -> dict:
         client = await self._ensure_client()
         try:
             new_images = update_payload.pop("new_images", None)

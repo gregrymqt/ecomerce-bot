@@ -1,6 +1,6 @@
-// src/features/live-demo/hooks/useDemoStream.ts
 import { useState, useEffect, useCallback } from 'react';
 import { demoStreamService, type DemoProgressPayload } from '../services/demoStreamService';
+import { getErrorMessage } from '@/utils/errors';
 
 export interface UseDemoStreamReturn {
   /** Histórico de todos os logs/mensagens recebidos via SSE */
@@ -72,8 +72,8 @@ export const useDemoStream = (): UseDemoStreamReturn => {
           stopDemo();
         }
       );
-    } catch (err: any) {
-      const detail = err.response?.data?.detail || 'Falha ao iniciar a solicitação de demo.';
+    } catch (err: unknown) {
+      const detail = getErrorMessage(err, 'Falha ao iniciar a solicitação de demo.');
       setError(detail);
       setIsStreaming(false);
     }

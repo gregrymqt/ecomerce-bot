@@ -2,10 +2,11 @@ import json
 import random
 import re
 from dataclasses import dataclass, asdict
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Union, List
 
 import httpx
 from bs4 import BeautifulSoup
+from app.features.scraper.schemas import ScrapedProductResult
 
 @dataclass
 class ProductData:
@@ -16,8 +17,15 @@ class ProductData:
     image_url: Optional[str] = None
     sku: Optional[str] = None
 
-    def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
+    def to_schema(self) -> ScrapedProductResult:
+        return ScrapedProductResult(
+            title=self.title,
+            description=self.description,
+            price=self.price,
+            currency=self.currency,
+            image_url=self.image_url,
+            sku=self.sku,
+        )
 
 class ScrapingException(Exception):
     def __init__(self, message: str, status_code: Optional[int] = None):
@@ -72,13 +80,13 @@ class JsonLdParserService:
                 f"Erro de conexão ao acessar {url}: {str(e)}"
             ) from e
 
-    def _find_product_node(self, data: Any) -> Optional[Dict[str, Any]]:
+    def _find_product_node(self, data: Union[dict, list, object]) -> Optional[dict]:
         if isinstance(data, dict):
             type_val = data.get("@type")
             if type_val:
                 if isinstance(type_val, str) and type_val.lower() == "product":
                     return data
-                elif isinstance(type_val, list) and any(t.lower() == "product" for t in type_val if isinstance(t, str)):
+                elif isinstance(type_val, list) and any(isinstance(t, str) and t.lower() == "product" for t in type_val):
                     return data
             
             if "@graph" in data:
@@ -161,7 +169,7 @@ class JsonLdParserService:
                 
         return current_data
 
-    async def parse(self, url: str, client: httpx.AsyncClient = None) -> Dict[str, Any]:
+    async def parse(self, url: str, client: httpx.AsyncClient = None) -> ScrapedProductResult:
         html = await self._fetch_html(url, client)
         soup = BeautifulSoup(html, "html.parser")
         product_data = self._extract_from_json_ld(soup)
@@ -169,4 +177,4 @@ class JsonLdParserService:
         if not product_data.title or not product_data.description:
             product_data = self._extract_from_open_graph(soup, product_data)
 
-        return product_data.to_dict()
+        return product_data.to_schema()

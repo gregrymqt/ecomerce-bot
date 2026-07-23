@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Union
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,6 +7,8 @@ from app.core.config.database import AsyncSessionLocal
 from app.features.auth.models import UserModel
 
 logger = logging.getLogger(__name__)
+
+UserUpdateValue = Union[str, bool, list, int, float, None]
 
 class UserRepository:
     def __init__(self, session: Optional[AsyncSession] = None):
@@ -54,7 +56,7 @@ class UserRepository:
             if owned:
                 await session.close()
 
-    async def update_user(self, user_id: str, update_fields: Dict[str, Any]) -> Optional[UserModel]:
+    async def update_user(self, user_id: str, update_fields: Dict[str, UserUpdateValue]) -> Optional[UserModel]:
         session, owned = await self._get_session()
         try:
             user = await session.get(UserModel, user_id)

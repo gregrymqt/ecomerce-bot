@@ -9,20 +9,7 @@ export interface SSEClientOptions<T> {
   onOpen?: () => void;
 }
 
-// src/lib/sseClient.ts
-
-export interface SSEClientOptions<T> {
-  /** Caminho relativo da rota (ex: '/demo/stream') */
-  endpoint: string;
-  /** Callback para cada mensagem recebida do servidor */
-  onMessage: (data: T) => void;
-  /** Callback de erro ou desconexão */
-  onError?: (error: Event) => void;
-  /** Callback para quando a conexão abrir com sucesso */
-  onOpen?: () => void;
-}
-
-export class SSEClient<T = any> {
+export class SSEClient<T = unknown> {
   private eventSource: EventSource | null = null;
   private baseUrl: string;
 

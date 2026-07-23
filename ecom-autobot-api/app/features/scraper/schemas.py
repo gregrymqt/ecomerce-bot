@@ -1,5 +1,15 @@
 from pydantic import BaseModel, Field, SecretStr, HttpUrl
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, List, Union
+
+ProductAttributeValue = Union[str, int, float, bool, List[str]]
+
+class ScrapedProductResult(BaseModel):
+    title: Optional[str] = Field(None, description="Nome ou título do produto extraído")
+    description: Optional[str] = Field(None, description="Descrição detalhada do produto")
+    price: Optional[str] = Field(None, description="Preço do produto como string")
+    currency: Optional[str] = Field(None, description="Moeda do preço (ex: BRL, USD)")
+    image_url: Optional[str] = Field(None, description="URL da imagem principal")
+    sku: Optional[str] = Field(None, description="Código SKU ou identificador único")
 
 class AICredentialsRequest(BaseModel):
     tenant_id: str = Field(..., description="ID do tenant (isolamento)")
@@ -28,7 +38,7 @@ class ImportCompletedMessage(BaseModel):
     description: Optional[str] = Field(None, alias="Description")
     price: Optional[float] = Field(None, alias="Price")
     images: Optional[List[str]] = Field(default_factory=list, alias="Images")
-    attributes: Optional[Dict[str, Any]] = Field(default_factory=dict, alias="Attributes")
+    attributes: Optional[Dict[str, ProductAttributeValue]] = Field(default_factory=dict, alias="Attributes")
 
     class Config:
         populate_by_name = True

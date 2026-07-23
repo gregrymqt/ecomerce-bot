@@ -65,26 +65,26 @@ class ScraperWorker:
         error_type = "Parser retornou dados nulos"
 
         try:
-            product_dict = await self.json_ld_parser.parse(product_url, client=self.client)
+            scraped_data = await self.json_ld_parser.parse(product_url, client=self.client)
             
-            if not product_dict.get("title") or not product_dict.get("description"):
+            if not scraped_data.title or not scraped_data.description:
                 logging.info(f"Estratégia 1 falhou para {product_url}. Acionando Fallback LLM.")
                 response = await self.client.get(product_url)
                 response.raise_for_status()
-                product_dict = await self.markdown_parser.parse(response.text)
+                scraped_data = await self.markdown_parser.parse(response.text)
                 
-            if not product_dict.get("title"):
+            if not scraped_data.title:
                 logging.warning(f"Não foi possível extrair dados estruturados de {product_url}")
                 await self._handle_scraping_failure(domain, error_type, product_url)
                 return None
                 
             product_obj = Product(
-                sku=product_dict.get("sku") or product_url.split("/")[-2],
-                title=product_dict.get("title"),
-                description=product_dict.get("description"),
-                price=float(product_dict.get("price")) if product_dict.get("price") else None,
-                currency=product_dict.get("currency") or "BRL",
-                images=[product_dict.get("image_url")] if product_dict.get("image_url") else [],
+                sku=scraped_data.sku or product_url.split("/")[-2],
+                title=scraped_data.title,
+                description=scraped_data.description,
+                price=float(scraped_data.price) if scraped_data.price else None,
+                currency=scraped_data.currency or "BRL",
+                images=[scraped_data.image_url] if scraped_data.image_url else [],
                 metadata=ScraperMetadata(source_url=product_url),
                 status=ProductStatus.RAW,
                 tenant_id=tenant_id

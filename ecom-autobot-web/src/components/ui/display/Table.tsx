@@ -22,7 +22,7 @@ export interface TableProps<T> {
   className?: string;
 }
 
-export function Table<T>({
+export function Table<T extends object>({
   columns,
   data,
   keyExtractor,
@@ -90,8 +90,8 @@ export function Table<T>({
                   )}
                 >
                   {columns.map((col) => {
-                    const value = (row as Record<string, unknown>)[col.key];
-                    const content = col.render ? col.render(row, rIdx) : (value as React.ReactNode);
+                    const rawVal = col.key in row ? row[col.key as keyof T] : undefined;
+                    const content = col.render ? col.render(row, rIdx) : (rawVal as React.ReactNode);
 
                     return (
                       <td
