@@ -40,12 +40,5 @@ class UserResponse(BaseModel):
     tenants: List[str]
     created_at: Optional[datetime] = None
 
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int
-    user: UserInfo
-    tenants: List[str]
-
 class LogoutResponse(BaseModel):
     message: str

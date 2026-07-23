@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Response, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.core.security.auth import get_current_tenant_user
@@ -29,27 +29,38 @@ async def register(
     """
     return await service.register_user(payload)
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=UserResponse)
 async def login(
     credentials: LoginRequest,
+    response: Response,
     service: AuthService = Depends(get_auth_service)
-) -> TokenResponse:
-    """
-    Realiza autenticação e emite o Token JWT assinado contendo as permissões de Tenant.
-    """
-    return await service.authenticate_user(credentials)
+) -> UserResponse:
+    return await service.authenticate_user(credentials, response)
 
 @router.post("/logout", response_model=LogoutResponse)
 async def logout(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
+    response: Response,
     service: AuthService = Depends(get_auth_service)
 ) -> LogoutResponse:
     """
-    Revoga o Token JWT atual adicionando-o à blacklist no Redis.
+    Revoga o Token JWT do cookie no Redis e limpa o cookie no navegador.
     """
-    token = credentials.credentials
-    await service.revoke_token(token)
-    return LogoutResponse(message="Logout realizado com sucesso. Token invalidado no backend.")
+    # Extrai o token diretamente do Cookie HttpOnly
+    token = request.cookies.get("access_token")
+    
+    if token:
+        await service.revoke_token(token)
+    
+    # Exclui o cookie do navegador zerando seu tempo de vida
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        secure=True,
+        samesite="none"
+    )
+    
+    return LogoutResponse(message="Logout realizado com sucesso. Cookie e sessão limpos.")
 
 @router.get("/me", response_model=AuthenticatedUser)
 async def get_me(

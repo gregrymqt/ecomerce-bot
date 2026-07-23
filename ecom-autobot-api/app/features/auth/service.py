@@ -2,7 +2,7 @@ import hashlib
 import os
 import logging
 from typing import Optional
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Response
 
 from app.core.config.settings import settings
 from app.core.security.auth import create_access_token, add_token_to_blacklist
@@ -77,7 +77,7 @@ class AuthService:
                 tenants=tenants
             )
 
-    async def authenticate_user(self, credentials: LoginRequest) -> TokenResponse:
+    async def authenticate_user(self, credentials: LoginRequest, response: Response) -> UserResponse:
         if not credentials.email or not credentials.password:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -113,15 +113,19 @@ class AuthService:
         expires_in_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
         access_token = create_access_token(data=token_data)
 
-        return TokenResponse(
-            access_token=access_token,
-            token_type="bearer",
-            expires_in=expires_in_seconds,
-            user=UserInfo(
-                id=user_id,
-                email=credentials.email,
-                name=user_name
-            ),
+        response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,     
+        secure=True,       # Nota: Em dev local sem HTTPS, se o cookie sumir, mude para False temporariamente
+        samesite="none",   
+        max_age=expires_in_seconds    
+    )
+
+        return UserResponse(
+            id=user_id,
+            email=credentials.email,
+            name=user_name,
             tenants=user_tenants
         )
 
