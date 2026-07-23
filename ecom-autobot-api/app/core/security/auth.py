@@ -5,6 +5,7 @@ from fastapi import Header, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.config.settings import settings
 from app.core.config.redis_db import redis_cache
+from app.features.auth.schemas import AuthenticatedUser
 
 security = HTTPBearer()
 
@@ -49,10 +50,9 @@ async def is_token_blacklisted(token: str) -> bool:
 async def get_current_tenant_user(
     x_tenant_id: str = Header(..., alias="X-Tenant-ID"),
     credentials: HTTPAuthorizationCredentials = Depends(security)
-):
+) -> AuthenticatedUser:
     token = credentials.credentials
     
-    # 1. Validação de Blacklist de tokens revogados no Redis
     if await is_token_blacklisted(token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -60,7 +60,6 @@ async def get_current_tenant_user(
         )
         
     try:
-        # 2. Decodificação segura do Token JWT
         secret_key = settings.JWT_SECRET_KEY
         if not secret_key:
             raise HTTPException(
@@ -85,7 +84,6 @@ async def get_current_tenant_user(
             detail="Token inválido."
         )
 
-    # 3. Blindagem de Isolamento Multi-Tenant
     allowed_tenants = payload.get("tenants", [])
     if isinstance(allowed_tenants, str):
         allowed_tenants = [allowed_tenants]
@@ -96,4 +94,10 @@ async def get_current_tenant_user(
             detail="Acesso negado. Você não possui autorização para operar neste Tenant."
         )
         
-    return payload
+    return AuthenticatedUser(
+        sub=str(payload.get("sub", "")),
+        email=str(payload.get("email", "")),
+        name=str(payload.get("name", "")),
+        tenants=allowed_tenants,
+        plan=str(payload.get("plan", "free"))
+    )

@@ -12,9 +12,10 @@ from alembic import context
 # Adiciona o diretorio raiz ao sys.path para garantir o import de app
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.config.settings import settings
-from app.config.database import Base
-import app.models.database_models  # Registra os modelos SQLAlchemy na Base.metadata
+from app.core.config.settings import settings
+from app.core.config.database import Base
+import app.features.products.models  # Registra os modelos SQLAlchemy na Base.metadata
+import app.features.auth.models
 
 config = context.config
 

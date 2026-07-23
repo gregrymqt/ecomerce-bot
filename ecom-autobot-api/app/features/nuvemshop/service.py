@@ -1,162 +1,116 @@
-import httpx
 import logging
 from typing import List, Dict, Any, Optional
-from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception
+from fastapi import HTTPException, status
+from fastapi.responses import JSONResponse
 
+from app.features.nuvemshop.client import NuvemshopClient
 from app.features.nuvemshop.schemas import NuvemshopProductRequest
+from app.features.products.repositories import TenantConfigRepository
+from app.core.shared.csv_exporter import CsvExportService
 
 logger = logging.getLogger(__name__)
 
-def is_rate_limit_error(exception: Exception) -> bool:
-    return isinstance(exception, httpx.HTTPStatusError) and exception.response.status_code == 429
-
 class NuvemshopService:
     """
-    Serviço responsável pela integração direta com a API REST da Nuvemshop (Tiendanube).
+    Serviço de Lógica de Negócio para a Nuvemshop.
+    Consome o TenantConfigRepository (para dados do banco) e o NuvemshopClient (para a API REST).
     """
-    def __init__(self, store_id: str, access_token: str, app_email: str = "suporte@gregcompany.com"):
-        self.store_id = store_id
-        self.access_token = access_token
-        self.base_url = f"https://api.nuvemshop.com.br/v1/{self.store_id}"
+    def __init__(self, tenant_id: str, tenant_repo: TenantConfigRepository = None, client: NuvemshopClient = None):
+        self.tenant_id = tenant_id
+        self.tenant_repo = tenant_repo or TenantConfigRepository()
+        self.client = client
+
+    async def _ensure_client(self) -> NuvemshopClient:
+        if self.client:
+            return self.client
+        creds = await self.tenant_repo.get_nuvemshop_credentials(self.tenant_id)
+        if not creds:
+            raise HTTPException(
+                status_code=status.HTTP_412_PRECONDITION_FAILED,
+                detail=f"Credenciais da Nuvemshop não configuradas ou ausentes para o Tenant '{self.tenant_id}'."
+            )
+        store_id, access_token, app_email = creds
+        client = NuvemshopClient(store_id=store_id, access_token=access_token, app_email=app_email)
         
-        self.headers = {
-            "Authorization": f"Bearer {self.access_token}",
-            "Content-Type": "application/json",
-            "User-Agent": f"EcommerceBotGreg ({app_email})"
-        }
+        is_valid_scope = await client.validate_scopes()
+        if not is_valid_scope:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="O token fornecido não possui permissões de escrita (write_products) na Nuvemshop."
+            )
 
-    async def validate_scopes(self) -> bool:
-        url = f"{self.base_url}/store"
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.get(url, headers=self.headers)
-                if response.status_code in (401, 403):
-                    return False
-                response.raise_for_status()
-                
-                scopes_header = response.headers.get("X-Tiendanube-Scopes", response.headers.get("X-Supported-Scopes", ""))
-                if not scopes_header:
-                    logger.warning(f"Headers de escopo não encontrados na resposta para a loja {self.store_id}.")
-                    return False
-                
-                return "write_products" in scopes_header
-            except httpx.HTTPStatusError as e:
-                logger.error(f"Erro ao tentar validar escopos na Nuvemshop [Status {e.response.status_code}]: {e.response.text}")
-                return False
-            except Exception as e:
-                logger.error(f"Falha de conexão ao validar escopos na Nuvemshop: {str(e)}")
-                return False
+        self.client = client
+        return self.client
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception(is_rate_limit_error),
-        reraise=True
-    )
     async def create_product(self, product: NuvemshopProductRequest) -> Dict[str, Any]:
-        url = f"{self.base_url}/products"
-        payload = product.model_dump(by_alias=True, exclude_none=True)
-        
-        async with httpx.AsyncClient() as client:
+        client = await self._ensure_client()
+        try:
+            return await client.create_product(product)
+        except Exception as e:
             try:
-                response = await client.post(url, headers=self.headers, json=payload)
-                response.raise_for_status()
-                logger.info(f"Produto criado com sucesso na Nuvemshop. ID: {response.json().get('id')}")
-                return response.json()
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 429:
-                    logger.warning("Rate limit (429) atingido na Nuvemshop ao criar produto. Acionando retry...")
-                else:
-                    logger.error(f"Erro ao criar produto na Nuvemshop [Status {e.response.status_code}]: {e.response.text}")
-                raise e
+                CsvExportService.generate_nuvemshop_csv([product])
+                download_url = "/api/v1/export?platform=nuvemshop"
+                
+                return JSONResponse(
+                    status_code=status.HTTP_202_ACCEPTED,
+                    content={
+                        "status": "fallback_csv",
+                        "message": "A sincronização direta falhou temporariamente. O download do CSV com copywriting IA foi gerado como alternativa.",
+                        "download_url": download_url
+                    }
+                )
+            except Exception as fallback_err:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY, 
+                    detail=f"Falha de comunicação com o provedor Nuvemshop: {str(e)} | Erro no Fallback: {str(fallback_err)}"
+                )
 
     async def get_product_by_id(self, product_id: int) -> Dict[str, Any]:
-        url = f"{self.base_url}/products/{product_id}"
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.get(url, headers=self.headers)
-                response.raise_for_status()
-                return response.json()
-            except httpx.HTTPStatusError as e:
-                logger.error(f"Erro ao buscar produto {product_id} na Nuvemshop: {e.response.text}")
-                raise e
+        client = await self._ensure_client()
+        try:
+            return await client.get_product_by_id(product_id)
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail=f"Produto com o ID {product_id} não foi encontrado na Nuvemshop."
+            )
 
-    async def get_product_by_sku(self, sku: str) -> Optional[Dict[str, Any]]:
-        url = f"{self.base_url}/products/sku/{sku}"
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.get(url, headers=self.headers)
-                if response.status_code == 404:
-                    logger.warning(f"Produto com SKU {sku} não encontrado na Nuvemshop.")
-                    return None
-                response.raise_for_status()
-                return response.json()
-            except httpx.HTTPStatusError as e:
-                logger.error(f"Erro ao buscar SKU {sku} na Nuvemshop: {e.response.text}")
-                raise e
+    async def get_product_by_sku(self, sku: str) -> Dict[str, Any]:
+        client = await self._ensure_client()
+        product = await client.get_product_by_sku(sku)
+        if not product:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail=f"Nenhum produto correspondente ao SKU '{sku}' foi encontrado."
+            )
+        return product
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception(is_rate_limit_error),
-        reraise=True
-    )
     async def update_product_metadata(self, product_id: int, update_data: Dict[str, Any]) -> Dict[str, Any]:
-        url = f"{self.base_url}/products/{product_id}"
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.put(url, headers=self.headers, json=update_data)
-                response.raise_for_status()
-                logger.info(f"Metadados do produto {product_id} atualizados com sucesso.")
-                return response.json()
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 429:
-                    logger.warning(f"Rate limit (429) atingido na Nuvemshop ao atualizar produto {product_id}. Acionando retry...")
-                else:
-                    logger.error(f"Erro ao atualizar produto {product_id}: {e.response.text}")
-                raise e
+        client = await self._ensure_client()
+        try:
+            return await client.update_product_metadata(product_id, update_data)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail=f"Incapaz de atualizar o produto {product_id}. Verifique o payload. Erro: {str(e)}"
+            )
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception(is_rate_limit_error),
-        reraise=True
-    )
     async def update_stock_price_batch(self, batch_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        url = f"{self.base_url}/products/stock-price"
-        if len(batch_data) > 50:
-            raise ValueError("A API da Nuvemshop permite o limite máximo de 50 variantes por lote no PATCH.")
+        client = await self._ensure_client()
+        try:
+            return await client.update_stock_price_batch(batch_data)
+        except ValueError as val_err:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(val_err))
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.patch(url, headers=self.headers, json=batch_data)
-                response.raise_for_status()
-                logger.info("Atualização em lote de preço/estoque processada.")
-                return response.json()
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 429:
-                    logger.warning("Rate limit (429) atingido na Nuvemshop no PATCH em lote. Acionando retry...")
-                else:
-                    logger.error(f"Erro no PATCH em lote da Nuvemshop: {e.response.text}")
-                raise e
-
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception(is_rate_limit_error),
-        reraise=True
-    )
-    async def delete_product(self, product_id: int) -> bool:
-        url = f"{self.base_url}/products/{product_id}"
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.delete(url, headers=self.headers)
-                response.raise_for_status()
-                logger.info(f"Produto {product_id} removido com sucesso da Nuvemshop.")
-                return True
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 429:
-                    logger.warning(f"Rate limit (429) atingido na Nuvemshop ao remover produto {product_id}. Acionando retry...")
-                else:
-                    logger.error(f"Erro ao deletar produto {product_id}: {e.response.text}")
-                raise e
+    async def delete_product(self, product_id: int) -> None:
+        client = await self._ensure_client()
+        try:
+            await client.delete_product(product_id)
+            return None
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail=f"Erro ao tentar remover o produto {product_id}."
+            )

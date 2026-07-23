@@ -1,15 +1,16 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.config.database import AsyncSessionLocal
 import logging
 from sqlalchemy import select, update
 from sqlalchemy.future import select as future_select
-from app.core.config.database import AsyncSessionLocal
 from app.features.products.models import ProductModel, TenantConfigModel
 from app.features.products.schemas import Product
 
 class ProductRepository:
-    def __init__(self, session: AsyncSessionLocal = None):
+    def __init__(self, session: AsyncSession = None):
         self.session = session
 
-    async def _get_session(self):
+    async def _get_session(self) -> tuple[AsyncSession,bool]:
         if self.session is not None:
             return self.session, False
         session = AsyncSessionLocal()
@@ -107,7 +108,7 @@ class TenantConfigRepository:
     def __init__(self, session: AsyncSessionLocal = None):
         self.session = session
 
-    async def _get_session(self):
+    async def _get_session(self) -> tuple[AsyncSession,bool]:
         if self.session is not None:
             return self.session, False
         session = AsyncSessionLocal()
@@ -122,6 +123,41 @@ class TenantConfigRepository:
         finally:
             if owned:
                 await session.close()
+
+    async def get_shopify_credentials(self, tenant_id: str) -> tuple[str, str] | None:
+        """
+        Recupera e descriptografa as credenciais do Shopify para o tenant especificado.
+        Retorna (shop_domain, decrypted_access_token) ou None se não configurado.
+        """
+        config = await self.get(tenant_id)
+        if not config:
+            return None
+        tenant_keys = config.encrypted_keys or {}
+        shop_domain = tenant_keys.get("shopify_shop_domain")
+        raw_token = tenant_keys.get("shopify_access_token")
+        if not shop_domain or not raw_token:
+            return None
+        from app.core.security.crypto import decrypt_api_key
+        access_token = decrypt_api_key(raw_token)
+        return str(shop_domain), access_token
+
+    async def get_nuvemshop_credentials(self, tenant_id: str) -> tuple[str, str, str] | None:
+        """
+        Recupera e descriptografa as credenciais da Nuvemshop para o tenant especificado.
+        Retorna (store_id, decrypted_access_token, app_email) ou None se não configurado.
+        """
+        config = await self.get(tenant_id)
+        if not config:
+            return None
+        tenant_keys = config.encrypted_keys or {}
+        store_id = tenant_keys.get("nuvemshop_store_id")
+        raw_token = tenant_keys.get("nuvemshop_access_token")
+        app_email = tenant_keys.get("email", "suporte@ecommerce-bot.com")
+        if not store_id or not raw_token:
+            return None
+        from app.core.security.crypto import decrypt_api_key
+        access_token = decrypt_api_key(raw_token)
+        return str(store_id), access_token, str(app_email)
 
     async def upsert(self, tenant_id: str, encrypted_keys: dict) -> None:
         session, owned = await self._get_session()
