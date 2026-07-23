@@ -1,65 +1,126 @@
 # E-commerce Bot 🛒🤖
 
-Um microserviço escalável focado em extração, processamento e enriquecimento de dados de produtos de e-commerce utilizando Inteligência Artificial (OpenAI e Gemini).
+Um ecossistema escalável focado em extração, processamento e enriquecimento automático de dados de produtos de e-commerce utilizando Inteligência Artificial (OpenAI, Gemini, DeepSeek, Groq).
+
+---
+
+## 📁 Estrutura do Repositório (Monorepo)
+
+O projeto é dividido em dois serviços principais:
+
+* 🟢 **`ecom-autobot-api/`**: API Central e Workers em Python (FastAPI, RabbitMQ, Redis, PostgreSQL).
+* 🔵 **`ecom-autobot-web/`**: Portal Web Frontend construído em React, TypeScript e Vite.
+
+---
 
 ## 🏗️ Arquitetura do Sistema
 
-O projeto evoluiu para uma arquitetura de microserviço baseada no **FastAPI**, processamento assíncrono profundo (via `asyncio` e `aio-pika`), e filas do **RabbitMQ**.
+A API Backend foi projetada em uma arquitetura de microserviço baseada em **FastAPI**, processamento assíncrono profundo (via `asyncio` e `aio-pika`), e filas do **RabbitMQ**.
 
-- **API Central (FastAPI):** Expõe rotas HTTP sob demanda. Possui rotas de Landing Page (`/demo`) integradas com mensageria e rotas de extração de relatórios (`/export`). Conta com dependências robustas como Rate Limiting (armazenado no Redis).
-- **Stream SSE (/v1/demo/stream):** Endpoint Server-Sent Events que transmite em tempo real as etapas de execução da demonstração para o Portal, escutando notificações assíncronas vindas dos Workers.
-- **Mensageria & Redis Pub/Sub:** Topologia com isolamento multi-tenant via RabbitMQ para as filas de demonstração (`ecommerce_demo`) e clientes (`ecommerce_prod`). Pub/Sub Redis (canal `"demo_progress"`) para gerenciar as notificações de progresso efêmeras de forma ágil e sem poluir o broker de mensagens.
-- **ScraperWorker:** Ouve ativamente a fila do RabbitMQ em background. Realiza as estratégias de crawling/parsing (JsonLD ou Markdown/LLM Fallback), salva os produtos no banco e processa contratos externos da arquitetura C# (PascalCase), publicando o progresso inicial de scraping.
-- **ProcessorWorker:** Robô independente que busca itens recém scrapeados ou em falha no banco de dados para envio às LLMs. Executa rotinas de enriquecimento copywriting e tags de busca, publicando o progresso final e dados otimizados.
-- **ExporterWorker:** Agente encapsulado para criar exportações paginadas e padronizadas (gerando arquivos CSV para plataformas como Shopify e Nuvemshop). Ele suporta segurança Multi-Tenant via filtragem e paginação para não estourar a memória (OOM).
-- **Database (PostgreSQL / Supabase):** Central de estado relacional. Seus índices compostos e chaves primárias compostas `(tenant_id, sku)` garantem estrito isolamento de dados por cliente e previnem vazamentos cross-tenant.
+### 🔌 Componentes da API Central (`ecom-autobot-api`)
+
+* **API Central (FastAPI)**: Expõe rotas HTTP sob o prefixo `/api/v1` e rotas dedicadas de plataformas e-commerce:
+  * **Operações do Sistema (`/api/v1`)**:
+    * `POST /api/v1/demo`: Disparo de solicitações de demonstração com rate-limiting no Redis.
+    * `GET /api/v1/export`: Rota de download e exportação de dados enriquecidos.
+    * `GET /api/v1/health`: Verificação de integridade do serviço.
+    * `GET /api/v1/demo/stream`: Endpoint Server-Sent Events (SSE) para transmissão de progresso em tempo real.
+  * **AI & Web Scraper (`/api/v1`)**:
+    * `POST /api/v1/ai/credentials`: Cadastro e atualização criptografada de credenciais de IA por tenant (BYOK).
+    * `POST /api/v1/scraper/extract`: Disparo assíncrono de tarefas de web scraping via RabbitMQ.
+  * **Integrações de E-commerce**:
+    * **Shopify (`/api/shopify`)**: Sincronização GraphQL (`productSet`), mídias, atualizações e fallback para CSV.
+    * **Nuvemshop (`/api/nuvemshop`)**: Importação e sincronização nativa de produtos via API REST Nuvemshop.
+
+* **Mensageria & Redis Pub/Sub**: Topologia com isolamento multi-tenant via RabbitMQ para as filas de demonstração (`ecommerce_demo`) e clientes (`ecommerce_prod`). Pub/Sub Redis (canal `"demo_progress"`) para gerenciar as notificações de progresso efêmeras consumidas no stream SSE.
+* **ScraperWorker**: Ouve ativamente as filas do RabbitMQ em background. Executa estratégias de crawling e parsing (JsonLD ou Markdown/LLM Fallback), salva os produtos no banco e notifica o progresso inicial.
+* **ProcessorWorker**: Robô independente que busca itens recém scrapeados no banco de dados para envio às LLMs. Executa rotinas de copywriting, tags de busca e SEO.
+* **ExporterWorker**: Agente assíncrono para gerar arquivos CSV otimizados e paginados para plataformas como Shopify e Nuvemshop, garantindo isolamento Multi-Tenant e prevenindo estouro de memória (OOM).
+* **Database (PostgreSQL / Supabase)**: Central de estado relacional com SQLAlchemy assíncrono (`asyncpg`). Índices compostos e chaves primárias `(tenant_id, sku)` garantem estrito isolamento por cliente.
+
+---
 
 ## 🚀 Como Rodar o Projeto Localmente
 
 ### 1. Pré-requisitos
-- Python 3.10+ instalado.
-- Gerenciador de pacotes `uv` (opcional, porém recomendado para altíssima performance).
-- Docker e Docker Compose (necessários para subir o PostgreSQL, Redis e o RabbitMQ).
+* **Python 3.10+** instalado.
+* **Node.js 18+** e `npm` (para o frontend web).
+* Gerenciador **`uv`** (opcional, porém recomendado para alta performance em Python).
+* **Docker** e **Docker Compose** (necessários para subir o PostgreSQL, Redis e RabbitMQ).
 
-### 2. Subindo a Infraestrutura
-Inicie as dependências do ambiente via Docker. O compose levantará tanto o banco de dados quanto o cache e o broker de mensageria:
+---
+
+### 2. Subindo a Infraestrutura (Docker)
+Na raiz do projeto, inicie os contêineres do PostgreSQL, Redis e RabbitMQ:
 ```bash
 docker compose up -d
 ```
 
-### 3. Configuração de Ambiente (.env)
-Crie um arquivo `.env` na raiz, baseando-se nas variáveis suportadas pelo `settings.py`:
-```env
-# Chaves de API das Inteligências Artificiais e Segurança BYOK
-OPENAI_API_KEY=sk-sua-chave-aqui
-GEMINI_API_KEY=sua-chave-gemini-aqui
-AES_MASTER_KEY=chave_mestre_base64_aes256_32bytes
+---
 
-# Conexões de Infraestrutura (Padrão para uso local com Docker Compose)
-POSTGRES_URI=postgresql://postgres:postgres@localhost:5432/greg_company
+### 3. Configuração de Ambiente (.env)
+Crie um arquivo `.env` na raiz do projeto ou dentro de `ecom-autobot-api/.env`, baseando-se nas variáveis suportadas por `app/config/settings.py`:
+
+```env
+# Chaves de API de Inteligência Artificial (BYOK / Provedores Globais)
+OPENAI_API_KEY=sk-sua-chave-openai
+GEMINI_API_KEY=sua-chave-gemini
+DEEPSEEK_API_KEY=sua-chave-deepseek
+GROQ_API_KEY=sua-chave-groq
+
+# Criptografia e Segurança Multi-Tenant
+AES_MASTER_KEY=chave_mestre_base64_aes256_32bytes
+JWT_SECRET_KEY=sua_chave_secreta_jwt
+
+# Conexões de Infraestrutura (Padrão para Docker Compose Local)
+POSTGRES_URI=postgresql://postgres:postgres@localhost:5432/ecommerce_bot_db
 RABBITMQ_URL=amqp://guest:guest@localhost:5672/
 REDIS_URL=redis://localhost:6379/0
+REDIS_PASSWORD=
 
-# Alertas Críticos e Notificações (Slack / Discord)
+# Alertas Críticos e Notificações
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/dummy
 ```
 
-### 4. Instalação e Execução
-O projeto utiliza o `uvicorn` sob o capô para inicializar o FastAPI e as rotinas background:
+---
 
-**Recomendado (com UV):**
+### 4. Executando o Backend (`ecom-autobot-api`)
+
+Entre na pasta da API:
+```bash
+cd ecom-autobot-api
+```
+
+**Opção A: Recomendado (com UV)**
 ```bash
 uv venv
 uv pip install -r requirements.txt
 uv run python -m app.main
 ```
 
-**Alternativo (com pip clássico):**
+**Opção B: Com venv e pip tradicional**
 ```bash
 python -m venv venv
-.\venv\Scripts\activate  # No Linux: source venv/bin/activate
+# No Windows (PowerShell):
+.\venv\Scripts\activate
+# No Linux/Mac:
+# source venv/bin/activate
+
 pip install -r requirements.txt
 python -m app.main
 ```
 
-> **Nota:** Ao rodar, a API ficará online em `http://localhost:8000`. Os workers de scraping (escutando as filas prod e demo) junto ao processador de enriquecimento de IA são inicializados concorrentemente no evento de _lifespan_ do FastAPI, rodando de forma assíncrona sem travar as requisições HTTP.
+> ℹ️ **Nota:** A API ficará disponível em `http://localhost:8000`. A documentação interativa Swagger (OpenAPI) pode ser acessada em `http://localhost:8000/docs`.
+
+---
+
+### 5. Executando o Frontend (`ecom-autobot-web`)
+
+Em outro terminal, acesse a pasta do frontend:
+```bash
+cd ecom-autobot-web
+npm install
+npm run dev
+```
+
+> ℹ️ **Nota:** O portal web ficará acessível no endereço indicado pelo Vite (geralmente `http://localhost:5173`).
