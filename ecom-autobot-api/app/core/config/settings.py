@@ -38,6 +38,10 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("GROQ_API_KEY", "Groq_API_KEY", "GROQ_KEY")
     )
+    MERCADOPAGO_ACCESS_TOKEN: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("MERCADOPAGO_ACCESS_TOKEN", "MercadoPago_Access_Token", "MP_ACCESS_TOKEN")
+    )
 
     @property
     def JWT__Key(self) -> str:

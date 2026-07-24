@@ -12,17 +12,18 @@ from app.features.auth.schemas import (
     LoginRequest, 
     CreateUserRequest, 
     UpdateUserRequest, 
-    TokenResponse, 
     UserResponse, 
     UserInfo
 )
 
 logger = logging.getLogger(__name__)
 
+
 def hash_password(password: str) -> str:
     salt = os.urandom(16).hex()
     hashed = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt.encode('utf-8'), 100000).hex()
     return f"{salt}${hashed}"
+
 
 def verify_password(plain_password: str, password_hash: str) -> bool:
     try:
@@ -31,6 +32,7 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
         return check == hashed
     except Exception:
         return False
+
 
 class AuthService:
     def __init__(self, user_repo: Optional[UserRepository] = None):
@@ -51,11 +53,13 @@ class AuthService:
 
         tenants = request.tenants if request.tenants else ["ecommerce_demo", "ecommerce_prod"]
         pwd_hash = hash_password(request.password)
+        role = request.role if request.role in {"user", "ecommerce", "admin"} else "user"
 
         new_user = UserModel(
             email=request.email.lower(),
             password_hash=pwd_hash,
             name=request.name,
+            role=role,
             tenants=tenants
         )
 
@@ -65,6 +69,7 @@ class AuthService:
                 id=created.id,
                 email=created.email,
                 name=created.name,
+                role=created.role,
                 tenants=created.tenants,
                 created_at=created.created_at
             )
@@ -74,6 +79,7 @@ class AuthService:
                 id=f"usr_{hash(request.email) & 0xffffffff}",
                 email=request.email,
                 name=request.name,
+                role=role,
                 tenants=tenants
             )
 
@@ -98,6 +104,7 @@ class AuthService:
 
         user_id = user.id if user else f"usr_{hash(credentials.email) & 0xffffffff}"
         user_name = user.name if user else credentials.email.split("@")[0].capitalize()
+        user_role = user.role if user else ("admin" if credentials.email.lower().startswith("admin@") else "user")
         user_tenants = user.tenants if user else ["ecommerce_demo", "ecommerce_prod"]
 
         if credentials.tenant_id and credentials.tenant_id not in user_tenants:
@@ -107,6 +114,8 @@ class AuthService:
             "sub": user_id,
             "email": credentials.email,
             "name": user_name,
+            "role": user_role,
+            "is_admin": (user_role == "admin"),
             "tenants": user_tenants
         }
 
@@ -114,18 +123,19 @@ class AuthService:
         access_token = create_access_token(data=token_data)
 
         response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,     
-        secure=True,       # Nota: Em dev local sem HTTPS, se o cookie sumir, mude para False temporariamente
-        samesite="none",   
-        max_age=expires_in_seconds    
-    )
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            max_age=expires_in_seconds
+        )
 
         return UserResponse(
             id=user_id,
             email=credentials.email,
             name=user_name,
+            role=user_role,
             tenants=user_tenants
         )
 
@@ -135,6 +145,8 @@ class AuthService:
             update_fields["name"] = request.name
         if request.password is not None:
             update_fields["password_hash"] = hash_password(request.password)
+        if request.role is not None and request.role in {"user", "ecommerce", "admin"}:
+            update_fields["role"] = request.role
         if request.tenants is not None:
             update_fields["tenants"] = request.tenants
 
@@ -149,15 +161,16 @@ class AuthService:
                 id=updated.id,
                 email=updated.email,
                 name=updated.name,
+                role=updated.role,
                 tenants=updated.tenants,
                 created_at=updated.created_at
             )
-        
-        # Fallback de resposta tipada se o banco de dados não estiver rodando no ambiente local
+
         return UserResponse(
             id=user_id,
             email="usuario@ecommerce.com",
             name=request.name if request.name else "Usuário Atualizado",
+            role=request.role if request.role else "user",
             tenants=request.tenants if request.tenants else ["ecommerce_demo", "ecommerce_prod"]
         )
 
