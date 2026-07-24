@@ -19,7 +19,9 @@ A API Backend foi projetada em uma arquitetura de microserviço baseada em **Fas
 
 ### 🔌 Componentes da API Central (`ecom-autobot-api`)
 
-* **API Central (FastAPI)**: Expõe rotas HTTP sob o prefixo `/api/v1` e rotas dedicadas de plataformas e-commerce:
+A API segue uma arquitetura modular baseada em **Domain-Driven Design (DDD)** e **Clean Architecture**, dividida em 11 módulos funcionais desacoplados:
+
+* **Rotas da API Central (FastAPI)**: Expõe endpoints sob o prefixo `/api/v1`:
   * **Operações do Sistema (`/api/v1`)**:
     * `POST /api/v1/demo`: Disparo de solicitações de demonstração com rate-limiting no Redis.
     * `GET /api/v1/export`: Rota de download e exportação de dados enriquecidos.
@@ -28,9 +30,14 @@ A API Backend foi projetada em uma arquitetura de microserviço baseada em **Fas
   * **AI & Web Scraper (`/api/v1`)**:
     * `POST /api/v1/ai/credentials`: Cadastro e atualização criptografada de credenciais de IA por tenant (BYOK).
     * `POST /api/v1/scraper/extract`: Disparo assíncrono de tarefas de web scraping via RabbitMQ.
-  * **Integrações de E-commerce**:
-    * **Shopify (`/api/shopify`)**: Sincronização GraphQL (`productSet`), mídias, atualizações e fallback para CSV.
-    * **Nuvemshop (`/api/nuvemshop`)**: Importação e sincronização nativa de produtos via API REST Nuvemshop.
+  * **Plataformas de E-commerce & Integrações (`/api/v1`)**:
+    * **Shopify (`/api/v1/shopify`)**: Sincronização GraphQL (`productSet`), mídias, atualizações e fallback para CSV.
+    * **Nuvemshop (`/api/v1/nuvemshop`)**: Importação e sincronização nativa de produtos via API REST Nuvemshop.
+  * **Financeiro, Pagamentos & Subscrições (`/api/v1`)**:
+    * **Checkout Transparente (`/api/v1/checkout`)**: Criação de preferências, processamento de pagamentos e estornos Mercado Pago.
+    * **Planos (`/api/v1/plans`)**: Gestão de planos de assinatura locais e sincronizados via Mercado Pago Preapproval.
+    * **Assinaturas (`/api/v1/subscriptions`)**: Gestão de assinaturas recorrentes com estratégia de cache Redis.
+    * **Webhooks (`/api/v1/mercadopago`)**: Receptor e distribuidor assíncrono de notificações de pagamento e assinaturas.
 
 * **Mensageria & Redis Pub/Sub**: Topologia com isolamento multi-tenant via RabbitMQ para as filas de demonstração (`ecommerce_demo`) e clientes (`ecommerce_prod`). Pub/Sub Redis (canal `"demo_progress"`) para gerenciar as notificações de progresso efêmeras consumidas no stream SSE.
 * **ScraperWorker**: Ouve ativamente as filas do RabbitMQ em background. Executa estratégias de crawling e parsing (JsonLD ou Markdown/LLM Fallback), salva os produtos no banco e notifica o progresso inicial.

@@ -39,7 +39,8 @@ O **E-commerce Bot** é uma plataforma monorepo escalável para extração autom
 
 ```
 ecommerce-bot/
-├── AGENTS.md                   # Instruções e diretrizes universais para IAs
+├── .agents/
+│   └── AGENTS.md               # Instruções e diretrizes universais para IAs
 ├── docker-compose.yml          # Postgres (5432), Redis (6379), RabbitMQ (5672/15672)
 ├── .env.example                # Template de variáveis de ambiente
 ├── ecom-autobot-api/           # 🟢 Backend Python (FastAPI)
@@ -49,15 +50,19 @@ ecommerce-bot/
 │   │   │   ├── config/         # Settings (Pydantic), Database, RabbitMQ, Redis
 │   │   │   ├── security/       # Auth JWT, AES-256 GCM (BYOK), Rate Limiter
 │   │   │   └── shared/         # Logger, CSV Exporter, Progress SSE Helper
-│   │   └── features/           # Módulos Funcionais (Modular Architecture)
-│   │       ├── api_router.py   # Roteador central de v1
-│   │       ├── ai_enrichment/  # LLMService, DeepSeek & Groq Providers
-│   │       ├── auth/           # Login, Register, User Model, Blacklist
-│   │       ├── nuvemshop/      # Client REST, OAuth & Sync Nuvemshop
-│   │       ├── products/       # ProductModel, Repositories, Schemas, TenantConfigs
-│   │       ├── scraper/        # ScraperWorker, ProcessorWorker, Parsers (JSON-LD / LLM Markdown)
-│   │       ├── shopify/        # Client GraphQL (productSet), CSV Fallback, Sync
-│   │       └── system/         # Demo Stream (SSE), Health, Rate Limit, Export
+│   │   └── features/           # Módulos Funcionais DDD (Domain-Driven Design Architecture)
+│   │       ├── api_router.py   # Roteador central de v1 (/api/v1)
+│   │       ├── ai_enrichment/  # Providers (DeepSeek, Groq), Enriquecimento via LLM (domain, infra, schemas, services)
+│   │       ├── auth/           # Login, Register, Users, Blacklist (domain, infra, repo, schemas, services)
+│   │       ├── checkout/       # Mercado Pago Transparente, Pagamentos, Pedidos e Estornos (domain, infra, repo, schemas, services)
+│   │       ├── mercadopago/    # Cliente Async Mercado Pago, Dispatcher & Worker de Webhooks (domain, infra, schemas, services, workers)
+│   │       ├── nuvemshop/      # Client REST, OAuth & Sync Nuvemshop (infra, schemas, services)
+│   │       ├── plans/          # Gestão de Planos Locais e MP Preapproval (domain, infra, repo, schemas, services)
+│   │       ├── products/       # ProductModel, TenantConfigRepository, Schemas (domain, repositories, schemas)
+│   │       ├── scraper/        # Worker Pool, Parsers JSON-LD/LLM, Scraper Service (parsers, schemas, services, workers)
+│   │       ├── shopify/        # Client GraphQL (productSet), CSV Fallback, Sync (infra, schemas, services)
+│   │       ├── subscriptions/  # Assinaturas Recorrentes MP & Cache Redis (domain, infra, repo, schemas, services)
+│   │       └── system/         # Demo Stream (SSE), Health, Rate Limit, Discord Alerts (schemas, services)
 │   ├── alembic/                # Migrações de banco de dados
 │   ├── Dockerfile
 │   └── requirements.txt
@@ -82,7 +87,7 @@ ecommerce-bot/
 - **Segurança:** Cryptography (`cryptography.hazmat`) para AES-256 GCM e PyJWT.
 - **Resiliência:** `tenacity` para retries com exponencial backoff.
 
-### 🏢 Multi-Tenancy & Segurança (BYOK - Bring Your Own Key):
+### 🏢 Multi-Tenancy & Criptografia (BYOK - Bring Your Own Key):
 1. **Isolamento de Dados:** Cada consulta no repositório de produtos OU configurações DEVE conter o filtro por `tenant_id`. Chaves primárias/lógicas são compostas `(tenant_id, sku)`.
 2. **Validação por Header:** O header `X-Tenant-ID` é obrigatório em rotas protegidas e validado em `get_current_tenant_user` contra a lista de `tenants` permitidos no token JWT.
 3. **Criptografia AES-256 GCM:** Chaves de API dos clientes (OpenAI, Gemini, DeepSeek, Groq, Tokens Shopify/Nuvemshop) NUNCA são salvas em texto puro. Elas usam `encrypt_api_key()` e `decrypt_api_key()` no módulo `app.core.security.crypto` utilizando a chave mestre `AES_MASTER_KEY`.
@@ -94,7 +99,7 @@ ecommerce-bot/
    - **Estratégia 1 (Primary):** Tenta extrair metadados estruturados via `JsonLdParserService`.
    - **Estratégia 2 (Fallback):** Se JSON-LD falhar ou vier sem título/descrição, aciona `MarkdownParserService` enviando o HTML/Markdown para LLM.
    - Salva o produto no banco com estado `status = ProductStatus.RAW`.
-   - Gerencia contadores de falhas por domínio (`scraping_metadata`). Ao atingir 3 falhas consecutivas sem silenciamento, dispara webhook de alerta no Discord.
+   - Gerencia contadores de falhas por domínio (`scraping_metadata`). Ao atingir 3 falhas consecutivas sem silenciamento, dispara webhook de alerta no Discord (`NotificationService`).
 3. **ProcessorWorker:**
    - Worker contínuo de background que busca produtos em estado `RAW`.
    - Altera status para `PROCESSING` e executa um timeout/cleanup para resetar jobs travados há mais de 10 minutos.
@@ -128,7 +133,7 @@ ecommerce-bot/
 
 Ao interagir ou gerar código neste repositório, a IA DEVE seguir estas diretrizes:
 
-1. **NÃO adivinhar nem assumir estruturas:** Consulte sempre as schemas Pydantic (`app/features/*/schemas.py`) e modelos SQLAlchemy (`app/features/*/models.py`) antes de alterar APIs ou queries.
+1. **Arquitetura DDD (Domain-Driven Design):** Cada feature em `app/features/<feature>/` é dividida em subpastas (`domain/`, `infrastructure/`, `repositories/`, `schemas/`, `services/`, `workers/`, `parsers/`). Sempre consulte os DTOs Pydantic na subpasta `schemas/` e os modelos SQLAlchemy na subpasta `domain/` (ou exportados via `__init__.py` da feature) antes de alterar APIs ou queries.
 2. **Código Assíncrono:** No backend, NUNCA use chamadas bloqueantes síncronas. Utilize `async def`, `httpx.AsyncClient`, `AsyncSession` e `await` em Redis e RabbitMQ.
 3. **Arquitetura Modular (Feature-Based):** Mantenha o isolamento dos módulos. Novas rotas devem ser incluídas no respectivo router dentro de `app/features/<feature>/router.py` e agregadas em `app/features/api_router.py`.
 4. **Sem Patches Superficiais de Sintoma:** Se um erro ocorrer em um worker ou rota, resolva a causa raiz da falha em vez de ocultar com `try/except` silencioso ou retornos vazios falsos.
