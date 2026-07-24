@@ -1,41 +1,27 @@
+import asyncio
 import json
 import logging
-from typing import Dict, Any, Union
+from typing import Dict, Union
 
-import pika
+import aio_pika
 
+from app.core.config.settings import settings
 from app.features.plans.services.plan_notification_service import PlanNotificationService
 from app.features.webhook_mercadopago.schemas import (
     BaseNotificationHandler,
     MercadoPagoNotificationPayload,
-    WebhookEventPayload,
 )
 
 logger = logging.getLogger(__name__)
 
 
-# ==============================================================================
-# Handlers de Notificação Exemplo
-# ==============================================================================
 class PaymentApprovedService(BaseNotificationHandler):
-    def handle(self, payload: Union[MercadoPagoNotificationPayload, Dict[str, Any]]) -> None:
-        if isinstance(payload, dict):
-            notification = MercadoPagoNotificationPayload.model_validate(payload)
-        else:
-            notification = payload
-
-        payment_id = notification.effective_resource_id
+    async def handle(self, payload: MercadoPagoNotificationPayload) -> None:
+        payment_id = payload.effective_resource_id
         logger.info(f"💳 [PaymentApproved] Processando pagamento #{payment_id}...")
 
 
-# ==============================================================================
-# Mapeador / Dispatcher dos Eventos
-# ==============================================================================
 class NotificationDispatcher:
-    """
-    Mapeia o 'tipo' ou 'ação' de evento vindo do payload do webhook 
-    para a classe de serviço correspondente.
-    """
     def __init__(self):
         self._handlers: Dict[str, BaseNotificationHandler] = {}
         self._register_default_handlers()
@@ -50,78 +36,64 @@ class NotificationDispatcher:
         self.register("payment.created", PaymentApprovedService())
         self.register("payment.updated", PaymentApprovedService())
 
-        # Handlers de Planos / Assinaturas do Mercado Pago
+        # Handlers de Planos / Assinaturas
         self.register("subscription_preapproval_plan.created", plan_service)
         self.register("subscription_preapproval_plan.updated", plan_service)
         self.register("plan.created", plan_service)
         self.register("plan.updated", plan_service)
 
-    def dispatch(self, event_type: str, payload: Union[MercadoPagoNotificationPayload, Dict[str, Any]]):
+    async def dispatch(self, event_type: str, payload: MercadoPagoNotificationPayload) -> bool:
         handler = self._handlers.get(event_type)
         if not handler:
             logger.warning(f"⚠️ [Dispatcher] Nenhum handler registrado para o evento: '{event_type}'")
-            return
+            return False
 
-        handler.handle(payload)
+        # Aguarda a execução assíncrona real da regra de negócio
+        await handler.handle(payload)
+        return True
 
 
-# ==============================================================================
-# Worker do RabbitMQ
-# ==============================================================================
-class WebhookWorker:
+class AsyncWebhookWorker:
     def __init__(self, amqp_url: str, queue_name: str):
         self.amqp_url = amqp_url
         self.queue_name = queue_name
         self.dispatcher = NotificationDispatcher()
 
-    def start(self):
-        params = pika.URLParameters(self.amqp_url)
-        connection = pika.BlockingConnection(params)
-        channel = connection.channel()
+    async def start(self):
+        connection = await aio_pika.connect_robust(self.amqp_url)
+        async with connection:
+            channel = await connection.channel()
+            await channel.set_qos(prefetch_count=1)
 
-        channel.queue_declare(queue=self.queue_name, durable=True)
-        channel.basic_qos(prefetch_count=1)
+            queue = await channel.declare_queue(self.queue_name, durable=True)
+            logger.info(f"🚀 AsyncWebhookWorker escutando a fila '{self.queue_name}'...")
 
-        def callback(ch, method, properties, body):
-            try:
-                raw_json = json.loads(body.decode("utf-8"))
+            async with queue.iterator() as queue_iter:
+                async for message in queue_iter:
+                    async with message.process():
+                        try:
+                            raw_json = json.loads(message.body.decode("utf-8"))
 
-                # Extrai se veio em formato WebhookEventPayload ou direto como payload MP
-                if "payload" in raw_json and isinstance(raw_json["payload"], dict):
-                    notification = MercadoPagoNotificationPayload.model_validate(raw_json["payload"])
-                else:
-                    notification = MercadoPagoNotificationPayload.model_validate(raw_json)
+                            if "payload" in raw_json and isinstance(raw_json["payload"], dict):
+                                notification = MercadoPagoNotificationPayload.model_validate(raw_json["payload"])
+                            else:
+                                notification = MercadoPagoNotificationPayload.model_validate(raw_json)
 
-                event_type = notification.effective_action
+                            event_type = notification.effective_action
+                            logger.info(f"📩 [Worker] Mensagem recebida. Evento: '{event_type}'")
 
-                logger.info(f"📩 [Worker] Mensagem recebida da fila. Evento: '{event_type}'")
-
-                if event_type:
-                    self.dispatcher.dispatch(event_type, notification)
-                    ch.basic_ack(delivery_tag=method.delivery_tag)
-                    logger.info("✅ [Worker] ACK enviado para a fila.")
-                else:
-                    logger.error("❌ [Worker] Evento não identificado no payload. Rejeitando mensagem.")
-                    ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
-
-            except Exception as e:
-                logger.error(f"💥 [Worker] Erro ao processar mensagem: {e}")
-                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
-
-        channel.basic_consume(queue=self.queue_name, on_message_callback=callback)
-
-        logger.info(f"🚀 WebhookWorker escutando a fila '{self.queue_name}'. Pressione CTRL+C para sair.")
-        try:
-            channel.start_consuming()
-        except KeyboardInterrupt:
-            channel.stop_consuming()
-            connection.close()
-            logger.info("WebhookWorker finalizado.")
+                            if event_type:
+                                await self.dispatcher.dispatch(event_type, notification)
+                                logger.info("✅ [Worker] Processado e ACK confirmado automaticamente.")
+                            else:
+                                logger.error("❌ [Worker] Evento não identificado no payload.")
+                        except Exception as e:
+                            logger.error(f"💥 [Worker] Erro ao processar mensagem: {e}", exc_info=True)
 
 
 if __name__ == "__main__":
-    AMQP_URL = "amqp://guest:guest@localhost:5672/"
+    AMQP_URL = getattr(settings, "RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
     QUEUE_NAME = "mercadopago_webhooks"
 
-    worker = WebhookWorker(amqp_url=AMQP_URL, queue_name=QUEUE_NAME)
-    worker.start()
+    worker = AsyncWebhookWorker(amqp_url=AMQP_URL, queue_name=QUEUE_NAME)
+    asyncio.run(worker.start())
