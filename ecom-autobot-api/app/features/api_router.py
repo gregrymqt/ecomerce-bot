@@ -8,6 +8,7 @@ from app.features.system.router import router as system_router
 from app.features.plans.router import router as plans_router
 from app.features.mercadopago.router import router as webhook_router
 from app.features.subscriptions.router import router as subscriptions_router  
+from app.features.checkout.router import router as checkout_router  # <-- Adicionado
 
 api_router = APIRouter()
 
@@ -19,3 +20,4 @@ api_router.include_router(system_router)
 api_router.include_router(plans_router)
 api_router.include_router(webhook_router)
 api_router.include_router(subscriptions_router)  
+api_router.include_router(checkout_router)

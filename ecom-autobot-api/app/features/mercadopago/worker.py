@@ -1,3 +1,4 @@
+from app.features.checkout.services.checkout_notification_service import CheckoutNotificationService
 import asyncio
 import json
 import logging
@@ -30,11 +31,8 @@ class NotificationDispatcher:
 
     def _register_default_handlers(self):
         plan_service = PlanNotificationService()
-        subscription_service = SubscriptionNotificationService()  # ✅ NOVO HANDLER
-
-        # Handlers de Pagamento
-        self.register("payment.created", PaymentApprovedService())
-        self.register("payment.updated", PaymentApprovedService())
+        subscription_service = SubscriptionNotificationService()
+        checkout_service = CheckoutNotificationService() 
 
         # Handlers de Planos
         self.register("subscription_preapproval_plan.created", plan_service)
@@ -42,10 +40,24 @@ class NotificationDispatcher:
         self.register("plan.created", plan_service)
         self.register("plan.updated", plan_service)
 
-        # ✅ Handlers de Assinaturas (subscription_preapproval)
+        # Handlers de Assinaturas (subscription_preapproval)
         self.register("subscription_preapproval", subscription_service)
         self.register("subscription_preapproval.created", subscription_service)
         self.register("subscription_preapproval.updated", subscription_service)
+
+        # ✅ Handlers de Orders / Checkout Transparente
+        self.register("order", checkout_service)
+        self.register("order.created", checkout_service)
+        self.register("order.updated", checkout_service)
+        self.register("order.processed", checkout_service)
+        self.register("order.action_required", checkout_service)
+
+    async def dispatch(self, event_type: str, payload: MercadoPagoNotificationPayload) -> None:
+        handler = self._handlers.get(event_type)
+        if handler:
+            await handler.handle(payload)
+        else:
+            logger.warning(f"⚠️ [Dispatcher] Nenhum handler registrado para o evento '{event_type}'.")
 
 
 class AsyncWebhookWorker:
