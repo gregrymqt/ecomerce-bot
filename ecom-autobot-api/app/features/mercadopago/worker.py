@@ -1,13 +1,13 @@
 import asyncio
 import json
 import logging
-from typing import Dict, Union
+from typing import Dict
 
-import aio_pika
-
-from app.core.config.settings import settings
+from app.core.config.rabbitmq import get_rabbitmq_connection
 from app.features.plans.services.plan_notification_service import PlanNotificationService
-from app.features.webhook_mercadopago.schemas import (
+from app.features.subscriptions.notification_service import SubscriptionNotificationService  
+
+from app.features.mercadopago.schemas import (
     BaseNotificationHandler,
     MercadoPagoNotificationPayload,
 )
@@ -20,7 +20,6 @@ class PaymentApprovedService(BaseNotificationHandler):
         payment_id = payload.effective_resource_id
         logger.info(f"💳 [PaymentApproved] Processando pagamento #{payment_id}...")
 
-
 class NotificationDispatcher:
     def __init__(self):
         self._handlers: Dict[str, BaseNotificationHandler] = {}
@@ -31,36 +30,31 @@ class NotificationDispatcher:
 
     def _register_default_handlers(self):
         plan_service = PlanNotificationService()
+        subscription_service = SubscriptionNotificationService()  # ✅ NOVO HANDLER
 
         # Handlers de Pagamento
         self.register("payment.created", PaymentApprovedService())
         self.register("payment.updated", PaymentApprovedService())
 
-        # Handlers de Planos / Assinaturas
+        # Handlers de Planos
         self.register("subscription_preapproval_plan.created", plan_service)
         self.register("subscription_preapproval_plan.updated", plan_service)
         self.register("plan.created", plan_service)
         self.register("plan.updated", plan_service)
 
-    async def dispatch(self, event_type: str, payload: MercadoPagoNotificationPayload) -> bool:
-        handler = self._handlers.get(event_type)
-        if not handler:
-            logger.warning(f"⚠️ [Dispatcher] Nenhum handler registrado para o evento: '{event_type}'")
-            return False
-
-        # Aguarda a execução assíncrona real da regra de negócio
-        await handler.handle(payload)
-        return True
+        # ✅ Handlers de Assinaturas (subscription_preapproval)
+        self.register("subscription_preapproval", subscription_service)
+        self.register("subscription_preapproval.created", subscription_service)
+        self.register("subscription_preapproval.updated", subscription_service)
 
 
 class AsyncWebhookWorker:
-    def __init__(self, amqp_url: str, queue_name: str):
-        self.amqp_url = amqp_url
+    def __init__(self,queue_name: str):
         self.queue_name = queue_name
         self.dispatcher = NotificationDispatcher()
 
     async def start(self):
-        connection = await aio_pika.connect_robust(self.amqp_url)
+        connection = await get_rabbitmq_connection()
         async with connection:
             channel = await connection.channel()
             await channel.set_qos(prefetch_count=1)
@@ -92,8 +86,7 @@ class AsyncWebhookWorker:
 
 
 if __name__ == "__main__":
-    AMQP_URL = getattr(settings, "RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
     QUEUE_NAME = "mercadopago_webhooks"
 
-    worker = AsyncWebhookWorker(amqp_url=AMQP_URL, queue_name=QUEUE_NAME)
+    worker = AsyncWebhookWorker(queue_name=QUEUE_NAME)
     asyncio.run(worker.start())

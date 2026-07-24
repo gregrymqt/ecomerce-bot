@@ -6,6 +6,7 @@ import uvicorn
 
 from app.core.config.settings import settings
 from app.core.config.redis_db import redis_cache
+from app.core.config.rabbitmq import get_rabbitmq_connection, configure_rabbitmq_topology
 from app.features.auth.init_db import seed_initial_roles
 from app.features.products.repositories import ProductRepository
 from app.features.scraper.workers.scraper_worker import ScraperWorker
@@ -23,7 +24,16 @@ async def lifespan(app: FastAPI):
     logger.info("Iniciando aplicação e conectando aos serviços...")
     await redis_cache.connect()
 
-    # Inicializa tabelas e insere as 3 roles padrão ('user', 'ecommerce', 'admin') no banco de dados
+    # 1. Configura a topologia do RabbitMQ (Filas prod, demo e DLQ dead-letter)
+    try:
+        connection = await get_rabbitmq_connection()
+        async with connection:
+            channel = await connection.channel()
+            await configure_rabbitmq_topology(channel)
+    except Exception as err:
+        logger.error(f"Falha ao configurar topologia inicial do RabbitMQ: {err}")
+
+    # 2. Inicializa tabelas e insere as 3 roles padrão ('user', 'ecommerce', 'admin') no banco de dados
     await seed_initial_roles()
 
     repository = ProductRepository()
@@ -31,6 +41,7 @@ async def lifespan(app: FastAPI):
     llm_service = LLMService()
     processor_worker = ProcessorWorker(repository, llm_service)
 
+    # 3. Inicializa os workers escutando as filas criadas pela topologia
     prod_worker_task = asyncio.create_task(scraper_worker.start_consuming("ecommerce_prod"))
     demo_worker_task = asyncio.create_task(scraper_worker.start_consuming("ecommerce_demo"))
     processor_task = asyncio.create_task(processor_worker.run())

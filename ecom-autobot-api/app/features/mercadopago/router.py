@@ -9,10 +9,7 @@ import aio_pika
 
 from app.core.config.rabbitmq import get_rabbitmq_connection
 from app.core.config.settings import settings
-from app.features.webhook_mercadopago.schemas import (
-    MercadoPagoNotificationPayload,
-    WebhookEventPayload,
-)
+from app.features.mercadopago.schemas import WebhookEventPayload, MercadoPagoNotificationPayload
 
 logger = logging.getLogger(__name__)
 

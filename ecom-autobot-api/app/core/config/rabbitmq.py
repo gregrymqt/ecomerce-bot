@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 async def get_rabbitmq_connection() -> aio_pika.RobustConnection:
     return await aio_pika.connect_robust(settings.RABBITMQ_URL)
 
-async def configure_rabbitmq_topology(channel: aio_pika.abc.AbstractChannel):
+async def configure_rabbitmq_topology(channel: aio_pika.abc.AbstractChannel) -> tuple[aio_pika.Queue, aio_pika.Queue]:
     """
     Configura a topologia de mensageria do RabbitMQ para suportar multi-tenant 
     (Freemium/Pagantes) e garantir resiliência com Dead Letter Exchanges (DLX).
