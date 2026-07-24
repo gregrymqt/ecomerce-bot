@@ -1,6 +1,5 @@
-import asyncio
 import logging
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 
 import httpx
 
@@ -18,8 +17,10 @@ logger = logging.getLogger(__name__)
 
 class PlanNotificationService(BaseNotificationHandler):
     """
-    Serviço de domínio responsável pelo processamento otimizado e tipado de notificações 
+    Serviço de domínio responsável pelo processamento assíncrono e tipado de notificações 
     de Webhook referentes a Planos de Assinatura (Preapproval Plans) do Mercado Pago.
+    
+    Herda de BaseNotificationHandler e cumpre o contrato assíncrono 'async def handle'.
     """
 
     def __init__(
@@ -42,43 +43,22 @@ class PlanNotificationService(BaseNotificationHandler):
         except (ValueError, TypeError):
             return None
 
-    def handle(self, payload: Union[MercadoPagoNotificationPayload, Dict[str, Any]]) -> None:
+    async def handle(self, payload: MercadoPagoNotificationPayload) -> None:
         """
-        Ponto de entrada síncrono exigido pela interface BaseNotificationHandler.
-        Redireciona o processamento para o evento loop ativo sem criar loops redundantes.
+        Ponto de entrada assíncrono do serviço, alinhado ao contrato do BaseNotificationHandler.
+        Garante que o worker do RabbitMQ (aio_pika) aguarde a persistência antes do ACK.
         """
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-
-        if loop and loop.is_running():
-            loop.create_task(self.handle_async(payload))
-        else:
-            asyncio.run(self.handle_async(payload))
-
-    async def handle_async(
-        self, payload: Union[MercadoPagoNotificationPayload, Dict[str, Any]]
-    ) -> None:
-        """
-        Processa assincronamente as notificações de atualização ou criação de planos de assinatura.
-        Desempenho otimizado com eliminação de consultas redundantes ao banco.
-        """
-        notification = (
-            payload
-            if isinstance(payload, MercadoPagoNotificationPayload)
-            else MercadoPagoNotificationPayload.model_validate(payload)
-        )
-
-        resource_id = notification.effective_resource_id
+        resource_id = payload.effective_resource_id
         if not resource_id:
             logger.warning("[PlanNotificationService] Notificação descartada: nenhum ID de recurso válido no payload.")
             return
 
-        logger.info(f"[PlanNotificationService] Processando evento para o plano ID / External ID: '{resource_id}'")
+        logger.info(
+            f"[PlanNotificationService] Processando evento '{payload.effective_action}' para o plano ID / External ID: '{resource_id}'"
+        )
 
         try:
-            # 1. Consulta única com fallback interno unificado no repositório (evita 2x I/O de rede)
+            # 1. Consulta única com fallback interno no repositório (evita duplicação de I/O de rede)
             existing_plan = await self.repository.get_by_external_id(resource_id)
 
             # 2. Busca os dados atualizados diretamente na API REST do Mercado Pago
@@ -113,7 +93,7 @@ class PlanNotificationService(BaseNotificationHandler):
                         "application_id": self._parse_int(mp_plan.application_id),
                     }
                 else:
-                    action_str = notification.effective_action.lower()
+                    action_str = payload.effective_action.lower()
                     if "cancel" in action_str:
                         update_fields["status"] = "cancelled"
                     elif "active" in action_str or "created" in action_str:
