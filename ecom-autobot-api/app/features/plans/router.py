@@ -12,7 +12,7 @@ from app.features.plans.schemas import (
     SearchPlansQueryParams,
     UpdatePlanRequest,
 )
-from app.features.plans.service import PlansService
+from app.features.plans.services import PlansService
 
 router = APIRouter(prefix="/plans", tags=["Plans"])
 

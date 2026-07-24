@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.database import get_db
 from app.features.auth.schemas import AuthenticatedUser
-from app.features.plans.repository import PlansRepository
+from app.features.plans.repositories import PlansRepository
 from app.features.subscriptions.client import SubscriptionsClient
 from app.features.subscriptions.repository import SubscriptionsRepository
 from app.features.subscriptions.schemas import (

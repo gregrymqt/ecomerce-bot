@@ -1,13 +1,12 @@
 from datetime import datetime, timezone
 import logging
 from typing import Any, Dict, List, Optional, Sequence
-
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.database import AsyncSessionLocal
 from app.core.config.redis_db import redis_cache
-from app.features.plans.models import PlanModel
+from app.features.plans.domain.models import PlanModel
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +32,7 @@ class PlansRepository:
         session = AsyncSessionLocal()
         return session, True
 
-    # =========================================================================
-    # Métodos Auxiliares de Serialização e Invalidação
-    # =========================================================================
-
     def _model_to_dict(self, model: PlanModel) -> Dict[str, Any]:
-        """Converte uma instância do SQLAlchemy PlanModel para um dicionário serializável."""
         return {
             "id": model.id,
             "external_id": model.external_id,
@@ -53,7 +47,6 @@ class PlansRepository:
         }
 
     def _dict_to_model(self, data: Dict[str, Any]) -> PlanModel:
-        """Reconstrói um PlanModel a partir de um dicionário recuperado do Redis."""
         return PlanModel(
             id=data["id"],
             external_id=data.get("external_id"),
@@ -76,7 +69,6 @@ class PlansRepository:
         )
 
     async def _invalidate_plan_cache(self, plan_id: str, external_id: Optional[str] = None) -> None:
-        """Invalida a chave individual do plano (por id e external_id) e os caches de listagem."""
         try:
             if redis_cache.redis_client:
                 await redis_cache.redis_client.delete(f"plan:{plan_id}")
@@ -84,12 +76,11 @@ class PlansRepository:
                     await redis_cache.redis_client.delete(f"plan:ext:{external_id}")
 
             await self._invalidate_list_cache()
-            logger.info(f"[PlansRepository] Cache do plano ID '{plan_id}' invalidador com sucesso.")
+            logger.info(f"[PlansRepository] Cache do plano ID '{plan_id}' invalidado com sucesso.")
         except Exception as err:
             logger.warning(f"[PlansRepository] Falha ao invalidar cache do plano '{plan_id}': {err}")
 
     async def _invalidate_list_cache(self) -> None:
-        """Invalida todas as consultas de listagem em cache."""
         try:
             if redis_cache.redis_client:
                 keys = await redis_cache.redis_client.keys("plans:list:*")
@@ -98,15 +89,7 @@ class PlansRepository:
         except Exception as err:
             logger.warning(f"[PlansRepository] Falha ao limpar cache de listas de planos: {err}")
 
-    # =========================================================================
-    # Métodos de Leitura (Com get_or_create / Cache-Aside)
-    # =========================================================================
-
     async def get_by_id(self, plan_id: str) -> Optional[PlanModel]:
-        """
-        Busca um plano pelo ID chave-primária. Tenta recuperar do Redis primeiro (get_or_create);
-        se não existir, executa a consulta no PostgreSQL e salva no cache.
-        """
         cache_key = f"plan:{plan_id}"
 
         async def fetch_from_db() -> Optional[Dict[str, Any]]:
@@ -133,10 +116,6 @@ class PlansRepository:
         return None
 
     async def get_by_external_id(self, external_id: str) -> Optional[PlanModel]:
-        """
-        Busca um plano pelo seu external_id (ID retornado pelo Mercado Pago).
-        Utilizado principalmente no processamento de notificações de Webhook.
-        """
         cache_key = f"plan:ext:{external_id}"
 
         async def fetch_from_db() -> Optional[Dict[str, Any]]:
@@ -160,14 +139,9 @@ class PlansRepository:
         if cached_data and isinstance(cached_data, dict):
             return self._dict_to_model(cached_data)
 
-        # Fallback de busca secundária por id se external_id coincidir com a chave primária
         return await self.get_by_id(external_id)
 
     async def list_plans(self, limit: int = 50, offset: int = 0) -> Sequence[PlanModel]:
-        """
-        Lista planos locais ordenados por data de criação.
-        Utiliza cache para evitar chamadas repetitivas ao banco.
-        """
         cache_key = f"plans:list:{limit}:{offset}"
 
         async def fetch_from_db() -> List[Dict[str, Any]]:
@@ -198,14 +172,7 @@ class PlansRepository:
 
         return []
 
-    # =========================================================================
-    # Métodos de Escrita (Com Invalidação de Cache)
-    # =========================================================================
-
     async def save(self, plan_model: PlanModel) -> PlanModel:
-        """
-        Salva um novo registro de plano localmente e invalida as consultas no Redis.
-        """
         session, owned = await self._get_session()
         try:
             session.add(plan_model)
@@ -220,7 +187,6 @@ class PlansRepository:
             if owned:
                 await session.close()
 
-        # Invalida listas e popula cache individual
         await self._invalidate_list_cache()
         cache_key = f"plan:{plan_model.id}"
         await redis_cache.set(cache_key, self._model_to_dict(plan_model), expire_seconds=self.CACHE_TTL)
@@ -230,9 +196,6 @@ class PlansRepository:
         return plan_model
 
     async def update(self, plan_id: str, values: Dict[str, Any]) -> Optional[PlanModel]:
-        """
-        Atualiza um plano localmente e invalida suas chaves correspondentes no Redis.
-        """
         values["updated_at"] = datetime.now(timezone.utc)
 
         session, owned = await self._get_session()
@@ -254,7 +217,6 @@ class PlansRepository:
             if owned:
                 await session.close()
 
-        # Busca versão atualizada para invalidar cache completo
         updated_plan = await self.get_by_id(plan_id)
         ext_id = updated_plan.external_id if updated_plan else None
         await self._invalidate_plan_cache(plan_id, external_id=ext_id)

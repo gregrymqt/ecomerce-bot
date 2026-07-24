@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple
 
 from fastapi import HTTPException, status
 
-from app.features.plans.repository import PlansRepository
+from app.features.plans.repositories import PlansRepository
 from app.features.subscriptions.client import SubscriptionsClient
 from app.features.subscriptions.models import SubscriptionModel
 from app.features.subscriptions.repository import SubscriptionsRepository
