@@ -2,7 +2,7 @@ import logging
 from fastapi import APIRouter, Depends, Header, status
 
 from app.core.security.auth import get_current_tenant_user
-from app.features.scraper.service import AIScraperService
+from app.features.scraper.services import AIScraperService
 from app.features.scraper.schemas import AICredentialsRequest, WebScraperRequest
 
 logger = logging.getLogger(__name__)
