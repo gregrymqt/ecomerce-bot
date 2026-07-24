@@ -1,15 +1,18 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
+
 class ShopifyOptionValueInput(BaseModel):
     optionName: str = Field(..., description="Nome da opção, ex: 'Color'")
     name: str = Field(..., description="Valor da opção, ex: 'Blue'")
+
 
 class ShopifyFileInput(BaseModel):
     originalSource: str = Field(..., description="URL pública da imagem hospedada.")
     alt: Optional[str] = Field(None, description="Texto alternativo gerado pela IA para SEO.")
     filename: Optional[str] = Field(None, description="Nome do arquivo.")
     contentType: str = "IMAGE"
+
 
 class ShopifyVariantInput(BaseModel):
     price: str
@@ -18,9 +21,11 @@ class ShopifyVariantInput(BaseModel):
     optionValues: List[ShopifyOptionValueInput]
     file: Optional[ShopifyFileInput] = None
 
+
 class ShopifyProductOptionInput(BaseModel):
     name: str
     values: List[dict]
+
 
 class ShopifyProductSetInput(BaseModel):
     tenant_id: str
@@ -40,7 +45,7 @@ class ShopifyProductSetInput(BaseModel):
     def from_internal_data(cls, data: dict):
         tags = data.get("tags", "")
         tags_str = ",".join(tags) if isinstance(tags, list) else str(tags)
-        
+
         return cls(
             tenant_id=data.get("tenant_id", ""),
             title=data.get("title", ""),
@@ -52,16 +57,18 @@ class ShopifyProductSetInput(BaseModel):
                 ShopifyVariantInput(
                     price=str(data.get("price", 0.0)),
                     sku=data.get("sku", ""),
-                    optionValues=[]
+                    optionValues=[],
                 )
             ],
             seoTitle=data.get("seo_title", data.get("title", "")),
             seoDescription=data.get("seo_description", ""),
-            tags=tags_str
+            tags=tags_str,
         )
+
 
 class ShopifyGraphQLVariables(BaseModel):
     input: ShopifyProductSetInput
+
 
 class ShopifyGraphQLRequest(BaseModel):
     query: str = """
@@ -84,9 +91,11 @@ class ShopifyGraphQLRequest(BaseModel):
     """
     variables: ShopifyGraphQLVariables
 
+
 class ShopifySEOInput(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+
 
 class ShopifyProductUpdateInput(BaseModel):
     tenant_id: str = Field(..., description="ID do tenant")
@@ -99,14 +108,17 @@ class ShopifyProductUpdateInput(BaseModel):
     tags: Optional[List[str]] = None
     seo: Optional[ShopifySEOInput] = None
 
+
 class ShopifyCreateMediaInput(BaseModel):
     originalSource: str = Field(..., description="URL pública da imagem gerada.")
     alt: Optional[str] = Field(None, description="Alt text otimizado para acessibilidade e SEO.")
     mediaContentType: str = "IMAGE"
 
+
 class ShopifyProductUpdateVariables(BaseModel):
     product: ShopifyProductUpdateInput
     media: Optional[List[ShopifyCreateMediaInput]] = None
+
 
 class ShopifyProductUpdateRequest(BaseModel):
     query: str = """
@@ -133,13 +145,16 @@ class ShopifyProductUpdateRequest(BaseModel):
       }
     }
     """
-    variables: ShopifyProductUpdateVariables    
+    variables: ShopifyProductUpdateVariables
+
 
 class ShopifyProductDeleteInput(BaseModel):
     id: str = Field(..., description="GID do Produto a ser removido definitivamente")
 
+
 class ShopifyProductDeleteVariables(BaseModel):
     input: ShopifyProductDeleteInput
+
 
 class ShopifyProductDeleteRequest(BaseModel):
     query: str = """
@@ -159,9 +174,11 @@ class ShopifyProductDeleteRequest(BaseModel):
     """
     variables: ShopifyProductDeleteVariables
 
+
 class ShopifyPaginationParams(BaseModel):
     first: int = Field(default=10, ge=1, le=250, description="Quantidade de registros a buscar.")
     after: Optional[str] = Field(None, description="Cursor em Base64 para buscar registros após esta posição.")
+
 
 class ShopifyProductListRequest(BaseModel):
     query: str = """
@@ -186,18 +203,22 @@ class ShopifyProductListRequest(BaseModel):
     """
     variables: dict
 
+
 class ShopifyMediaInput(BaseModel):
     originalSource: str = Field(..., description="URL pública da imagem hospedada.")
     alt: Optional[str] = Field(None, description="Texto alternativo gerado pela IA para SEO.")
     mediaContentType: str = "IMAGE"
 
+
 class ShopifyMediaAddRequest(BaseModel):
     image_urls: List[str] = Field(..., min_length=1, description="Lista de URLs de imagem para adicionar")
     alt_text: Optional[str] = Field(None, description="Texto alt padrão para as imagens")
 
+
 class ShopifyCreateMediaVariables(BaseModel):
     productId: str
     media: List[ShopifyMediaInput]
+
 
 class ShopifyCreateMediaRequest(BaseModel):
     query: str = """
@@ -220,4 +241,3 @@ class ShopifyCreateMediaRequest(BaseModel):
     }
     """
     variables: ShopifyCreateMediaVariables
-

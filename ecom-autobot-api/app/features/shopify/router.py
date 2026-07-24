@@ -1,7 +1,7 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, Header, status
 
-from app.features.shopify.service import ShopifyService
+from app.features.shopify.services import ShopifyService
 from app.core.security.auth import get_current_tenant_user
 from app.features.shopify.schemas import ShopifyMediaAddRequest
 

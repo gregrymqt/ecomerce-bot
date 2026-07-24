@@ -1,53 +1,56 @@
-import httpx
 import logging
-from typing import Optional, List
-from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception
+from typing import List, Optional
+import httpx
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from app.features.shopify.schemas import (
-    ShopifyProductSetInput, 
-    ShopifyGraphQLVariables, 
-    ShopifyGraphQLRequest,
-    ShopifySEOInput,
-    ShopifyProductUpdateInput,
-    ShopifyProductUpdateVariables,
-    ShopifyProductUpdateRequest,
     ShopifyCreateMediaInput,
-    ShopifyCreateMediaVariables,
     ShopifyCreateMediaRequest,
+    ShopifyCreateMediaVariables,
+    ShopifyGraphQLRequest,
+    ShopifyGraphQLVariables,
     ShopifyMediaInput,
     ShopifyProductDeleteInput,
-    ShopifyProductDeleteVariables,
     ShopifyProductDeleteRequest,
-    ShopifyProductListRequest
+    ShopifyProductDeleteVariables,
+    ShopifyProductListRequest,
+    ShopifyProductSetInput,
+    ShopifyProductUpdateInput,
+    ShopifyProductUpdateRequest,
+    ShopifyProductUpdateVariables,
+    ShopifySEOInput,
 )
 
 logger = logging.getLogger(__name__)
 
+
 def is_rate_limit_error(exception: Exception) -> bool:
     return isinstance(exception, httpx.HTTPStatusError) and exception.response.status_code == 429
+
 
 class ShopifyClient:
     """
     Cliente de infraestrutura HTTP/GraphQL desacoplado para a Admin API do Shopify.
     Encapsula unicamente as chamadas externas de transporte e tratamento de userErrors.
     """
+
     def __init__(self, shop_domain: str, access_token: str, api_version: str = "2024-04"):
         self.shop_domain = shop_domain
         self.access_token = access_token
         clean_domain = shop_domain.replace("https://", "").replace("http://", "").split("/")[0]
         self.base_url = f"https://{clean_domain}/admin/api/{api_version}/graphql.json"
-        
+
         self.headers = {
             "X-Shopify-Access-Token": self.access_token,
             "Content-Type": "application/json",
-            "Accept": "application/json"
+            "Accept": "application/json",
         }
 
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
         retry=retry_if_exception(is_rate_limit_error),
-        reraise=True
+        reraise=True,
     )
     async def sync_product(self, internal_product_data: dict) -> dict:
         input_data = ShopifyProductSetInput.from_internal_data(internal_product_data)
@@ -61,7 +64,7 @@ class ShopifyClient:
                 response = await client.post(self.base_url, headers=self.headers, json=payload)
                 response.raise_for_status()
                 response_json = response.json()
-                
+
                 if "errors" in response_json:
                     logger.error(f"Erro de sintaxe/ambiente na API do Shopify: {response_json['errors']}")
                     raise ValueError(f"GraphQL Syntax Error: {response_json['errors']}")
@@ -91,14 +94,14 @@ class ShopifyClient:
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
         retry=retry_if_exception(is_rate_limit_error),
-        reraise=True
+        reraise=True,
     )
     async def create_product_media(self, product_id: str, image_urls: list[str], alt_text: str = None) -> dict:
         media_inputs = [
             ShopifyMediaInput(originalSource=url, alt=alt_text)
             for url in image_urls
         ]
-        
+
         graphql_req = ShopifyCreateMediaRequest(
             variables=ShopifyCreateMediaVariables(productId=product_id, media=media_inputs)
         )
@@ -109,7 +112,7 @@ class ShopifyClient:
                 response = await client.post(self.base_url, headers=self.headers, json=payload)
                 response.raise_for_status()
                 response_json = response.json()
-                
+
                 if "errors" in response_json:
                     raise ValueError(f"GraphQL Syntax Error: {response_json['errors']}")
 
@@ -131,14 +134,14 @@ class ShopifyClient:
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
         retry=retry_if_exception(is_rate_limit_error),
-        reraise=True
+        reraise=True,
     )
     async def update_product(self, product_id: str, update_fields: dict, new_images: List[dict] = None) -> dict:
         seo_input = None
         if "seo_title" in update_fields or "seo_description" in update_fields:
             seo_input = ShopifySEOInput(
                 title=update_fields.get("seo_title"),
-                description=update_fields.get("seo_description")
+                description=update_fields.get("seo_description"),
             )
 
         product_input = ShopifyProductUpdateInput(
@@ -149,7 +152,7 @@ class ShopifyClient:
             productType=update_fields.get("product_type"),
             status=update_fields.get("status"),
             tags=update_fields.get("tags"),
-            seo=seo_input
+            seo=seo_input,
         )
 
         media_input = None
@@ -157,7 +160,7 @@ class ShopifyClient:
             media_input = [
                 ShopifyCreateMediaInput(
                     originalSource=img["url"],
-                    alt=img.get("alt")
+                    alt=img.get("alt"),
                 ) for img in new_images
             ]
 
@@ -171,7 +174,7 @@ class ShopifyClient:
                 response = await client.post(self.base_url, headers=self.headers, json=payload)
                 response.raise_for_status()
                 response_json = response.json()
-                
+
                 if "errors" in response_json:
                     raise ValueError(f"GraphQL Syntax Error: {response_json['errors']}")
 
@@ -193,7 +196,7 @@ class ShopifyClient:
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
         retry=retry_if_exception(is_rate_limit_error),
-        reraise=True
+        reraise=True,
     )
     async def delete_product(self, product_id: str) -> Optional[str]:
         graphql_req = ShopifyProductDeleteRequest(
@@ -208,7 +211,7 @@ class ShopifyClient:
                 response = await client.post(self.base_url, headers=self.headers, json=payload)
                 response.raise_for_status()
                 response_json = response.json()
-                
+
                 if "errors" in response_json:
                     raise ValueError(f"GraphQL Syntax Error: {response_json['errors']}")
 
@@ -231,13 +234,13 @@ class ShopifyClient:
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
         retry=retry_if_exception(is_rate_limit_error),
-        reraise=True
+        reraise=True,
     )
     async def list_products(self, first: int = 10, after: Optional[str] = None) -> dict:
         graphql_req = ShopifyProductListRequest(
             variables={
                 "first": first,
-                "after": after
+                "after": after,
             }
         )
         payload = graphql_req.model_dump()
@@ -247,7 +250,7 @@ class ShopifyClient:
                 response = await client.post(self.base_url, headers=self.headers, json=payload)
                 response.raise_for_status()
                 response_json = response.json()
-                
+
                 if "errors" in response_json:
                     raise ValueError(f"GraphQL Syntax Error: {response_json['errors']}")
 
