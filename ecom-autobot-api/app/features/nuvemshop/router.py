@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Header, status
 from typing import List
 
-from app.features.nuvemshop.service import NuvemshopService
+from app.features.nuvemshop.services import NuvemshopService
 from app.features.nuvemshop.schemas import (
     NuvemshopProductRequest, 
     NuvemshopProductUpdatePayload, 

@@ -1,8 +1,10 @@
+from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
+
 
 class NuvemshopLocalizedString(BaseModel):
     pt: str
+
 
 class NuvemshopVariantRequest(BaseModel):
     price: Optional[float] = Field(None, description="Preço do produto")
@@ -14,9 +16,11 @@ class NuvemshopVariantRequest(BaseModel):
     height: Optional[float] = Field(None, description="Altura em cm")
     depth: Optional[float] = Field(None, description="Profundidade em cm")
 
+
 class NuvemshopImageRequest(BaseModel):
     src: str
     alt: Optional[NuvemshopLocalizedString] = None
+
 
 class NuvemshopProductRequest(BaseModel):
     tenant_id: str = Field(...)
@@ -53,17 +57,19 @@ class NuvemshopProductRequest(BaseModel):
                 NuvemshopVariantRequest(
                     price=float(data.get("price", 0.0)),
                     stock=999,
-                    sku=data.get("sku")
+                    sku=data.get("sku"),
                 )
             ],
-            images=[NuvemshopImageRequest(src=img) for img in data.get("images", [])]
+            images=[NuvemshopImageRequest(src=img) for img in data.get("images", [])],
         )
+
 
 class NuvemshopBatchStockPriceItem(BaseModel):
     variant_id: int = Field(..., description="ID da variante na Nuvemshop")
     price: Optional[float] = Field(None, description="Novo preço da variante")
     promotional_price: Optional[float] = Field(None, description="Novo preço promocional")
     stock: Optional[int] = Field(None, description="Quantidade em estoque")
+
 
 class NuvemshopProductUpdatePayload(BaseModel):
     name: Optional[NuvemshopLocalizedString] = None
