@@ -154,6 +154,33 @@ async def export_subscriptions(
 
 
 @router.get(
+    "/status",
+    summary="Status da Assinatura e Créditos do Tenant",
+    description="Retorna os detalhes do plano atual, validade e situação financeira do tenant autenticado.",
+)
+async def get_tenant_billing_status(
+    x_tenant_id: str = Header(..., alias="X-Tenant-ID"),
+    current_user: AuthenticatedUser = Depends(get_current_tenant_user),
+    service: SubscriptionsService = Depends(get_subscriptions_service),
+):
+    results, _ = await service.search_subscriptions(
+        tenant_id=x_tenant_id,
+        params=SearchSubscriptionsQueryParams(page=1, limit=1, status=SubscriptionStatusEnum.AUTHORIZED),
+    )
+
+    active_subscription = results[0] if results else None
+
+    return {
+        "tenant_id": x_tenant_id,
+        "has_active_subscription": active_subscription is not None,
+        "subscription": active_subscription,
+        "plan_id": active_subscription.plan_id if active_subscription else None,
+        "valid_until": active_subscription.next_payment_date if active_subscription else None,
+    }
+
+
+
+@router.get(
     "/{subscription_id}",
     response_model=SubscriptionResponse,
     summary="Obter Assinatura por ID",

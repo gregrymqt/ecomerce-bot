@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import aio_pika
 
 from app.core.config.rabbitmq import get_rabbitmq_connection
 from app.features.mercadopago.schemas import MercadoPagoNotificationPayload
@@ -25,8 +26,12 @@ class AsyncWebhookWorker:
             channel = await connection.channel()
             await channel.set_qos(prefetch_count=1)
 
+            # Declara exchange e vincula a fila para garantir o fluxo de mensagens
+            exchange = await channel.declare_exchange("billing_events", aio_pika.ExchangeType.DIRECT, durable=True)
             queue = await channel.declare_queue(self.queue_name, durable=True)
-            logger.info(f"🚀 AsyncWebhookWorker escutando a fila '{self.queue_name}'...")
+            await queue.bind(exchange, routing_key="payment_updates")
+
+            logger.info(f"🚀 AsyncWebhookWorker escutando a fila '{self.queue_name}' vinculada à exchange 'billing_events'...")
 
             async with queue.iterator() as queue_iter:
                 async for message in queue_iter:
@@ -56,3 +61,4 @@ if __name__ == "__main__":
 
     worker = AsyncWebhookWorker(queue_name=QUEUE_NAME)
     asyncio.run(worker.start())
+

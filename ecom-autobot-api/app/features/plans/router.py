@@ -80,6 +80,23 @@ async def list_local_plans(
 
 
 @router.get(
+    "/public",
+    response_model=List[PlanResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Listar catálogo de planos disponíveis (Público / Tenant)",
+    description="Retorna os planos ativos disponíveis para contratação pelos clientes/tenants.",
+)
+async def list_public_plans(
+    limit: int = Query(20, ge=1, le=50),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+) -> List[PlanResponse]:
+    service = PlansService(session=db)
+    return await service.list_local_plans(limit=limit, offset=offset)
+
+
+
+@router.get(
     "/external/{external_id}",
     response_model=PlanResponse,
     status_code=status.HTTP_200_OK,

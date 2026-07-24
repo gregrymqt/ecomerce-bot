@@ -33,3 +33,34 @@ class PlanModel(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+    @property
+    def name(self) -> str:
+        return self.reason
+
+    @property
+    def price(self) -> float:
+        if isinstance(self.auto_recurring, dict):
+            return float(self.auto_recurring.get("transaction_amount", 0.0))
+        return 0.0
+
+    @property
+    def interval(self) -> str:
+        if isinstance(self.auto_recurring, dict):
+            freq = self.auto_recurring.get("frequency", 1)
+            type_ = self.auto_recurring.get("frequency_type", "months")
+            return f"{freq} {type_}"
+        return "1 months"
+
+    @property
+    def credits_limit(self) -> int:
+        if isinstance(self.auto_recurring, dict):
+            return int(self.auto_recurring.get("credits_limit", 1000))
+        return 1000
+
+    @property
+    def features(self) -> list:
+        if isinstance(self.auto_recurring, dict):
+            return self.auto_recurring.get("features", [])
+        return []
+
