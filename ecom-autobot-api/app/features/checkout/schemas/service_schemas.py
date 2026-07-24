@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr, Field
 
-from app.features.checkout.enums import PaymentMethodId, OrderStatus, OrderStatusDetail
+from app.features.checkout.domain.enums import PaymentMethodId, OrderStatus, OrderStatusDetail
 from app.features.checkout.schemas.common import AddressSchema, OrderItemSchema
 
 

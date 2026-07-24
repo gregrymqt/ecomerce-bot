@@ -14,7 +14,11 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.config.database import Base
-from app.features.checkout.enums import OrderStatus, OrderStatusDetail, PaymentMethodType
+from app.features.checkout.domain.enums import (
+    OrderStatus,
+    OrderStatusDetail,
+    PaymentMethodType,
+)
 
 
 class OrderModel(Base):
@@ -24,30 +28,30 @@ class OrderModel(Base):
     tenant_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True, comment="Isolamento Multi-Tenant")
     mp_order_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True, comment="ID retornado pelo Mercado Pago (ORD...)")
     external_reference: Mapped[str] = mapped_column(String(150), nullable=False, index=True, comment="Chave única do pedido no tenant")
-    
+
     # Status & Modos
     status: Mapped[OrderStatus] = mapped_column(SQLEnum(OrderStatus), nullable=False, default=OrderStatus.CREATED)
     status_detail: Mapped[Optional[OrderStatusDetail]] = mapped_column(SQLEnum(OrderStatusDetail), nullable=True)
     payment_method_type: Mapped[PaymentMethodType] = mapped_column(SQLEnum(PaymentMethodType), nullable=False)
-    
+
     # Valores Financeiros
     total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     total_paid_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
-    
+
     # Comprador
     payer_email: Mapped[str] = mapped_column(String(255), nullable=False)
     payer_document_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     payer_document_number: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
-    
+
     # Dados Específicos do Meio de Pagamento
     ticket_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="URL do Boleto / Comprovante")
     pix_qr_code: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="Chave PIX Copia e Cola")
     pix_qr_code_base64: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="Imagem Base64 do QR Code")
     pix_expiration_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    
+
     # Snapshots de Auditoria
     raw_mp_response: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True, comment="Snapshot completo do payload do MP")
-    
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)

@@ -4,7 +4,7 @@ from typing import Optional, List
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.checkout.models import OrderModel
+from app.features.checkout.domain.models import OrderModel
 
 logger = logging.getLogger(__name__)
 

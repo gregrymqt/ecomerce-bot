@@ -5,8 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.database import AsyncSessionLocal
-from app.features.checkout.client import MercadoPagoOrderClient
-from app.features.checkout.models import OrderModel
+from app.features.checkout.domain.models import OrderModel
+from app.features.checkout.infrastructure.client import MercadoPagoOrderClient
 from app.features.checkout.repositories import OrderRepository
 from app.features.checkout.services.checkout_service import CheckoutService
 from app.features.mercadopago.schemas import (

@@ -1,16 +1,16 @@
-from app.features.checkout.schemas import RefundMPOrderResponse
-from app.features.checkout.schemas import RefundMPOrderRequest
-from app.features.checkout.schemas import CancelMPOrderResponse
-from app.features.checkout.schemas import GetMPOrderResponse
-from app.features.mercadopago.client import MercadoPagoClient
 import logging
 import uuid
 from typing import Optional
 
 from app.features.checkout.schemas import (
+    CancelMPOrderResponse,
     CreateMPOrderRequest,
     CreateMPOrderResponse,
+    GetMPOrderResponse,
+    RefundMPOrderRequest,
+    RefundMPOrderResponse,
 )
+from app.features.mercadopago.client import MercadoPagoClient
 
 logger = logging.getLogger(__name__)
 
@@ -27,19 +27,12 @@ class MercadoPagoOrderClient(MercadoPagoClient):
     ) -> CreateMPOrderResponse:
         """
         Cria uma nova Order no Mercado Pago (Checkout Transparente para PIX, Cartão, Boleto, etc.).
-
-        :param order_request: DTO Pydantic com todos os dados estruturados da order.
-        :param idempotency_key: Chave única de idempotência (UUID V4). Se omitida, será gerada automaticamente.
-        :return: Instância de CreateMPOrderResponse fortemente tipada.
         """
-        # 1. Garante uma chave de idempotência válida para segurança do pagamento
         key = idempotency_key or str(uuid.uuid4())
-
         headers = {
             "X-Idempotency-Key": key,
         }
 
-        # 2. Converte o modelo Pydantic omitindo None e garantindo formato JSON legível
         payload = order_request.model_dump(mode="json", exclude_none=True)
 
         logger.info(
@@ -47,7 +40,6 @@ class MercadoPagoOrderClient(MercadoPagoClient):
             f"com Idempotency-Key='{key}'"
         )
 
-        # 3. Executa a requisição delegando a resiliência (retries) e parse ao cliente base
         response: CreateMPOrderResponse = await self.post(
             path="/v1/orders",
             json_data=payload,
@@ -65,10 +57,6 @@ class MercadoPagoOrderClient(MercadoPagoClient):
     async def get_order_by_id(self, order_id: str) -> GetMPOrderResponse:
         """
         Busca os detalhes completos de uma Order no Mercado Pago pelo ID.
-        Ideal para verificação em Webhooks e conciliação de pagamentos.
-
-        :param order_id: ID da order gerado pelo Mercado Pago (ex: 'ORD01J49MMW3...').
-        :return: Instância de GetMPOrderResponse fortemente tipada.
         """
         logger.info(f"[MercadoPagoOrderClient] Consultando order MP_Order_ID='{order_id}'")
 
@@ -82,7 +70,7 @@ class MercadoPagoOrderClient(MercadoPagoClient):
             f"MP_Order_ID='{response.id}', Status='{response.status}', StatusDetail='{response.status_detail}'"
         )
 
-        return response    
+        return response
 
     async def cancel_order(
         self,
@@ -91,14 +79,7 @@ class MercadoPagoOrderClient(MercadoPagoClient):
     ) -> CancelMPOrderResponse:
         """
         Cancela uma Order e suas transações pendentes no Mercado Pago.
-
-        Atenção: Apenas orders com status 'created' ou 'action_required' podem ser canceladas.
-
-        :param order_id: ID da order gerado pelo Mercado Pago (ex: 'ORD01J49MMW3...').
-        :param idempotency_key: Chave única de idempotência (UUID V4). Se omitida, será gerada automaticamente.
-        :return: Instância de CancelMPOrderResponse fortemente tipada.
         """
-        # Header obrigatório conforme documentação do Mercado Pago
         key = idempotency_key or str(uuid.uuid4())
         headers = {
             "X-Idempotency-Key": key,
@@ -120,7 +101,7 @@ class MercadoPagoOrderClient(MercadoPagoClient):
             f"MP_Order_ID='{response.id}', Status='{response.status}', StatusDetail='{response.status_detail}'"
         )
 
-        return response    
+        return response
 
     async def refund_order(
         self,
@@ -130,11 +111,6 @@ class MercadoPagoOrderClient(MercadoPagoClient):
     ) -> RefundMPOrderResponse:
         """
         Executa o reembolso (estorno) total ou parcial de uma Order no Mercado Pago.
-
-        :param order_id: ID da order no Mercado Pago (ex: 'ORD01J49MMW3...').
-        :param refund_request: DTO opcional. Se não enviado (ou transactions=None), executa Reembolso Total.
-        :param idempotency_key: Chave única de idempotência (UUID V4). Se omitida, será gerada automaticamente.
-        :return: Instância de RefundMPOrderResponse fortemente tipada.
         """
         key = idempotency_key or str(uuid.uuid4())
         headers = {
@@ -163,4 +139,4 @@ class MercadoPagoOrderClient(MercadoPagoClient):
             f"MP_Order_ID='{response.id}', Status='{response.status}', Detail='{response.status_detail}'"
         )
 
-        return response    
+        return response

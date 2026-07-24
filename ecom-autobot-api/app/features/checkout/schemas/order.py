@@ -2,7 +2,7 @@ from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.features.checkout.enums import (
+from app.features.checkout.domain.enums import (
     CaptureMode,
     OrderStatus,
     OrderStatusDetail,

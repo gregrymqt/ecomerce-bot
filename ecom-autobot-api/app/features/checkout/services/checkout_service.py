@@ -7,7 +7,7 @@ from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
 
-from app.features.checkout.enums import (
+from app.features.checkout.domain.enums import (
     CaptureMode,
     OrderStatus,
     OrderStatusDetail,
@@ -16,7 +16,8 @@ from app.features.checkout.enums import (
     PaymentMethodType,
     ProcessingMode,
 )
-from app.features.checkout.models import OrderItemModel, OrderModel
+from app.features.checkout.domain.models import OrderItemModel, OrderModel
+from app.features.checkout.infrastructure.client import MercadoPagoOrderClient
 from app.features.checkout.repositories.order_repository import OrderRepository
 from app.features.checkout.schemas import (
     CreateMPOrderRequest,
@@ -35,7 +36,6 @@ from app.features.checkout.schemas.service_schemas import (
     CreateCreditCardCheckoutInput,
     CreatePixCheckoutInput,
 )
-from app.features.mercadopago.client import MercadoPagoOrderClient
 
 logger = logging.getLogger(__name__)
 

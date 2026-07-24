@@ -1,7 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
-from app.features.checkout.enums import (
+from app.features.checkout.domain.enums import (
     LiabilityShift,
     OrderStatus,
     OrderStatusDetail,
