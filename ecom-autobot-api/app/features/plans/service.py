@@ -56,9 +56,13 @@ class PlansService:
         # 1. Envia requisição HTTP para a API do Mercado Pago
         mp_plan: PlanResponse = await self.client.create_plan(payload)
 
+        # Determina o external_id (usando a id da resposta do Mercado Pago ou o valor informado)
+        external_id = mp_plan.external_id or payload.external_id or mp_plan.id
+
         # 2. Mapeia e replica a entidade no banco relacional local
         plan_model = PlanModel(
             id=mp_plan.id,
+            external_id=external_id,
             reason=mp_plan.reason,
             status=mp_plan.status,
             auto_recurring=mp_plan.auto_recurring,
@@ -69,8 +73,9 @@ class PlansService:
 
         # 3. Salva no banco e popula o cache no Redis via Repositório
         await self.repository.save(plan_model)
-        logger.info(f"[PlansService] Plano ID '{mp_plan.id}' sincronizado localmente com sucesso.")
+        logger.info(f"[PlansService] Plano ID '{mp_plan.id}' (External ID: '{external_id}') sincronizado localmente.")
 
+        mp_plan.external_id = external_id
         return mp_plan
 
     async def search_plans(
@@ -84,24 +89,25 @@ class PlansService:
 
     async def get_plan_by_id(self, plan_id: str) -> PlanResponse:
         """
-        Busca os detalhes de um plano. Tenta a API do Mercado Pago primeiro;
-        se falhar ou estiver indisponível, recorre à base local/Redis.
+        Busca os detalhes de um plano pelo ID chave primária ou fallback local/Redis.
         """
         logger.info(f"[PlansService] Obtendo detalhes do plano ID: '{plan_id}'")
 
         try:
-            # Tenta obter dados atualizados diretamente do Mercado Pago
-            return await self.client.get_plan_by_id(plan_id)
+            mp_plan = await self.client.get_plan_by_id(plan_id)
+            if not mp_plan.external_id:
+                mp_plan.external_id = mp_plan.id
+            return mp_plan
         except Exception as err:
             logger.warning(
                 f"[PlansService] Falha ao buscar plano '{plan_id}' na API do Mercado Pago ({err}). "
                 f"Recorrendo ao banco local."
             )
-            # Fallback para o banco de dados / Redis
             local_plan = await self.repository.get_by_id(plan_id)
             if local_plan:
                 return PlanResponse(
                     id=local_plan.id,
+                    external_id=local_plan.external_id or local_plan.id,
                     reason=local_plan.reason,
                     status=local_plan.status,
                     auto_recurring=local_plan.auto_recurring,
@@ -114,6 +120,29 @@ class PlansService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Plano com ID '{plan_id}' não foi encontrado.",
             ) from err
+
+    async def get_plan_by_external_id(self, external_id: str) -> PlanResponse:
+        """
+        Busca os detalhes de um plano pelo external_id (ID retornado pelo Mercado Pago).
+        Ideal para tratamento de notificações de Webhook.
+        """
+        logger.info(f"[PlansService] Obtendo detalhes do plano pelo external_id: '{external_id}'")
+        local_plan = await self.repository.get_by_external_id(external_id)
+
+        if local_plan:
+            return PlanResponse(
+                id=local_plan.id,
+                external_id=local_plan.external_id or local_plan.id,
+                reason=local_plan.reason,
+                status=local_plan.status,
+                auto_recurring=local_plan.auto_recurring,
+                back_url=local_plan.back_url,
+                collector_id=local_plan.collector_id,
+                application_id=local_plan.application_id,
+            )
+
+        # Se não encontrar localmente pelo external_id, tenta buscar na API do Mercado Pago pelo ID
+        return await self.get_plan_by_id(external_id)
 
     async def update_plan(
         self, plan_id: str, payload: UpdatePlanRequest
@@ -128,19 +157,20 @@ class PlansService:
 
         # 2. Prepara os campos alterados para atualizar o repositório local
         update_fields = {
+            "external_id": payload.external_id or updated_mp_plan.external_id or updated_mp_plan.id,
             "reason": updated_mp_plan.reason,
             "status": updated_mp_plan.status,
             "back_url": updated_mp_plan.back_url,
             "auto_recurring": updated_mp_plan.auto_recurring,
         }
-        
-        # Remove valores nulos do dicionário de atualização
+
         clean_update_fields = {k: v for k, v in update_fields.items() if v is not None}
 
         # 3. Atualiza localmente e invalida cache no Redis
         await self.repository.update(plan_id, clean_update_fields)
         logger.info(f"[PlansService] Plano ID '{plan_id}' atualizado localmente.")
 
+        updated_mp_plan.external_id = clean_update_fields.get("external_id", updated_mp_plan.id)
         return updated_mp_plan
 
     async def list_local_plans(
@@ -155,6 +185,7 @@ class PlansService:
         return [
             PlanResponse(
                 id=model.id,
+                external_id=model.external_id or model.id,
                 reason=model.reason,
                 status=model.status,
                 auto_recurring=model.auto_recurring,

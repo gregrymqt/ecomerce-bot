@@ -41,6 +41,7 @@ class PlansRepository:
         """Converte uma instância do SQLAlchemy PlanModel para um dicionário serializável."""
         return {
             "id": model.id,
+            "external_id": model.external_id,
             "reason": model.reason,
             "status": model.status,
             "auto_recurring": model.auto_recurring,
@@ -55,6 +56,7 @@ class PlansRepository:
         """Reconstrói um PlanModel a partir de um dicionário recuperado do Redis."""
         return PlanModel(
             id=data["id"],
+            external_id=data.get("external_id"),
             reason=data["reason"],
             status=data["status"],
             auto_recurring=data.get("auto_recurring", {}),
@@ -73,16 +75,16 @@ class PlansRepository:
             ),
         )
 
-    async def _invalidate_plan_cache(self, plan_id: str) -> None:
-        """Invalida a chave individual do plano e os caches de listagem/busca."""
+    async def _invalidate_plan_cache(self, plan_id: str, external_id: Optional[str] = None) -> None:
+        """Invalida a chave individual do plano (por id e external_id) e os caches de listagem."""
         try:
-            # 1. Apaga cache individual
             if redis_cache.redis_client:
                 await redis_cache.redis_client.delete(f"plan:{plan_id}")
+                if external_id:
+                    await redis_cache.redis_client.delete(f"plan:ext:{external_id}")
 
-            # 2. Invalida todas as chaves de listagem
             await self._invalidate_list_cache()
-            logger.info(f"[PlansRepository] Cache do plano '{plan_id}' e listas invalidados com sucesso.")
+            logger.info(f"[PlansRepository] Cache do plano ID '{plan_id}' invalidador com sucesso.")
         except Exception as err:
             logger.warning(f"[PlansRepository] Falha ao invalidar cache do plano '{plan_id}': {err}")
 
@@ -102,7 +104,7 @@ class PlansRepository:
 
     async def get_by_id(self, plan_id: str) -> Optional[PlanModel]:
         """
-        Busca um plano pelo ID. Tenta recuperar do Redis primeiro (get_or_create);
+        Busca um plano pelo ID chave-primária. Tenta recuperar do Redis primeiro (get_or_create);
         se não existir, executa a consulta no PostgreSQL e salva no cache.
         """
         cache_key = f"plan:{plan_id}"
@@ -129,6 +131,37 @@ class PlansRepository:
             return self._dict_to_model(cached_data)
 
         return None
+
+    async def get_by_external_id(self, external_id: str) -> Optional[PlanModel]:
+        """
+        Busca um plano pelo seu external_id (ID retornado pelo Mercado Pago).
+        Utilizado principalmente no processamento de notificações de Webhook.
+        """
+        cache_key = f"plan:ext:{external_id}"
+
+        async def fetch_from_db() -> Optional[Dict[str, Any]]:
+            logger.info(f"[PlansRepository] Cache Miss. Buscando plano por external_id '{external_id}' no banco.")
+            session, owned = await self._get_session()
+            try:
+                stmt = select(PlanModel).where(PlanModel.external_id == external_id)
+                result = await session.execute(stmt)
+                plan = result.scalar_one_or_none()
+                return self._model_to_dict(plan) if plan else None
+            finally:
+                if owned:
+                    await session.close()
+
+        cached_data = await redis_cache.get_or_create(
+            key=cache_key,
+            factory=fetch_from_db,
+            expire_seconds=self.CACHE_TTL,
+        )
+
+        if cached_data and isinstance(cached_data, dict):
+            return self._dict_to_model(cached_data)
+
+        # Fallback de busca secundária por id se external_id coincidir com a chave primária
+        return await self.get_by_id(external_id)
 
     async def list_plans(self, limit: int = 50, offset: int = 0) -> Sequence[PlanModel]:
         """
@@ -171,7 +204,7 @@ class PlansRepository:
 
     async def save(self, plan_model: PlanModel) -> PlanModel:
         """
-        Salva um novo registro de plano localmente e invalida as consultas de listagem no Redis.
+        Salva um novo registro de plano localmente e invalida as consultas no Redis.
         """
         session, owned = await self._get_session()
         try:
@@ -187,12 +220,12 @@ class PlansRepository:
             if owned:
                 await session.close()
 
-        # Invalida listas (pois um novo item foi adicionado)
+        # Invalida listas e popula cache individual
         await self._invalidate_list_cache()
-
-        # Popula a chave individual no Redis
         cache_key = f"plan:{plan_model.id}"
         await redis_cache.set(cache_key, self._model_to_dict(plan_model), expire_seconds=self.CACHE_TTL)
+        if plan_model.external_id:
+            await redis_cache.set(f"plan:ext:{plan_model.external_id}", self._model_to_dict(plan_model), expire_seconds=self.CACHE_TTL)
 
         return plan_model
 
@@ -221,8 +254,9 @@ class PlansRepository:
             if owned:
                 await session.close()
 
-        # Invalida cache do item e de listagens
-        await self._invalidate_plan_cache(plan_id)
+        # Busca versão atualizada para invalidar cache completo
+        updated_plan = await self.get_by_id(plan_id)
+        ext_id = updated_plan.external_id if updated_plan else None
+        await self._invalidate_plan_cache(plan_id, external_id=ext_id)
 
-        # Retorna a versão atualizada (que vai repopular o cache no próximo get_by_id se necessário)
-        return await self.get_by_id(plan_id)
+        return updated_plan

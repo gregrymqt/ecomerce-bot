@@ -13,7 +13,8 @@ class PlanModel(Base):
     """
     __tablename__ = "plans"
 
-    id: Mapped[str] = mapped_column(String(64), primary_key=True)  # ID retornado pelo Mercado Pago (ex: 2c9380848...)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)  # ID interno ou do Mercado Pago
+    external_id: Mapped[Optional[str]] = mapped_column(String(64), unique=True, index=True, nullable=True)  # ID / Referência externa do Mercado Pago
     reason: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(32), default="active", nullable=False)
     auto_recurring: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)

@@ -80,10 +80,26 @@ async def list_local_plans(
 
 
 @router.get(
+    "/external/{external_id}",
+    response_model=PlanResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Obter detalhes de um plano pelo external_id (Somente Admin)",
+    description="Busca os detalhes de um plano pelo seu ID do Mercado Pago (external_id). Exige privilégios de Admin.",
+)
+async def get_plan_by_external_id(
+    external_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user_admin),
+) -> PlanResponse:
+    service = PlansService(session=db)
+    return await service.get_plan_by_external_id(external_id)
+
+
+@router.get(
     "/{plan_id}",
     response_model=PlanResponse,
     status_code=status.HTTP_200_OK,
-    summary="Obter detalhes de um plano (Somente Admin)",
+    summary="Obter detalhes de um plano por ID (Somente Admin)",
     description="Busca os detalhes de um plano pelo ID na API do Mercado Pago ou com fallback local. Exige privilégios de Admin.",
 )
 async def get_plan_by_id(
