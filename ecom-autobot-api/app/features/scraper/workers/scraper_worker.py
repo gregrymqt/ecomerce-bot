@@ -11,7 +11,7 @@ from app.features.products.schemas import Product, ScraperMetadata, ProductStatu
 from app.features.scraper.schemas import ImportRequestMessage
 from app.features.scraper.parsers.json_ld_parser import JsonLdParserService
 from app.features.scraper.parsers.markdown_parser import MarkdownParserService
-from app.features.system.service import NotificationService
+from app.features.system.services import NotificationService
 from app.core.config.database import AsyncSessionLocal
 from app.features.products.domain.models import ScrapingMetadataModel
 from app.core.config.settings import settings

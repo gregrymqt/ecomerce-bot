@@ -5,7 +5,7 @@ from typing import List
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 
-from app.features.system.service import SystemService
+from app.features.system.services import SystemService
 from app.features.system.schemas import DemoRequest
 from app.core.security.rate_limiter import check_demo_rate_limit
 from app.core.config.redis_db import redis_cache
