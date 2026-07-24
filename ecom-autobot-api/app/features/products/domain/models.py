@@ -1,8 +1,10 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text
+import uuid
+from sqlalchemy import Column, DateTime, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
+
 from app.core.config.database import Base
-import uuid
+
 
 class ProductModel(Base):
     __tablename__ = "products"

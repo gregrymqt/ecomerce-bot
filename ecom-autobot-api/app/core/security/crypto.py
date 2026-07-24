@@ -45,7 +45,7 @@ def decrypt_api_key(cipher_text_b64: str) -> str:
 
 async def get_tenant_key(tenant_id: str, provider: str) -> str | None:
     """Lê a chave criptografada (BYOK) do tenant na tabela 'tenant_configs' e a descriptografa."""
-    from app.features.products.models import TenantConfigModel
+    from app.features.products.domain.models import TenantConfigModel
     async with AsyncSessionLocal() as session:
         config = await session.get(TenantConfigModel, tenant_id)
         if not config:
@@ -59,7 +59,7 @@ async def get_tenant_key(tenant_id: str, provider: str) -> str | None:
 
 async def save_tenant_key(tenant_id: str, provider: str, raw_token: str) -> str:
     """Criptografa e persiste a chave do tenant na tabela 'tenant_configs' (BYOK)."""
-    from app.features.products.models import TenantConfigModel
+    from app.features.products.domain.models import TenantConfigModel
     encrypted_value = encrypt_api_key(raw_token)
     async with AsyncSessionLocal() as session:
         config = await session.get(TenantConfigModel, tenant_id)

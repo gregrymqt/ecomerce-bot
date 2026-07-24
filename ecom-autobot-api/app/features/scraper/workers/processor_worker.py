@@ -5,7 +5,7 @@ from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_excep
 from sqlalchemy import select, update
 
 from app.core.config.database import AsyncSessionLocal
-from app.features.products.models import ProductModel
+from app.features.products.domain.models import ProductModel
 from app.features.ai_enrichment.service import AllProvidersExhaustedError, LLMService
 from app.core.shared.logger import get_logger
 from app.core.security.crypto import get_tenant_key

@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from sqlalchemy import select
 
 from app.core.config.database import AsyncSessionLocal
-from app.features.products.models import ProductModel
+from app.features.products.domain.models import ProductModel
 from app.features.products.schemas import Product, ProductStatus
 from app.core.shared.csv_exporter import CsvExportService
 from app.features.shopify.schemas import ShopifyProductSetInput

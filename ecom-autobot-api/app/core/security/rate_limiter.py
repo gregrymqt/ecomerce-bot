@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 import fastapi
 from sqlalchemy import select, func
 from app.core.config.database import AsyncSessionLocal
-from app.features.products.models import RateLimitModel
+from app.features.products.domain.models import RateLimitModel
 
 logger = logging.getLogger(__name__)
 

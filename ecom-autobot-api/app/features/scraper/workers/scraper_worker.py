@@ -13,7 +13,7 @@ from app.features.scraper.parsers.json_ld_parser import JsonLdParserService
 from app.features.scraper.parsers.markdown_parser import MarkdownParserService
 from app.features.system.service import NotificationService
 from app.core.config.database import AsyncSessionLocal
-from app.features.products.models import ScrapingMetadataModel
+from app.features.products.domain.models import ScrapingMetadataModel
 from app.core.config.settings import settings
 from app.core.config.rabbitmq import get_rabbitmq_connection, configure_rabbitmq_topology
 from app.core.shared.progress import publish_demo_progress
