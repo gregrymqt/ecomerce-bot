@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.database import AsyncSessionLocal
 from app.core.config.redis_db import redis_cache
-from app.features.subscriptions.models import SubscriptionModel
+from app.features.subscriptions.domain.models import SubscriptionModel
 
 logger = logging.getLogger(__name__)
 
@@ -16,27 +16,16 @@ class SubscriptionsRepository:
     """
     Repositório para persistência local de Assinaturas (PostgreSQL via SQLAlchemy 2.0 Async)
     com estratégia Cache-Aside via Redis e isolamento estrito Multi-Tenant.
-    
-    Suporta injeção de sessão (ex: via FastAPI Depends(get_db)) ou gerenciamento autônomo
-    de sessão via AsyncSessionLocal com a helper `_get_session()`.
     """
 
     def __init__(self, session: Optional[AsyncSession] = None):
         self.session = session
 
     async def _get_session(self) -> Tuple[AsyncSession, bool]:
-        """
-        Retorna a sessão injetada ou cria uma nova sessão AsyncSessionLocal.
-        Retorna uma tupla (session, owned) indicando se a sessão deve ser fechada localmente.
-        """
         if self.session is not None:
             return self.session, False
         session = AsyncSessionLocal()
         return session, True
-
-    # --------------------------------------------------------------------
-    # Chaves de Cache e Utilitários de Serialização
-    # --------------------------------------------------------------------
 
     @staticmethod
     def _get_cache_key_id(tenant_id: str, sub_id: str) -> str:
@@ -48,7 +37,6 @@ class SubscriptionsRepository:
 
     @staticmethod
     def _model_to_dict(model: SubscriptionModel) -> Dict[str, Any]:
-        """Converte a model SQLAlchemy para um dict serializável no Redis."""
         return {
             "id": model.id,
             "tenant_id": model.tenant_id,
@@ -69,7 +57,6 @@ class SubscriptionsRepository:
 
     @staticmethod
     def _dict_to_model(data: Dict[str, Any]) -> SubscriptionModel:
-        """Reconstrói a model SQLAlchemy a partir dos dados em cache."""
         clean_data = data.copy()
         if clean_data.get("next_payment_date"):
             clean_data["next_payment_date"] = datetime.fromisoformat(clean_data["next_payment_date"])
@@ -85,7 +72,6 @@ class SubscriptionsRepository:
         sub_id: Optional[str] = None,
         preapproval_id: Optional[str] = None,
     ) -> None:
-        """Invalida as chaves de cache vinculadas à assinatura (por ID e por preapproval_id)."""
         if not redis_cache.redis_client:
             return
 
@@ -102,12 +88,7 @@ class SubscriptionsRepository:
             except Exception as err:
                 logger.warning(f"[SubscriptionsRepository] Falha ao invalidar cache no Redis: {err}")
 
-    # --------------------------------------------------------------------
-    # Escrita / Mutação (Com Invalidação Dupla de Cache)
-    # --------------------------------------------------------------------
-
     async def create(self, subscription: SubscriptionModel) -> SubscriptionModel:
-        """Persiste uma nova assinatura no PostgreSQL e invalida caches pendentes."""
         session, owned = await self._get_session()
         try:
             session.add(subscription)
@@ -136,7 +117,6 @@ class SubscriptionsRepository:
         subscription_id: str,
         update_data: Dict[str, Any],
     ) -> Optional[SubscriptionModel]:
-        """Atualiza a assinatura e purga dados antigos dos índices de cache."""
         session, owned = await self._get_session()
         try:
             stmt = select(SubscriptionModel).where(
@@ -179,7 +159,6 @@ class SubscriptionsRepository:
         return subscription
 
     async def delete(self, tenant_id: str, subscription_id: str) -> bool:
-        """Remove a assinatura do banco e apaga do Redis."""
         session, owned = await self._get_session()
         try:
             stmt = select(SubscriptionModel).where(
@@ -213,12 +192,7 @@ class SubscriptionsRepository:
 
         return True
 
-    # --------------------------------------------------------------------
-    # Leitura (Cache-Aside Pattern)
-    # --------------------------------------------------------------------
-
     async def get_by_id(self, tenant_id: str, subscription_id: str) -> Optional[SubscriptionModel]:
-        """Busca assinatura por ID interno. Primeiro tenta Redis; em caso de Miss, consulta Postgres."""
         cache_key = self._get_cache_key_id(tenant_id, subscription_id)
 
         cached_data = await redis_cache.get(cache_key)
@@ -248,7 +222,6 @@ class SubscriptionsRepository:
         return subscription
 
     async def get_by_preapproval_id(self, tenant_id: str, preapproval_id: str) -> Optional[SubscriptionModel]:
-        """Busca assinatura pelo preapproval_id do Mercado Pago usando Cache-Aside."""
         cache_key = self._get_cache_key_ext(tenant_id, preapproval_id)
 
         cached_data = await redis_cache.get(cache_key)
@@ -286,10 +259,6 @@ class SubscriptionsRepository:
         payer_email: Optional[str] = None,
         plan_id: Optional[str] = None,
     ) -> Tuple[List[SubscriptionModel], int]:
-        """
-        Consulta paginada e filtrada com isolamento multi-tenant.
-        Consultas agregadas e paginadas vão direto ao banco relacional.
-        """
         session, owned = await self._get_session()
         try:
             stmt = select(SubscriptionModel).where(SubscriptionModel.tenant_id == tenant_id)

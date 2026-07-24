@@ -18,6 +18,7 @@ import app.features.products.domain.models  # Registra os modelos SQLAlchemy na 
 import app.features.auth.domain.models  # Registra os modelos SQLAlchemy na Base.metadata
 import app.features.checkout.domain.models
 import app.features.plans.domain.models
+import app.features.subscriptions.domain.models
 
 config = context.config
 

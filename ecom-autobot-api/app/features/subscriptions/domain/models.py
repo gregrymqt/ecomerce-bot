@@ -1,11 +1,11 @@
-from app.core.config.database import Base
-import uuid
 from datetime import datetime
 from typing import Any, Dict, Optional
+import uuid
 
 from sqlalchemy import DateTime, ForeignKey, Index, JSON, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.config.database import Base
 
 
 class SubscriptionModel(Base):

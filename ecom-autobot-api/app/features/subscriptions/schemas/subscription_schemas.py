@@ -1,8 +1,6 @@
-from typing import Union
-from typing import List
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -32,10 +30,6 @@ class AutoRecurringDTO(BaseModel):
     end_date: Optional[datetime] = Field(None, description="Data de término da cobrança")
     free_trial: Optional[FreeTrialDTO] = Field(None, description="Configuração do período de teste gratuito")
 
-
-# --------------------------------------------------------------------
-# Requests da nossa API Central
-# --------------------------------------------------------------------
 
 class CreateSubscriptionRequest(BaseModel):
     preapproval_plan_id: Optional[str] = Field(
@@ -78,10 +72,6 @@ class SearchSubscriptionsQueryParams(BaseModel):
     preapproval_plan_id: Optional[str] = Field(None, description="Filtrar por plano vinculado.")
 
 
-# --------------------------------------------------------------------
-# DTO de Integração Direta com a API Mercado Pago (/preapproval)
-# --------------------------------------------------------------------
-
 class MercadoPagoPreapprovalResponse(BaseModel):
     id: str = Field(..., description="ID da assinatura no Mercado Pago (preapproval_id).")
     version: Optional[int] = 0
@@ -105,10 +95,6 @@ class MercadoPagoPreapprovalResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# --------------------------------------------------------------------
-# Response Serializada da nossa API Central
-# --------------------------------------------------------------------
-
 class SubscriptionResponse(BaseModel):
     id: str = Field(..., description="ID interno da assinatura (UUID).")
     tenant_id: str = Field(..., description="Identificador do Tenant.")
@@ -128,11 +114,6 @@ class SubscriptionResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-
-
-# --------------------------------------------------------------------
-# DTOs para Busca e Paginação no Mercado Pago
-# --------------------------------------------------------------------
 
 class PagingDTO(BaseModel):
     offset: int = Field(default=0, ge=0, description="Índice inicial dos resultados.")
@@ -166,7 +147,6 @@ class MercadoPagoSearchQueryParams(BaseModel):
     limit: int = Field(default=20, ge=1, le=100, description="Quantidade de itens por página.")
 
 
-# Extensão do DTO de Resposta da Assinatura com campos extras retornados na busca
 class MercadoPagoPreapprovalItemResponse(MercadoPagoPreapprovalResponse):
     payer_first_name: Optional[str] = None
     payer_last_name: Optional[str] = None
@@ -182,9 +162,6 @@ class MercadoPagoSearchSubscriptionsResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-# --------------------------------------------------------------------
-# DTOs para Update no Mercado Pago
-# --------------------------------------------------------------------
 
 class UpdateAutoRecurringDTO(BaseModel):
     transaction_amount: Optional[float] = Field(None, gt=0, description="Novo valor a ser cobrado a cada ciclo.")

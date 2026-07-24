@@ -4,9 +4,9 @@ from typing import List, Optional, Tuple
 from fastapi import HTTPException, status
 
 from app.features.plans.repositories import PlansRepository
-from app.features.subscriptions.client import SubscriptionsClient
-from app.features.subscriptions.models import SubscriptionModel
-from app.features.subscriptions.repository import SubscriptionsRepository
+from app.features.subscriptions.domain.models import SubscriptionModel
+from app.features.subscriptions.infrastructure.client import SubscriptionsClient
+from app.features.subscriptions.repositories.subscriptions_repository import SubscriptionsRepository
 from app.features.subscriptions.schemas import (
     CreateSubscriptionRequest,
     MercadoPagoUpdatePreapprovalRequest,
@@ -36,27 +36,18 @@ class SubscriptionsService:
         self.client = client or SubscriptionsClient()
         self.plans_repository = plans_repository or PlansRepository()
 
-    # --------------------------------------------------------------------
-    # 1. Criar Assinatura (POST /preapproval)
-    # --------------------------------------------------------------------
-
     async def create_subscription(
         self,
         tenant_id: str,
         request: CreateSubscriptionRequest,
     ) -> SubscriptionResponse:
-        """
-        Cria uma nova assinatura no Mercado Pago e persiste o registro no banco de dados local.
-        """
         logger.info(
             f"[SubscriptionsService] Criando assinatura para o tenant '{tenant_id}' | Pagador: '{request.payer_email}'"
         )
 
-        # 1. Tenta resolver o ID interno do plano se preapproval_plan_id for fornecido
         local_plan_id: Optional[str] = None
         if request.preapproval_plan_id and self.plans_repository:
             try:
-                # ✅ CORREÇÃO: Chama sem tenant_id, pois a tabela de planos é GLOBAL
                 plan = await self.plans_repository.get_by_external_id(
                     external_id=request.preapproval_plan_id
                 )
@@ -67,17 +58,14 @@ class SubscriptionsService:
                     f"[SubscriptionsService] Não foi possível vincular o plano local '{request.preapproval_plan_id}': {err}"
                 )
 
-        # 2. Chama a API do Mercado Pago
         mp_subscription = await self.client.create_subscription(data=request)
 
-        # 3. Mapeia as configurações de recorrência retornadas para um dicionário JSON
         auto_recurring_dict = (
             mp_subscription.auto_recurring.model_dump(mode="json", exclude_none=True)
             if mp_subscription.auto_recurring
             else None
         )
 
-        # 4. Instancia e salva a Model SQLAlchemy no banco local
         status_value = (
             mp_subscription.status.value
             if isinstance(mp_subscription.status, SubscriptionStatusEnum)
@@ -109,20 +97,12 @@ class SubscriptionsService:
 
         return SubscriptionResponse.model_validate(saved_subscription)
 
-    # --------------------------------------------------------------------
-    # 2. Obter Assinatura por ID (GET /subscriptions/{id})
-    # --------------------------------------------------------------------
-
     async def get_subscription_by_id(
         self,
         tenant_id: str,
         subscription_id: str,
         sync_with_mp: bool = False,
     ) -> SubscriptionResponse:
-        """
-        Busca uma assinatura pelo seu ID interno.
-        Opcionalmente realiza sincronização ativa com o Mercado Pago se sync_with_mp=True.
-        """
         subscription = await self.repository.get_by_id(
             tenant_id=tenant_id, subscription_id=subscription_id
         )
@@ -133,19 +113,18 @@ class SubscriptionsService:
                 detail=f"Assinatura '{subscription_id}' não encontrada.",
             )
 
-        # Sincronização ativa opcional com a API do Mercado Pago
         if sync_with_mp:
             try:
                 mp_sub = await self.client.get_subscription_by_id(subscription.preapproval_id)
                 status_val = mp_sub.status.value if isinstance(mp_sub.status, SubscriptionStatusEnum) else str(mp_sub.status)
-                
+
                 update_data = {
                     "status": status_val,
                     "payment_method_id": mp_sub.payment_method_id,
                     "card_id": str(mp_sub.card_id) if mp_sub.card_id else None,
                     "next_payment_date": mp_sub.next_payment_date,
                 }
-                
+
                 updated_model = await self.repository.update(
                     tenant_id=tenant_id,
                     subscription_id=subscription_id,
@@ -160,18 +139,11 @@ class SubscriptionsService:
 
         return SubscriptionResponse.model_validate(subscription)
 
-    # --------------------------------------------------------------------
-    # 3. Buscar / Listar Assinaturas (GET /subscriptions)
-    # --------------------------------------------------------------------
-
     async def search_subscriptions(
         self,
         tenant_id: str,
         params: SearchSubscriptionsQueryParams,
     ) -> Tuple[List[SubscriptionResponse], int]:
-        """
-        Realiza a busca paginada e filtrada de assinaturas no banco local.
-        """
         skip = (params.page - 1) * params.limit
 
         subscriptions, total = await self.repository.search(
@@ -189,20 +161,12 @@ class SubscriptionsService:
 
         return response_items, total
 
-    # --------------------------------------------------------------------
-    # 4. Atualizar Assinatura (PUT /subscriptions/{id})
-    # --------------------------------------------------------------------
-
     async def update_subscription(
         self,
         tenant_id: str,
         subscription_id: str,
         request: UpdateSubscriptionRequest,
     ) -> SubscriptionResponse:
-        """
-        Atualiza os dados de uma assinatura na API do Mercado Pago e reflete as alterações no banco local.
-        """
-        # 1. Garante a existência da assinatura local
         subscription = await self.repository.get_by_id(
             tenant_id=tenant_id, subscription_id=subscription_id
         )
@@ -213,7 +177,6 @@ class SubscriptionsService:
                 detail=f"Assinatura '{subscription_id}' não encontrada.",
             )
 
-        # 2. Constrói a requisição para a API do Mercado Pago
         update_auto_recurring = None
         if request.auto_recurring:
             update_auto_recurring = UpdateAutoRecurringDTO(
@@ -229,13 +192,11 @@ class SubscriptionsService:
             status=request.status,
         )
 
-        # 3. Atualiza no Mercado Pago
         mp_response = await self.client.update_subscription(
             preapproval_id=subscription.preapproval_id,
             data=mp_update_req,
         )
 
-        # 4. Atualiza os dados no banco local e invalida o cache
         status_value = (
             mp_response.status.value
             if isinstance(mp_response.status, SubscriptionStatusEnum)
@@ -267,18 +228,11 @@ class SubscriptionsService:
 
         return SubscriptionResponse.model_validate(updated_subscription)
 
-    # --------------------------------------------------------------------
-    # 5. Cancelar Assinatura (Atalho DELETE/POST Cancel)
-    # --------------------------------------------------------------------
-
     async def cancel_subscription(
         self,
         tenant_id: str,
         subscription_id: str,
     ) -> SubscriptionResponse:
-        """
-        Cancela uma assinatura alterando seu status para 'cancelled' no Mercado Pago e localmente.
-        """
         return await self.update_subscription(
             tenant_id=tenant_id,
             subscription_id=subscription_id,

@@ -7,7 +7,7 @@ from app.features.mercadopago.schemas import (
     MercadoPagoNotificationPayload,
 )
 from app.features.plans.services.plan_notification_service import PlanNotificationService
-from app.features.subscriptions.notification_service import SubscriptionNotificationService
+from app.features.subscriptions.services import SubscriptionNotificationService
 
 logger = logging.getLogger(__name__)
 

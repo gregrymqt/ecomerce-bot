@@ -9,9 +9,9 @@ from app.features.mercadopago.schemas import (
     BaseNotificationHandler,
     MercadoPagoNotificationPayload,
 )
-from app.features.subscriptions.client import SubscriptionsClient
-from app.features.subscriptions.models import SubscriptionModel
-from app.features.subscriptions.repository import SubscriptionsRepository
+from app.features.subscriptions.domain.models import SubscriptionModel
+from app.features.subscriptions.infrastructure.client import SubscriptionsClient
+from app.features.subscriptions.repositories.subscriptions_repository import SubscriptionsRepository
 from app.features.subscriptions.schemas import SubscriptionStatusEnum
 
 logger = logging.getLogger(__name__)
@@ -21,8 +21,6 @@ class SubscriptionNotificationService(BaseNotificationHandler):
     """
     Handler especializado no processamento assíncrono de Webhooks de Assinaturas (subscription_preapproval).
     Consulta a API do Mercado Pago (GET /preapproval/{id}), atualiza o estado local e purga o Redis.
-    
-    Suporta injeção de sessão ou gerenciamento autônomo de sessão via AsyncSessionLocal com a helper `_get_session()`.
     """
 
     def __init__(
@@ -36,10 +34,6 @@ class SubscriptionNotificationService(BaseNotificationHandler):
         self.client = client or SubscriptionsClient()
 
     async def _get_session(self) -> Tuple[AsyncSession, bool]:
-        """
-        Retorna a sessão injetada ou cria uma nova sessão AsyncSessionLocal.
-        Retorna uma tupla (session, owned) indicando se a sessão deve ser fechada localmente.
-        """
         if self.session is not None:
             return self.session, False
         session = AsyncSessionLocal()
@@ -48,10 +42,6 @@ class SubscriptionNotificationService(BaseNotificationHandler):
     async def _find_local_subscription_by_preapproval_id(
         self, preapproval_id: str
     ) -> Optional[SubscriptionModel]:
-        """
-        Busca globalmente no PostgreSQL a assinatura local pelo preapproval_id do Mercado Pago.
-        Útil para identificar o tenant_id sem depender do payload da mensagem.
-        """
         session, owned = await self._get_session()
         try:
             stmt = select(SubscriptionModel).where(
@@ -74,10 +64,7 @@ class SubscriptionNotificationService(BaseNotificationHandler):
         logger.info(f"🔄 [SubscriptionWebhook] Processando evento '{action}' para a assinatura MP: '{preapproval_id}'")
 
         try:
-            # 1. Consulta o estado atualizado da assinatura diretamente na API REST do Mercado Pago (GET /preapproval/{id})
             mp_subscription = await self.client.get_subscription_by_id(preapproval_id)
-
-            # 2. Localiza o registro correspondente no banco local
             local_sub = await self._find_local_subscription_by_preapproval_id(preapproval_id)
 
             if not local_sub:
@@ -86,7 +73,6 @@ class SubscriptionNotificationService(BaseNotificationHandler):
                 )
                 return
 
-            # 3. Mapeia os novos valores
             status_value = (
                 mp_subscription.status.value
                 if isinstance(mp_subscription.status, SubscriptionStatusEnum)
@@ -106,7 +92,6 @@ class SubscriptionNotificationService(BaseNotificationHandler):
                     mode="json", exclude_none=True
                 )
 
-            # 4. Atualiza no PostgreSQL e invalida os caches do Redis via repositório
             updated_sub = await self.repository.update(
                 tenant_id=local_sub.tenant_id,
                 subscription_id=local_sub.id,
