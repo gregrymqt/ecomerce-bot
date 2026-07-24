@@ -1,40 +1,27 @@
-import hashlib
-import os
 import logging
 from typing import Optional
-from fastapi import HTTPException, status, Response
+from fastapi import HTTPException, Response, status
 
 from app.core.config.settings import settings
-from app.core.security.auth import create_access_token, add_token_to_blacklist
-from app.features.auth.repository import UserRepository
-from app.features.auth.models import UserModel
+from app.core.security.auth import add_token_to_blacklist, create_access_token
+from app.features.auth.domain import UserModel, hash_password, verify_password
+from app.features.auth.repositories import UserRepository
 from app.features.auth.schemas import (
-    LoginRequest, 
-    CreateUserRequest, 
-    UpdateUserRequest, 
-    UserResponse, 
-    UserInfo
+    CreateUserRequest,
+    LoginRequest,
+    UpdateUserRequest,
+    UserResponse,
 )
 
 logger = logging.getLogger(__name__)
 
 
-def hash_password(password: str) -> str:
-    salt = os.urandom(16).hex()
-    hashed = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt.encode('utf-8'), 100000).hex()
-    return f"{salt}${hashed}"
-
-
-def verify_password(plain_password: str, password_hash: str) -> bool:
-    try:
-        salt, hashed = password_hash.split('$')
-        check = hashlib.pbkdf2_hmac('sha256', plain_password.encode('utf-8'), salt.encode('utf-8'), 100000).hex()
-        return check == hashed
-    except Exception:
-        return False
-
-
 class AuthService:
+    """
+    Serviço de Aplicação para casos de uso de Autenticação, Registro,
+    Gestão de Perfil de Usuário e Revogação de JWT (Blacklist via Redis).
+    """
+
     def __init__(self, user_repo: Optional[UserRepository] = None):
         self.user_repo = user_repo or UserRepository()
 
@@ -44,7 +31,7 @@ class AuthService:
             if existing:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail=f"O e-mail '{request.email}' já está cadastrado no sistema."
+                    detail=f"O e-mail '{request.email}' já está cadastrado no sistema.",
                 )
         except HTTPException:
             raise
@@ -60,7 +47,7 @@ class AuthService:
             password_hash=pwd_hash,
             name=request.name,
             role=role,
-            tenants=tenants
+            tenants=tenants,
         )
 
         try:
@@ -71,7 +58,7 @@ class AuthService:
                 name=created.name,
                 role=created.role,
                 tenants=created.tenants,
-                created_at=created.created_at
+                created_at=created.created_at,
             )
         except Exception as e:
             logger.warning(f"Falha ao registrar usuário no banco de dados (usando fallback temporário em memória): {e}")
@@ -80,26 +67,28 @@ class AuthService:
                 email=request.email,
                 name=request.name,
                 role=role,
-                tenants=tenants
+                tenants=tenants,
             )
 
     async def authenticate_user(self, credentials: LoginRequest, response: Response) -> UserResponse:
         if not credentials.email or not credentials.password:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="E-mail e senha são obrigatórios."
+                detail="E-mail e senha são obrigatórios.",
             )
 
         user = None
         try:
             user = await self.user_repo.get_by_email(credentials.email)
         except Exception as db_err:
-            logger.warning(f"Banco de dados indisponível durante autenticação: {db_err}. Prosseguindo com autenticação de fallback.")
+            logger.warning(
+                f"Banco de dados indisponível durante autenticação: {db_err}. Prosseguindo com autenticação de fallback."
+            )
 
         if user and not verify_password(credentials.password, user.password_hash):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Credenciais inválidas. Verifique o e-mail e a senha."
+                detail="Credenciais inválidas. Verifique o e-mail e a senha.",
             )
 
         user_id = user.id if user else f"usr_{hash(credentials.email) & 0xffffffff}"
@@ -116,7 +105,7 @@ class AuthService:
             "name": user_name,
             "role": user_role,
             "is_admin": (user_role == "admin"),
-            "tenants": user_tenants
+            "tenants": user_tenants,
         }
 
         expires_in_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
@@ -128,7 +117,7 @@ class AuthService:
             httponly=True,
             secure=True,
             samesite="none",
-            max_age=expires_in_seconds
+            max_age=expires_in_seconds,
         )
 
         return UserResponse(
@@ -136,7 +125,7 @@ class AuthService:
             email=credentials.email,
             name=user_name,
             role=user_role,
-            tenants=user_tenants
+            tenants=user_tenants,
         )
 
     async def update_profile(self, user_id: str, request: UpdateUserRequest) -> UserResponse:
@@ -163,7 +152,7 @@ class AuthService:
                 name=updated.name,
                 role=updated.role,
                 tenants=updated.tenants,
-                created_at=updated.created_at
+                created_at=updated.created_at,
             )
 
         return UserResponse(
@@ -171,7 +160,7 @@ class AuthService:
             email="usuario@ecommerce.com",
             name=request.name if request.name else "Usuário Atualizado",
             role=request.role if request.role else "user",
-            tenants=request.tenants if request.tenants else ["ecommerce_demo", "ecommerce_prod"]
+            tenants=request.tenants if request.tenants else ["ecommerce_demo", "ecommerce_prod"],
         )
 
     async def revoke_token(self, token: str) -> None:

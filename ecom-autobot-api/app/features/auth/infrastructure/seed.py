@@ -1,8 +1,8 @@
 import logging
 from sqlalchemy import select
 
-from app.core.config.database import AsyncSessionLocal, engine, Base
-from app.features.auth.models import RoleModel
+from app.core.config.database import AsyncSessionLocal, Base, engine
+from app.features.auth.domain.models import RoleModel
 
 logger = logging.getLogger(__name__)
 

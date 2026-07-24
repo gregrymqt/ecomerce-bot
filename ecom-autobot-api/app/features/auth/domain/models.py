@@ -1,7 +1,7 @@
-from sqlalchemy import Column, String, DateTime, Integer
+import uuid
+from sqlalchemy import Column, DateTime, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
-import uuid
 
 from app.core.config.database import Base
 
@@ -20,6 +20,9 @@ class RoleModel(Base):
 
 
 class UserModel(Base):
+    """
+    Representação da tabela de usuários da aplicação.
+    """
     __tablename__ = "users"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))

@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.core.config.settings import settings
 from app.core.config.database import Base
 import app.features.products.models  # Registra os modelos SQLAlchemy na Base.metadata
-import app.features.auth.models
+import app.features.auth.domain.models  # Registra os modelos SQLAlchemy na Base.metadata
 
 config = context.config
 

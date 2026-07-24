@@ -1,16 +1,22 @@
 import logging
-from typing import Optional, Dict, Union
-from sqlalchemy import select, update
+from typing import Dict, Optional, Union
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.database import AsyncSessionLocal
-from app.features.auth.models import UserModel
+from app.features.auth.domain.models import UserModel
 
 logger = logging.getLogger(__name__)
 
 UserUpdateValue = Union[str, bool, list, int, float, None]
 
+
 class UserRepository:
+    """
+    Repositório para persistência e consulta de usuários no PostgreSQL via AsyncSession.
+    Suporta injeção de sessão ou criação de sessão autônoma via `_get_session()`.
+    """
+
     def __init__(self, session: Optional[AsyncSession] = None):
         self.session = session
 

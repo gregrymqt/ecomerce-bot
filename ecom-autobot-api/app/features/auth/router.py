@@ -10,7 +10,7 @@ from app.features.auth.schemas import (
     LogoutResponse,
     AuthenticatedUser
 )
-from app.features.auth.service import AuthService
+from app.features.auth.services import AuthService
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 security = HTTPBearer()

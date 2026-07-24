@@ -7,12 +7,13 @@ import uvicorn
 from app.core.config.settings import settings
 from app.core.config.redis_db import redis_cache
 from app.core.config.rabbitmq import get_rabbitmq_connection, configure_rabbitmq_topology
-from app.features.auth.init_db import seed_initial_roles
+from app.features.auth.infrastructure import seed_initial_roles
 from app.features.products.repositories import ProductRepository
 from app.features.scraper.workers.scraper_worker import ScraperWorker
 from app.features.scraper.workers.processor_worker import ProcessorWorker
-from app.features.ai_enrichment.service import LLMService
 from app.features.api_router import api_router as v1_router
+from app.features.ai_enrichment.services.llm_service import LLMService
+
 
 logger = logging.getLogger(__name__)
 
