@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Dict, Optional
 
-from app.features.mercadopago.client import MercadoPagoClient  # ou app.core.mercadopago.client
+from app.features.mercadopago.infrastructure.client import MercadoPagoClient
 from app.features.subscriptions.schemas import (
     CreateSubscriptionRequest,
     MercadoPagoPreapprovalItemResponse,

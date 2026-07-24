@@ -10,7 +10,7 @@ class MercadoPagoDataDTO(BaseModel):
 
 class MercadoPagoNotificationPayload(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    
+
     id: Optional[Union[str, int]] = Field(None)
     action: Optional[str] = Field(None)
     type: Optional[str] = Field(None)

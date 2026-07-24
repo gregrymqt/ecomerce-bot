@@ -18,8 +18,7 @@ T = TypeVar("T", bound=BaseModel)
 
 def _is_transient_error(exception: BaseException) -> bool:
     """
-    Identifica erros de rede/conexão e erros HTTP com status transitórios
-    (429 Rate Limit, 500 Internal Error, 502 Bad Gateway, 503 Service Unavailable, 504 Gateway Timeout).
+    Identifica erros de rede/conexão e erros HTTP com status transitórios.
     """
     if isinstance(exception, (httpx.RequestError, httpx.NetworkError, httpx.TimeoutException)):
         return True
@@ -115,15 +114,6 @@ class MercadoPagoClient:
         response_model: Optional[Type[T]] = None,
         **kwargs: Any,
     ) -> Union[T, Dict[str, Any]]:
-        """
-        Executa uma requisição HTTP assíncrona à API do Mercado Pago.
-
-        :param method: Método HTTP ('GET', 'POST', 'PUT', 'DELETE', etc.)
-        :param path: Endpoint relativo (ex: '/v1/payments') ou URL completa.
-        :param response_model: Classe do DTO Pydantic opcional para validação e tipagem.
-        :param kwargs: Argumentos adicionais repassados ao `httpx.AsyncClient.request`.
-        :return: Instância de `T` se `response_model` for informado, ou dict `{"status": int, "response": dict}`.
-        """
         response = await self._execute_request(method, path, **kwargs)
 
         try:

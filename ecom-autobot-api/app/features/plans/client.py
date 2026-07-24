@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import HTTPException
 import httpx
 
-from app.features.mercadopago.client import MercadoPagoClient
+from app.features.mercadopago.infrastructure.client import MercadoPagoClient
 from app.features.plans.schemas import (
     CreatePlanRequest,
     PlanResponse,
