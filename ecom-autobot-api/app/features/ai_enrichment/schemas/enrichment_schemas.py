@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field
 from typing import List
+from pydantic import BaseModel, Field
+
 
 class EnrichedProductResponse(BaseModel):
     title: str = Field(description="Título otimizado para conversão de vendas.")
