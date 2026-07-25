@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Zap, User, Bot, ShoppingBag, LogOut, ShieldCheck } from 'lucide-react';
+import { Zap, User, Bot, ShoppingBag, CreditCard, LogOut, ShieldCheck } from 'lucide-react';
 import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar';
 import { useAuth } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
@@ -34,6 +34,13 @@ export const MainLayout: React.FC = () => {
       badgeVariant: 'indigo',
       active: location.pathname === '/catalog' || location.pathname === '/products',
       onClick: () => navigate('/catalog'),
+    },
+    {
+      id: 'subscriptions',
+      label: 'Assinaturas',
+      icon: <CreditCard className="w-5 h-5" />,
+      active: location.pathname === '/subscriptions',
+      onClick: () => navigate('/subscriptions'),
     },
   ];
 
