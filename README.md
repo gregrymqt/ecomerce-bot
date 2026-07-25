@@ -6,10 +6,11 @@ Um ecossistema escalável focado em extração, processamento e enriquecimento a
 
 ## 📁 Estrutura do Repositório (Monorepo)
 
-O projeto é dividido em dois serviços principais:
+O projeto é dividido em módulos principais:
 
 * 🟢 **`ecom-autobot-api/`**: API Central e Workers em Python (FastAPI, RabbitMQ, Redis, PostgreSQL).
 * 🔵 **`ecom-autobot-web/`**: Portal Web Frontend construído em React, TypeScript e Vite.
+* 🛠️ **`infra/`**: Configurações de infraestrutura isoladas para **Desenvolvimento** (`infra/dev`) e **Produção VPS** (`infra/prod`).
 
 ---
 

@@ -41,7 +41,10 @@ O **E-commerce Bot** é uma plataforma monorepo escalável para extração autom
 ecommerce-bot/
 ├── .agents/
 │   └── AGENTS.md               # Instruções e diretrizes universais para IAs
-├── docker-compose.yml          # Postgres (5432), Redis (6379), RabbitMQ (5672/15672)
+├── infra/                      # 🛠️ Infraestrutura e Deploy Dev/Prod
+│   ├── dev/                    # docker-compose.dev.yml, .env.dev.example (Postgres/Redis/RabbitMQ locais)
+│   └── prod/                   # docker-compose.prod.yml, .env.prod.example, Nginx (proxy SSE), deploy.sh (VPS)
+├── docker-compose.yml          # Atalho para infra/dev/docker-compose.dev.yml
 ├── .env.example                # Template de variáveis de ambiente
 ├── ecom-autobot-api/           # 🟢 Backend Python (FastAPI)
 │   ├── app/
