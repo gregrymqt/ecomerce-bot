@@ -27,13 +27,13 @@ export const MainLayout: React.FC = () => {
       onClick: () => navigate('/auth'),
     },
     {
-      id: 'products',
-      label: 'Catálogo de Produtos',
+      id: 'catalog',
+      label: 'Central do Catálogo',
       icon: <ShoppingBag className="w-5 h-5" />,
-      badge: 'Pro',
+      badge: 'Hub',
       badgeVariant: 'indigo',
-      active: location.pathname === '/products',
-      onClick: () => navigate('/demo'),
+      active: location.pathname === '/catalog' || location.pathname === '/products',
+      onClick: () => navigate('/catalog'),
     },
   ];
 
@@ -100,7 +100,7 @@ export const MainLayout: React.FC = () => {
 
           <div className="flex items-center gap-3">
             {currentTenant ? (
-              <Badge variant="indigo" icon={<ShieldCheck className="w-3.5 h-3.5" />}>
+              <Badge variant="info" icon={<ShieldCheck className="w-3.5 h-3.5" />}>
                 Tenant: {currentTenant}
               </Badge>
             ) : (

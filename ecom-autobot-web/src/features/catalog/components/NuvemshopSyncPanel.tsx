@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNuvemshop } from '../hooks/useNuvemshop';
 import type { Product } from '../types/product.type';
-import { cn } from '@/utils/cn';
 import {
   Store,
   RefreshCw,

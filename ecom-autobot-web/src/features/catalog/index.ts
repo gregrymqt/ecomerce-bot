@@ -11,5 +11,7 @@ export * from './components/ProductTable';
 export * from './components/ProductEditModal';
 export * from './components/ShopifySyncPanel';
 export * from './components/NuvemshopSyncPanel';
+export * from './pages/CatalogHubPage';
+
 
 

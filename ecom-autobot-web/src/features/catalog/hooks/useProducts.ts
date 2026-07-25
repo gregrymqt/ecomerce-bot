@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect } from 'react';
 import { productService } from '../services/product.service';
 import type {
   Product,
-  ProductStatus,
   ProductUpdatePayload,
 } from '../types/product.type';
 import { getErrorMessage } from '@/utils/errors';

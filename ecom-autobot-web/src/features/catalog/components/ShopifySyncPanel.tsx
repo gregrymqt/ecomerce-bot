@@ -8,7 +8,6 @@ import {
   Download,
   AlertTriangle,
   CheckCircle2,
-  ExternalLink,
   ChevronRight,
   Loader2,
   Trash2,
