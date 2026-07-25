@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Zap, User, Bot, ShoppingBag, CreditCard, LogOut, ShieldCheck } from 'lucide-react';
+import { Zap, User, Bot, ShoppingBag, CreditCard, Layers, LogOut, ShieldCheck } from 'lucide-react';
 import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar';
 import { useAuth } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
@@ -41,6 +41,13 @@ export const MainLayout: React.FC = () => {
       icon: <CreditCard className="w-5 h-5" />,
       active: location.pathname === '/subscriptions',
       onClick: () => navigate('/subscriptions'),
+    },
+    {
+      id: 'plans',
+      label: 'Planos',
+      icon: <Layers className="w-5 h-5" />,
+      active: location.pathname === '/plans',
+      onClick: () => navigate('/plans'),
     },
   ];
 
