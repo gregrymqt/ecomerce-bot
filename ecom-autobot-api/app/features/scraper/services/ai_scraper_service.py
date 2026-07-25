@@ -27,7 +27,12 @@ class AIScraperService:
         return {"status": "success", "message": "Credencial salva e criptografada com sucesso."}
 
     @staticmethod
-    async def enqueue_extraction_task(tenant_id: str, target_url: str, plan: str = "free"):
+    async def enqueue_extraction_task(
+        tenant_id: str, 
+        target_url: str, 
+        plan: str = "free",
+        channel: aio_pika.abc.AbstractChannel = None  # Reutilização de canal injetado
+    ):
         generated_product_id = f"req_{uuid.uuid4().hex[:12]}"
 
         message_model = ImportRequestMessage(
@@ -37,23 +42,32 @@ class AIScraperService:
         )
 
         try:
-            connection = await get_rabbitmq_connection()
-            async with connection:
+            # Reutiliza o canal passado pela rota ou abre uma conexão de fallback
+            if channel is None:
+                connection = await get_rabbitmq_connection()
                 channel = await connection.channel()
 
-                message_body = json.dumps(message_model.model_dump(by_alias=True)).encode()
-                routing_key = "ecommerce_prod" if plan in ["premium", "pro", "enterprise"] else "ecommerce_demo"
+            message_body = json.dumps(message_model.model_dump(by_alias=True)).encode()
 
-                await channel.default_exchange.publish(
-                    aio_pika.Message(
-                        body=message_body,
-                        content_type="application/json",
-                        delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
-                    ),
-                    routing_key=routing_key,
-                )
+            # 1. Nomes ajustados de acordo com a topologia de 7 filas
+            routing_key = "ecommerce" if plan in ["premium", "pro", "enterprise"] else "demo_ecommerce"
 
-            logger.info(f"Solicitação de scraping enviada ao RabbitMQ para o Tenant {tenant_id}. URL: {target_url}")
+            # 2. Publicação otimizada com headers e message_id para rastreabilidade
+            await channel.default_exchange.publish(
+                aio_pika.Message(
+                    body=message_body,
+                    content_type="application/json",
+                    delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
+                    message_id=generated_product_id,
+                    headers={
+                        "x-tenant-id": tenant_id,
+                        "x-user-plan": plan,
+                    }
+                ),
+                routing_key=routing_key,
+            )
+
+            logger.info(f"Solicitação de scraping enfileirada na fila '{routing_key}' para Tenant {tenant_id}. ID: {generated_product_id}")
             return {
                 "status": "accepted",
                 "task_id": generated_product_id,

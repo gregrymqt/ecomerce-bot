@@ -1,3 +1,4 @@
+from typing import Optional, Tuple
 import httpx
 import asyncio
 import logging
@@ -6,6 +7,7 @@ from urllib.parse import urljoin, urlparse
 from datetime import datetime, timezone, timedelta
 import aio_pika
 import json
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.products.schemas import Product, ScraperMetadata, ProductStatus
 from app.features.scraper.schemas import ImportRequestMessage
@@ -19,17 +21,25 @@ from app.core.config.rabbitmq import get_rabbitmq_connection, configure_rabbitmq
 from app.core.shared.progress import publish_demo_progress
 
 class ScraperWorker:
-    def __init__(self, repository):
+    def __init__(self, repository, session: Optional[AsyncSession] = None):
         self.client = httpx.AsyncClient(timeout=10.0, follow_redirects=True)
         self.repository = repository
+        self.session = session
         self.json_ld_parser = JsonLdParserService()
 
         api_key = settings.DEEPSEEK_API_KEY
         self.markdown_parser = MarkdownParserService(api_key=api_key)
         self.notification_service = NotificationService()
 
+    async def _get_session(self) -> Tuple[AsyncSession, bool]:
+        if self.session is not None:
+            return self.session, False
+        session = AsyncSessionLocal()
+        return session, True
+
     async def _handle_scraping_failure(self, domain: str, error_type: str, url: str):
-        async with AsyncSessionLocal() as session:
+        session, should_close = await self._get_session()
+        try:
             meta = await session.get(ScrapingMetadataModel, domain)
             if meta is None:
                 meta = ScrapingMetadataModel(domain=domain, consecutive_failures=1)
@@ -41,24 +51,35 @@ class ScraperWorker:
 
             failures = meta.consecutive_failures or 1
             silenced_until = meta.silenced_until
+        finally:
+            if should_close:
+                await session.close()
 
         is_silenced = silenced_until and silenced_until.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc)
 
         if failures >= 3 and not is_silenced:
             await self.notification_service.send_discord_alert(domain, error_type, url)
 
-            async with AsyncSessionLocal() as session:
+            session, should_close = await self._get_session()
+            try:
                 meta = await session.get(ScrapingMetadataModel, domain)
                 if meta is not None:
                     meta.silenced_until = datetime.now(timezone.utc) + timedelta(hours=1)
                     await session.commit()
+            finally:
+                if should_close:
+                    await session.close()
 
     async def _handle_scraping_success(self, domain: str):
-        async with AsyncSessionLocal() as session:
+        session, should_close = await self._get_session()
+        try:
             meta = await session.get(ScrapingMetadataModel, domain)
             if meta is not None and (meta.consecutive_failures or 0) > 0:
                 meta.consecutive_failures = 0
                 await session.commit()
+        finally:
+            if should_close:
+                await session.close()
 
     async def _process_product_page(self, product_url: str, tenant_id: str):
         domain = urlparse(product_url).netloc
@@ -132,52 +153,86 @@ class ScraperWorker:
                 logging.error(f"Erro na navegação do catálogo: {e}")
                 break
 
-    async def start_consuming(self, queue_name: str = "ecommerce_prod"):
+    async def start_consuming(self, queue_name: str = "ecommerce", channel: aio_pika.abc.AbstractChannel = None):
+        """
+        Inicia o consumo das mensagens na fila especificada.
+        Recebe o `channel` opcionalmente para reutilizar a conexão da API.
+        """
         try:
-            connection = await get_rabbitmq_connection()
-            async with connection:
+            if channel is None:
+                connection = await get_rabbitmq_connection()
                 channel = await connection.channel()
                 
-                await configure_rabbitmq_topology(channel)
-                await channel.set_qos(prefetch_count=1)
-                queue = await channel.get_queue(queue_name)
-                
-                logging.info(f"Worker is waiting for messages in {queue_name}. To exit press CTRL+C")
-                
-                async with queue.iterator() as queue_iter:
-                    async for message in queue_iter:
-                        async with message.process(requeue=False, ignore_processed=True):
-                            try:
-                                payload = message.body.decode()
-                                logging.info(f"Received message on {queue_name}: {payload}")
-                                
-                                raw_data = json.loads(payload)
-                                msg_model = ImportRequestMessage.model_validate(raw_data)
-                                url_to_scrape = msg_model.target_url
-                                tenant_id = msg_model.tenant_id
-                                if url_to_scrape:
-                                    if queue_name == "ecommerce_demo":
-                                        await publish_demo_progress(url_to_scrape, "scraping", 30)
+            await channel.set_qos(prefetch_count=1)
+            queue = await channel.get_queue(queue_name)
+            
+            logging.info(f"ScraperWorker aguardando mensagens na fila '{queue_name}'...")
+            
+            async with queue.iterator() as queue_iter:
+                async for message in queue_iter:
+                    async with message.process(requeue=False, ignore_processed=True):
+                        try:
+                            payload = message.body.decode()
+                            logging.info(f"Mensagem recebida em {queue_name}: {payload}")
+                            
+                            raw_data = json.loads(payload)
+                            msg_model = ImportRequestMessage.model_validate(raw_data)
+                            
+                            url_to_scrape = msg_model.target_url
+                            tenant_id = msg_model.tenant_id
+                            
+                            if url_to_scrape:
+                                if queue_name == "demo_ecommerce":
+                                    await publish_demo_progress(url_to_scrape, "scraping", 30)
 
-                                    product = await self._process_product_page(url_to_scrape, tenant_id)
-                                    if product:
-                                        if queue_name == "ecommerce_demo":
-                                            original_data = {
-                                                "title": product.title,
-                                                "description": product.description,
-                                                "price": str(product.price) if product.price else None,
-                                                "imageUrl": product.images[0] if product.images else None
-                                            }
-                                            await publish_demo_progress(url_to_scrape, "generating", 70, original=original_data)
-                                        await self.repository.upsert_product(product)
-                                    else:
-                                        if queue_name == "ecommerce_demo":
-                                            await publish_demo_progress(url_to_scrape, "failed", 100, error="Falha ao extrair dados do produto.")
+                                # 1. Realiza o Scraping
+                                product = await self._process_product_page(url_to_scrape, tenant_id)
+                                
+                                if product:
+                                    if queue_name == "demo_ecommerce":
+                                        original_data = {
+                                            "title": product.title,
+                                            "description": product.description,
+                                            "price": str(product.price) if product.price else None,
+                                            "imageUrl": product.images[0] if product.images else None
+                                        }
+                                        await publish_demo_progress(url_to_scrape, "generating", 70, original=original_data)
+                                    
+                                    # 2. Salva no Banco de Dados com status RAW
+                                    await self.repository.upsert_product(product)
+                                    
+                                    # ---------------------------------------------------------
+                                    # 3. NOVO: Dispara evento para o ProcessorWorker (LLM)
+                                    # ---------------------------------------------------------
+                                    # Define o destino com base na fila de origem
+                                    llm_routing_key = "demo_llm" if queue_name == "demo_ecommerce" else "llm"
+                                    
+                                    llm_payload = json.dumps({
+                                        "tenant_id": tenant_id,
+                                        "sku": product.sku
+                                    }).encode()
+
+                                    await channel.default_exchange.publish(
+                                        aio_pika.Message(
+                                            body=llm_payload,
+                                            content_type="application/json",
+                                            delivery_mode=aio_pika.DeliveryMode.PERSISTENT
+                                        ),
+                                        routing_key=llm_routing_key
+                                    )
+                                    
+                                    logging.info(f"Tarefa de IA enfileirada na '{llm_routing_key}' para SKU: {product.sku}")
+                                    # ---------------------------------------------------------
+                                    
+                                else:
+                                    if queue_name == "demo_ecommerce":
+                                        await publish_demo_progress(url_to_scrape, "failed", 100, error="Falha ao extrair dados do produto.")
                                         
-                            except Exception as process_err:
-                                logging.error(f"Erro ao processar mensagem do RabbitMQ: {process_err}")
-                                if queue_name == "ecommerce_demo" and url_to_scrape:
-                                    await publish_demo_progress(url_to_scrape, "failed", 100, error=str(process_err))
-                                raise
+                        except Exception as process_err:
+                            logging.error(f"Erro ao processar mensagem do RabbitMQ: {process_err}")
+                            if queue_name == "demo_ecommerce" and url_to_scrape:
+                                await publish_demo_progress(url_to_scrape, "failed", 100, error=str(process_err))
+                            raise
+
         except Exception as e:
-            logging.error(f"Erro assíncrono na conexão/consumo do RabbitMQ: {e}")
+            logging.error(f"Erro assíncrono na conexão/consumo do RabbitMQ no ScraperWorker: {e}")
