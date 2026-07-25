@@ -1,3 +1,5 @@
+from app.features.checkout.workers.payment_worker import PaymentWorker
+from app.features.subscriptions.workers import SubscriptionWorker
 import asyncio
 import logging
 from contextlib import asynccontextmanager
@@ -13,10 +15,9 @@ from app.features.scraper.workers.processor_worker import ProcessorWorker
 from app.features.api_router import api_router as v1_router
 from app.features.ai_enrichment.services.llm_service import LLMService
 
-# TODO: Descomentar após implementar os workers do Mercado Pago
-# from app.features.mercadopago.workers.webhook_worker import WebhookDispatcherWorker
-# from app.features.mercadopago.workers.payment_worker import PaymentWorker
-# from app.features.mercadopago.workers.subscription_worker import SubscriptionWorker
+# Importação dos workers do Mercado Pago ativada
+from app.features.mercadopago.workers.webhook_worker import WebhookDispatcherWorker
+
 
 logger = logging.getLogger(__name__)
 
@@ -42,14 +43,14 @@ async def lifespan(app: FastAPI):
     repository = ProductRepository()
     llm_service = LLMService()
 
-    # Instâncias dos Workers Operacionais
+    # Instâncias dos Workers Operacionais (Scraping e IA)
     scraper_worker = ScraperWorker(repository)
     processor_worker = ProcessorWorker(repository, llm_service)
 
-    # TODO: Instanciar os workers do Mercado Pago quando criados
-    # webhook_worker = WebhookDispatcherWorker()
-    # payment_worker = PaymentWorker()
-    # subscription_worker = SubscriptionWorker()
+    # Instâncias dos Workers Financeiros (Mercado Pago)
+    webhook_worker = WebhookDispatcherWorker()
+    payment_worker = PaymentWorker()
+    subscription_worker = SubscriptionWorker()
 
     # 3. Inicializa os workers de background reaproveitando o canal ativo
     worker_tasks = [
@@ -73,10 +74,19 @@ async def lifespan(app: FastAPI):
             name="worker_processor_llm_demo"
         ),
 
-        # TODO: Ativar quando os workers do Mercado Pago estiverem prontos
-        # asyncio.create_task(webhook_worker.start_consuming("webhook", channel=channel), name="worker_webhook"),
-        # asyncio.create_task(payment_worker.start_consuming("payments", channel=channel), name="worker_payments"),
-        # asyncio.create_task(subscription_worker.start_consuming("subscription", channel=channel), name="worker_subscription"),
+        # Financeiro & Webhooks Mercado Pago
+        asyncio.create_task(
+            webhook_worker.start_consuming("webhook", channel=channel), 
+            name="worker_webhook"
+        ),
+        asyncio.create_task(
+            payment_worker.start_consuming("payments", channel=channel), 
+            name="worker_payments"
+        ),
+        asyncio.create_task(
+            subscription_worker.start_consuming("subscription", channel=channel), 
+            name="worker_subscription"
+        ),
     ]
 
     app.state.worker_tasks = worker_tasks

@@ -1,0 +1,42 @@
+name: Deploy E-commerce Bot to VPS
+
+on:
+  push:
+    branches:
+      - main # O deploy será acionado sempre que houver um push na branch main
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+
+    steps:
+      # Passo 1: Baixa o código do repositório para o runner do GitHub
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      # Passo 2: Conecta na VPS via SSH e executa os comandos de atualização
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            # Entra na pasta do projeto na sua VPS
+            cd /opt/ecommerce-bot
+            
+            # Puxa as atualizações mais recentes do GitHub
+            git pull origin main
+            
+            # Recria o arquivo .env de produção baseado nas variáveis seguras do GitHub
+            echo "${{ secrets.PROD_ENV_FILE }}" > .env
+            
+            # Reconstrói a imagem da API (sem usar cache local para garantir código novo)
+            docker compose build --no-cache api
+            
+            # Sobe os contêineres em background (recreando apenas se houver mudanças)
+            docker compose up -d
+            
+            # Limpa imagens "órfãs" antigas para não lotar o disco da VPS
+            docker image prune -f

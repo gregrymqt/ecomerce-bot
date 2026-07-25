@@ -23,6 +23,7 @@ from app.features.subscriptions.services import (
     SubscriptionNotificationService,
     SubscriptionsService,
 )
+from app.features.subscriptions.workers import SubscriptionWorker
 
 __all__ = [
     # Domain Model
@@ -51,4 +52,6 @@ __all__ = [
     # Services
     "SubscriptionsService",
     "SubscriptionNotificationService",
+    # Workers
+    "SubscriptionWorker",
 ]
