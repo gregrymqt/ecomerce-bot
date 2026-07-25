@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Check,
   Zap,
@@ -30,6 +31,8 @@ export const PublicPlanCards: React.FC<PublicPlanCardsProps> = ({
   currentPlanId,
   className,
 }) => {
+  const navigate = useNavigate();
+
   // Formatação de moeda em Reais R$
   const formatCurrency = (amount?: number | null, currency = 'BRL'): string => {
     if (amount == null) return 'R$ 0,00';
@@ -216,6 +219,8 @@ export const PublicPlanCards: React.FC<PublicPlanCardsProps> = ({
                       onSubscribePlan(plan);
                     } else if (plan.init_point) {
                       window.open(plan.init_point, '_blank', 'noopener,noreferrer');
+                    } else {
+                      navigate(`/checkout?plan=${encodeURIComponent(plan.reason)}&amount=${amount}`);
                     }
                   }}
                 >

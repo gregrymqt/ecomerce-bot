@@ -6,6 +6,7 @@ import { LiveDemoPage } from '@/features/live-demo';
 import { CatalogHubPage } from '@/features/catalog';
 import { SubscriptionPage } from '@/features/subscription';
 import { PlansPage } from '@/features/plans';
+import { CheckoutPage } from '@/features/checkout';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -19,6 +20,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/catalog" element={<CatalogHubPage />} />
         <Route path="/subscriptions" element={<SubscriptionPage />} />
         <Route path="/plans" element={<PlansPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/products" element={<Navigate to="/catalog" replace />} />
         <Route path="/credentials" element={<Navigate to="/catalog" replace />} />
         
