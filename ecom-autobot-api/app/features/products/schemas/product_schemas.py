@@ -1,3 +1,4 @@
+from typing import Any
 from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Optional
@@ -41,3 +42,22 @@ class Product(BaseModel):
 
     class Config:
         populate_by_name = True
+
+# --- NOVOS SCHEMAS PARA O CATÁLOGO ---
+
+class ProductUpdateSchema(BaseModel):
+    """Schema para edição manual de dados do produto no Catálogo."""
+    title: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = Field(None, ge=0)
+    status: Optional[ProductStatus] = None
+    attributes: Optional[Dict[str, Any]] = None
+
+
+class PaginatedProductsResponse(BaseModel):
+    """Resposta paginada para a Datatable do Frontend."""
+    items: List[Product]
+    total: int
+    page: int
+    limit: int
+    pages: int
