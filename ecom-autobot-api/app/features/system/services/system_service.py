@@ -31,7 +31,7 @@ class SystemService:
 
                 await channel.default_exchange.publish(
                     message,
-                    routing_key="ecommerce_demo",
+                    routing_key="demo_ecommerce",
                 )
 
     @staticmethod

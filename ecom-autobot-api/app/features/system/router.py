@@ -1,7 +1,5 @@
-import redis
 import asyncio
 import logging
-from typing import List
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 
