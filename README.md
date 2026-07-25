@@ -17,6 +17,29 @@ O projeto é dividido em dois serviços principais:
 
 A API Backend foi projetada em uma arquitetura de microserviço baseada em **FastAPI**, processamento assíncrono profundo (via `asyncio` e `aio-pika`), e filas do **RabbitMQ**.
 
+```mermaid
+graph TD
+    A[Client Web / Frontend React] -->|1. Requisição de Extração| B[FastAPI - Router Central]
+    B -->|2. Enfileira Job| C[(RabbitMQ - Raw Queue)]
+
+    subgraph 1. Ingestão & Web Scraping (Extract)
+        C --> D[ScraperWorker]
+        D -->|Dados Brutos| E[(RabbitMQ - Process Queue)]
+    end
+
+    subgraph 2. Processamento & IA (Transform)
+        E --> F[ProcessorWorker]
+        F -->|3. Enriquecimento| G[LLM Engine: OpenAI / DeepSeek / Groq]
+        F -->|4. Persiste Estado| H[(PostgreSQL)]
+        F -->|5. Telemetria & SSE| I[(Redis Cache / PubSub)]
+    end
+
+    subgraph 3. Carga & Exportação (Load)
+        H --> J[ExporterWorker]
+        J -->|6. Payload CSV/XLSX em Memória| K[Exportação: Shopify & Nuvemshop]
+    end
+```
+
 ### 🔌 Componentes da API Central (`ecom-autobot-api`)
 
 A API segue uma arquitetura modular baseada em **Domain-Driven Design (DDD)** e **Clean Architecture**, dividida em 11 módulos funcionais desacoplados:
