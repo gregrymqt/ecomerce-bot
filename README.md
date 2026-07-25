@@ -17,6 +17,29 @@ O projeto é dividido em dois serviços principais:
 
 A API Backend foi projetada em uma arquitetura de microserviço baseada em **FastAPI**, processamento assíncrono profundo (via `asyncio` e `aio-pika`), e filas do **RabbitMQ**.
 
+```mermaid
+graph TD
+    A["Client Web / Frontend React"] -->|1. Requisição de Extração| B["FastAPI - Router Central"]
+    B -->|2. Enfileira Job| C[("RabbitMQ - Raw Queue")]
+
+    subgraph S1 ["1. Ingestao e Web Scraping (Extract)"]
+        C --> D["ScraperWorker"]
+        D -->|Dados Brutos| E[("RabbitMQ - Process Queue")]
+    end
+
+    subgraph S2 ["2. Processamento e IA (Transform)"]
+        E --> F["ProcessorWorker"]
+        F -->|3. Enriquecimento| G["LLM Engine: OpenAI / DeepSeek / Groq"]
+        F -->|4. Persiste Estado| H[("PostgreSQL")]
+        F -->|5. Telemetria e SSE| I[("Redis Cache / PubSub")]
+    end
+
+    subgraph S3 ["3. Carga e Exportacao (Load)"]
+        H --> J["ExporterWorker"]
+        J -->|6. Payload CSV/XLSX em Memoria| K["Exportacao: Shopify e Nuvemshop"]
+    end
+```
+
 ### 🔌 Componentes da API Central (`ecom-autobot-api`)
 
 A API segue uma arquitetura modular baseada em **Domain-Driven Design (DDD)** e **Clean Architecture**, dividida em 11 módulos funcionais desacoplados:
@@ -70,8 +93,6 @@ Crie um arquivo `.env` na raiz do projeto ou dentro de `ecom-autobot-api/.env`, 
 
 ```env
 # Chaves de API de Inteligência Artificial (BYOK / Provedores Globais)
-OPENAI_API_KEY=sk-sua-chave-openai
-GEMINI_API_KEY=sua-chave-gemini
 DEEPSEEK_API_KEY=sua-chave-deepseek
 GROQ_API_KEY=sua-chave-groq
 
