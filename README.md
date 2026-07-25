@@ -70,8 +70,6 @@ Crie um arquivo `.env` na raiz do projeto ou dentro de `ecom-autobot-api/.env`, 
 
 ```env
 # Chaves de API de Inteligência Artificial (BYOK / Provedores Globais)
-OPENAI_API_KEY=sk-sua-chave-openai
-GEMINI_API_KEY=sua-chave-gemini
 DEEPSEEK_API_KEY=sua-chave-deepseek
 GROQ_API_KEY=sua-chave-groq
 
