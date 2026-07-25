@@ -19,24 +19,24 @@ A API Backend foi projetada em uma arquitetura de microserviço baseada em **Fas
 
 ```mermaid
 graph TD
-    A[Client Web / Frontend React] -->|1. Requisição de Extração| B[FastAPI - Router Central]
-    B -->|2. Enfileira Job| C[(RabbitMQ - Raw Queue)]
+    A["Client Web / Frontend React"] -->|1. Requisição de Extração| B["FastAPI - Router Central"]
+    B -->|2. Enfileira Job| C[("RabbitMQ - Raw Queue")]
 
-    subgraph 1. Ingestão & Web Scraping (Extract)
-        C --> D[ScraperWorker]
-        D -->|Dados Brutos| E[(RabbitMQ - Process Queue)]
+    subgraph S1 ["1. Ingestao e Web Scraping (Extract)"]
+        C --> D["ScraperWorker"]
+        D -->|Dados Brutos| E[("RabbitMQ - Process Queue")]
     end
 
-    subgraph 2. Processamento & IA (Transform)
-        E --> F[ProcessorWorker]
-        F -->|3. Enriquecimento| G[LLM Engine: OpenAI / DeepSeek / Groq]
-        F -->|4. Persiste Estado| H[(PostgreSQL)]
-        F -->|5. Telemetria & SSE| I[(Redis Cache / PubSub)]
+    subgraph S2 ["2. Processamento e IA (Transform)"]
+        E --> F["ProcessorWorker"]
+        F -->|3. Enriquecimento| G["LLM Engine: OpenAI / DeepSeek / Groq"]
+        F -->|4. Persiste Estado| H[("PostgreSQL")]
+        F -->|5. Telemetria e SSE| I[("Redis Cache / PubSub")]
     end
 
-    subgraph 3. Carga & Exportação (Load)
-        H --> J[ExporterWorker]
-        J -->|6. Payload CSV/XLSX em Memória| K[Exportação: Shopify & Nuvemshop]
+    subgraph S3 ["3. Carga e Exportacao (Load)"]
+        H --> J["ExporterWorker"]
+        J -->|6. Payload CSV/XLSX em Memoria| K["Exportacao: Shopify e Nuvemshop"]
     end
 ```
 
