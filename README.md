@@ -9,14 +9,14 @@ Um ecossistema escalável focado em extração, processamento e enriquecimento a
 O projeto é dividido em módulos principais:
 
 * 🟢 **`ecom-autobot-api/`**: API Central e Workers em Python (FastAPI, RabbitMQ, Redis, PostgreSQL).
-* 🔵 **`ecom-autobot-web/`**: Portal Web Frontend construído em React, TypeScript e Vite.
+* 🔵 **`ecom-autobot-web/`**: Portal Web Frontend construído em React 18, TypeScript, Vite e Tailwind CSS.
 * 🛠️ **`infra/`**: Configurações de infraestrutura isoladas para **Desenvolvimento** (`infra/dev`) e **Produção VPS** (`infra/prod`).
 
 ---
 
 ## 🏗️ Arquitetura do Sistema
 
-A API Backend foi projetada em uma arquitetura de microserviço baseada em **FastAPI**, processamento assíncrono profundo (via `asyncio` e `aio-pika`), e filas do **RabbitMQ**.
+A API Backend foi projetada em uma arquitetura de microserviços assíncronos baseada em **FastAPI** (`asyncio` e `aio-pika`), e filas do **RabbitMQ**.
 
 ```mermaid
 graph TD
@@ -40,6 +40,8 @@ graph TD
         J -->|6. Payload CSV/XLSX em Memoria| K["Exportacao: Shopify e Nuvemshop"]
     end
 ```
+
+---
 
 ### 🔌 Componentes da API Central (`ecom-autobot-api`)
 
@@ -68,6 +70,27 @@ A API segue uma arquitetura modular baseada em **Domain-Driven Design (DDD)** e 
 * **ProcessorWorker**: Robô independente que busca itens recém scrapeados no banco de dados para envio às LLMs. Executa rotinas de copywriting, tags de busca e SEO.
 * **ExporterWorker**: Agente assíncrono para gerar arquivos CSV otimizados e paginados para plataformas como Shopify e Nuvemshop, garantindo isolamento Multi-Tenant e prevenindo estouro de memória (OOM).
 * **Database (PostgreSQL / Supabase)**: Central de estado relacional com SQLAlchemy assíncrono (`asyncpg`). Índices compostos e chaves primárias `(tenant_id, sku)` garantem estrito isolamento por cliente.
+
+---
+
+### 🌐 Componentes e Recursos do Frontend (`ecom-autobot-web`)
+
+O portal Web Frontend foi desenvolvido em **React 18**, **TypeScript**, **Vite** e **Tailwind CSS**, estruturado no padrão **Feature-Based Architecture** (`Types -> Services -> Hooks -> UI Components`):
+
+* **Módulos Funcionais (`src/features/`)**:
+  * **Central do Catálogo (`/catalog`)**: Hub para visualização de produtos extraídos (`RAW`, `PROCESSING`, `PROCESSED`, `FAILED`), filtros interativos, badges de SEO e exportação rápida para CSV, Shopify e Nuvemshop.
+  * **Demonstração ao Vivo (`/demo`)**: Transmissão Server-Sent Events (`sseClient`) para acompanhar em tempo real as etapas de extração e enriquecimento dos produtos pelo robô.
+  * **Assinaturas & Faturamento (`/subscriptions`)**: Card do plano ativo do tenant (`SubscriptionBillingCard`), validade da cobrança recorrente, diálogo de confirmação de cancelamento e histórico paginado com exportação CSV.
+  * **Planos Mercado Pago (`/plans`)**: Vitrine pública com preços formatados em R$, badges de teste grátis e Painel Administrativo (`AdminPlanTable` e `AdminPlanModal`) para criar e editar planos Preapproval.
+  * **Checkout Transparente (`/checkout`)**: Widget de pagamento com abas para **PIX** (QR Code em Base64, botão Copia e Cola com feedback "Copiado!", cronômetro de expiração e polling a cada 4s via `syncOrderStatus`) e **Cartão de Crédito** (mascaramento de campos, parcelamento em até 12x e identificação de bandeira).
+  * **Autenticação & Multi-Tenancy (`/auth`)**: Formulários de login/registro, persistência JWT em `localStorage` e envio automático dos headers `Authorization` e `X-Tenant-ID`.
+  * **Credenciais de IA / BYOK (`ai-keys`)**: Modais para cadastro e gerenciamento de chaves próprias de API (DeepSeek, Groq, OpenAI, Gemini).
+  * **Web Scraper (`scraper`)**: Form de disparo e ingestão assíncrona de URLs de produtos para scraping.
+
+* **Design System & Acessibilidade**:
+  * **Design Mobile-First**: Layout fluido adaptável a dispositivos móveis e desktops.
+  * **Touch Targets (WCAG)**: Botões e campos com dimensão mínima de **44px** (`min-h-[44px]` ou `h-11`).
+  * **Prevenção de Auto-Zoom**: Inputs com `font-size >= 16px` para evitar zoom indesejado no iOS Safari.
 
 ---
 

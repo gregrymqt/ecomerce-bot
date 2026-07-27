@@ -69,13 +69,24 @@ ecommerce-bot/
 │   ├── alembic/                # Migrações de banco de dados
 │   ├── Dockerfile
 │   └── requirements.txt
-└── ecom-autobot-web/           # 🔵 Frontend Web SPA (React + TypeScript + Vite)
+└── ecom-autobot-web/           # 🔵 Frontend Web SPA (React 18 + TypeScript + Vite + Tailwind CSS)
     ├── src/
-    │   ├── components/ui/      # Atomic Design System (FormField, Button, Select, etc.)
-    │   ├── features/           # Funcionalidades (live-demo, auth)
-    │   ├── lib/                # Client HTTP (apiClient), SSE Client (sseClient)
-    │   └── utils/              # Funções utilitárias de UI (clsx, tailwind-merge)
-    └── package.json
+    │   ├── components/ui/      # Atomic Design System (display, feedback, form, navigation, overlay, Button)
+    │   ├── features/           # Módulos Funcionais DDD (Types -> Services -> Hooks -> UI Components)
+    │   │   ├── ai-keys/        # Gestão de credenciais de IA por Tenant (BYOK: DeepSeek, Groq, OpenAI, Gemini)
+    │   │   ├── auth/           # Autenticação JWT, Login, Cadastro e Contexto Multi-Tenant (X-Tenant-ID)
+    │   │   ├── catalog/        # Central do Catálogo, Tabela de Produtos Enriquecidos, Filtros e Exportação
+    │   │   ├── checkout/       # Checkout Transparente MP (PIX QR Code/Copia e Cola e Cartão de Crédito)
+    │   │   ├── live-demo/      # Live Demo com progresso em tempo real do robô via SSE (sseClient)
+    │   │   ├── plans/          # Vitrine Pública de Planos e Painel Admin Mercado Pago Preapproval
+    │   │   ├── scraper/        # Formulário e Ingestão de Scraping de URLs de Produtos
+    │   │   └── subscription/   # Card de Faturamento Ativo do Tenant, Histórico de Assinaturas e CSV
+    │   ├── layouts/            # Layouts Globais (MainLayout com Sidebar Responsiva e Header Bar)
+    │   ├── lib/                # Client HTTP (apiClient Axios com JWT/X-Tenant-ID) e Client SSE (sseClient)
+    │   ├── routes/             # Roteamento Central React Router (/auth, /demo, /catalog, /subscriptions, /plans, /checkout)
+    │   └── utils/              # Utilitários de UI e Helpers (cn, errors, storage)
+    ├── package.json
+    └── vite.config.ts
 ```
 
 ---
@@ -118,13 +129,45 @@ ecommerce-bot/
 ### 🛠️ Tech Stack:
 - **Framework:** React 18, TypeScript, Vite.
 - **Estilização:** Tailwind CSS + Vanilla CSS (sem utilitários genéricos arbitrários fora do padrão).
+- **Roteamento:** React Router DOM.
 - **Ícones:** `lucide-react`.
+
+### 🏗️ Padrão Arquitetural de Feature (Feature-Based Architecture):
+Todo módulo funcional em `src/features/<feature>/` DEVE seguir estritamente o fluxo em 4 camadas:
+1. **`types/` (`<feature>.type.ts`):** Definição de contratos TypeScript alinhados aos Schemas Pydantic / DTOs do backend.
+2. **`services/` (`<feature>.service.ts`):** Encapsulamento de chamadas HTTP utilizando o `apiClient` com tratamento de erros.
+3. **`hooks/` (`use<Feature>.ts`):** Hook customizado para gerenciar estado reativo, requisições, filtros e loading/error states.
+4. **`components/` & `pages/`:** Componentes de UI pura e páginas de visualização responsivas (Mobile-First).
+
+### 🧩 Módulos Funcionais do Frontend:
+1. **Autenticação & Multi-Tenancy (`src/features/auth`):**
+   - Autenticação via JWT (Bearer) com salvamento de tokens e tenant ativo no `localStorage`.
+   - Injeção automática dos headers `Authorization` e `X-Tenant-ID` no `apiClient`.
+2. **Central do Catálogo (`src/features/catalog`):**
+   - Visualização e gerenciamento de produtos com estados (`RAW`, `PROCESSING`, `PROCESSED`, `FAILED`).
+   - Exportação direta de catálogos para arquivos CSV, Shopify e Nuvemshop.
+3. **Demonstração em Tempo Real (`src/features/live-demo`):**
+   - Transmissão ao vivo de etapas de scraping e enriquecimento com IA usando `sseClient` (`GET /api/v1/demo/stream`).
+4. **Checkout Transparente Mercado Pago (`src/features/checkout`):**
+   - Aba **PIX**: Exibição de QR Code Base64, botão Copia e Cola com feedback visual ("Copiado!"), cronômetro de expiração em tempo real (`MM:SS`) e polling automático a cada 4s chamando `syncOrderStatus`.
+   - Aba **Cartão de Crédito**: Form transparente com mascaramento dinâmico de cartão (`0000 0000 0000 0000`), expiração (`MM/AA`), CVV, parcelamento em até 12x e identificação automática de bandeira.
+5. **Gestão de Planos (`src/features/plans`):**
+   - **Vitrine Pública (`PublicPlanCards`):** Cards responsivos com preços formatados em R$, badges de teste grátis e atalhos de contratação.
+   - **Painel Administrativo (`AdminPlanTable` & `AdminPlanModal`):** Gerenciamento e criação/edição de planos sincronizados com o Mercado Pago Preapproval.
+6. **Assinaturas & Faturamento (`src/features/subscription`):**
+   - Exibição da assinatura ativa do tenant (`SubscriptionBillingCard`), validade, valor recorrente e diálogo de confirmação de cancelamento.
+   - Tabela de histórico de assinaturas (`SubscriptionHistoryTable`) com badges coloridos (`authorized` = verde, `pending` = amarelo, `cancelled` = vermelho, `paused` = azul) e exportação para CSV.
+7. **Credenciais de IA / BYOK (`src/features/ai-keys`):**
+   - Modal para cadastro e atualização criptografada de chaves de API próprias por tenant (DeepSeek, Groq, OpenAI, Gemini).
+8. **Web Scraper & Ingestão (`src/features/scraper`):**
+   - Formulário de disparo assíncrono de extração de produtos a partir de URLs de e-commerce.
 
 ### 📱 Design System & Acessibilidade (WCAG):
 1. **Mobile-First:** Todo componente de formulário ou layout DEVE ser projetado primariamente para telas pequenas com adaptação para desktop.
 2. **Touch Targets:** Botões e áreas clicáveis DEVEM possuir altura/largura mínima de **44px** (`min-h-[44px]` ou `h-11`).
 3. **Prevenção de Auto-Zoom no iOS Safari:** Inputs, selects e textareas DEVEM possuir `font-size >= 16px` (`text-base` ou `text-sm sm:text-base`).
 4. **Respeito às APIs do Navegador:** Componentes DEVEM aceitar `forwardRef`, tratar acessibilidade com atributos ARIA (`aria-invalid`, `aria-describedby`, `aria-required`) e manipular estados `disabled`, `loading` e `error`.
+5. **Estilização Padronizada:** Utilização de Tailwind CSS combinada com o utilitário `cn` (`clsx` + `tailwind-merge`) importado de `@/utils/cn`.
 
 ### 🔌 Comunicação com o Backend:
 - **Client HTTP (`src/lib/apiClient.ts`):** Envia o token JWT (Bearer) no header `Authorization` e o tenant atual no header `X-Tenant-ID`.
@@ -138,6 +181,6 @@ Ao interagir ou gerar código neste repositório, a IA DEVE seguir estas diretri
 
 1. **Arquitetura DDD (Domain-Driven Design):** Cada feature em `app/features/<feature>/` é dividida em subpastas (`domain/`, `infrastructure/`, `repositories/`, `schemas/`, `services/`, `workers/`, `parsers/`). Sempre consulte os DTOs Pydantic na subpasta `schemas/` e os modelos SQLAlchemy na subpasta `domain/` (ou exportados via `__init__.py` da feature) antes de alterar APIs ou queries.
 2. **Código Assíncrono:** No backend, NUNCA use chamadas bloqueantes síncronas. Utilize `async def`, `httpx.AsyncClient`, `AsyncSession` e `await` em Redis e RabbitMQ.
-3. **Arquitetura Modular (Feature-Based):** Mantenha o isolamento dos módulos. Novas rotas devem ser incluídas no respectivo router dentro de `app/features/<feature>/router.py` e agregadas em `app/features/api_router.py`.
+3. **Arquitetura Modular (Feature-Based):** Mantenha o isolamento dos módulos no backend e no frontend (`Types -> Services -> Hooks -> UI Components`). Novas rotas devem ser incluídas no respectivo router.
 4. **Sem Patches Superficiais de Sintoma:** Se um erro ocorrer em um worker ou rota, resolva a causa raiz da falha em vez de ocultar com `try/except` silencioso ou retornos vazios falsos.
 5. **Verificação Runtime:** NUNCA considere uma tarefa concluída sem testar a compilação/execução do código (`python -m app.main` ou `npm run build / npm run dev`).
