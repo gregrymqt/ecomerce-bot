@@ -1,0 +1,141 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/features/auth';
+import { HomeHeader } from '../components/HomeHeader';
+import { QuickExtractWidget } from '../components/QuickExtractWidget';
+import { KpiMetricsGrid } from '../components/KpiMetricsGrid';
+import { RecentJobsTable } from '../components/RecentJobsTable';
+import { IntegrationsStatus } from '../components/IntegrationsStatus';
+import { type AIModel, type ExtractionJob, type HomeMetrics, MOCK_EXTRACTION_JOBS, MOCK_HOME_METRICS } from '../types/home.types';
+import { AIKeysForm } from '@/features/ai-keys/components/AIKeysForm';
+import { Modal, Alert } from '@/components/ui';
+
+export const HomePage: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const [metrics, setMetrics] = useState<HomeMetrics>(MOCK_HOME_METRICS);
+  const [jobs, setJobs] = useState<ExtractionJob[]>(MOCK_EXTRACTION_JOBS);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [isKeysModalOpen, setIsKeysModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Manipulador de disparo de extração rápida
+  const handleQuickExtract = async (url: string, aiModel: AIModel) => {
+    setIsExtracting(true);
+    try {
+      // Simulação de requisição de extração
+      await new Promise((resolve) => setTimeout(resolve, 1800));
+
+      const newJob: ExtractionJob = {
+        id: `job-${Date.now()}`,
+        productName: `Produto extraído de ${new URL(url).hostname}`,
+        sourceDomain: new URL(url).hostname,
+        aiModel,
+        status: 'Processando',
+        createdAt: new Date().toISOString(),
+      };
+
+      setJobs((prev) => [newJob, ...prev]);
+      setMetrics((prev) => ({
+        ...prev,
+        aiCreditsUsed: Math.min(prev.aiCreditsTotal, prev.aiCreditsUsed + 5),
+        activeJobsCount: prev.activeJobsCount + 1,
+      }));
+
+      setToastMessage(`Job de extração para ${newJob.sourceDomain} iniciado com sucesso!`);
+      setTimeout(() => setToastMessage(null), 4000);
+    } catch {
+      setToastMessage('Falha ao processar URL. Verifique o formato do link.');
+      setTimeout(() => setToastMessage(null), 4000);
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  const handleViewJob = (_job: ExtractionJob) => {
+    navigate('/catalog');
+  };
+
+  const handleExportJob = (job: ExtractionJob) => {
+    setToastMessage(`Iniciando download do CSV para "${job.productName}"...`);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleOpenSupport = () => {
+    window.open('https://discord.gg', '_blank', 'noopener,noreferrer');
+  };
+
+  const userName = user?.name || (user?.email ? user.email.split('@')[0] : 'Lucas');
+
+  return (
+    <div
+      role="main"
+      aria-label="Dashboard Principal da Plataforma"
+      className="min-h-screen bg-[#090D16] text-slate-100 p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 max-w-7xl mx-auto"
+    >
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-6 right-6 z-50 max-w-md animate-fade-in">
+          <Alert variant="info" title="Notificação de Sistema" onClose={() => setToastMessage(null)}>
+            {toastMessage}
+          </Alert>
+        </div>
+      )}
+
+      {/* 1. Componente Superior - Header */}
+      <HomeHeader
+        userName={userName}
+        planName="Plano Pro"
+        isApiOnline={true}
+      />
+
+      {/* 2. Hero Widget - Extração Rápida */}
+      <section aria-labelledby="quick-extract-heading">
+        <QuickExtractWidget
+          onExtract={handleQuickExtract}
+          isLoading={isExtracting}
+        />
+      </section>
+
+      {/* 3. Grid de KPIs & Métricas */}
+      <section aria-label="Métricas Principais da Plataforma">
+        <KpiMetricsGrid metrics={metrics} />
+      </section>
+
+      {/* 4. Grid Responsivo de 2 Colunas no Desktop (2/3 Tabela + 1/3 Sidebar Integrações) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 items-start">
+        {/* Coluna Principal (2/3): Tabela de Extrações Recentes */}
+        <section aria-labelledby="recent-jobs-heading" className="lg:col-span-2 space-y-4">
+          <RecentJobsTable
+            jobs={jobs}
+            onViewJob={handleViewJob}
+            onExportJob={handleExportJob}
+          />
+        </section>
+
+        {/* Sidebar Lateral (1/3): Status de Integrações & Suporte */}
+        <aside aria-label="Status de Integrações e Suporte" className="lg:col-span-1">
+          <IntegrationsStatus
+            onConfigureKeys={() => setIsKeysModalOpen(true)}
+            onOpenSupport={handleOpenSupport}
+          />
+        </aside>
+      </div>
+
+      {/* Modal de Configuração de Chaves BYOK */}
+      <Modal
+        isOpen={isKeysModalOpen}
+        onClose={() => setIsKeysModalOpen(false)}
+        title="Gerenciamento de Credenciais de IA (BYOK)"
+        size="lg"
+      >
+        <div className="p-4">
+          <AIKeysForm />
+        </div>
+      </Modal>
+    </div>
+  );
+};
+
+export default HomePage;

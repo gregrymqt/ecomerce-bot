@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Zap, User, Bot, ShoppingBag, CreditCard, Layers, LogOut, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Zap, User, Bot, ShoppingBag, CreditCard, Layers, LogOut, ShieldCheck } from 'lucide-react';
 import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar';
 import { useAuth } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
@@ -13,10 +13,17 @@ export const MainLayout: React.FC = () => {
 
   const navItems: SidebarNavItem[] = [
     {
+      id: 'home',
+      label: 'Dashboard',
+      icon: <LayoutDashboard className="w-5 h-5" />,
+      active: location.pathname === '/' || location.pathname === '/home',
+      onClick: () => navigate('/'),
+    },
+    {
       id: 'demo',
       label: 'Live Demo',
       icon: <Zap className="w-5 h-5" />,
-      active: location.pathname === '/demo' || location.pathname === '/',
+      active: location.pathname === '/demo',
       onClick: () => navigate('/demo'),
     },
     {
