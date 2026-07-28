@@ -37,4 +37,20 @@ export const productService = {
     const response = await apiClient.delete<{ status: string; message: string }>(`/api/v1/products/${sku}`);
     return response.data;
   },
+
+  /**
+   * Sincroniza produto diretamente para a Shopify via GraphQL no backend.
+   */
+  syncToShopify: async (productPayload: Record<string, unknown>): Promise<Record<string, unknown>> => {
+    const response = await apiClient.post<Record<string, unknown>>('/api/v1/shopify/products', productPayload);
+    return response.data;
+  },
+
+  /**
+   * Sincroniza produto diretamente para a Nuvemshop via API REST no backend.
+   */
+  syncToNuvemshop: async (productPayload: Record<string, unknown>): Promise<Record<string, unknown>> => {
+    const response = await apiClient.post<Record<string, unknown>>('/api/v1/nuvemshop/products', productPayload);
+    return response.data;
+  },
 };

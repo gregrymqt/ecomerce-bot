@@ -4,7 +4,7 @@ import { MainLayout } from '@/layouts/MainLayout';
 import { HomePage } from '@/features/home';
 import { AuthPage } from '@/features/auth';
 import { LiveDemoPage } from '@/features/live-demo';
-import { CatalogHubPage } from '@/features/catalog';
+import { CatalogPage } from '@/features/catalog';
 import { SubscriptionPage } from '@/features/subscription';
 
 export const AppRoutes: React.FC = () => {
@@ -18,7 +18,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/home" element={<HomePage />} />
         <Route path="/demo" element={<LiveDemoPage />} />
-        <Route path="/catalog" element={<CatalogHubPage />} />
+        <Route path="/catalog" element={<CatalogPage />} />
         <Route path="/billing" element={<SubscriptionPage />} />
         <Route path="/subscriptions" element={<SubscriptionPage />} />
         <Route path="/plans" element={<SubscriptionPage />} />
