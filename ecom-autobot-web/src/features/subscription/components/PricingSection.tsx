@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CheckCircle2, Sparkles, Zap, Building2, Check, ArrowRight } from 'lucide-react';
-import type { BillingCycle, PlanTier } from '../types/subscription.types';
+import type { BillingCycle, PlanTier } from '../types/subscription.type';
 import { cn } from '@/utils/cn';
 
 export interface PricingSectionProps {

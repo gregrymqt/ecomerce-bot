@@ -12,7 +12,7 @@ import {
   Shield,
   Loader2,
 } from 'lucide-react';
-import type { PlanTier, BillingCycle, PaymentMethodType } from '../types/subscription.types';
+import type { PlanTier, BillingCycle, PaymentMethodType } from '../types/subscription.type';
 import { cn } from '@/utils/cn';
 
 export interface CheckoutModalProps {

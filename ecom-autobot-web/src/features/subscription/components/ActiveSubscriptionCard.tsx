@@ -1,6 +1,6 @@
 import React from 'react';
 import { Sparkles, CreditCard, XCircle, Zap, Calendar, ShieldCheck } from 'lucide-react';
-import type { SubscriptionDetails } from '../types/subscription.types';
+import type { SubscriptionDetails } from '../types/subscription.type';
 import { cn } from '@/utils/cn';
 
 export interface ActiveSubscriptionCardProps {
