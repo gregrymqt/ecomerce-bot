@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Zap, User, Bot, ShoppingBag, CreditCard, Layers, LogOut, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Zap, User, Bot, ShoppingBag, CreditCard, LogOut, ShieldCheck } from 'lucide-react';
 import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar';
 import { useAuth } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
@@ -43,18 +43,17 @@ export const MainLayout: React.FC = () => {
       onClick: () => navigate('/catalog'),
     },
     {
-      id: 'subscriptions',
-      label: 'Assinaturas',
+      id: 'billing',
+      label: 'Faturamento & Planos',
       icon: <CreditCard className="w-5 h-5" />,
-      active: location.pathname === '/subscriptions',
-      onClick: () => navigate('/subscriptions'),
-    },
-    {
-      id: 'plans',
-      label: 'Planos',
-      icon: <Layers className="w-5 h-5" />,
-      active: location.pathname === '/plans',
-      onClick: () => navigate('/plans'),
+      badge: 'Hub',
+      badgeVariant: 'indigo',
+      active:
+        location.pathname === '/billing' ||
+        location.pathname === '/subscriptions' ||
+        location.pathname === '/plans' ||
+        location.pathname === '/checkout',
+      onClick: () => navigate('/billing'),
     },
   ];
 
