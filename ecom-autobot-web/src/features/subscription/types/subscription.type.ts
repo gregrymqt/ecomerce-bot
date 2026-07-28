@@ -115,3 +115,53 @@ export interface Invoice {
   status: InvoiceStatus;
   pdfUrl?: string;
 }
+
+export interface CustomerDTO {
+  email: string;
+  first_name: string;
+  last_name: string;
+  document_type?: string;
+  document_number?: string;
+}
+
+export interface CreatePixCheckoutPayload {
+  external_reference: string;
+  total_amount: number;
+  customer: CustomerDTO;
+  items: Array<{
+    id: string;
+    title: string;
+    quantity: number;
+    unit_price: number;
+  }>;
+  expiration_time_iso?: string;
+}
+
+export interface CreateCreditCardCheckoutPayload {
+  external_reference: string;
+  total_amount: number;
+  card_token: string;
+  payment_method_id: string;
+  installments: number;
+  statement_descriptor?: string;
+  customer: CustomerDTO;
+  items: Array<{
+    id: string;
+    title: string;
+    quantity: number;
+    unit_price: number;
+  }>;
+}
+
+export interface CheckoutResultResponse {
+  order_id: string;
+  mp_order_id: string;
+  external_reference: string;
+  status: string;
+  status_detail?: string;
+  total_amount: number;
+  pix_qr_code?: string;
+  pix_qr_code_base64?: string;
+  pix_expiration_date?: string;
+  ticket_url?: string;
+}

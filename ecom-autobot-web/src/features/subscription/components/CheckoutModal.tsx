@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   X,
   CreditCard,
@@ -12,7 +12,8 @@ import {
   Shield,
   Loader2,
 } from 'lucide-react';
-import type { PlanTier, BillingCycle, PaymentMethodType } from '../types/subscription.type';
+import type { PlanTier, BillingCycle } from '../types/subscription.type';
+import { useCheckoutModal } from '../hooks/useCheckoutModal';
 import { cn } from '@/utils/cn';
 
 export interface CheckoutModalProps {
@@ -37,85 +38,35 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   billingCycle = 'monthly',
   onPaymentSuccess,
 }) => {
-  const [activeTab, setActiveTab] = useState<PaymentMethodType>('pix');
-  const [isCopied, setIsCopied] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(899); // 14:59
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Card Form State
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardHolder, setCardHolder] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
-  const [installments, setInstallments] = useState('1');
-
-  // ESC key handler
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  // Timer countdown for PIX
-  useEffect(() => {
-    if (!isOpen || activeTab !== 'pix') return;
-    const interval = setInterval(() => {
-      setSecondsLeft((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isOpen, activeTab]);
+  const {
+    activeTab,
+    setActiveTab,
+    isCopied,
+    formattedTimer,
+    isSubmitting,
+    cardNumber,
+    cardHolder,
+    setCardHolder,
+    cardExpiry,
+    cardCvv,
+    setCardCvv,
+    installments,
+    setInstallments,
+    currentPrice,
+    pixCopyPasteCode,
+    handleCopyPix,
+    handleCardNumberChange,
+    handleExpiryChange,
+    handleSubmitCard,
+  } = useCheckoutModal({
+    isOpen,
+    onClose,
+    plan,
+    billingCycle,
+    onPaymentSuccess,
+  });
 
   if (!isOpen) return null;
-
-  const currentPrice = plan
-    ? billingCycle === 'yearly'
-      ? plan.priceYearly
-      : plan.priceMonthly
-    : 149;
-
-  const formatTimer = (totalSec: number) => {
-    const m = Math.floor(totalSec / 60);
-    const s = totalSec % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
-  const pixCopyPasteCode =
-    '00020126580014br.gov.bcb.pix0136ecom-autobot-mp-pix-key-99182305204000053039865405149.005802BR5916ECOM AUTOBOT SAO PAULO6009SAO PAULO62070503***6304E8A2';
-
-  const handleCopyPix = () => {
-    navigator.clipboard.writeText(pixCopyPasteCode);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 3000);
-  };
-
-  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 16);
-    const formatted = value.replace(/(\d{4})/g, '$1 ').trim();
-    setCardNumber(formatted);
-  };
-
-  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 4);
-    if (value.length >= 3) {
-      setCardExpiry(`${value.slice(0, 2)}/${value.slice(2)}`);
-    } else {
-      setCardExpiry(value);
-    }
-  };
-
-  const handleSubmitCard = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      if (onPaymentSuccess) onPaymentSuccess();
-      onClose();
-    }, 1500);
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
@@ -188,7 +139,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {/* Countdown Timer */}
             <div className="inline-flex items-center gap-2 rounded-xl bg-amber-500/10 px-4 py-2 text-xs font-bold text-amber-400 border border-amber-500/30">
               <Timer className="h-4 w-4 animate-pulse text-amber-400" />
-              <span>QR Code expira em: {formatTimer(secondsLeft)}</span>
+              <span>QR Code expira em: {formattedTimer}</span>
             </div>
 
             {/* Simulated QR Code Canvas */}
@@ -309,7 +260,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               >
                 <option value="1">1x de R$ {currentPrice},00 à vista sem juros</option>
                 <option value="2">2x de R$ {(currentPrice / 2).toFixed(2)} sem juros</option>
-
                 <option value="3">3x de R$ {(currentPrice / 3).toFixed(2)} sem juros</option>
                 <option value="6">6x de R$ {(currentPrice / 6).toFixed(2)} sem juros</option>
                 <option value="12">12x de R$ {(currentPrice / 12).toFixed(2)} sem juros</option>

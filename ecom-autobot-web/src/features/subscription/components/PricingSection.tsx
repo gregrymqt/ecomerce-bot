@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { CheckCircle2, Sparkles, Zap, Building2, Check, ArrowRight } from 'lucide-react';
 import type { BillingCycle, PlanTier } from '../types/subscription.type';
+import { usePricingSection } from '../hooks/usePricingSection';
 import { cn } from '@/utils/cn';
 
 export interface PricingSectionProps {
@@ -59,13 +60,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   onSelectPlan,
   className,
 }) => {
-  const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
-
-  const handlePlanClick = (plan: PlanTier) => {
-    if (onSelectPlan) {
-      onSelectPlan(plan, billingCycle);
-    }
-  };
+  const { billingCycle, setBillingCycle, handlePlanClick } = usePricingSection({ onSelectPlan });
 
   return (
     <div className={cn('space-y-8', className)}>

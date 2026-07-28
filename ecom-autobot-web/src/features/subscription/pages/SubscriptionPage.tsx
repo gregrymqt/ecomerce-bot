@@ -9,7 +9,7 @@ import { CheckoutModal } from '../components/CheckoutModal';
 import { Alert } from '@/components/ui/feedback/Alert';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/features/auth';
-import type { PlanTier, BillingCycle } from '../types/subscription.types';
+import type { PlanTier, BillingCycle } from '../types/subscription.type';
 
 export const SubscriptionPage: React.FC = () => {
   const { currentTenant } = useAuth();
