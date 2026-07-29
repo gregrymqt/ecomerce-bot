@@ -1,15 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Zap, User, Bot, ShoppingBag, CreditCard, LogOut, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Zap, User, Bot, ShoppingBag, CreditCard, LogOut, ShieldCheck, Key } from 'lucide-react';
 import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar';
 import { useAuth } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/feedback/Badge';
+import { AiKeysModal } from '@/features/ai-keys';
 
 export const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, currentTenant, logout } = useAuth();
+  const [isAiKeysModalOpen, setIsAiKeysModalOpen] = useState(false);
 
   const navItems: SidebarNavItem[] = [
     {
@@ -119,6 +121,16 @@ export const MainLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAiKeysModalOpen(true)}
+              iconLeft={<Key className="w-4 h-4 text-purple-500 dark:text-purple-400" />}
+              className="h-9 min-h-[36px] text-xs font-semibold border-purple-500/30 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40"
+            >
+              Chaves IA (BYOK)
+            </Button>
+
             {currentTenant ? (
               <Badge variant="info" icon={<ShieldCheck className="w-3.5 h-3.5" />}>
                 Tenant: {currentTenant}
@@ -134,6 +146,13 @@ export const MainLayout: React.FC = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Modal Global de Chaves de IA */}
+      <AiKeysModal
+        isOpen={isAiKeysModalOpen}
+        onClose={() => setIsAiKeysModalOpen(false)}
+      />
     </div>
   );
 };
+

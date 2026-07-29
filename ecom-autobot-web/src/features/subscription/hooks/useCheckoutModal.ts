@@ -92,6 +92,29 @@ export function useCheckoutModal({
     }
   }, [isOpen, activeTab, plan, currentPrice]);
 
+  // Polling em tempo real a cada 4s quando a aba PIX estiver ativa
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'pix') return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const orderId = `order_pix_latest`;
+        const res = await subscriptionService.syncOrder(orderId);
+        if (res.status === 'approved' || res.status === 'authorized' || res.status === 'paid') {
+          if (onPaymentSuccess) {
+            onPaymentSuccess();
+          }
+          onClose();
+        }
+      } catch {
+        // Silencioso em polling contínuo para não incomodar o usuário
+      }
+    }, 4000);
+
+    return () => clearInterval(pollInterval);
+  }, [isOpen, activeTab, onPaymentSuccess, onClose]);
+
+
   const formatTimer = (totalSec: number) => {
     const m = Math.floor(totalSec / 60);
     const s = totalSec % 60;
