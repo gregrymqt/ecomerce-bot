@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User, Mail, Lock, Eye, EyeOff, Building, UserPlus } from 'lucide-react';
+import type { RegisterFormData } from '../types/auth.types';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/display/Card';
@@ -8,9 +9,19 @@ import { FormField } from '@/components/ui/form/FormField';
 import { cn } from '@/lib/utils';
 
 export interface RegisterFormProps {
-  /** Callback acionado após o registro efetuado com sucesso */
+  /** Estado de carregamento simulado ou real */
+  isLoading?: boolean;
+  /** Visibilidade da senha */
+  showPassword?: boolean;
+  /** Handler para alternar visibilidade da senha */
+  onTogglePassword?: () => void;
+  /** Handler de submissão do formulário enviando RegisterFormData */
+  onSubmit?: (data: RegisterFormData) => void;
+  /** Callback alternativo para submissão direta */
+  onRegister?: (data: RegisterFormData) => void;
+  /** Callback acionado após o registro efetuado com sucesso (uso legado) */
   onSuccess?: () => void;
-  /** Callback para alternar a exibição para a tela/modo de Login */
+  /** Callback para alternar para a tela/modo de Login */
   onSwitchToLogin?: () => void;
   /** Classes CSS adicionais para o container principal */
   className?: string;
@@ -19,30 +30,45 @@ export interface RegisterFormProps {
 }
 
 export const RegisterForm: React.FC<RegisterFormProps> = ({
+  isLoading: propsIsLoading,
+  showPassword: propsShowPassword,
+  onTogglePassword,
+  onSubmit,
+  onRegister,
   onSuccess,
   onSwitchToLogin,
   className,
   showCard = true,
 }) => {
-  const { register, isLoading, error: authError } = useAuth();
+  const { register, isLoading: authIsLoading, error: authError } = useAuth();
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<RegisterFormData>({
     name: '',
     email: '',
+    tenantName: '',
     password: '',
     confirmPassword: '',
-    tenantName: '',
   });
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [internalShowPassword, setInternalShowPassword] = useState(false);
+  const [internalShowConfirmPassword, setInternalShowConfirmPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const isLoading = propsIsLoading ?? authIsLoading;
+  const isPasswordVisible = propsShowPassword ?? internalShowPassword;
+
+  const handleTogglePassword = () => {
+    if (onTogglePassword) {
+      onTogglePassword();
+    } else {
+      setInternalShowPassword((prev) => !prev);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
 
-    // Limpa erro do campo alterado
     if (fieldErrors[name]) {
       setFieldErrors((prev) => {
         const updated = { ...prev };
@@ -83,33 +109,47 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmitForm = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!validate()) return;
 
-    try {
-      await register({
-        name: formData.name.trim(),
-        email: formData.email.trim(),
-        password: formData.password,
-        tenants: formData.tenantName.trim() ? [formData.tenantName.trim()] : undefined,
-      });
-      onSuccess?.();
-    } catch {
-      // O erro é tratado e exposto pelo AuthContext no hook useAuth()
+    const payload: RegisterFormData = {
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      tenantName: formData.tenantName.trim(),
+      password: formData.password,
+      confirmPassword: formData.confirmPassword,
+    };
+
+    if (onSubmit) {
+      onSubmit(payload);
+    } else if (onRegister) {
+      onRegister(payload);
+    } else {
+      try {
+        await register({
+          name: payload.name,
+          email: payload.email,
+          password: payload.password,
+          tenants: payload.tenantName ? [payload.tenantName] : undefined,
+        });
+        onSuccess?.();
+      } catch {
+        // Trato no AuthContext
+      }
     }
   };
 
   const formContent = (
-    <div className="w-full max-w-md mx-auto space-y-6">
-      {/* Header com Tipografia Moderna e Acessível */}
+    <div className="w-full max-w-lg mx-auto space-y-6">
+      {/* Header */}
       <div className="text-center space-y-2">
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
           Criar Nova Conta
         </h2>
         <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400">
-          Junte-se à plataforma e automatize o gerenciamento do seu e-commerce
+          Junte-se à plataforma e automatize a gestão da sua loja online
         </p>
       </div>
 
@@ -120,134 +160,142 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         </Alert>
       )}
 
-      {/* Formulário Principal */}
-      <form onSubmit={handleSubmit} noValidate className="space-y-4">
-        {/* Campo Nome Completo */}
-        <FormField
-          label="Nome Completo"
-          name="name"
-          type="text"
-          required
-          placeholder="ex: Maria Silva"
-          value={formData.name}
-          onChange={handleChange}
-          error={fieldErrors.name}
-          iconLeft={<User className="w-5 h-5 shrink-0" />}
-          autoComplete="name"
-          disabled={isLoading}
-        />
+      {/* Formulário Principal em Grid */}
+      <form onSubmit={handleSubmitForm} noValidate className="space-y-4">
+        {/* Linha 1: Nome (User) e E-mail (Mail) em Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField
+            label="Nome Completo"
+            name="name"
+            type="text"
+            required
+            placeholder="Maria Silva"
+            value={formData.name}
+            onChange={handleChange}
+            error={fieldErrors.name}
+            iconLeft={<User className="w-5 h-5 shrink-0" />}
+            autoComplete="name"
+            disabled={isLoading}
+            className="min-h-[44px] text-sm sm:text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          />
 
-        {/* Campo E-mail */}
-        <FormField
-          label="E-mail"
-          name="email"
-          type="email"
-          required
-          placeholder="seu.email@empresa.com"
-          value={formData.email}
-          onChange={handleChange}
-          error={fieldErrors.email}
-          iconLeft={<Mail className="w-5 h-5 shrink-0" />}
-          autoComplete="email"
-          disabled={isLoading}
-        />
+          <FormField
+            label="E-mail"
+            name="email"
+            type="email"
+            required
+            placeholder="seu.email@empresa.com"
+            value={formData.email}
+            onChange={handleChange}
+            error={fieldErrors.email}
+            iconLeft={<Mail className="w-5 h-5 shrink-0" />}
+            autoComplete="email"
+            disabled={isLoading}
+            className="min-h-[44px] text-sm sm:text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          />
+        </div>
 
-        {/* Campo Senha */}
-        <FormField
-          label="Senha"
-          name="password"
-          type={showPassword ? 'text' : 'password'}
-          required
-          placeholder="••••••••"
-          value={formData.password}
-          onChange={handleChange}
-          error={fieldErrors.password}
-          helperText="Mínimo de 6 caracteres"
-          iconLeft={<Lock className="w-5 h-5 shrink-0" />}
-          iconRight={
-            <button
-              type="button"
-              onClick={() => setShowPassword((prev) => !prev)}
-              className="flex items-center justify-center h-11 w-11 -mr-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg cursor-pointer"
-              aria-label={showPassword ? 'Ocultar senha' : 'Exibir senha'}
-            >
-              {showPassword ? (
-                <EyeOff className="w-5 h-5 shrink-0" />
-              ) : (
-                <Eye className="w-5 h-5 shrink-0" />
-              )}
-            </button>
-          }
-          autoComplete="new-password"
-          disabled={isLoading}
-        />
+        {/* Linha 2: Nome da Loja (Building) Inteiro */}
+        <div className="w-full">
+          <FormField
+            label="Nome da Sua Loja"
+            name="tenantName"
+            type="text"
+            placeholder="ex: Minha Loja Oficial"
+            value={formData.tenantName}
+            onChange={handleChange}
+            error={fieldErrors.tenantName}
+            helperText="Defina o nome da sua organização/tenant inicial"
+            iconLeft={<Building className="w-5 h-5 shrink-0" />}
+            disabled={isLoading}
+            className="min-h-[44px] text-sm sm:text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          />
+        </div>
 
-        {/* Campo Confirmar Senha */}
-        <FormField
-          label="Confirmar Senha"
-          name="confirmPassword"
-          type={showConfirmPassword ? 'text' : 'password'}
-          required
-          placeholder="••••••••"
-          value={formData.confirmPassword}
-          onChange={handleChange}
-          error={fieldErrors.confirmPassword}
-          iconLeft={<Lock className="w-5 h-5 shrink-0" />}
-          iconRight={
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword((prev) => !prev)}
-              className="flex items-center justify-center h-11 w-11 -mr-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg cursor-pointer"
-              aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Exibir confirmação de senha'}
-            >
-              {showConfirmPassword ? (
-                <EyeOff className="w-5 h-5 shrink-0" />
-              ) : (
-                <Eye className="w-5 h-5 shrink-0" />
-              )}
-            </button>
-          }
-          autoComplete="new-password"
-          disabled={isLoading}
-        />
+        {/* Linha 3: Senha (Lock) e Confirmar Senha (Lock) em Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField
+            label="Senha"
+            name="password"
+            type={isPasswordVisible ? 'text' : 'password'}
+            required
+            placeholder="••••••••"
+            value={formData.password}
+            onChange={handleChange}
+            error={fieldErrors.password}
+            iconLeft={<Lock className="w-5 h-5 shrink-0" />}
+            iconRight={
+              <button
+                type="button"
+                onClick={handleTogglePassword}
+                className="flex items-center justify-center min-h-[44px] w-11 -mr-3 text-slate-400 hover:text-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg cursor-pointer"
+                aria-label={isPasswordVisible ? 'Ocultar senha' : 'Exibir senha'}
+              >
+                {isPasswordVisible ? (
+                  <EyeOff className="w-5 h-5 shrink-0" />
+                ) : (
+                  <Eye className="w-5 h-5 shrink-0" />
+                )}
+              </button>
+            }
+            autoComplete="new-password"
+            disabled={isLoading}
+            className="min-h-[44px] text-sm sm:text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          />
 
-        {/* Campo Nome da Loja / Tenant (Opcional) */}
-        <FormField
-          label="Nome da Sua Loja / Tenant (Opcional)"
-          name="tenantName"
-          type="text"
-          placeholder="ex: minha-loja-oficial"
-          value={formData.tenantName}
-          onChange={handleChange}
-          error={fieldErrors.tenantName}
-          helperText="Será criado o tenant inicial para organização do seu catálogo"
-          iconLeft={<Building className="w-5 h-5 shrink-0" />}
-          disabled={isLoading}
-        />
+          <FormField
+            label="Confirmar Senha"
+            name="confirmPassword"
+            type={internalShowConfirmPassword ? 'text' : 'password'}
+            required
+            placeholder="••••••••"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            error={fieldErrors.confirmPassword}
+            iconLeft={<Lock className="w-5 h-5 shrink-0" />}
+            iconRight={
+              <button
+                type="button"
+                onClick={() => setInternalShowConfirmPassword((prev) => !prev)}
+                className="flex items-center justify-center min-h-[44px] w-11 -mr-3 text-slate-400 hover:text-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg cursor-pointer"
+                aria-label={internalShowConfirmPassword ? 'Ocultar confirmação' : 'Exibir confirmação'}
+              >
+                {internalShowConfirmPassword ? (
+                  <EyeOff className="w-5 h-5 shrink-0" />
+                ) : (
+                  <Eye className="w-5 h-5 shrink-0" />
+                )}
+              </button>
+            }
+            autoComplete="new-password"
+            disabled={isLoading}
+            className="min-h-[44px] text-sm sm:text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          />
+        </div>
 
-        {/* Botão de Submissão com Estado de Loading */}
+        {/* Botão Primário "Cadastrar" */}
         <Button
           type="submit"
           variant="primary"
           size="md"
           isLoading={isLoading}
           iconLeft={<UserPlus className="w-5 h-5 shrink-0" />}
-          className="w-full h-11 text-base font-semibold mt-2"
+          className="w-full min-h-[44px] h-11 text-base font-semibold mt-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-all focus:ring-2 focus:ring-indigo-500"
         >
           {isLoading ? 'Criando Conta...' : 'Cadastrar'}
         </Button>
       </form>
 
-      {/* Link de Navegação / Alternância para Login */}
+      {/* Link de Alternância para Login */}
       {onSwitchToLogin && (
-        <div className="text-center pt-2 border-t border-slate-200 dark:border-slate-800">
-          <p className="text-sm text-slate-600 dark:text-slate-400">
+        <div className="text-center pt-4 border-t border-slate-800">
+          <p className="text-sm text-slate-400">
             Já possui uma conta?{' '}
             <button
               type="button"
               onClick={onSwitchToLogin}
               disabled={isLoading}
-              className="font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 hover:underline min-h-[44px] inline-flex items-center px-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-md cursor-pointer disabled:opacity-50"
+              className="font-semibold text-indigo-400 hover:text-indigo-300 hover:underline min-h-[44px] inline-flex items-center px-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-md cursor-pointer disabled:opacity-50"
             >
               Fazer Login
             </button>
@@ -259,7 +307,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
 
   if (showCard) {
     return (
-      <Card glass className={cn('p-6 sm:p-8 shadow-xl', className)}>
+      <Card glass className={cn('p-6 sm:p-8 shadow-xl bg-slate-900/60 border-slate-800/80', className)}>
         {formContent}
       </Card>
     );
