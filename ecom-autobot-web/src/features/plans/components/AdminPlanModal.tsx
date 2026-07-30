@@ -1,6 +1,6 @@
 /**
  * src/features/plans/components/AdminPlanModal.tsx
- * Modal fluida para criação e edição de planos de assinatura integrados ao Mercado Pago.
+ * Modal fluida para criação e edição de planos de assinatura integrados ao Mercado Pago (Synthetica Dark).
  */
 
 import React, { useEffect, useState } from 'react';
@@ -104,10 +104,10 @@ export const AdminPlanModal: React.FC<AdminPlanModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden text-slate-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-lg bg-[#15121B] border border-indigo-500/20 rounded-3xl shadow-2xl shadow-indigo-950/50 overflow-hidden text-slate-100">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800 bg-slate-950/40">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800/80 bg-[#100D14]/80">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-indigo-400">
               <Sparkles className="w-5 h-5" />
@@ -116,7 +116,7 @@ export const AdminPlanModal: React.FC<AdminPlanModalProps> = ({
               <h2 className="text-lg font-bold text-slate-100">
                 {isEditMode ? 'Editar Plano de Assinatura' : 'Criar Novo Plano Mercado Pago'}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-400 font-mono">
                 {isEditMode
                   ? `Atualizando configurações do ID: ${editingPlan?.id}`
                   : 'Sincronização automática com Mercado Pago REST API'}
@@ -126,7 +126,8 @@ export const AdminPlanModal: React.FC<AdminPlanModalProps> = ({
           <button
             onClick={onClose}
             disabled={submitting}
-            className="p-2.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-colors"
+            aria-label="Fechar modal"
+            className="p-2.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 rounded-xl transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -142,8 +143,8 @@ export const AdminPlanModal: React.FC<AdminPlanModalProps> = ({
           )}
 
           {isEditMode && (
-            <div className="flex items-start gap-3 p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-300 text-xs">
-              <Lock className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="flex items-start gap-3 p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-300 text-xs font-mono">
+              <Lock className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
               <span>
                 <strong>Restrição Mercado Pago:</strong> O valor recorrente, a frequência e a moeda são imutáveis após a ativação do plano. Apenas o Nome e o Status podem ser alterados.
               </span>
@@ -151,7 +152,7 @@ export const AdminPlanModal: React.FC<AdminPlanModalProps> = ({
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider font-mono mb-1.5">
               Nome do Plano (Razão Fatura MP) *
             </label>
             <input
@@ -159,14 +160,14 @@ export const AdminPlanModal: React.FC<AdminPlanModalProps> = ({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Ex: Plano Pro Mensal - E-commerce Bot"
-              className="w-full min-h-[44px] px-4 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 text-sm sm:text-base focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors"
+              className="w-full min-h-[44px] px-4 bg-[#100D14] border border-slate-800 rounded-xl text-slate-100 text-base focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors"
               required
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="flex items-center text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="flex items-center text-xs font-semibold text-slate-300 uppercase tracking-wider font-mono mb-1.5">
                 Valor Recorrente (R$) *
                 {isEditMode && (
                   <span title="Campo imutável no Mercado Pago">
@@ -182,13 +183,13 @@ export const AdminPlanModal: React.FC<AdminPlanModalProps> = ({
                 disabled={isEditMode}
                 onChange={(e) => setAmount(e.target.value ? parseFloat(e.target.value) : '')}
                 placeholder="49.90"
-                className="w-full min-h-[44px] px-4 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 text-sm sm:text-base focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors disabled:opacity-50 disabled:bg-slate-950/80 disabled:cursor-not-allowed"
+                className="w-full min-h-[44px] px-4 bg-[#100D14] border border-slate-800 rounded-xl text-slate-100 text-base focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors disabled:opacity-50 disabled:bg-[#100D14]/80 disabled:cursor-not-allowed font-mono"
                 required={!isEditMode}
               />
             </div>
 
             <div>
-              <label className="flex items-center text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="flex items-center text-xs font-semibold text-slate-300 uppercase tracking-wider font-mono mb-1.5">
                 ID Externo / Referência
                 {isEditMode && (
                   <span title="Campo imutável no Mercado Pago">
@@ -202,14 +203,14 @@ export const AdminPlanModal: React.FC<AdminPlanModalProps> = ({
                 disabled={isEditMode}
                 onChange={(e) => setExternalId(e.target.value)}
                 placeholder="Ex: plan_pro_v1"
-                className="w-full min-h-[44px] px-4 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 text-sm sm:text-base focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors font-mono disabled:opacity-50 disabled:bg-slate-950/80 disabled:cursor-not-allowed"
+                className="w-full min-h-[44px] px-4 bg-[#100D14] border border-slate-800 rounded-xl text-slate-100 text-base focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors font-mono disabled:opacity-50 disabled:bg-[#100D14]/80 disabled:cursor-not-allowed"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="flex items-center text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="flex items-center text-xs font-semibold text-slate-300 uppercase tracking-wider font-mono mb-1.5">
                 Frequência de Cobrança
                 {isEditMode && (
                   <span title="Campo imutável no Mercado Pago">
@@ -224,14 +225,14 @@ export const AdminPlanModal: React.FC<AdminPlanModalProps> = ({
                   value={frequency}
                   disabled={isEditMode}
                   onChange={(e) => setFrequency(parseInt(e.target.value) || 1)}
-                  className="w-20 min-h-[44px] px-3 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 text-sm sm:text-base outline-none disabled:opacity-50 disabled:bg-slate-950/80 disabled:cursor-not-allowed"
+                  className="w-20 min-h-[44px] px-3 bg-[#100D14] border border-slate-800 rounded-xl text-slate-100 text-base outline-none disabled:opacity-50 disabled:bg-[#100D14]/80 disabled:cursor-not-allowed font-mono"
                   required={!isEditMode}
                 />
                 <select
                   value={frequencyType}
                   disabled={isEditMode}
                   onChange={(e) => setFrequencyType(e.target.value as 'months' | 'days')}
-                  className="flex-1 min-h-[44px] px-3 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 text-sm sm:text-base outline-none disabled:opacity-50 disabled:bg-slate-950/80 disabled:cursor-not-allowed"
+                  className="flex-1 min-h-[44px] px-3 bg-[#100D14] border border-slate-800 rounded-xl text-slate-100 text-base outline-none disabled:opacity-50 disabled:bg-[#100D14]/80 disabled:cursor-not-allowed font-mono"
                 >
                   <option value="months">Mês(es)</option>
                   <option value="days">Dia(s)</option>
@@ -240,7 +241,7 @@ export const AdminPlanModal: React.FC<AdminPlanModalProps> = ({
             </div>
 
             <div>
-              <label className="flex items-center text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="flex items-center text-xs font-semibold text-slate-300 uppercase tracking-wider font-mono mb-1.5">
                 Dias de Teste Grátis (Trial)
                 {isEditMode && (
                   <span title="Campo imutável no Mercado Pago">
@@ -255,20 +256,20 @@ export const AdminPlanModal: React.FC<AdminPlanModalProps> = ({
                 disabled={isEditMode}
                 onChange={(e) => setTrialDays(e.target.value ? parseInt(e.target.value) : '')}
                 placeholder="0"
-                className="w-full min-h-[44px] px-4 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 text-sm sm:text-base focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors disabled:opacity-50 disabled:bg-slate-950/80 disabled:cursor-not-allowed"
+                className="w-full min-h-[44px] px-4 bg-[#100D14] border border-slate-800 rounded-xl text-slate-100 text-base focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors disabled:opacity-50 disabled:bg-[#100D14]/80 disabled:cursor-not-allowed font-mono"
               />
             </div>
           </div>
 
           {isEditMode && (
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider font-mono mb-1.5">
                 Status no Mercado Pago
               </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as 'active' | 'canceled')}
-                className="w-full min-h-[44px] px-4 bg-slate-950/60 border border-slate-800 rounded-xl text-slate-100 text-sm sm:text-base outline-none focus:border-indigo-500"
+                className="w-full min-h-[44px] px-4 bg-[#100D14] border border-slate-800 rounded-xl text-slate-100 text-base outline-none focus:border-indigo-500 font-mono"
               >
                 <option value="active">Ativo (Permite novas assinaturas)</option>
                 <option value="canceled">Cancelado (Bloqueia novas contratações)</option>
@@ -277,19 +278,19 @@ export const AdminPlanModal: React.FC<AdminPlanModalProps> = ({
           )}
 
           {/* Modal Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/80">
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="min-h-[44px] px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-medium transition-colors"
+              className="min-h-[44px] min-w-[44px] px-5 py-2.5 bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 rounded-xl text-sm font-medium transition-colors border border-slate-700/50 flex items-center justify-center"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="min-h-[44px] px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-500/25 transition-all flex items-center gap-2"
+              className="min-h-[44px] min-w-[44px] px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-500/25 transition-all flex items-center justify-center gap-2 border border-indigo-400/20"
             >
               {submitting ? (
                 <>
@@ -305,4 +306,5 @@ export const AdminPlanModal: React.FC<AdminPlanModalProps> = ({
     </div>
   );
 };
+
 

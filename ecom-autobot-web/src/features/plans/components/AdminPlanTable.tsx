@@ -1,6 +1,6 @@
 /**
  * src/features/plans/components/AdminPlanTable.tsx
- * Tabela responsiva de alta performance para exibição de planos de assinatura administrativos.
+ * Tabela responsiva de alta performance para exibição de planos de assinatura administrativos (Synthetica Dark).
  */
 
 import React from 'react';
@@ -34,7 +34,7 @@ export const AdminPlanTable: React.FC<AdminPlanTableProps> = ({
     const isAct = status?.toLowerCase() === 'active';
     return (
       <span
-        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${
+        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider font-mono ${
           isAct
             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
             : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
@@ -55,16 +55,16 @@ export const AdminPlanTable: React.FC<AdminPlanTableProps> = ({
 
   if (loading && plans.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 bg-slate-900/60 border border-slate-800 rounded-2xl">
+      <div className="flex flex-col items-center justify-center p-12 bg-[#15121B]/90 border border-slate-800 rounded-2xl shadow-xl backdrop-blur-md">
         <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin mb-3" />
-        <p className="text-slate-400 font-medium">Carregando catálogo de planos no Mercado Pago...</p>
+        <p className="text-slate-400 font-medium font-mono text-sm">Carregando catálogo de planos no Mercado Pago...</p>
       </div>
     );
   }
 
   if (!loading && plans.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 bg-slate-900/60 border border-slate-800 rounded-2xl text-center">
+      <div className="flex flex-col items-center justify-center p-12 bg-[#15121B]/90 border border-slate-800 rounded-2xl text-center shadow-xl backdrop-blur-md">
         <ShieldAlert className="w-12 h-12 text-slate-500 mb-3" />
         <h3 className="text-lg font-semibold text-slate-200">Nenhum plano encontrado</h3>
         <p className="text-slate-400 max-w-md mt-1 text-sm">
@@ -72,7 +72,7 @@ export const AdminPlanTable: React.FC<AdminPlanTableProps> = ({
         </p>
         <button
           onClick={onRefresh}
-          className="mt-4 min-h-[44px] px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
+          className="mt-4 min-h-[44px] min-w-[44px] px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 border border-slate-700/50"
         >
           <RefreshCw className="w-4 h-4" /> Recarregar
         </button>
@@ -81,17 +81,17 @@ export const AdminPlanTable: React.FC<AdminPlanTableProps> = ({
   }
 
   return (
-    <div className="w-full overflow-hidden bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl backdrop-blur-md">
+    <div className="w-full overflow-hidden bg-[#15121B]/90 border border-slate-800 rounded-2xl shadow-xl backdrop-blur-md">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-slate-800 bg-slate-950/60 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              <th className="py-4 px-6">Plano & Descrição</th>
-              <th className="py-4 px-4">Valor Recorrente</th>
-              <th className="py-4 px-4">Frequência</th>
-              <th className="py-4 px-4">Trial / Teste</th>
-              <th className="py-4 px-4 text-center">Status</th>
-              <th className="py-4 px-6 text-right">Ações</th>
+            <tr className="border-b border-slate-800 bg-[#100D14]/80 text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">
+              <th className="py-4 px-6 font-mono uppercase">Plano & Descrição</th>
+              <th className="py-4 px-4 font-mono uppercase">Valor Recorrente</th>
+              <th className="py-4 px-4 font-mono uppercase">Frequência</th>
+              <th className="py-4 px-4 font-mono uppercase">Trial / Teste</th>
+              <th className="py-4 px-4 text-center font-mono uppercase">Status</th>
+              <th className="py-4 px-6 text-right font-mono uppercase">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60 text-sm">
@@ -119,7 +119,7 @@ export const AdminPlanTable: React.FC<AdminPlanTableProps> = ({
                       )}
                     </div>
                   </td>
-                  <td className="py-4 px-4 font-bold text-slate-200">
+                  <td className="py-4 px-4 font-mono font-bold text-slate-200">
                     {formatCurrency(amount, currency)}
                   </td>
                   <td className="py-4 px-4 text-slate-300">
@@ -127,11 +127,11 @@ export const AdminPlanTable: React.FC<AdminPlanTableProps> = ({
                   </td>
                   <td className="py-4 px-4 text-slate-400">
                     {trialDays ? (
-                      <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                      <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">
                         {trialDays} {plan.auto_recurring?.free_trial?.frequency_type || 'dias'} grátis
                       </span>
                     ) : (
-                      <span className="text-slate-500 text-xs">— Sem Trial</span>
+                      <span className="text-slate-500 text-xs font-mono">— Sem Trial</span>
                     )}
                   </td>
                   <td className="py-4 px-4 text-center">
@@ -179,3 +179,4 @@ export const AdminPlanTable: React.FC<AdminPlanTableProps> = ({
     </div>
   );
 };
+
