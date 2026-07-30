@@ -2,10 +2,11 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from '@/layouts/MainLayout';
 import { HomePage } from '@/features/home';
-import { AuthPage } from '@/features/auth';
+import { AuthPage, AdminRouteGuard } from '@/features/auth';
 import { LiveDemoPage } from '@/features/live-demo';
 import { CatalogPage } from '@/features/catalog';
 import { SubscriptionPage } from '@/features/subscription';
+import { AdminPlansPage } from '@/features/plans';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -22,6 +23,24 @@ export const AppRoutes: React.FC = () => {
         <Route path="/billing" element={<SubscriptionPage />} />
         <Route path="/subscriptions" element={<SubscriptionPage />} />
         <Route path="/plans" element={<SubscriptionPage />} />
+        
+        {/* Rotas de Administração Protegidas por AdminRouteGuard */}
+        <Route
+          path="/admin/plans"
+          element={
+            <AdminRouteGuard>
+              <AdminPlansPage />
+            </AdminRouteGuard>
+          }
+        />
+        <Route
+          path="/plans/admin"
+          element={
+            <AdminRouteGuard>
+              <AdminPlansPage />
+            </AdminRouteGuard>
+          }
+        />
         <Route path="/checkout" element={<SubscriptionPage />} />
         <Route path="/products" element={<Navigate to="/catalog" replace />} />
 

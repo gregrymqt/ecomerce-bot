@@ -12,6 +12,8 @@ export interface UserResponse {
   name: string;
   tenants: string[];
   created_at?: string;
+  is_admin?: boolean;
+  role?: string;
 }
 
 export interface AuthenticatedUser {
@@ -21,6 +23,8 @@ export interface AuthenticatedUser {
   name: string;
   tenants: string[];
   plan: string;
+  is_admin?: boolean;
+  role?: string;
 }
 
 export interface LogoutResponse {

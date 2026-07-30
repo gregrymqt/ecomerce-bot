@@ -13,6 +13,8 @@ export const MainLayout: React.FC = () => {
   const { user, currentTenant, logout } = useAuth();
   const [isAiKeysModalOpen, setIsAiKeysModalOpen] = useState(false);
 
+  const isAdmin = Boolean(user && (user.is_admin === true || user.role === 'admin'));
+
   const navItems: SidebarNavItem[] = [
     {
       id: 'home',
@@ -57,6 +59,19 @@ export const MainLayout: React.FC = () => {
         location.pathname === '/checkout',
       onClick: () => navigate('/billing'),
     },
+    ...(isAdmin
+      ? [
+          {
+            id: 'admin-plans',
+            label: 'Gestão de Planos (Admin)',
+            icon: <ShieldCheck className="w-5 h-5 text-indigo-400" />,
+            badge: 'Admin',
+            badgeVariant: 'indigo' as const,
+            active: location.pathname === '/admin/plans' || location.pathname === '/plans/admin',
+            onClick: () => navigate('/admin/plans'),
+          },
+        ]
+      : []),
   ];
 
   return (

@@ -5,6 +5,7 @@ export * from './hooks/useAuth';
 export * from './utils/storage';
 export * from './components/LoginForm';
 export * from './components/RegisterForm';
+export * from './components/AdminRouteGuard';
 export * from './pages/AuthPage';
 
 
