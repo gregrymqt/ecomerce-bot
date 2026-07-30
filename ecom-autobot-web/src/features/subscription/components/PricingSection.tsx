@@ -1,5 +1,6 @@
 import React from 'react';
 import { CheckCircle2, Sparkles, Zap, Building2, Check, ArrowRight } from 'lucide-react';
+import { Card, Badge, Button } from '@/components/ui';
 import type { BillingCycle, PlanTier } from '../types/subscription.type';
 import { usePricingSection } from '../hooks/usePricingSection';
 import { cn } from '@/utils/cn';
@@ -67,7 +68,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
       {/* Title & Cycle Toggle Header */}
       <div className="flex flex-col items-center text-center space-y-4">
         <div>
-          <span className="text-xs font-bold uppercase tracking-widest text-[#8B5CF6]">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#8B5CF6] font-mono">
             Planos & Preços
           </span>
           <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight mt-1">
@@ -84,7 +85,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
             type="button"
             onClick={() => setBillingCycle('monthly')}
             className={cn(
-              'h-11 min-h-[44px] px-6 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer select-none',
+              'h-11 min-h-[44px] px-6 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer select-none font-mono',
               billingCycle === 'monthly'
                 ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
                 : 'text-gray-400 hover:text-white'
@@ -97,16 +98,16 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
             type="button"
             onClick={() => setBillingCycle('yearly')}
             className={cn(
-              'h-11 min-h-[44px] px-6 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer select-none flex items-center gap-2',
+              'h-11 min-h-[44px] px-6 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer select-none flex items-center gap-2 font-mono',
               billingCycle === 'yearly'
                 ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
                 : 'text-gray-400 hover:text-white'
             )}
           >
             <span>Cobrança Anual</span>
-            <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-bold text-emerald-400 border border-emerald-500/30">
+            <Badge variant="success">
               20% OFF
-            </span>
+            </Badge>
           </button>
         </div>
       </div>
@@ -119,7 +120,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           const price = billingCycle === 'yearly' ? plan.priceYearly : plan.priceMonthly;
 
           return (
-            <div
+            <Card
               key={plan.id}
               className={cn(
                 'relative flex flex-col justify-between rounded-2xl p-6 sm:p-8 transition-all duration-300 shadow-xl',
@@ -131,10 +132,9 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               {/* Popular Badge */}
               {isPopular && (
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-1 text-xs font-black uppercase tracking-wider text-white shadow-lg">
-                    <Sparkles className="h-3.5 w-3.5 text-white animate-spin-slow" />
+                  <Badge variant="purple" icon={<Sparkles className="h-3.5 w-3.5 text-white" />}>
                     MAIS POPULAR
-                  </span>
+                  </Badge>
                 </div>
               )}
 
@@ -150,7 +150,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                 </div>
 
                 {/* Price Display */}
-                <div className="mb-6">
+                <div className="mb-6 font-mono">
                   <div className="flex items-baseline gap-1">
                     <span className="text-xs font-bold text-gray-400">R$</span>
                     <span className="text-4xl font-extrabold text-white tracking-tight">{price}</span>
@@ -163,7 +163,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
 
                 {/* Feature List */}
                 <div className="space-y-3 pt-4 border-t border-gray-800/80 mb-6">
-                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Recursos incluídos:</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400 font-mono">Recursos incluídos:</p>
                   <ul className="space-y-2.5">
                     {plan.features.map((feature, idx) => (
                       <li key={idx} className="flex items-start gap-2.5 text-xs text-gray-300">
@@ -178,34 +178,32 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               {/* Action Button */}
               <div className="pt-4 border-t border-gray-800/60">
                 {isCurrent ? (
-                  <button
+                  <Button
                     type="button"
                     disabled
-                    className="w-full h-11 min-h-[44px] px-4 rounded-xl text-sm font-semibold bg-gray-800/80 text-gray-400 border border-gray-700/60 flex items-center justify-center gap-2 cursor-not-allowed select-none"
+                    variant="secondary"
+                    iconLeft={<Check className="h-4 w-4 text-emerald-400" />}
+                    className="w-full"
                   >
-                    <Check className="h-4 w-4 text-emerald-400" />
-                    <span>Seu Plano Atual</span>
-                  </button>
+                    Seu Plano Atual
+                  </Button>
                 ) : (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => handlePlanClick(plan)}
-                    className={cn(
-                      'w-full h-11 min-h-[44px] px-4 rounded-xl text-sm font-semibold transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer',
-                      isPopular
-                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-600/25'
-                        : 'bg-gray-800 hover:bg-gray-700 text-white border border-gray-700'
-                    )}
+                    variant={isPopular ? 'primary' : 'secondary'}
+                    iconRight={<ArrowRight className="h-4 w-4" />}
+                    className="w-full"
                   >
-                    <span>Contratar {plan.name}</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
+                    Contratar {plan.name}
+                  </Button>
                 )}
               </div>
-            </div>
+            </Card>
           );
         })}
       </div>
     </div>
   );
 };
+

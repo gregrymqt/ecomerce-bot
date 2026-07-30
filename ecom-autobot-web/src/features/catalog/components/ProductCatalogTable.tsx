@@ -1,14 +1,13 @@
 import React from 'react';
 import {
   Sparkles,
-  CheckCircle2,
-  Clock,
   Edit3,
   Trash2,
   Package,
   Loader2,
   Zap,
 } from 'lucide-react';
+import { Badge, Button } from '@/components/ui';
 import { cn } from '@/utils/cn';
 import type { CatalogProduct, ProductStatus } from '../types/catalog.types';
 
@@ -53,37 +52,33 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
     switch (status) {
       case 'PROCESSED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <Badge variant="success" dot>
             Enriquecido
-          </span>
+          </Badge>
         );
       case 'PROCESSING':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+          <Badge variant="warning" dot>
             Processando
-          </span>
+          </Badge>
         );
       case 'RAW':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700">
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+          <Badge variant="default" dot>
             RAW (Bruto)
-          </span>
+          </Badge>
         );
       case 'FAILED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-300 border border-red-500/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+          <Badge variant="error" dot>
             Falhou
-          </span>
+          </Badge>
         );
       default:
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-400">
+          <Badge variant="default">
             {status}
-          </span>
+          </Badge>
         );
     }
   };
@@ -92,21 +87,16 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
    * Badge da Plataforma (Shopify / Nuvemshop / WooCommerce)
    */
   const renderPlatformBadge = (platform: CatalogProduct['platform']) => {
-    const badgeColors: Record<string, string> = {
-      Shopify: 'bg-emerald-950/50 text-emerald-400 border-emerald-800/40',
-      Nuvemshop: 'bg-blue-950/50 text-blue-400 border-blue-800/40',
-      WooCommerce: 'bg-purple-950/50 text-purple-400 border-purple-800/40',
+    const variantMap: Record<string, 'success' | 'info' | 'purple'> = {
+      Shopify: 'success',
+      Nuvemshop: 'info',
+      WooCommerce: 'purple',
     };
 
     return (
-      <span
-        className={cn(
-          'px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border',
-          badgeColors[platform] || 'bg-slate-800 text-slate-300 border-slate-700'
-        )}
-      >
+      <Badge variant={variantMap[platform] || 'default'}>
         {platform}
-      </span>
+      </Badge>
     );
   };
 
@@ -115,7 +105,7 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-slate-800 bg-[#090D16]/80 text-slate-400 text-xs font-semibold uppercase tracking-wider">
+            <tr className="border-b border-slate-800 bg-[#090D16]/80 text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">
               {/* Checkbox de Seleção Global */}
               <th className="px-4 py-4 w-12 text-center">
                 <input
@@ -129,11 +119,11 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
                   title="Selecionar Todos"
                 />
               </th>
-              <th className="px-5 py-4">Produto</th>
-              <th className="px-5 py-4">Título Magnético (IA)</th>
-              <th className="px-5 py-4">Status IA</th>
-              <th className="px-5 py-4">Plataforma / Sync</th>
-              <th className="px-5 py-4 text-right">Ações</th>
+              <th className="px-5 py-4 font-mono uppercase">Produto</th>
+              <th className="px-5 py-4 font-mono uppercase">Título Magnético (IA)</th>
+              <th className="px-5 py-4 font-mono uppercase">Status IA</th>
+              <th className="px-5 py-4 font-mono uppercase">Plataforma / Sync</th>
+              <th className="px-5 py-4 text-right font-mono uppercase">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60 text-sm">
@@ -142,7 +132,7 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
                 <td colSpan={6} className="px-6 py-16 text-center text-slate-400">
                   <div className="flex flex-col items-center justify-center gap-3">
                     <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
-                    <span className="text-sm font-medium">Carregando catálogo de produtos...</span>
+                    <span className="text-sm font-medium font-mono">Carregando catálogo de produtos...</span>
                   </div>
                 </td>
               </tr>
@@ -224,18 +214,20 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
                           )}
                         </span>
                         {onRegenerateAiTitle && (
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => onRegenerateAiTitle(product)}
                             disabled={isRegenerating}
                             title="Re-gerar Título com IA"
-                            className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl text-violet-400 hover:text-violet-300 hover:bg-violet-950/50 border border-transparent hover:border-violet-800/40 transition-all flex items-center justify-center flex-shrink-0 disabled:opacity-50"
+                            className="text-violet-400 hover:text-violet-300 hover:bg-violet-950/50 p-2"
                           >
                             {isRegenerating ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
                               <Sparkles className="w-4 h-4" />
                             )}
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </td>
@@ -247,15 +239,13 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
                         {product.synced ? (
-                          <span className="inline-flex items-center gap-1.5 text-emerald-400 text-xs font-semibold">
-                            <CheckCircle2 className="w-4 h-4" />
+                          <Badge variant="success" dot>
                             Sincronizado
-                          </span>
+                          </Badge>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 text-amber-400 text-xs font-semibold">
-                            <Clock className="w-4 h-4" />
+                          <Badge variant="warning" dot>
                             Pendente Sync
-                          </span>
+                          </Badge>
                         )}
                       </div>
                     </td>
@@ -264,43 +254,49 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         {onEditProduct && (
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => onEditProduct(product)}
                             title="Editar Copy / Produto"
-                            className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl text-slate-300 hover:text-violet-300 hover:bg-violet-950/40 border border-transparent hover:border-violet-800/30 transition-colors flex items-center justify-center"
+                            className="text-slate-300 hover:text-violet-300 hover:bg-violet-950/40 p-2"
                           >
                             <Edit3 className="w-4 h-4" />
-                          </button>
+                          </Button>
                         )}
 
                         {onSyncProduct && (
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => onSyncProduct(product)}
                             disabled={isSyncing}
                             title="Sincronizar com Plataforma"
-                            className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl text-slate-300 hover:text-emerald-300 hover:bg-emerald-950/40 border border-transparent hover:border-emerald-800/30 transition-colors flex items-center justify-center disabled:opacity-50"
+                            className="text-slate-300 hover:text-emerald-300 hover:bg-emerald-950/40 p-2"
                           >
                             {isSyncing ? (
                               <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
                             ) : (
                               <Zap className="w-4 h-4 text-emerald-400" />
                             )}
-                          </button>
+                          </Button>
                         )}
 
                         {onDeleteProduct && (
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => onDeleteProduct(product.sku)}
                             disabled={isDeleting}
                             title="Excluir Produto"
-                            className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-950/40 border border-transparent hover:border-red-800/30 transition-colors flex items-center justify-center disabled:opacity-50"
+                            className="text-slate-400 hover:text-red-400 hover:bg-red-950/40 p-2"
                           >
                             {isDeleting ? (
                               <Loader2 className="w-4 h-4 animate-spin text-red-400" />
                             ) : (
                               <Trash2 className="w-4 h-4" />
                             )}
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </td>
@@ -314,3 +310,4 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
     </div>
   );
 };
+

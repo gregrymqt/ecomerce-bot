@@ -1,5 +1,6 @@
 import React from 'react';
 import { Zap, Check } from 'lucide-react';
+import { Card } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import type { AiProviderId, AiProviderMeta, UserAiKey } from '../types/ai-keys.types';
 
@@ -19,9 +20,9 @@ export const ActiveProviderSelector: React.FC<ActiveProviderSelectorProps> = ({
   className,
 }) => {
   return (
-    <div
+    <Card
       className={cn(
-        'flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl',
+        'flex flex-col gap-4 border-slate-800 bg-slate-900/90 shadow-xl',
         className
       )}
     >
@@ -32,7 +33,7 @@ export const ActiveProviderSelector: React.FC<ActiveProviderSelectorProps> = ({
           </div>
           <div>
             <h3 className="font-bold text-white text-base">Provedor Principal Padrão</h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 font-mono">
               Selecione qual modelo será utilizado por padrão nas requisições de enriquecimento.
             </p>
           </div>
@@ -51,7 +52,7 @@ export const ActiveProviderSelector: React.FC<ActiveProviderSelectorProps> = ({
               type="button"
               onClick={() => onSelectActiveProvider(provider.id)}
               className={cn(
-                'relative flex flex-col items-start justify-between rounded-xl border p-3.5 text-left transition-all duration-200 min-h-[64px]',
+                'relative flex flex-col items-start justify-between rounded-xl border p-3.5 text-left transition-all duration-200 min-h-[64px] cursor-pointer',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500',
                 isSelected
                   ? 'border-purple-500 bg-purple-950/40 text-white shadow-[0_0_15px_rgba(139,92,246,0.2)]'
@@ -67,7 +68,7 @@ export const ActiveProviderSelector: React.FC<ActiveProviderSelectorProps> = ({
                 )}
               </div>
 
-              <div className="mt-2 flex w-full items-center justify-between text-[11px]">
+              <div className="mt-2 flex w-full items-center justify-between text-[11px] font-mono">
                 <span className="text-slate-400 font-medium">{provider.badgeText}</span>
                 <span
                   className={cn(
@@ -82,6 +83,7 @@ export const ActiveProviderSelector: React.FC<ActiveProviderSelectorProps> = ({
           );
         })}
       </div>
-    </div>
+    </Card>
   );
 };
+

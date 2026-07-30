@@ -1,5 +1,6 @@
 import React from 'react';
 import { Sparkles, ArrowRight, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Badge, Button } from '@/components/ui';
 import { cn } from '@/utils/cn';
 
 export interface BottomCtaBannerProps {
@@ -30,8 +31,10 @@ export const BottomCtaBanner: React.FC<BottomCtaBannerProps> = ({
             <h4 className="text-sm sm:text-base font-extrabold text-white">
               Pronto para automação em massa no seu e-commerce?
             </h4>
-            <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-500/30">
-              <ShieldCheck className="w-3 h-3" /> 7 DIAS GRÁTIS
+            <span className="hidden md:inline-flex">
+              <Badge variant="success" icon={<ShieldCheck className="w-3 h-3" />}>
+                7 DIAS GRÁTIS
+              </Badge>
             </span>
           </div>
           <p className="text-xs text-slate-400">
@@ -43,25 +46,28 @@ export const BottomCtaBanner: React.FC<BottomCtaBannerProps> = ({
       {/* Botões de Ação */}
       <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
         {onViewDocs && (
-          <button
+          <Button
             type="button"
+            variant="secondary"
             onClick={onViewDocs}
-            className="min-h-[44px] h-11 px-4 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700 transition-all flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
+            iconRight={<ExternalLink className="w-3.5 h-3.5" />}
+            className="flex-1 sm:flex-initial"
           >
-            <span>Docs da API</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </button>
+            Docs da API
+          </Button>
         )}
 
-        <button
+        <Button
           type="button"
+          variant="primary"
           onClick={onStartFreeTrial}
-          className="min-h-[44px] h-11 px-5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-lg shadow-purple-600/30 transition-all active:scale-95 flex items-center justify-center gap-2 flex-1 sm:flex-initial"
+          iconRight={<ArrowRight className="w-4 h-4" />}
+          className="flex-1 sm:flex-initial"
         >
-          <span>Testar Grátis 7 Dias</span>
-          <ArrowRight className="w-4 h-4" />
-        </button>
+          Testar Grátis 7 Dias
+        </Button>
       </div>
     </div>
   );
 };
+

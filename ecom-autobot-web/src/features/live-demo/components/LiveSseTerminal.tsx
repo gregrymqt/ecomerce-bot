@@ -1,5 +1,6 @@
 import React from 'react';
 import { Terminal, Cpu, CheckCircle2, AlertTriangle, Radio } from 'lucide-react';
+import { Badge, ProgressBar } from '@/components/ui';
 import type { ConnectionStatus, DemoLogEvent, LogLevel } from '../types/live-demo.types';
 import { useLiveSseTerminal } from '../hooks/useLiveSseTerminal';
 import { cn } from '@/utils/cn';
@@ -50,44 +51,39 @@ export const LiveSseTerminal: React.FC<LiveSseTerminalProps> = ({
     switch (status) {
       case 'connecting':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-400 border border-amber-500/30">
-            <Radio className="w-3.5 h-3.5 animate-pulse" />
+          <Badge variant="warning" dot icon={<Radio className="w-3.5 h-3.5" />}>
             CONECTANDO SSE...
-          </span>
+          </Badge>
         );
       case 'connected':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-500/30">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          <Badge variant="success" dot>
             CONECTADO 200 OK
-          </span>
+          </Badge>
         );
       case 'simulating':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-950/80 text-purple-400 border border-purple-500/30">
-            <Cpu className="w-3.5 h-3.5 animate-spin" />
+          <Badge variant="purple" icon={<Cpu className="w-3.5 h-3.5 animate-spin" />}>
             SIMULANDO SSE
-          </span>
+          </Badge>
         );
       case 'completed':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-500/30">
-            <CheckCircle2 className="w-3.5 h-3.5" />
+          <Badge variant="success" icon={<CheckCircle2 className="w-3.5 h-3.5" />}>
             CONCLUÍDO
-          </span>
+          </Badge>
         );
       case 'error':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-950/80 text-rose-400 border border-rose-500/30">
-            <AlertTriangle className="w-3.5 h-3.5" />
+          <Badge variant="error" icon={<AlertTriangle className="w-3.5 h-3.5" />}>
             ERRO SSE
-          </span>
+          </Badge>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700">
+          <Badge variant="default">
             AGUARDANDO
-          </span>
+          </Badge>
         );
     }
   };
@@ -133,18 +129,18 @@ export const LiveSseTerminal: React.FC<LiveSseTerminalProps> = ({
                 key={log.id}
                 className="flex items-start gap-2.5 leading-relaxed hover:bg-slate-900/50 p-1 rounded transition-colors"
               >
-                <span className="text-slate-500 shrink-0 select-none">
+                <span className="text-slate-500 shrink-0 select-none font-mono">
                   [{log.timestamp}]
                 </span>
                 <span
                   className={cn(
-                    'px-1.5 py-0.5 rounded text-[10px] font-semibold border shrink-0 uppercase tracking-wider',
+                    'px-1.5 py-0.5 rounded text-[10px] font-semibold border shrink-0 uppercase tracking-wider font-mono',
                     style.badge
                   )}
                 >
                   {log.level}
                 </span>
-                <span className={cn('break-all', style.text)}>{log.message}</span>
+                <span className={cn('break-all font-mono', style.text)}>{log.message}</span>
               </div>
             );
           })
@@ -154,11 +150,8 @@ export const LiveSseTerminal: React.FC<LiveSseTerminalProps> = ({
 
       {/* Barra de Progresso Inferior */}
       <div className="relative w-full bg-slate-900 px-4 py-3 border-t border-slate-800 flex items-center gap-3">
-        <div className="flex-1 bg-slate-800 rounded-full h-2 overflow-hidden p-0.5">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-purple-500 via-indigo-500 to-emerald-400 transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
+        <div className="flex-1">
+          <ProgressBar value={progress} color="indigo" showPercentage={false} />
         </div>
         <span className="text-xs font-mono font-semibold text-purple-300 w-12 text-right shrink-0">
           {progress}%
@@ -167,3 +160,4 @@ export const LiveSseTerminal: React.FC<LiveSseTerminalProps> = ({
     </div>
   );
 };
+

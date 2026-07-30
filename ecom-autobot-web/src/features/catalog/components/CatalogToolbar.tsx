@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, Plus, Download, Package } from 'lucide-react';
+import { Button, Input, Badge } from '@/components/ui';
 import { cn } from '@/utils/cn';
 import type { FilterStatus } from '../types/catalog.types';
 
@@ -70,37 +71,37 @@ export const CatalogToolbar: React.FC<CatalogToolbarProps> = ({
             <h1 className="text-xl font-bold text-slate-100 tracking-tight">
               Central de Catálogo
             </h1>
-            <p className="text-xs text-slate-400">
-              Gerencie, filtre e expanda seus produtos enriquecidos por IA
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <span>Gerencie, filtre e expanda seus produtos enriquecidos por IA</span>
               {typeof totalCount === 'number' && (
-                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-violet-950/60 text-violet-300 border border-violet-800/40">
+                <Badge variant="info">
                   {totalCount} {totalCount === 1 ? 'produto' : 'produtos'}
-                </span>
+                </Badge>
               )}
-            </p>
+            </div>
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="flex items-center gap-3 flex-wrap">
           {onExportBatchClick && (
-            <button
+            <Button
+              variant="secondary"
               onClick={onExportBatchClick}
-              className="min-h-[44px] h-11 px-4 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-800 text-slate-200 hover:text-white transition-all flex items-center gap-2 text-sm font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+              iconLeft={<Download className="w-4 h-4 text-slate-400" />}
             >
-              <Download className="w-4 h-4 text-slate-400" />
-              <span>Exportar Lote</span>
-            </button>
+              Exportar Lote
+            </Button>
           )}
 
           {onNewIngestionClick && (
-            <button
+            <Button
+              variant="primary"
               onClick={onNewIngestionClick}
-              className="min-h-[44px] h-11 px-5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white transition-all flex items-center gap-2 text-sm font-semibold shadow-lg shadow-violet-600/25 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-violet-400"
+              iconLeft={<Plus className="w-4 h-4 stroke-[2.5]" />}
             >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>Nova Ingestão</span>
-            </button>
+              Nova Ingestão
+            </Button>
           )}
         </div>
       </div>
@@ -109,16 +110,12 @@ export const CatalogToolbar: React.FC<CatalogToolbarProps> = ({
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 pt-2 border-t border-slate-800/60">
         {/* Search Input */}
         <div className="relative flex-1 max-w-full lg:max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
+          <Input
             type="text"
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Buscar por título, SKU ou marca..."
-            className={cn(
-              'w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl border border-slate-700/80 bg-[#090D16] text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all',
-              'text-base sm:text-sm' // Previne auto-zoom no Safari iOS (font-size >= 16px)
-            )}
+            iconLeft={<Search className="w-4 h-4 text-slate-400" />}
           />
         </div>
 
@@ -131,7 +128,7 @@ export const CatalogToolbar: React.FC<CatalogToolbarProps> = ({
                 key={filter.key}
                 onClick={() => onStatusFilterChange(filter.key)}
                 className={cn(
-                  'min-h-[44px] h-11 px-3.5 py-2 rounded-xl text-xs font-medium border whitespace-nowrap transition-all flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-violet-500',
+                  'min-h-[44px] h-11 px-3.5 py-2 rounded-xl text-xs font-medium border whitespace-nowrap transition-all flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-violet-500 cursor-pointer',
                   isActive
                     ? filter.activeClass
                     : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:bg-slate-800/60 hover:text-slate-200'
@@ -149,3 +146,4 @@ export const CatalogToolbar: React.FC<CatalogToolbarProps> = ({
     </div>
   );
 };
+
