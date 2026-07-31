@@ -1,20 +1,25 @@
 import json
 import asyncio
 import os
-from typing import TypeVar, Type, Optional, Callable, Union
+import logging
+from typing import TypeVar, Type, Optional, Callable, Union, Any
 from pydantic import BaseModel
 import redis.asyncio as redis
 from app.core.config.settings import settings
-import logging
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
 class RedisCache:
-    def __init__(self):
+    def __init__(self) -> None:
         self.redis_client: Optional[redis.Redis] = None
         self._pool: Optional[redis.ConnectionPool] = None
+
+    @property
+    def client(self) -> Optional[redis.Redis]:
+        """Propriedade com tipagem explícita para acesso direto ao cliente nativo."""
+        return self.redis_client
 
     async def connect(self) -> None:
         if not settings.REDIS_URL:
@@ -26,7 +31,7 @@ class RedisCache:
 
         logger.info(f"Connecting to Redis at {redis_url}")
 
-        kwargs = {
+        kwargs: dict[str, Any] = {
             "decode_responses": True,
             "max_connections": 20,
         }
@@ -67,7 +72,7 @@ class RedisCache:
             if value:
                 try:
                     return json.loads(value)
-                except json.JSONDecodeError:
+                except (json.JSONDecodeError, TypeError):
                     return value
         except redis.ConnectionError:
             logger.warning("Redis indisponível ao ler chave %s.", key)
@@ -81,7 +86,12 @@ class RedisCache:
             return model_cls.model_validate_json(data)
         return None
 
-    async def set(self, key: str, value: Union[str, int, float, dict, list, BaseModel], expire_seconds: int = 3600):
+    async def set(
+        self, 
+        key: str, 
+        value: Union[str, int, float, dict, list, BaseModel], 
+        expire_seconds: int = 3600
+    ) -> None:
         if not self.redis_client:
             return
         try:
@@ -94,6 +104,36 @@ class RedisCache:
             await self.redis_client.set(key, serialized, ex=expire_seconds)
         except redis.ConnectionError:
             logger.warning("Redis indisponível ao gravar chave %s.", key)
+
+    async def incr(self, key: str, amount: int = 1) -> int:
+        """Incrementa atômico tipado para Rate Limiters e Contadores."""
+        if not self.redis_client:
+            return 0
+        try:
+            return await self.redis_client.incr(key, amount)
+        except redis.ConnectionError:
+            logger.warning("Redis indisponível ao incrementar chave %s.", key)
+            return 0
+
+    async def expire(self, key: str, time: int) -> bool:
+        """Define expiração atômica em segundos para uma chave."""
+        if not self.redis_client:
+            return False
+        try:
+            return await self.redis_client.expire(key, time)
+        except redis.ConnectionError:
+            logger.warning("Redis indisponível ao definir expiração na chave %s.", key)
+            return False
+
+    async def delete(self, key: str) -> int:
+        """Remove uma chave do Redis."""
+        if not self.redis_client:
+            return 0
+        try:
+            return await self.redis_client.delete(key)
+        except redis.ConnectionError:
+            logger.warning("Redis indisponível ao deletar chave %s.", key)
+            return 0
 
     async def get_or_create(self, key: str, factory: Callable[[], T], expire_seconds: int = 3600) -> T:
         value = await self.get(key)
@@ -110,5 +150,6 @@ class RedisCache:
             
         return new_value
 
-# Instância global
+
+# Instância global com suporte a autocompletar completo
 redis_cache = RedisCache()

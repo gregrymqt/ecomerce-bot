@@ -1,4 +1,4 @@
-from ast import arg
+# app/core/config/rabbitmq.py
 import logging
 from typing import Dict
 import aio_pika
@@ -7,19 +7,40 @@ from app.core.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
+
 async def get_rabbitmq_connection() -> aio_pika.RobustConnection:
-    return await aio_pika.connect_robust(
-        settings.RABBITMQ_URL,
-        heartbeat=60,  # Garante ping/pong a cada 60s
-        timeout=15     # Timeout de conexão inicial
-    )
+    """
+    Estabelece uma conexão robusta com o RabbitMQ/CloudAMQP.
+    Suporta reconexão automática e conexões criptografadas AMQPS.
+    """
+    rabbitmq_url = settings.RABBITMQ_URL
+
+    # Alerta defensivo caso esteja em produção rodando sem AMQPS (TLS)
+    if settings.ENVIRONMENT.lower() in ["production", "prod"] and not rabbitmq_url.startswith("amqps://"):
+        logger.warning(
+            "⚠️ ALERTA DE SEGURANÇA: A conexão RabbitMQ em produção não está utilizando protocolo TLS/AMQPS (amqps://)."
+        )
+
+    try:
+        return await aio_pika.connect_robust(
+            rabbitmq_url,
+            heartbeat=60,      # Ping/pong a cada 60s para manter socket ativo em redes Cloud
+            timeout=15,        # Timeout de conexão inicial
+            client_properties={
+                "connection_name": f"EcommerceBot-{settings.ENVIRONMENT}"
+            }
+        )
+    except Exception as err:
+        logger.error(f"Falha ao conectar ao RabbitMQ/CloudAMQP: {err}")
+        raise err
+
 
 async def configure_rabbitmq_topology(
     channel: aio_pika.abc.AbstractChannel
 ) -> Dict[str, aio_pika.abc.AbstractQueue]:
     """
-    Configura a topologia completa do RabbitMQ com 7 filas e isolamento de DLQ
-    para operações de scraping/LLM e transações financeiras.
+    Configura a topologia completa do RabbitMQ com 7 filas principais e 3 isolamentos de DLQ
+    para operações de scraping, IA e transações financeiras.
     """
     try:
         # ------------------------------------------------------------------
@@ -44,28 +65,34 @@ async def configure_rabbitmq_topology(
         )
 
         # ------------------------------------------------------------------
-        # 2. DEAD LETTER QUEUES (DLQs)
+        # 2. DEAD LETTER QUEUES (DLQs - Com TTL de expiração para limpeza)
         # ------------------------------------------------------------------
+        # DLQs guardam mensagens com falha por no máximo 7 dias (604.800.000 ms)
+        dlq_args = {"x-message-ttl": 604800000}
+
         dlq_ecommerce = await channel.declare_queue(
             "dlq_ecommerce",
-            durable=True
+            durable=True,
+            arguments=dlq_args
         )
         await dlq_ecommerce.bind(ecommerce_dlx, routing_key="ecommerce_failed")
 
         dlq_mercado_pago = await channel.declare_queue(
             "dlq_mercado_pago",
-            durable=True
+            durable=True,
+            arguments=dlq_args
         )
         await dlq_mercado_pago.bind(mercadopago_dlx, routing_key="mp_failed")
 
         dlq_llm = await channel.declare_queue(
             "dlq_llm",
-            durable=True
+            durable=True,
+            arguments=dlq_args
         )
         await dlq_llm.bind(llm_dlx, routing_key="llm_failed")
 
         # ------------------------------------------------------------------
-        # 3. FILAS DE E-COMMERCE & DEMO (SCRAPING E LLM)
+        # 3. FILAS DE E-COMMERCE & DEMO (SCRAPING)
         # ------------------------------------------------------------------
         demo_ecommerce = await channel.declare_queue(
             "demo_ecommerce",
@@ -140,9 +167,8 @@ async def configure_rabbitmq_topology(
             }
         )
 
-        logger.info("RabbitMQ topology (7 queues & 2 DLXs) configured successfully.")
+        logger.info("Topologia RabbitMQ (7 filas principais, 3 DLXs e 3 DLQs) configurada com sucesso.")
 
-        # Retornar dicionário facilita o consumo posterior na inicialização de Workers
         return {
             "demo_ecommerce": demo_ecommerce,
             "ecommerce": ecommerce,
@@ -157,5 +183,5 @@ async def configure_rabbitmq_topology(
         }
 
     except Exception as e:
-        logger.error(f"Error configuring RabbitMQ topology: {e}")
+        logger.error(f"Erro ao configurar topologia do RabbitMQ: {e}")
         raise
