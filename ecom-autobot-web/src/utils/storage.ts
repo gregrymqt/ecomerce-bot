@@ -1,5 +1,7 @@
 // src/utils/storage.ts
 
+const TENANT_KEY = 'app_active_tenant_id';
+
 /**
  * Armazena um valor no localStorage de forma segura e tipada.
  */
@@ -36,4 +38,29 @@ export const deleteLocalStorage = (key: string): void => {
   } catch (e) {
     console.error(`Erro ao deletar "${key}" do localStorage:`, e);
   }
+};
+
+/**
+ * Busca e sanitiza o Tenant ID ativo para envio seguro em cabeçalhos HTTP.
+ */
+export const getTenantId = (): string | null => {
+  const tenant = getLocalStorage<string>(TENANT_KEY);
+  if (!tenant || typeof tenant !== 'string') return null;
+  // Remove caracteres potencialmente perigosos para segurança de cabeçalho (Header Injection)
+  return tenant.trim().replace(/[^\w-]/g, '');
+};
+
+/**
+ * Salva o Tenant ID ativo.
+ */
+export const saveTenantId = (tenantId: string): void => {
+  if (!tenantId) return;
+  setLocalStorage(TENANT_KEY, tenantId.trim());
+};
+
+/**
+ * Limpa o Tenant ID ativo do armazenamento local.
+ */
+export const clearTenantId = (): void => {
+  deleteLocalStorage(TENANT_KEY);
 };

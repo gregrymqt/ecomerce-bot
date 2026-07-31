@@ -11,6 +11,7 @@ import { useScraper } from '../hooks/useScraper';
 import { useScraperStream } from '../hooks/useScraperStream';
 import type { ScraperFormProps } from '../types/scrapper.type';
 import { scrapperService } from '../services/scrapper.service';
+import { isValidHttpUrl } from '@/utils/security';
 
 interface BatchQueueItem {
   id: number;
@@ -37,6 +38,12 @@ export const ScraperForm: React.FC<ScraperFormProps> = ({ className }) => {
 
   const handleSubmitSingle = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Trava de Segurança contra esquemas inválidos (ex: javascript: alert(1))
+    if (!isValidHttpUrl(url)) {
+      return;
+    }
+
     submitUrl().then(() => {
       connect();
     });
@@ -381,24 +388,22 @@ export const ScraperForm: React.FC<ScraperFormProps> = ({ className }) => {
                           [{String(index + 1).padStart(2, '0')}]
                         </span>
                         <span
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider shrink-0 uppercase ${
-                            isErr
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider shrink-0 uppercase ${isErr
                               ? 'bg-rose-950 text-rose-300 border border-rose-800'
                               : isSuccess
                                 ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
                                 : 'bg-indigo-950 text-indigo-300 border border-indigo-800'
-                          }`}
+                            }`}
                         >
                           {evt.status}
                         </span>
                         <span
-                          className={`flex-1 break-words ${
-                            isErr
+                          className={`flex-1 break-words ${isErr
                               ? 'text-rose-400'
                               : isSuccess
                                 ? 'text-emerald-400'
                                 : 'text-slate-200'
-                          }`}
+                            }`}
                         >
                           {evt.url || evt.error || `Progresso: ${evt.progress}%`}
                         </span>

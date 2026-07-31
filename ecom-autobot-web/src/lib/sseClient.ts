@@ -1,3 +1,6 @@
+// src/lib/sseClient.ts
+import { getTenantId } from '@/utils/storage';
+
 export interface SSEClientOptions<T> {
   /** Caminho relativo da rota (ex: '/demo/stream') */
   endpoint: string;
@@ -18,15 +21,18 @@ export class SSEClient<T = unknown> {
   }
 
   /**
-   * Abre a conexão SSE com o backend.
+   * Abre a conexão SSE com o backend incluindo o tenant ativo na query URL.
    */
   public connect({ endpoint, onMessage, onError, onOpen }: SSEClientOptions<T>): void {
-    // Garante que conexões anteriores sejam fechadas antes de abrir uma nova
     this.close();
 
-    const url = `${this.baseUrl}${endpoint}`;
+    const tenantId = getTenantId();
+    const separator = endpoint.includes('?') ? '&' : '?';
+    const tenantParam = tenantId ? `${separator}tenant_id=${encodeURIComponent(tenantId)}` : '';
+    
+    const url = `${this.baseUrl}${endpoint}${tenantParam}`;
 
-    // 💡 OBRIGATÓRIO: { withCredentials: true } envia os cookies HttpOnly na conexão SSE
+    // { withCredentials: true } envia os cookies HttpOnly na conexão SSE
     this.eventSource = new EventSource(url, { withCredentials: true });
 
     if (onOpen) {
@@ -35,11 +41,9 @@ export class SSEClient<T = unknown> {
 
     this.eventSource.onmessage = (event: MessageEvent) => {
       try {
-        // Tenta converter o dado de texto do Redis para objeto JSON
         const parsedData: T = JSON.parse(event.data);
         onMessage(parsedData);
       } catch {
-        // Fallback caso a mensagem do Redis venha em texto puro
         onMessage(event.data as unknown as T);
       }
     };
@@ -51,9 +55,6 @@ export class SSEClient<T = unknown> {
     };
   }
 
-  /**
-   * Encerra a conexão SSE e limpa os recursos.
-   */
   public close(): void {
     if (this.eventSource) {
       this.eventSource.close();

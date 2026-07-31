@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { authService } from '../services/authService';
-import { getTenantId, saveTenantId, clearTenantId } from '../utils/storage';
+import { getTenantId, saveTenantId, clearTenantId } from '@/utils/storage';
 import { getErrorMessage } from '@/utils/errors';
 import type {
   AuthenticatedUser,
@@ -31,8 +31,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * Resolve o tenant ativo combinando as permissões do usuário,
-   * a solicitação atual e o tenant previamente persistido no localStorage.
+   * Reseta todo o estado de autenticação em caso de expiração ou logout.
+   */
+  const resetAuthState = useCallback(() => {
+    setUser(null);
+    setCurrentTenant(null);
+    setStatus('unauthenticated');
+    clearTenantId();
+  }, []);
+
+  /**
+   * Resolve o tenant ativo combinando as permissões do usuário.
    */
   const resolveTenant = useCallback((userTenants?: string[], requestedTenant?: string | null) => {
     if (requestedTenant && userTenants?.includes(requestedTenant)) {
@@ -65,21 +74,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveTenantId(activeTenant);
       }
     } catch {
-      setUser(null);
-      setStatus('unauthenticated');
-      setCurrentTenant(null);
+      resetAuthState();
     } finally {
       setIsLoading(false);
     }
-  }, [resolveTenant]);
+  }, [resolveTenant, resetAuthState]);
+
+  // Escuta evento global de 401/403 do apiClient
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      resetAuthState();
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
+  }, [resetAuthState]);
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
 
-  /**
-   * Realiza login e armazena tenant ativo.
-   */
   const login = async (credentials: LoginCredentials) => {
     setIsLoading(true);
     setStatus('loading');
@@ -104,9 +120,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  /**
-   * Registra um novo usuário.
-   */
   const register = async (payload: RegisterPayload) => {
     setIsLoading(true);
     setStatus('loading');
@@ -131,9 +144,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  /**
-   * Realiza logout do usuário e limpa as credenciais locais.
-   */
   const logout = async () => {
     setIsLoading(true);
     try {
@@ -141,17 +151,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err) {
       console.warn('Erro ao efetuar logout no backend:', err);
     } finally {
-      setUser(null);
-      setCurrentTenant(null);
-      setStatus('unauthenticated');
-      clearTenantId();
+      resetAuthState();
       setIsLoading(false);
     }
   };
 
-  /**
-   * Atualiza as informações do perfil do usuário.
-   */
   const updateProfile = async (payload: UpdateUserPayload) => {
     setIsLoading(true);
     setError(null);
@@ -174,9 +178,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  /**
-   * Altera o tenant ativo para o envio no cabeçalho X-Tenant-ID.
-   */
   const switchTenant = (tenantId: string) => {
     if (user?.tenants?.includes(tenantId)) {
       setCurrentTenant(tenantId);

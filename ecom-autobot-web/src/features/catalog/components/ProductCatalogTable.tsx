@@ -10,6 +10,7 @@ import {
 import { Badge, Button } from '@/components/ui';
 import { cn } from '@/utils/cn';
 import type { CatalogProduct, ProductStatus } from '../types/catalog.types';
+import { sanitizeImageUrl } from '@/utils/security';
 
 export interface ProductCatalogTableProps {
   products: CatalogProduct[];
@@ -181,10 +182,11 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                          {product.thumbnailUrl ? (
+                          {sanitizeImageUrl(product.thumbnailUrl) ? (
                             <img
-                              src={product.thumbnailUrl}
+                              src={sanitizeImageUrl(product.thumbnailUrl)!}
                               alt={product.titleOriginal}
+                              loading="lazy"
                               className="w-full h-full object-cover"
                             />
                           ) : (
