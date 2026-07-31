@@ -5,6 +5,11 @@ services:
     container_name: prod-redis-bot
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-prod_redis_password_secure}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
     volumes:
       - redis-prod-data:/data
     networks:
@@ -22,12 +27,17 @@ services:
     environment:
       - REDIS_URL=redis://:${REDIS_PASSWORD:-prod_redis_password_secure}@redis:6379/0
       - ENVIRONMENT=production
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2048M
     depends_on:
       - redis
     networks:
       - internal-net
 
-  # Reverse Proxy Nginx com suporte a SSE sem buffer
+  # Reverse Proxy Nginx com suporte a SSL e SSE
   nginx:
     image: nginx:alpine
     container_name: prod-nginx-bot
@@ -35,14 +45,31 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - certbot-etc:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
+      - certbot-www:/var/www/certbot
     depends_on:
       - api
     networks:
       - internal-net
+
+  # Certbot - Automação de Renovação de SSL
+  certbot:
+    image: certbot/certbot
+    container_name: prod-certbot-bot
+    restart: unless-stopped
+    volumes:
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+      - certbot-www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while true; do certbot renew; sleep 12h & wait $${!}; done;'"
 
 networks:
   internal-net:
@@ -52,3 +79,4 @@ volumes:
   redis-prod-data:
   certbot-etc:
   certbot-var:
+  certbot-www:
