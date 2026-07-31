@@ -1,7 +1,19 @@
 from pydantic import Field, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import List
 
 class Settings(BaseSettings):
+    ENVIRONMENT: str = Field(default="development", validation_alias=AliasChoices("ENVIRONMENT", "ENV"))
+    
+    # CORS: Whitelist de domínios permitidos em produção/dev
+    CORS_ORIGINS: List[str] = Field(
+        default=["http://localhost:5173", "http://localhost:3000"],
+        validation_alias=AliasChoices("CORS_ORIGINS", "ALLOWED_ORIGINS")
+    )
+    
+    # Limite de tamanho de payload HTTP (Padrão: 10MB)
+    MAX_PAYLOAD_SIZE_BYTES: int = 10 * 1024 * 1024
+
     POSTGRES_URI: str = Field(
         default="postgresql+asyncpg://postgres:postgres@localhost:5432/ecommerce_bot_db",
         validation_alias=AliasChoices("POSTGRES_URI", "POSTGRES_URI_PYTHON")
@@ -10,8 +22,6 @@ class Settings(BaseSettings):
         default="amqp://guest:guest@localhost:5672/",
         validation_alias=AliasChoices("RABBITMQ_URL", "RABBITMQ__HOSTNAME")
     )
-    OPENAI_API_KEY: str | None = None
-    GEMINI_API_KEY: str | None = None
     DISCORD_WEBHOOK_URL: str = ""
     AES_MASTER_KEY: str = Field(
         default="",

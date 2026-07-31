@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta, timezone
-import os
-from typing import Optional
+import re
 import jwt
 from fastapi import Header, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -10,24 +9,34 @@ from app.features.auth.schemas import AuthenticatedUser
 
 security = HTTPBearer()
 
+def sanitize_tenant_id(tenant_id: str) -> str:
+    """Sanitiza o X-Tenant-ID garantindo apenas caracteres alfanuméricos e hífens."""
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Header X-Tenant-ID é obrigatório."
+        )
+    cleaned = tenant_id.strip()
+    if not re.match(r"^[a-zA-Z0-9_-]+$", cleaned):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Header X-Tenant-ID possui formato inválido."
+        )
+    return cleaned
+
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
-    """
-    Cria e assina um novo Token JWT (HS256) com as claims fornecidas (ex: sub, tenants, is_admin).
-    """
+    """Cria e assina um novo Token JWT (HS256) com as claims fornecidas."""
     secret_key = settings.JWT_SECRET_KEY
     if not secret_key:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="JWT secret key missing in .env"
+            detail="JWT secret key missing in settings."
         )
 
     to_encode = data.copy()
     now = datetime.now(timezone.utc)
-    if expires_delta:
-        expire = now + expires_delta
-    else:
-        expire = now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = now + (expires_delta if expires_delta else timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
 
     to_encode.update({
         "iat": int(now.timestamp()),
@@ -38,16 +47,12 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 
 
 async def add_token_to_blacklist(token: str, expire_seconds: int = 86400) -> None:
-    """
-    Insere o token na blacklist no Redis para invalidá-lo após o logout.
-    """
+    """Insere o token na blacklist no Redis para invalidá-lo após o logout."""
     await redis_cache.set(f"blacklist:{token}", "revoked", expire_seconds=expire_seconds)
 
 
 async def is_token_blacklisted(token: str) -> bool:
-    """
-    Verifica na infraestrutura de cache (Redis) se o token está na blacklist.
-    """
+    """Verifica na infraestrutura de cache (Redis) se o token está na blacklist."""
     is_blacklisted = await redis_cache.get(f"blacklist:{token}")
     return bool(is_blacklisted)
 
@@ -57,9 +62,10 @@ async def get_current_tenant_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> AuthenticatedUser:
     """
-    Valida e injeta o usuário autenticado associado ao tenant informado no header X-Tenant-ID.
-    Utilizado para rotas normais de operação de e-commerce.
+    Valida e injeta o usuário autenticado garantindo que ele possui permissão
+    no tenant solicitado via X-Tenant-ID.
     """
+    clean_tenant = sanitize_tenant_id(x_tenant_id)
     token = credentials.credentials
 
     if await is_token_blacklisted(token):
@@ -73,7 +79,7 @@ async def get_current_tenant_user(
         if not secret_key:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="JWT secret key missing in .env"
+                detail="JWT secret key missing in settings."
             )
 
         payload = jwt.decode(
@@ -97,17 +103,15 @@ async def get_current_tenant_user(
     if isinstance(allowed_tenants, str):
         allowed_tenants = [allowed_tenants]
 
-    if x_tenant_id not in allowed_tenants:
+    # Validação estrita de escopo multi-tenant
+    if clean_tenant not in allowed_tenants:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acesso negado. Você não possui autorização para operar neste Tenant."
         )
 
-    is_admin = (
-        payload.get("is_admin") is True
-        or payload.get("role") == "admin"
-        or payload.get("email", "").lower().startswith("admin@")
-    )
+    # REMOVIDA A VULNERABILIDADE DA CHECAGEM DE PREFIXO 'admin@'
+    is_admin = payload.get("is_admin") is True or payload.get("role") == "admin"
 
     return AuthenticatedUser(
         sub=str(payload.get("sub", "")),
@@ -124,8 +128,7 @@ async def get_current_user_admin(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> AuthenticatedUser:
     """
-    Valida a autenticação JWT do usuário e garante privilégios de Administrador do Sistema (programador).
-    Bloqueia usuários normais e donos de e-commerce sem função administrativa (HTTP 403 Forbidden).
+    Valida privilégios administrativos estritos baseados em roles/claims JWT explícitas.
     """
     token = credentials.credentials
 
@@ -140,7 +143,7 @@ async def get_current_user_admin(
         if not secret_key:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="JWT secret key missing in .env"
+                detail="JWT secret key missing in settings."
             )
 
         payload = jwt.decode(
@@ -160,11 +163,8 @@ async def get_current_user_admin(
             detail="Token inválido."
         )
 
-    is_admin = (
-        payload.get("is_admin") is True
-        or payload.get("role") == "admin"
-        or payload.get("email", "").lower().startswith("admin@")
-    )
+    # REMOVIDA A VULNERABILIDADE DA CHECAGEM DE PREFIXO 'admin@'
+    is_admin = payload.get("is_admin") is True or payload.get("role") == "admin"
 
     if not is_admin:
         raise HTTPException(
