@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Zap, User, Bot, ShoppingBag, CreditCard, LogOut, ShieldCheck, Key } from 'lucide-react';
+import { LayoutDashboard, Zap, User, Bot, ShoppingBag, CreditCard, LogOut, ShieldCheck, Key, Store } from 'lucide-react';
 import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar';
 import { useAuth } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
@@ -45,6 +45,15 @@ export const MainLayout: React.FC = () => {
       badgeVariant: 'indigo',
       active: location.pathname === '/catalog' || location.pathname === '/products',
       onClick: () => navigate('/catalog'),
+    },
+    {
+      id: 'integrations',
+      label: 'Central de Integrações',
+      icon: <Store className="w-5 h-5" />,
+      badge: 'Lojas',
+      badgeVariant: 'indigo',
+      active: location.pathname === '/integrations' || location.pathname === '/credentials',
+      onClick: () => navigate('/integrations'),
     },
     {
       id: 'billing',

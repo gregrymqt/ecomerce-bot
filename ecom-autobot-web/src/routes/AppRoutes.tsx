@@ -8,6 +8,7 @@ import { CatalogPage } from '@/features/catalog';
 import { SubscriptionPage } from '@/features/subscription';
 import { AdminPlansPage } from '@/features/plans';
 import { CheckoutPage } from '@/features/checkout';
+import { IntegrationsPage } from '@/features/integrations';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -24,6 +25,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/home" element={<HomePage />} />
         <Route path="/demo" element={<LiveDemoPage />} />
         <Route path="/catalog" element={<CatalogPage />} />
+        <Route path="/integrations" element={<IntegrationsPage />} />
         <Route path="/billing" element={<SubscriptionPage />} />
         <Route path="/subscriptions" element={<SubscriptionPage />} />
         <Route path="/plans" element={<SubscriptionPage />} />
@@ -47,7 +49,7 @@ export const AppRoutes: React.FC = () => {
         />
         <Route path="/products" element={<Navigate to="/catalog" replace />} />
 
-        <Route path="/credentials" element={<Navigate to="/catalog" replace />} />
+        <Route path="/credentials" element={<Navigate to="/integrations" replace />} />
       </Route>
 
       {/* Rota Fallback para URLs desconhecidas */}
