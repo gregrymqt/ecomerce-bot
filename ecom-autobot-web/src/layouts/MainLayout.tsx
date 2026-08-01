@@ -17,11 +17,11 @@ export const MainLayout: React.FC = () => {
 
   const navItems: SidebarNavItem[] = [
     {
-      id: 'home',
-      label: 'Dashboard',
+      id: 'dashboard',
+      label: 'Dashboard & Telemetria',
       icon: <LayoutDashboard className="w-5 h-5" />,
-      active: location.pathname === '/' || location.pathname === '/home',
-      onClick: () => navigate('/'),
+      active: location.pathname === '/' || location.pathname === '/home' || location.pathname === '/dashboard',
+      onClick: () => navigate('/dashboard'),
     },
     {
       id: 'demo',

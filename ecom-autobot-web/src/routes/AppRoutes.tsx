@@ -9,6 +9,7 @@ import { SubscriptionPage } from '@/features/subscription';
 import { AdminPlansPage } from '@/features/plans';
 import { CheckoutPage } from '@/features/checkout';
 import { IntegrationsPage } from '@/features/integrations';
+import { DashboardPage } from '@/features/dashboard';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -21,8 +22,9 @@ export const AppRoutes: React.FC = () => {
 
       {/* Rotas Protegidas com Layout Principal */}
       <Route element={<MainLayout />}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/home" element={<HomePage />} />
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/home" element={<DashboardPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/demo" element={<LiveDemoPage />} />
         <Route path="/catalog" element={<CatalogPage />} />
         <Route path="/integrations" element={<IntegrationsPage />} />
