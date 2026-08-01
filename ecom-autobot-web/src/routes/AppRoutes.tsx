@@ -10,6 +10,7 @@ import { AdminPlansPage } from '@/features/plans';
 import { CheckoutPage } from '@/features/checkout';
 import { IntegrationsPage } from '@/features/integrations';
 import { DashboardPage } from '@/features/dashboard';
+import { SettingsPage } from '@/features/settings';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -28,6 +29,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/demo" element={<LiveDemoPage />} />
         <Route path="/catalog" element={<CatalogPage />} />
         <Route path="/integrations" element={<IntegrationsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="/billing" element={<SubscriptionPage />} />
         <Route path="/subscriptions" element={<SubscriptionPage />} />
         <Route path="/plans" element={<SubscriptionPage />} />

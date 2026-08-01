@@ -2,12 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { HomeHeader } from '../components/HomeHeader';
-import { QuickExtractWidget } from '../components/QuickExtractWidget';
 import { KpiMetricsGrid } from '../components/KpiMetricsGrid';
 import { RecentJobsTable } from '../components/RecentJobsTable';
 import { IntegrationsStatus } from '../components/IntegrationsStatus';
-import type { AIModel, ExtractionJob, HomeMetrics, JobStatus } from '../types/home.types';
-import { scrapperService } from '@/features/scraper/services/scrapper.service';
+import type { ExtractionJob, HomeMetrics, JobStatus } from '../types/home.types';
+import { ScraperForm } from '@/features/scraper';
 import { useProducts } from '@/features/catalog/hooks/useProducts';
 import { AIKeysForm } from '@/features/ai-keys/components/AIKeysForm';
 import { Modal, Alert } from '@/components/ui';
@@ -15,9 +14,8 @@ import { Modal, Alert } from '@/components/ui';
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { products, refetch } = useProducts(50);
+  const { products } = useProducts(50);
 
-  const [isExtracting, setIsExtracting] = useState(false);
   const [isKeysModalOpen, setIsKeysModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -71,22 +69,6 @@ export const HomePage: React.FC = () => {
     };
   }, [products]);
 
-  // Disparo de extração rápida via API real (/api/v1/scraper/extract)
-  const handleQuickExtract = async (url: string, _aiModel: AIModel) => {
-    setIsExtracting(true);
-    try {
-      await scrapperService.extractUrl({ url });
-      setToastMessage(`Job de extração para ${new URL(url).hostname} enviado com sucesso!`);
-      await refetch();
-      setTimeout(() => setToastMessage(null), 4000);
-    } catch {
-      setToastMessage('Falha ao processar requisição de extração no servidor.');
-      setTimeout(() => setToastMessage(null), 4000);
-    } finally {
-      setIsExtracting(false);
-    }
-  };
-
   const handleViewJob = (_job: ExtractionJob) => {
     navigate('/catalog');
   };
@@ -124,12 +106,9 @@ export const HomePage: React.FC = () => {
         isApiOnline={true}
       />
 
-      {/* 2. Hero Widget - Extração Rápida */}
+      {/* 2. Formulário Oficial de Ingestão de Produtos (Scraper) */}
       <section aria-labelledby="quick-extract-heading">
-        <QuickExtractWidget
-          onExtract={handleQuickExtract}
-          isLoading={isExtracting}
-        />
+        <ScraperForm />
       </section>
 
       {/* 3. Grid de KPIs & Métricas */}

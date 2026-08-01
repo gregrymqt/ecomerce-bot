@@ -1,6 +1,5 @@
 export * from './types/home.types';
 export * from './components/HomeHeader';
-export * from './components/QuickExtractWidget';
 export * from './components/KpiMetricsGrid';
 export * from './components/RecentJobsTable';
 export * from './components/IntegrationsStatus';
