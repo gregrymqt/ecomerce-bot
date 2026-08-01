@@ -18,6 +18,18 @@ class Settings(BaseSettings):
         default="postgresql+asyncpg://postgres:postgres@localhost:5432/ecommerce_bot_db",
         validation_alias=AliasChoices("POSTGRES_URI", "POSTGRES_URI_PYTHON")
     )
+    POSTGRES_URI_TRANSACTION: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("POSTGRES_URI_TRANSACTION", "POSTGRES_TRANSACTION_URI")
+    )
+    POSTGRES_URI_SESSION: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("POSTGRES_URI_SESSION", "POSTGRE_URI_SESSION", "POSTRGRE_URI_SESSION", "POSTGRES_SESSION_URI")
+    )
+    DB_SSL_CERT_PATH: str | None = Field(
+        default="prod-ca-2021.crt",
+        validation_alias=AliasChoices("DB_SSL_CERT_PATH", "SSL_CERT_PATH", "POSTGRES_SSL_CERT")
+    )
     RABBITMQ_URL: str = Field(
         default="amqp://guest:guest@localhost:5672/",
         validation_alias=AliasChoices("RABBITMQ_URL", "RABBITMQ__HOSTNAME")
@@ -57,6 +69,20 @@ class Settings(BaseSettings):
     def JWT__Key(self) -> str:
         """Propriedade para retrocompatibilidade com referencias legadas."""
         return self.JWT_SECRET_KEY
+
+    def get_transaction_db_url(self) -> str:
+        """Retorna a URL de conexão para Transaction pooler (ex: pgBouncer porta 6543)."""
+        url = self.POSTGRES_URI_TRANSACTION or self.POSTGRES_URI
+        if url and url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
+
+    def get_session_db_url(self) -> str:
+        """Retorna a URL de conexão para Session/Direct mode (ex: porta 5432) usada pelo Alembic."""
+        url = self.POSTGRES_URI_SESSION or self.POSTGRES_URI
+        if url and url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
 
     model_config = SettingsConfigDict(
         env_file=('../.env', '.env'),

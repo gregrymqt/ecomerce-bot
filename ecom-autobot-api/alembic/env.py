@@ -27,8 +27,10 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+from app.core.config.database import resolve_ssl_context
+
 def get_url() -> str:
-    url = settings.POSTGRES_URI or "postgresql+asyncpg://postgres:postgres@localhost:5432/ecommerce_bot_db"
+    url = settings.get_session_db_url() or "postgresql+asyncpg://postgres:postgres@localhost:5432/ecommerce_bot_db"
     if url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
     return url
@@ -59,10 +61,16 @@ async def run_async_migrations() -> None:
     configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = get_url()
 
+    connect_args = {}
+    ssl_ctx = resolve_ssl_context()
+    if ssl_ctx is not None:
+        connect_args["ssl"] = ssl_ctx
+
     connectable = async_engine_from_config(
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
 
     async with connectable.connect() as connection:

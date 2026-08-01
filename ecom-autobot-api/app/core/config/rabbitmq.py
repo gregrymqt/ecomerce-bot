@@ -110,7 +110,8 @@ async def configure_rabbitmq_topology(
             durable=True,
             arguments={
                 "x-dead-letter-exchange": "ecommerce_dlx",
-                "x-dead-letter-routing-key": "ecommerce_failed"
+                "x-dead-letter-routing-key": "ecommerce_failed",
+                "x-max-length": 10000
             }
         )
 
@@ -122,7 +123,8 @@ async def configure_rabbitmq_topology(
             durable=True,
             arguments={
                 "x-dead-letter-exchange": "mercadopago_dlx",
-                "x-dead-letter-routing-key": "mp_failed"
+                "x-dead-letter-routing-key": "mp_failed",
+                "x-max-length": 10000
             }
         )
 
@@ -131,7 +133,8 @@ async def configure_rabbitmq_topology(
             durable=True,
             arguments={
                 "x-dead-letter-exchange": "mercadopago_dlx",
-                "x-dead-letter-routing-key": "mp_failed"
+                "x-dead-letter-routing-key": "mp_failed",
+                "x-max-length": 10000
             }
         )
 
@@ -140,7 +143,8 @@ async def configure_rabbitmq_topology(
             durable=True,
             arguments={
                 "x-dead-letter-exchange": "mercadopago_dlx",
-                "x-dead-letter-routing-key": "mp_failed"
+                "x-dead-letter-routing-key": "mp_failed",
+                "x-max-length": 10000
             }
         )
 
@@ -152,7 +156,8 @@ async def configure_rabbitmq_topology(
             durable=True,
             arguments={
                 "x-dead-letter-exchange": "llm_dlx",
-                "x-dead-letter-routing-key": "llm_failed"
+                "x-dead-letter-routing-key": "llm_failed",
+                "x-max-length": 10000
             }
         )
 

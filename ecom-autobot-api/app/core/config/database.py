@@ -8,21 +8,55 @@ from app.core.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
+import ssl
+import os
+
 DEFAULT_DB_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/ecommerce_bot_db"
-DATABASE_URL = settings.POSTGRES_URI if settings.POSTGRES_URI else DEFAULT_DB_URL
+DATABASE_URL = settings.get_transaction_db_url() or DEFAULT_DB_URL
 
-if DATABASE_URL and DATABASE_URL.startswith("postgresql://"):
-    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+def resolve_ssl_context():
+    cert_file = settings.DB_SSL_CERT_PATH or "prod-ca-2021.crt"
+    candidates = [
+        cert_file,
+        os.path.join(os.getcwd(), cert_file),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", cert_file)),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", cert_file))
+    ]
+    resolved_path = None
+    for cand in candidates:
+        if cand and os.path.exists(cand) and os.path.isfile(cand):
+            resolved_path = cand
+            break
 
-# Em ambiente de produção / Supabase, força SSL Criptografado
+    if resolved_path:
+        logger.info(f"🔒 Carregando certificado SSL do PostgreSQL: {resolved_path}")
+        context = ssl.create_default_context(cafile=resolved_path)
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_REQUIRED
+        return context
+
+    if settings.ENVIRONMENT.lower() in ["production", "prod", "staging"] or "supabase.com" in DATABASE_URL:
+        return "require"
+    return None
+
 connect_args = {}
-if settings.ENVIRONMENT.lower() in ["production", "prod", "staging"]:
-    connect_args["ssl"] = "require"
+ssl_ctx = resolve_ssl_context()
+if ssl_ctx is not None:
+    connect_args["ssl"] = ssl_ctx
+
+# Em pgBouncer / Supabase Transaction Pooler (porta 6543), desabilita prepared statements no asyncpg
+if ":6543" in DATABASE_URL or "pooler.supabase.com" in DATABASE_URL or settings.POSTGRES_URI_TRANSACTION:
+    connect_args["statement_cache_size"] = 0
+    connect_args["prepared_statement_cache_size"] = 0
 
 engine = create_async_engine(
     DATABASE_URL,
     echo=False,
-    poolclass=NullPool,
+    pool_size=10,
+    max_overflow=10,
+    pool_timeout=30,
+    pool_recycle=300,
+    pool_pre_ping=True,
     connect_args=connect_args
 )
 

@@ -25,8 +25,25 @@ services:
     env_file:
       - .env.prod
     environment:
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-prod_redis_password_secure}@redis:6379/0
-      - ENVIRONMENT=production
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - CORS_ORIGINS=${CORS_ORIGINS:-["*"]}
+      - POSTGRES_URI=${POSTGRES_URI}
+      - POSTGRES_URI_TRANSACTION=${POSTGRES_URI_TRANSACTION}
+      - POSTGRES_URI_SESSION=${POSTGRES_URI_SESSION}
+      - DB_SSL_CERT_PATH=${DB_SSL_CERT_PATH:-prod-ca-2021.crt}
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - REDIS_URL=${REDIS_URL:-redis://:${REDIS_PASSWORD:-prod_redis_password_secure}@redis:6379/0}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-prod_redis_password_secure}
+      - AES_MASTER_KEY=${AES_MASTER_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN}
+      - MERCADOPAGO_WEBHOOK_SECRET=${MERCADOPAGO_WEBHOOK_SECRET}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
     deploy:
       resources:
         limits:
