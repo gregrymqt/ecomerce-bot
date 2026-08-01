@@ -7,12 +7,16 @@ import { LiveDemoPage } from '@/features/live-demo';
 import { CatalogPage } from '@/features/catalog';
 import { SubscriptionPage } from '@/features/subscription';
 import { AdminPlansPage } from '@/features/plans';
+import { CheckoutPage } from '@/features/checkout';
 
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
       {/* Rota Pública de Autenticação */}
       <Route path="/auth" element={<AuthPage />} />
+
+      {/* Rota de Checkout Transparente Standalone */}
+      <Route path="/checkout" element={<CheckoutPage />} />
 
       {/* Rotas Protegidas com Layout Principal */}
       <Route element={<MainLayout />}>
@@ -41,7 +45,6 @@ export const AppRoutes: React.FC = () => {
             </AdminRouteGuard>
           }
         />
-        <Route path="/checkout" element={<SubscriptionPage />} />
         <Route path="/products" element={<Navigate to="/catalog" replace />} />
 
         <Route path="/credentials" element={<Navigate to="/catalog" replace />} />

@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, RefreshCw } from 'lucide-react';
 import { useSubscription } from '../hooks/useSubscription';
 import { ActiveSubscriptionCard } from '../components/ActiveSubscriptionCard';
 import { EnterprisePromoCard } from '../components/EnterprisePromoCard';
 import { PricingSection } from '../components/PricingSection';
 import { InvoiceHistoryTable } from '../components/InvoiceHistoryTable';
-import { CheckoutModal } from '../components/CheckoutModal';
 import { Alert } from '@/components/ui/feedback/Alert';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/features/auth';
 import type { PlanTier, BillingCycle } from '../types/subscription.type';
 
 export const SubscriptionPage: React.FC = () => {
+  const navigate = useNavigate();
   const { currentTenant } = useAuth();
   const {
     billingStatus,
@@ -24,20 +25,13 @@ export const SubscriptionPage: React.FC = () => {
     cancelSubscription,
   } = useSubscription();
 
-  // Modal Checkout State
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<PlanTier | null>(null);
-  const [selectedCycle, setSelectedCycle] = useState<BillingCycle>('monthly');
-
   const handleRefreshAll = () => {
     refreshBilling();
     refresh();
   };
 
   const handleOpenCheckout = (plan: PlanTier, cycle: BillingCycle = 'monthly') => {
-    setSelectedPlan(plan);
-    setSelectedCycle(cycle);
-    setIsCheckoutOpen(true);
+    navigate(`/checkout?plan=${plan.id}&cycle=${cycle}`);
   };
 
   const handleCancel = async () => {
@@ -167,18 +161,6 @@ export const SubscriptionPage: React.FC = () => {
       <section className="pt-4">
         <InvoiceHistoryTable />
       </section>
-
-      {/* Modal: Transparent Checkout Overlay */}
-      <CheckoutModal
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        plan={selectedPlan}
-        billingCycle={selectedCycle}
-        onPaymentSuccess={() => {
-          refreshBilling();
-          refresh();
-        }}
-      />
     </div>
   );
 };

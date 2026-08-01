@@ -6,9 +6,6 @@ import type {
   UpdateSubscriptionPayload,
   SearchSubscriptionsParams,
   PaginatedSubscriptionsResponse,
-  CreatePixCheckoutPayload,
-  CreateCreditCardCheckoutPayload,
-  CheckoutResultResponse,
 } from '../types/subscription.type';
 
 export const subscriptionService = {
@@ -85,38 +82,6 @@ export const subscriptionService = {
    */
   getPublicPlans: async () => {
     const response = await apiClient.get('/api/v1/plans/public');
-    return response.data;
-  },
-
-  /**
-   * Gera uma preferência de pagamento PIX transparente (/api/v1/checkout/pix).
-   */
-  createPixCheckout: async (payload: CreatePixCheckoutPayload): Promise<CheckoutResultResponse> => {
-    const response = await apiClient.post<CheckoutResultResponse>('/api/v1/checkout/pix', payload);
-    return response.data;
-  },
-
-  /**
-   * Processa uma cobrança transparente com Cartão de Crédito (/api/v1/checkout/credit-card).
-   */
-  createCreditCardCheckout: async (payload: CreateCreditCardCheckoutPayload): Promise<CheckoutResultResponse> => {
-    const response = await apiClient.post<CheckoutResultResponse>('/api/v1/checkout/credit-card', payload);
-    return response.data;
-  },
-
-  /**
-   * Consulta o estado atual de um pedido no backend (/api/v1/checkout/orders/{order_id}).
-   */
-  getOrderStatus: async (orderId: string) => {
-    const response = await apiClient.get(`/api/v1/checkout/orders/${orderId}`);
-    return response.data;
-  },
-
-  /**
-   * Força a sincronização direta com o Mercado Pago para um pedido (/api/v1/checkout/orders/{mp_order_id}/sync).
-   */
-  syncOrder: async (mpOrderId: string) => {
-    const response = await apiClient.post(`/api/v1/checkout/orders/${mpOrderId}/sync`);
     return response.data;
   },
 };
