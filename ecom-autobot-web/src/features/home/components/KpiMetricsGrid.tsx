@@ -2,7 +2,15 @@ import React from 'react';
 import { Zap, PackageCheck, Activity, TrendingUp } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Card, StatCard, ProgressBar, Badge } from '@/components/ui';
-import { type HomeMetrics, MOCK_HOME_METRICS } from '../types/home.types';
+import { type HomeMetrics } from '../types/home.types';
+
+const DEFAULT_METRICS: HomeMetrics = {
+  aiCreditsUsed: 0,
+  aiCreditsTotal: 5000,
+  productsProcessedMonth: 0,
+  activeJobsCount: 0,
+  successRate: 100,
+};
 
 export interface KpiMetricsGridProps {
   metrics?: HomeMetrics;
@@ -10,7 +18,7 @@ export interface KpiMetricsGridProps {
 }
 
 export const KpiMetricsGrid: React.FC<KpiMetricsGridProps> = ({
-  metrics = MOCK_HOME_METRICS,
+  metrics = DEFAULT_METRICS,
   className,
 }) => {
   return (

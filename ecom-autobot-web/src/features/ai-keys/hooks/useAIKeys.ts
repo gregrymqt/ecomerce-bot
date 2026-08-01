@@ -194,35 +194,49 @@ export const useAiKeys = (): UseAiKeysReturn => {
 
   const testKey = useCallback(
     async (providerId: AiProviderId) => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
       setTestingProvider(providerId);
+      const startTime = performance.now();
 
-      return new Promise<void>((resolve) => {
-        timerRef.current = setTimeout(() => {
-          const simulatedPing = `${Math.floor(Math.random() * 40 + 25)}ms`;
-
-          setKeys((prev) => {
-            const updated = {
-              ...prev,
-              [providerId]: {
-                ...prev[providerId],
-                isValidated: true,
-                pingTime: simulatedPing,
-              },
-            };
-            persistState(updated, activeProvider);
-            return updated;
+      try {
+        const currentKey = keys[providerId]?.apiKey;
+        if (currentKey) {
+          await keysService.saveCredentials({
+            provider: providerId,
+            access_token: currentKey,
           });
+        }
+        const pingTimeMs = `${Math.round(performance.now() - startTime)}ms`;
 
-          setTestingProvider(null);
-          timerRef.current = null;
-          resolve();
-        }, 800);
-      });
+        setKeys((prev) => {
+          const updated = {
+            ...prev,
+            [providerId]: {
+              ...prev[providerId],
+              isValidated: true,
+              pingTime: pingTimeMs,
+            },
+          };
+          persistState(updated, activeProvider);
+          return updated;
+        });
+      } catch {
+        setKeys((prev) => {
+          const updated = {
+            ...prev,
+            [providerId]: {
+              ...prev[providerId],
+              isValidated: false,
+              pingTime: undefined,
+            },
+          };
+          persistState(updated, activeProvider);
+          return updated;
+        });
+      } finally {
+        setTestingProvider(null);
+      }
     },
-    [activeProvider, persistState]
+    [keys, activeProvider, persistState]
   );
 
   const saveKey = useCallback(
@@ -230,35 +244,48 @@ export const useAiKeys = (): UseAiKeysReturn => {
       const trimmedKey = key.trim();
       if (!trimmedKey) return;
 
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
       setTestingProvider(providerId);
+      const startTime = performance.now();
 
-      return new Promise<void>((resolve) => {
-        timerRef.current = setTimeout(() => {
-          const simulatedPing = `${Math.floor(Math.random() * 35 + 20)}ms`;
+      try {
+        await keysService.saveCredentials({
+          provider: providerId,
+          access_token: trimmedKey,
+        });
+        const pingTimeMs = `${Math.round(performance.now() - startTime)}ms`;
 
-          setKeys((prev) => {
-            const updated: Record<AiProviderId, UserAiKey> = {
-              ...prev,
-              [providerId]: {
-                providerId,
-                apiKey: trimmedKey,
-                isValidated: true,
-                pingTime: simulatedPing,
-                isCustomActive: providerId === activeProvider,
-              },
-            };
-            persistState(updated, activeProvider);
-            return updated;
-          });
-
-          setTestingProvider(null);
-          timerRef.current = null;
-          resolve();
-        }, 600);
-      });
+        setKeys((prev) => {
+          const updated: Record<AiProviderId, UserAiKey> = {
+            ...prev,
+            [providerId]: {
+              providerId,
+              apiKey: trimmedKey,
+              isValidated: true,
+              pingTime: pingTimeMs,
+              isCustomActive: providerId === activeProvider,
+            },
+          };
+          persistState(updated, activeProvider);
+          return updated;
+        });
+      } catch {
+        setKeys((prev) => {
+          const updated: Record<AiProviderId, UserAiKey> = {
+            ...prev,
+            [providerId]: {
+              providerId,
+              apiKey: trimmedKey,
+              isValidated: false,
+              pingTime: undefined,
+              isCustomActive: providerId === activeProvider,
+            },
+          };
+          persistState(updated, activeProvider);
+          return updated;
+        });
+      } finally {
+        setTestingProvider(null);
+      }
     },
     [activeProvider, persistState]
   );

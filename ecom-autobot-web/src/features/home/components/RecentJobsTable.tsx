@@ -2,7 +2,7 @@ import React from 'react';
 import { Eye, Download, CheckCircle2, Clock, XCircle, Globe, Cpu } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Card, Badge, Table, Button, type TableColumn } from '@/components/ui';
-import { type ExtractionJob, type JobStatus, MOCK_EXTRACTION_JOBS } from '../types/home.types';
+import { type ExtractionJob, type JobStatus } from '../types/home.types';
 
 export interface RecentJobsTableProps {
   jobs?: ExtractionJob[];
@@ -37,7 +37,7 @@ const renderStatusBadge = (status: JobStatus) => {
 };
 
 export const RecentJobsTable: React.FC<RecentJobsTableProps> = ({
-  jobs = MOCK_EXTRACTION_JOBS,
+  jobs = [],
   onViewJob,
   onExportJob,
   className,

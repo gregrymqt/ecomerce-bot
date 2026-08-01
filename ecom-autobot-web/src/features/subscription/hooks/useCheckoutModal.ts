@@ -171,10 +171,9 @@ export function useCheckoutModal({
 
       if (onPaymentSuccess) onPaymentSuccess();
       onClose();
-    } catch {
-      // Em modo de teste sem backend ao vivo, simula sucesso e fecha modal
-      if (onPaymentSuccess) onPaymentSuccess();
-      onClose();
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || err.message || 'Falha ao processar pagamento no servidor.';
+      setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
     }

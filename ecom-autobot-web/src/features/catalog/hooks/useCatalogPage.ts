@@ -3,58 +3,6 @@ import type { CatalogProduct, FilterStatus, AITone, ProductStatus, EcomPlatform 
 import { useProducts } from './useProducts';
 import { productService } from '../services/product.service';
 
-// Fallback de demonstração caso o banco de dados do backend esteja vazio no ambiente dev
-const INITIAL_MOCK_PRODUCTS: CatalogProduct[] = [
-  {
-    id: 'prod-1',
-    sku: 'SHP-88219-PRO',
-    titleOriginal: 'Tênis Esportivo Running Max Air 90 Pro Unisex',
-    titleAi: 'Tênis Running Max Air Pro 90 — Alta Performance & Amortecimento Premium',
-    descriptionAi: 'Supere seus limites com o Tênis Running Max Air Pro. Tecnologia de amortecimento contínuo com tecido respirável de alta durabilidade.',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&auto=format&fit=crop&q=80',
-    platform: 'Shopify',
-    status: 'PROCESSED',
-    synced: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'prod-2',
-    sku: 'NUV-44102-CLK',
-    titleOriginal: 'Relógio Smartwatch Fitness Tracker Waterproof IP68',
-    titleAi: 'Smartwatch Fitness Ultra IP68 — Monitoramento Cardíaco 24h & GPS Integrado',
-    descriptionAi: 'Monitore seus treinos, sono e frequência cardíaca em tempo real. Resistência à água IP68 e bateria de até 14 dias de autonomia.',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&auto=format&fit=crop&q=80',
-    platform: 'Nuvemshop',
-    status: 'PROCESSING',
-    synced: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'prod-3',
-    sku: 'WOO-99120-BAG',
-    titleOriginal: 'Mochila Impermeável Executiva para Notebook 15.6 polegadas',
-    titleAi: 'Mochila Executiva Premium Waterproof — Compartimento Antifurto & Conector USB',
-    descriptionAi: 'Ideal para viagens e rotina urbana. Nylon militar impermeável, trava de segurança com senha e entrada USB externa para powerbank.',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&auto=format&fit=crop&q=80',
-    platform: 'WooCommerce',
-    status: 'RAW',
-    synced: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'prod-4',
-    sku: 'SHP-12903-AUD',
-    titleOriginal: 'Fone de Ouvido Bluetooth Noise Cancelling TWS 5.3',
-    titleAi: 'Fone Bluetooth TWS Pro — Cancelamento de Ruído Ativo & Graves Profundos',
-    descriptionAi: 'Imersão sonora total com Drivers de Neodímio e Bluetooth 5.3 de baixíssima latência. Perfeito para chamadas e jogos.',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&auto=format&fit=crop&q=80',
-    platform: 'Shopify',
-    status: 'FAILED',
-    synced: false,
-    createdAt: new Date().toISOString(),
-  },
-];
-
 /**
  * Normaliza a string de status vinda do backend para o union type ProductStatus da UI.
  */
@@ -77,11 +25,11 @@ export function useCatalogPage() {
   } = useProducts(50);
 
   // Estado dos produtos do catálogo
-  const [localCatalogProducts, setLocalCatalogProducts] = useState<CatalogProduct[]>(INITIAL_MOCK_PRODUCTS);
+  const [localCatalogProducts, setLocalCatalogProducts] = useState<CatalogProduct[]>([]);
 
   // Sincroniza produtos vindos da API FastAPI (`/api/v1/products`) quando retornados do backend
   useEffect(() => {
-    if (apiProducts && apiProducts.length > 0) {
+    if (apiProducts) {
       const mapped: CatalogProduct[] = apiProducts.map((p, idx) => {
         const rawPlatform = (p.attributes?.platform as string) || (p.sku.startsWith('NUV') ? 'Nuvemshop' : 'Shopify');
         const platform: EcomPlatform = (['Shopify', 'Nuvemshop', 'WooCommerce'].includes(rawPlatform)
@@ -164,7 +112,7 @@ export function useCatalogPage() {
     try {
       const newTitleAi = `${product.titleOriginal} — Otimizado IA (${new Date().toLocaleTimeString('pt-BR', { minute: '2-digit', second: '2-digit' })})`;
       
-      // Tenta persistir no backend via PATCH /api/v1/products/{sku}
+      // Persiste no backend via PATCH /api/v1/products/{sku}
       await apiUpdateProduct(product.sku, {
         title: product.titleOriginal,
         description: product.descriptionAi,
@@ -185,19 +133,7 @@ export function useCatalogPage() {
         })
       );
     } catch {
-      // Fallback local se a API falhar no ambiente offline
-      setLocalCatalogProducts((prev) =>
-        prev.map((p) => {
-          if (p.sku === product.sku) {
-            return {
-              ...p,
-              titleAi: `${p.titleOriginal} — Edição Especial IA`,
-              status: 'PROCESSED',
-            };
-          }
-          return p;
-        })
-      );
+      alert(`Falha ao re-gerar título por IA para o produto SKU ${product.sku}.`);
     } finally {
       setRegeneratingSku(null);
     }
@@ -229,15 +165,7 @@ export function useCatalogPage() {
         })
       );
     } catch {
-      // Atualização local de fallback
-      setLocalCatalogProducts((prev) =>
-        prev.map((p) => {
-          if (p.sku === product.sku) {
-            return { ...p, synced: true, status: 'PROCESSED' };
-          }
-          return p;
-        })
-      );
+      alert(`Falha ao sincronizar o produto SKU ${product.sku} com a plataforma.`);
     } finally {
       setSyncingSku(null);
     }
@@ -249,11 +177,11 @@ export function useCatalogPage() {
       setDeletingSku(sku);
       try {
         await apiDeleteProduct(sku);
-      } catch {
-        // Ignora erro backend de dev se item for mock
-      } finally {
         setLocalCatalogProducts((prev) => prev.filter((p) => p.sku !== sku));
         setSelectedSkus((prev) => prev.filter((item) => item !== sku));
+      } catch {
+        alert(`Falha ao remover o produto SKU ${sku} no servidor.`);
+      } finally {
         setDeletingSku(null);
       }
     }
@@ -292,21 +220,7 @@ export function useCatalogPage() {
         })
       );
     } catch {
-      // Fallback local se backend offline
-      setLocalCatalogProducts((prev) =>
-        prev.map((p) => {
-          if (p.sku === sku) {
-            return {
-              ...p,
-              titleAi: data.titleAi,
-              descriptionAi: data.descriptionAi,
-              synced: true,
-              status: 'PROCESSED',
-            };
-          }
-          return p;
-        })
-      );
+      alert(`Falha ao salvar as alterações do produto SKU ${sku}.`);
     } finally {
       setIsSavingDrawer(false);
       setEditingProduct(null);

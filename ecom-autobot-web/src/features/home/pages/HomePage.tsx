@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { HomeHeader } from '../components/HomeHeader';
@@ -6,47 +6,81 @@ import { QuickExtractWidget } from '../components/QuickExtractWidget';
 import { KpiMetricsGrid } from '../components/KpiMetricsGrid';
 import { RecentJobsTable } from '../components/RecentJobsTable';
 import { IntegrationsStatus } from '../components/IntegrationsStatus';
-import { type AIModel, type ExtractionJob, type HomeMetrics, MOCK_EXTRACTION_JOBS, MOCK_HOME_METRICS } from '../types/home.types';
+import type { AIModel, ExtractionJob, HomeMetrics, JobStatus } from '../types/home.types';
+import { scrapperService } from '@/features/scraper/services/scrapper.service';
+import { useProducts } from '@/features/catalog/hooks/useProducts';
 import { AIKeysForm } from '@/features/ai-keys/components/AIKeysForm';
 import { Modal, Alert } from '@/components/ui';
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { products, refetch } = useProducts(50);
 
-  const [metrics, setMetrics] = useState<HomeMetrics>(MOCK_HOME_METRICS);
-  const [jobs, setJobs] = useState<ExtractionJob[]>(MOCK_EXTRACTION_JOBS);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isKeysModalOpen, setIsKeysModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Manipulador de disparo de extração rápida
-  const handleQuickExtract = async (url: string, aiModel: AIModel) => {
+  // Mapeia os produtos reais do catálogo para jobs na tabela da Home
+  const jobs: ExtractionJob[] = useMemo(() => {
+    return products.slice(0, 10).map((p, idx) => {
+      let status: JobStatus = 'Processando';
+      const st = String(p.status).toUpperCase();
+      if (st === 'PROCESSED' || st === 'EXPORTED') status = 'Sucesso';
+      else if (st === 'FAILED') status = 'Erro';
+
+      let sourceDomain = 'e-commerce';
+      const productUrl = (p.attributes?.url as string) || (p as any).url;
+      if (productUrl) {
+        try {
+          sourceDomain = new URL(productUrl).hostname;
+        } catch {
+          // fallback silencioso
+        }
+      } else if (p.sku.startsWith('SHP')) {
+        sourceDomain = 'shopify';
+      } else if (p.sku.startsWith('NUV')) {
+        sourceDomain = 'nuvemshop';
+      }
+
+      return {
+        id: `job-${p.sku}-${idx}`,
+        productName: p.title || p.sku,
+        sourceDomain,
+        aiModel: 'DeepSeek V3',
+        status,
+        createdAt: p.created_at || new Date().toISOString(),
+      };
+    });
+  }, [products]);
+
+  // Métricas dinâmicas calculadas a partir dos produtos do catálogo
+  const metrics: HomeMetrics = useMemo(() => {
+    const total = products.length;
+    const processed = products.filter((p) => ['PROCESSED', 'EXPORTED'].includes(String(p.status).toUpperCase())).length;
+    const active = products.filter((p) => String(p.status).toUpperCase() === 'PROCESSING' || String(p.status).toUpperCase() === 'RAW').length;
+    const failed = products.filter((p) => String(p.status).toUpperCase() === 'FAILED').length;
+    const successRate = total > 0 ? ((processed / (processed + failed || 1)) * 100) : 100;
+
+    return {
+      aiCreditsUsed: processed * 5,
+      aiCreditsTotal: 5000,
+      productsProcessedMonth: processed,
+      activeJobsCount: active,
+      successRate,
+    };
+  }, [products]);
+
+  // Disparo de extração rápida via API real (/api/v1/scraper/extract)
+  const handleQuickExtract = async (url: string, _aiModel: AIModel) => {
     setIsExtracting(true);
     try {
-      // Simulação de requisição de extração
-      await new Promise((resolve) => setTimeout(resolve, 1800));
-
-      const newJob: ExtractionJob = {
-        id: `job-${Date.now()}`,
-        productName: `Produto extraído de ${new URL(url).hostname}`,
-        sourceDomain: new URL(url).hostname,
-        aiModel,
-        status: 'Processando',
-        createdAt: new Date().toISOString(),
-      };
-
-      setJobs((prev) => [newJob, ...prev]);
-      setMetrics((prev) => ({
-        ...prev,
-        aiCreditsUsed: Math.min(prev.aiCreditsTotal, prev.aiCreditsUsed + 5),
-        activeJobsCount: prev.activeJobsCount + 1,
-      }));
-
-      setToastMessage(`Job de extração para ${newJob.sourceDomain} iniciado com sucesso!`);
+      await scrapperService.extractUrl({ url });
+      setToastMessage(`Job de extração para ${new URL(url).hostname} enviado com sucesso!`);
+      await refetch();
       setTimeout(() => setToastMessage(null), 4000);
     } catch {
-      setToastMessage('Falha ao processar URL. Verifique o formato do link.');
+      setToastMessage('Falha ao processar requisição de extração no servidor.');
       setTimeout(() => setToastMessage(null), 4000);
     } finally {
       setIsExtracting(false);
@@ -58,7 +92,7 @@ export const HomePage: React.FC = () => {
   };
 
   const handleExportJob = (job: ExtractionJob) => {
-    setToastMessage(`Iniciando download do CSV para "${job.productName}"...`);
+    setToastMessage(`Iniciando download para "${job.productName}"...`);
     setTimeout(() => setToastMessage(null), 3500);
   };
 
@@ -66,7 +100,7 @@ export const HomePage: React.FC = () => {
     window.open('https://discord.gg', '_blank', 'noopener,noreferrer');
   };
 
-  const userName = user?.name || (user?.email ? user.email.split('@')[0] : 'Lucas');
+  const userName = user?.name || (user?.email ? user.email.split('@')[0] : 'Usuário');
 
   return (
     <div
