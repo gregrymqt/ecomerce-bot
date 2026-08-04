@@ -55,3 +55,4 @@ class CheckoutResultOutput(BaseModel):
     
     # Campos específicos para Cartão / Boleto
     ticket_url: Optional[str] = None
+    user_message: Optional[str] = Field(None, description="Mensagem orientativa amigável sobre o status do pagamento")

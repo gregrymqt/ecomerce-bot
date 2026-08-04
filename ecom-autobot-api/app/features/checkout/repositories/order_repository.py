@@ -1,9 +1,11 @@
-from app.core.config.redis_db import redis_cache
+from datetime import datetime, timezone
 import logging
 from typing import Optional, List
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config.redis_db import redis_cache
+from app.features.checkout.domain.enums import OrderStatus, OrderStatusDetail
 from app.features.checkout.domain.models import OrderModel
 
 logger = logging.getLogger(__name__)
@@ -19,6 +21,39 @@ class OrderRepository:
 
     def __init__(self, session: Optional[AsyncSession] = None) -> None:
         self.session = session
+
+    # ==========================================
+    # HELPER DE EXPIRAÇÃO DINÂMICA DE PIX
+    # ==========================================
+
+    async def _check_and_expire_pix(self, order: Optional[OrderModel]) -> Optional[OrderModel]:
+        """
+        Verifica se um pedido com pagamento PIX ultrapassou a data de expiração
+        e o atualiza dinamicamente para CANCELED no banco e no cache Redis.
+        """
+        if not order or not order.pix_expiration_date:
+            return order
+
+        if order.status in {OrderStatus.CREATED, OrderStatus.PROCESSING, OrderStatus.ACTION_REQUIRED}:
+            now_utc = datetime.now(timezone.utc)
+            expiration_utc = order.pix_expiration_date
+            if expiration_utc.tzinfo is None:
+                expiration_utc = expiration_utc.replace(tzinfo=timezone.utc)
+
+            if now_utc > expiration_utc:
+                logger.info(
+                    f"[OrderRepository] Pedido PIX '{order.id}' expirou (Data: {expiration_utc}). Atualizando status para CANCELED."
+                )
+                order.status = OrderStatus.CANCELED
+                order.status_detail = None
+                order.updated_at = now_utc
+
+                if self.session:
+                    await self.session.flush()
+                    await self.session.commit()
+                await self._refresh_cache(order)
+
+        return order
 
     # ==========================================
     # CHAVES DE CACHE (MULTI-TENANT SAFE)
@@ -48,7 +83,8 @@ class OrderRepository:
         cached_data = await redis_cache.get(cache_key)
         if isinstance(cached_data, dict):
             logger.debug(f"[OrderRepository] Cache HIT para ID: {order_id}")
-            return OrderModel(**cached_data)
+            order = OrderModel(**cached_data)
+            return await self._check_and_expire_pix(order)
 
         # 2. Busca no PostgreSQL filtrando estritamente pelo tenant_id
         logger.debug(f"[OrderRepository] Cache MISS para ID: {order_id}. Consultando DB...")
@@ -63,7 +99,7 @@ class OrderRepository:
         if order:
             await redis_cache.set(cache_key, order.to_dict(), expire_seconds=self.CACHE_TTL_SECONDS)
 
-        return order
+        return await self._check_and_expire_pix(order)
 
     async def get_by_external_reference(self, tenant_id: str, external_ref: str) -> Optional[OrderModel]:
         """Busca um pedido pela referência externa (ID do pedido do tenant) com Cache."""
@@ -72,7 +108,8 @@ class OrderRepository:
         cached_data = await redis_cache.get(cache_key)
         if isinstance(cached_data, dict):
             logger.debug(f"[OrderRepository] Cache HIT para ExternalRef: {external_ref}")
-            return OrderModel(**cached_data)
+            order = OrderModel(**cached_data)
+            return await self._check_and_expire_pix(order)
 
         stmt = select(OrderModel).where(
             OrderModel.tenant_id == tenant_id,
@@ -84,7 +121,7 @@ class OrderRepository:
         if order:
             await redis_cache.set(cache_key, order.to_dict(), expire_seconds=self.CACHE_TTL_SECONDS)
 
-        return order
+        return await self._check_and_expire_pix(order)
 
     async def get_by_mp_order_id(self, tenant_id: str, mp_order_id: str) -> Optional[OrderModel]:
         """Busca um pedido pelo ID do Mercado Pago (útil no tratamento de Webhooks)."""
@@ -93,7 +130,8 @@ class OrderRepository:
         cached_data = await redis_cache.get(cache_key)
         if isinstance(cached_data, dict):
             logger.debug(f"[OrderRepository] Cache HIT para MP_Order_ID: {mp_order_id}")
-            return OrderModel(**cached_data)
+            order = OrderModel(**cached_data)
+            return await self._check_and_expire_pix(order)
 
         stmt = select(OrderModel).where(
             OrderModel.tenant_id == tenant_id,
@@ -105,7 +143,7 @@ class OrderRepository:
         if order:
             await redis_cache.set(cache_key, order.to_dict(), expire_seconds=self.CACHE_TTL_SECONDS)
 
-        return order
+        return await self._check_and_expire_pix(order)
 
     # ==========================================
     # MUTAÇÕES (CRUDS COM INVALIDAÇÃO DE CACHE)

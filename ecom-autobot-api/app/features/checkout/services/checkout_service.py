@@ -47,6 +47,32 @@ def _get_order_client():
     return MercadoPagoOrderClient()
 
 
+REJECTED_PAYMENT_MESSAGES = {
+    "cc_rejected_bad_filled_card_number": "O número do cartão de crédito é inválido. Por favor, verifique os dígitos digitados.",
+    "cc_rejected_bad_filled_date": "A data de vencimento informada é inválida.",
+    "cc_rejected_bad_filled_other": "Os dados do cartão estão incorretos. Por favor, revise as informações preenchidas.",
+    "cc_rejected_bad_filled_security_code": "O código de segurança (CVV) informado é inválido.",
+    "cc_rejected_blacklist": "Este cartão não pôde ser processado. Por favor, utilize outro cartão ou meio de pagamento.",
+    "cc_rejected_call_for_authorize": "Pagamento pendente de autorização. Entre em contato com a operadora do seu cartão para autorizar.",
+    "cc_rejected_card_disabled": "Este cartão está desabilitado ou inativo. Entre em contato com o seu banco emissor.",
+    "cc_rejected_card_error": "Não foi possível processar a cobrança no cartão. Tente novamente ou utilize outro cartão.",
+    "cc_rejected_duplicated_payment": "Detectamos um pagamento duplicado em um curto intervalo de tempo. Aguarde alguns instantes.",
+    "cc_rejected_high_risk": "O pagamento foi recusado por políticas de segurança e prevenção a fraudes.",
+    "cc_rejected_insufficient_amount": "Saldo ou limite insuficiente no cartão de crédito fornecido.",
+    "cc_rejected_invalid_installments": "O número de parcelas selecionado não é permitido para este cartão.",
+    "cc_rejected_max_attempts": "Você atingiu o limite máximo de tentativas. Por favor, aguarde alguns minutos e tente novamente.",
+}
+
+
+def get_friendly_credit_card_error_message(status_detail: Optional[str]) -> str:
+    if not status_detail:
+        return "Não foi possível processar o pagamento com o cartão fornecido."
+    return REJECTED_PAYMENT_MESSAGES.get(
+        status_detail.lower(),
+        "O pagamento no cartão foi recusado pela operadora ou banco emissor."
+    )
+
+
 class CheckoutService:
     """
     Serviço de Domínio/Aplicação para gestão de Checkout Transparente.
@@ -260,6 +286,11 @@ class CheckoutService:
                 logger.error(f"[CheckoutService] ALERTA DE INCONSISTÊNCIA: Falha na compensação remota do pedido MP '{mp_response.id}': {cancel_err}")
             raise db_err
 
+        user_msg = None
+        detail_str = mp_response.status_detail.value if mp_response.status_detail else None
+        if mp_response.status != OrderStatus.PROCESSED:
+            user_msg = get_friendly_credit_card_error_message(detail_str)
+
         return CheckoutResultOutput(
             order_id=internal_order_id,
             mp_order_id=mp_response.id,
@@ -267,6 +298,7 @@ class CheckoutService:
             status=mp_response.status,
             status_detail=mp_response.status_detail,
             total_amount=input_data.total_amount,
+            user_message=user_msg,
         )
 
     # ==========================================================
