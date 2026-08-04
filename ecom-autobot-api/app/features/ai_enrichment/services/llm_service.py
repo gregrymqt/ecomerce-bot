@@ -9,6 +9,7 @@ from app.features.ai_enrichment.domain.interfaces import LLMProvider
 from app.features.ai_enrichment.infrastructure.providers import (
     DeepSeekProvider,
     GroqProvider,
+    OpenRouterLLMProvider,
 )
 from app.features.products.schemas import Product, ProductStatus
 
@@ -26,6 +27,8 @@ class LLMService:
         self,
         deepseek_api_key: Optional[str] = None,
         groq_api_key: Optional[str] = None,
+        openrouter_api_key: Optional[str] = None,
+        openrouter_preferred_models: Optional[List[str]] = None,
         is_demo: bool = False,
         providers: Optional[List[LLMProvider]] = None,
         **kwargs,
@@ -44,8 +47,42 @@ class LLMService:
             except Exception as e:
                 logger.warning(f"GroqProvider não configurado: {e}")
 
+            try:
+                self.providers.append(
+                    OpenRouterLLMProvider(
+                        api_key=openrouter_api_key,
+                        preferred_models=openrouter_preferred_models,
+                    )
+                )
+            except Exception as e:
+                logger.warning(f"OpenRouterLLMProvider não configurado: {e}")
+
         if is_demo:
             self.providers.sort(key=lambda p: 0 if p.name == "Groq" else 1)
+
+    @classmethod
+    async def create_for_tenant(cls, tenant_id: str, is_demo: bool = False) -> "LLMService":
+        """
+        Factory method que busca as chaves criptografadas (BYOK) do tenant no PostgreSQL,
+        descriptografa em memória e instância o LLMService com os provedores ativos.
+        """
+        if is_demo or tenant_id == "demo_tenant":
+            return cls(is_demo=True)
+
+        from app.core.security.crypto import get_tenant_key, get_tenant_preferred_models
+
+        deepseek_key = await get_tenant_key(tenant_id, "deepseek")
+        groq_key = await get_tenant_key(tenant_id, "groq")
+        openrouter_key = await get_tenant_key(tenant_id, "openrouter")
+        openrouter_models = await get_tenant_preferred_models(tenant_id, "openrouter")
+
+        return cls(
+            deepseek_api_key=deepseek_key,
+            groq_api_key=groq_key,
+            openrouter_api_key=openrouter_key,
+            openrouter_preferred_models=openrouter_models,
+            is_demo=False,
+        )
 
     async def enrich_product(self, product: Product) -> Product:
         prompt = f"""

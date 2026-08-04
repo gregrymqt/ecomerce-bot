@@ -10,6 +10,7 @@ from app.features.mercadopago.router import router as webhook_router
 from app.features.subscriptions.router import router as subscriptions_router  
 from app.features.checkout.router import router as checkout_router  # <-- Adicionado
 from app.features.products.router import router as products_router # <-- Adicionado
+from app.features.ai_keys.router import router as ai_keys_router
 
 api_router = APIRouter()
 
@@ -23,3 +24,4 @@ api_router.include_router(webhook_router)
 api_router.include_router(subscriptions_router)  
 api_router.include_router(checkout_router)
 api_router.include_router(products_router)
+api_router.include_router(ai_keys_router)

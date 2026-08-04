@@ -57,7 +57,12 @@ async def get_tenant_key(tenant_id: str, provider: str) -> str | None:
         return decrypt_api_key(encrypted_value)
 
 
-async def save_tenant_key(tenant_id: str, provider: str, raw_token: str) -> str:
+async def save_tenant_key(
+    tenant_id: str,
+    provider: str,
+    raw_token: str,
+    preferred_models: list[str] | None = None,
+) -> str:
     """Criptografa e persiste a chave do tenant na tabela 'tenant_configs' (BYOK)."""
     from app.features.products.domain.models import TenantConfigModel
     encrypted_value = encrypt_api_key(raw_token)
@@ -68,6 +73,20 @@ async def save_tenant_key(tenant_id: str, provider: str, raw_token: str) -> str:
             session.add(config)
         keys = dict(config.encrypted_keys or {})
         keys[f"{provider.lower()}_api_key"] = encrypted_value
+        if preferred_models is not None:
+            keys[f"{provider.lower()}_preferred_models"] = preferred_models
         config.encrypted_keys = keys
         await session.commit()
     return encrypted_value
+
+
+async def get_tenant_preferred_models(tenant_id: str, provider: str) -> list[str] | None:
+    """Recupera a lista de modelos preferidos do tenant para um determinado provedor."""
+    from app.features.products.domain.models import TenantConfigModel
+    async with AsyncSessionLocal() as session:
+        config = await session.get(TenantConfigModel, tenant_id)
+        if not config:
+            return None
+        encrypted_keys = config.encrypted_keys or {}
+        return encrypted_keys.get(f"{provider.lower()}_preferred_models")
+
