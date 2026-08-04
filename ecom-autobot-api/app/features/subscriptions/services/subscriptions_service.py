@@ -1,11 +1,13 @@
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.features.subscriptions.infrastructure.client import SubscriptionsClient
 
 from fastapi import HTTPException, status
 
 from app.features.plans.repositories import PlansRepository
 from app.features.subscriptions.domain.models import SubscriptionModel
-from app.features.subscriptions.infrastructure.client import SubscriptionsClient
 from app.features.subscriptions.repositories.subscriptions_repository import SubscriptionsRepository
 from app.features.subscriptions.schemas import (
     CreateSubscriptionRequest,
@@ -29,11 +31,14 @@ class SubscriptionsService:
     def __init__(
         self,
         repository: Optional[SubscriptionsRepository] = None,
-        client: Optional[SubscriptionsClient] = None,
+        client: Optional["SubscriptionsClient"] = None,
         plans_repository: Optional[PlansRepository] = None,
     ):
         self.repository = repository or SubscriptionsRepository()
-        self.client = client or SubscriptionsClient()
+        if client is None:
+            from app.features.subscriptions.infrastructure.client import SubscriptionsClient
+            client = SubscriptionsClient()
+        self.client = client
         self.plans_repository = plans_repository or PlansRepository()
 
     async def create_subscription(
@@ -89,7 +94,30 @@ class SubscriptionsService:
             next_payment_date=mp_subscription.next_payment_date,
         )
 
-        saved_subscription = await self.repository.create(new_subscription)
+        try:
+            saved_subscription = await self.repository.create(new_subscription)
+        except Exception as db_err:
+            logger.critical(
+                f"[SubscriptionsService] Falha grave ao persistir assinatura na base local para o tenant '{tenant_id}' | "
+                f"Assinatura no MP criada ({mp_subscription.id}). Executando compensação de cancelamento remoto... Erro: {db_err}"
+            )
+            try:
+                compensation_request = MercadoPagoUpdatePreapprovalRequest(status=SubscriptionStatusEnum.CANCELLED)
+                await self.client.update_subscription(
+                    preapproval_id=mp_subscription.id,
+                    data=compensation_request,
+                )
+                logger.info(
+                    f"[SubscriptionsService] Compensação remota executada: Assinatura MP '{mp_subscription.id}' cancelada com sucesso no Mercado Pago."
+                )
+            except Exception as cancel_err:
+                logger.error(
+                    f"[SubscriptionsService] ALERTA CRÍTICO DE INCONSISTÊNCIA: Falha ao cancelar assinatura MP '{mp_subscription.id}' durante compensação: {cancel_err}"
+                )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Falha ao persistir dados da assinatura no banco local. A cobrança no Mercado Pago foi revertida por segurança.",
+            )
 
         logger.info(
             f"[SubscriptionsService] Assinatura '{saved_subscription.id}' (MP: {saved_subscription.preapproval_id}) salva com sucesso!"

@@ -2,7 +2,10 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.features.checkout.infrastructure.client import MercadoPagoOrderClient
 
 from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
@@ -17,7 +20,6 @@ from app.features.checkout.domain.enums import (
     ProcessingMode,
 )
 from app.features.checkout.domain.models import OrderItemModel, OrderModel
-from app.features.checkout.infrastructure.client import MercadoPagoOrderClient
 from app.features.checkout.repositories.order_repository import OrderRepository
 from app.features.checkout.schemas import (
     CreateMPOrderRequest,
@@ -38,6 +40,11 @@ from app.features.checkout.schemas.service_schemas import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _get_order_client():
+    from app.features.checkout.infrastructure.client import MercadoPagoOrderClient
+    return MercadoPagoOrderClient()
 
 
 class CheckoutService:
@@ -91,7 +98,7 @@ class CheckoutService:
         )
 
         # 2. Comunica com a API do Mercado Pago
-        async with MercadoPagoOrderClient() as mp_client:
+        async with _get_order_client() as mp_client:
             mp_response: CreateMPOrderResponse = await mp_client.create_order(order_request=mp_request)
 
         # 3. Extrai dados do PIX (QR Code, Copia e Cola)
@@ -102,10 +109,10 @@ class CheckoutService:
         pix_qr_code_base64 = payment_method_data.qr_code_base64 if payment_method_data else None
         
         pix_expiration = None
-        if payment_info.date_of_expiration:
+        if payment_info.date_of_expiration and isinstance(payment_info.date_of_expiration, str):
             try:
                 pix_expiration = datetime.fromisoformat(payment_info.date_of_expiration)
-            except ValueError:
+            except (ValueError, TypeError):
                 pass
 
         # 4. Instancia a Entidade de Banco de Dados local
@@ -138,9 +145,22 @@ class CheckoutService:
             ],
         )
 
-        # 5. Persiste no PostgreSQL (que atualiza o Cache Redis via OrderRepository)
-        await self.order_repo.save(order_entity)
-        await self.session.commit()
+        # 5. Persiste no PostgreSQL com resiliência transacional e compensação remota se falhar
+        try:
+            await self.order_repo.save(order_entity)
+            await self.session.commit()
+        except Exception as db_err:
+            await self.session.rollback()
+            logger.critical(
+                f"[CheckoutService] Falha ao persistir pedido PIX '{internal_order_id}' no banco local (MP Order: '{mp_response.id}'): {db_err}"
+            )
+            try:
+                async with _get_order_client() as mp_client:
+                    await mp_client.cancel_order(order_id=mp_response.id)
+                logger.info(f"[CheckoutService] Compensação executada: Pedido MP '{mp_response.id}' cancelado com sucesso no Mercado Pago.")
+            except Exception as cancel_err:
+                logger.error(f"[CheckoutService] ALERTA DE INCONSISTÊNCIA: Falha na compensação remota do pedido MP '{mp_response.id}': {cancel_err}")
+            raise db_err
 
         return CheckoutResultOutput(
             order_id=internal_order_id,
@@ -194,7 +214,7 @@ class CheckoutService:
             items=input_data.items,
         )
 
-        async with MercadoPagoOrderClient() as mp_client:
+        async with _get_order_client() as mp_client:
             mp_response: CreateMPOrderResponse = await mp_client.create_order(order_request=mp_request)
 
         internal_order_id = f"ord_{uuid.uuid4().hex[:16]}"
@@ -223,8 +243,22 @@ class CheckoutService:
             ],
         )
 
-        await self.order_repo.save(order_entity)
-        await self.session.commit()
+        # 5. Persiste no PostgreSQL com resiliência transacional e compensação remota se falhar
+        try:
+            await self.order_repo.save(order_entity)
+            await self.session.commit()
+        except Exception as db_err:
+            await self.session.rollback()
+            logger.critical(
+                f"[CheckoutService] Falha ao persistir pedido Cartão '{internal_order_id}' no banco local (MP Order: '{mp_response.id}'): {db_err}"
+            )
+            try:
+                async with _get_order_client() as mp_client:
+                    await mp_client.cancel_order(order_id=mp_response.id)
+                logger.info(f"[CheckoutService] Compensação executada: Pedido MP '{mp_response.id}' cancelado com sucesso no Mercado Pago.")
+            except Exception as cancel_err:
+                logger.error(f"[CheckoutService] ALERTA DE INCONSISTÊNCIA: Falha na compensação remota do pedido MP '{mp_response.id}': {cancel_err}")
+            raise db_err
 
         return CheckoutResultOutput(
             order_id=internal_order_id,
@@ -247,7 +281,7 @@ class CheckoutService:
         Essencial para o manipulador de Webhooks.
         """
         # 1. Consulta o Mercado Pago diretamente (Zero Trust no payload do Webhook)
-        async with MercadoPagoOrderClient() as mp_client:
+        async with _get_order_client() as mp_client:
             mp_order = await mp_client.get_order_by_id(order_id=mp_order_id)
 
         # 2. Busca a Order localmente pelo mp_order_id ou external_reference
@@ -306,7 +340,7 @@ class CheckoutService:
         if not local_order or not local_order.mp_order_id:
             return False
 
-        async with MercadoPagoOrderClient() as mp_client:
+        async with _get_order_client() as mp_client:
             await mp_client.cancel_order(order_id=local_order.mp_order_id)
 
         local_order.status = OrderStatus.CANCELED
@@ -333,7 +367,7 @@ class CheckoutService:
                     transactions=[RefundTransactionInputSchema(id=pay_id, amount=f"{amount:.2f}")]
                 )
 
-        async with MercadoPagoOrderClient() as mp_client:
+        async with _get_order_client() as mp_client:
             await mp_client.refund_order(order_id=local_order.mp_order_id, refund_request=refund_req)
 
         # Sincroniza o novo estado de reembolso

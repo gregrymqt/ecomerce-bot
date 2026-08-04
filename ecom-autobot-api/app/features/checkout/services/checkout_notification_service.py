@@ -1,12 +1,14 @@
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.features.checkout.infrastructure.client import MercadoPagoOrderClient
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.database import AsyncSessionLocal
 from app.features.checkout.domain.models import OrderModel
-from app.features.checkout.infrastructure.client import MercadoPagoOrderClient
 from app.features.checkout.repositories import OrderRepository
 from app.features.checkout.services.checkout_service import CheckoutService
 from app.features.mercadopago.schemas import (
@@ -28,12 +30,15 @@ class CheckoutNotificationService(BaseNotificationHandler):
     def __init__(
         self,
         repository: Optional[OrderRepository] = None,
-        client: Optional[MercadoPagoOrderClient] = None,
+        client: Optional["MercadoPagoOrderClient"] = None,
         session: Optional[AsyncSession] = None,
     ):
         self.session = session
         self.repository = repository or OrderRepository(session=session)
-        self.client = client or MercadoPagoOrderClient()
+        if client is None:
+            from app.features.checkout.infrastructure.client import MercadoPagoOrderClient
+            client = MercadoPagoOrderClient()
+        self.client = client
 
     async def _get_session(self) -> Tuple[AsyncSession, bool]:
         """

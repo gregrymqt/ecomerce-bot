@@ -1,5 +1,8 @@
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.features.subscriptions.infrastructure.client import SubscriptionsClient
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +13,6 @@ from app.features.mercadopago.schemas import (
     MercadoPagoNotificationPayload,
 )
 from app.features.subscriptions.domain.models import SubscriptionModel
-from app.features.subscriptions.infrastructure.client import SubscriptionsClient
 from app.features.subscriptions.repositories.subscriptions_repository import SubscriptionsRepository
 from app.features.subscriptions.schemas import SubscriptionStatusEnum
 
@@ -26,12 +28,15 @@ class SubscriptionNotificationService(BaseNotificationHandler):
     def __init__(
         self,
         repository: Optional[SubscriptionsRepository] = None,
-        client: Optional[SubscriptionsClient] = None,
+        client: Optional["SubscriptionsClient"] = None,
         session: Optional[AsyncSession] = None,
     ):
         self.session = session
         self.repository = repository or SubscriptionsRepository(session=session)
-        self.client = client or SubscriptionsClient()
+        if client is None:
+            from app.features.subscriptions.infrastructure.client import SubscriptionsClient
+            client = SubscriptionsClient()
+        self.client = client
 
     async def _get_session(self) -> Tuple[AsyncSession, bool]:
         if self.session is not None:
