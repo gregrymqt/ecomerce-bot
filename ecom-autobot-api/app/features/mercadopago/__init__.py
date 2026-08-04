@@ -10,7 +10,7 @@ from app.features.mercadopago.services import (
     NotificationDispatcher,
     PaymentApprovedService,
 )
-from app.features.mercadopago.workers import AsyncWebhookWorker
+from app.features.mercadopago.workers import AsyncWebhookWorker, WebhookDispatcherWorker
 
 __all__ = [
     # Domain
@@ -27,4 +27,5 @@ __all__ = [
     "PaymentApprovedService",
     # Workers
     "AsyncWebhookWorker",
+    "WebhookDispatcherWorker",
 ]

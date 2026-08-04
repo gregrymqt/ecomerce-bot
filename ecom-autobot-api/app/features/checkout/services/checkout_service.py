@@ -263,12 +263,27 @@ class CheckoutService:
             )
             return None
 
-        # 3. Atualiza os campos de estado
-        local_order.status = OrderStatus(mp_order.status.value)
-        if mp_order.status_detail:
-            local_order.status_detail = OrderStatusDetail(mp_order.status_detail.value)
+        # 3. Verifica transição de estado e idempotência antes de atualizar o banco
+        new_status = OrderStatus(mp_order.status.value)
+        new_status_detail = OrderStatusDetail(mp_order.status_detail.value) if mp_order.status_detail else None
+        new_total_paid = Decimal(mp_order.total_paid_amount or "0.00")
+
+        if (
+            local_order.status == new_status
+            and local_order.status_detail == new_status_detail
+            and local_order.total_paid_amount == new_total_paid
+        ):
+            logger.info(
+                f"[CheckoutService] Order {local_order.id} (MP: {mp_order_id}) já possui o status '{new_status}'. Nenhuma alteração relacional necessária (Idempotent State Hit)."
+            )
+            return local_order
+
+        # Atualiza os campos de estado apenas se houver transição real
+        local_order.status = new_status
+        if new_status_detail:
+            local_order.status_detail = new_status_detail
         
-        local_order.total_paid_amount = Decimal(mp_order.total_paid_amount or "0.00")
+        local_order.total_paid_amount = new_total_paid
         local_order.raw_mp_response = mp_order.model_dump(mode="json")
         local_order.updated_at = datetime.now(timezone.utc)
 

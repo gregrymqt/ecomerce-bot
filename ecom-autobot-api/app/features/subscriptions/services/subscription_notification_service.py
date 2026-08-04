@@ -79,12 +79,30 @@ class SubscriptionNotificationService(BaseNotificationHandler):
                 else str(mp_subscription.status)
             )
 
+            new_reason = mp_subscription.reason or local_sub.reason
+            new_pm_id = mp_subscription.payment_method_id or local_sub.payment_method_id
+            new_card_id = str(mp_subscription.card_id) if mp_subscription.card_id else local_sub.card_id
+            new_next_payment = mp_subscription.next_payment_date or local_sub.next_payment_date
+
+            # Verifica transição de estado e idempotência local antes de mutar no PostgreSQL/Redis
+            if (
+                local_sub.status == status_value
+                and local_sub.reason == new_reason
+                and local_sub.payment_method_id == new_pm_id
+                and local_sub.card_id == new_card_id
+                and local_sub.next_payment_date == new_next_payment
+            ):
+                logger.info(
+                    f"ℹ️ [SubscriptionWebhook] Assinatura '{local_sub.id}' (MP: '{preapproval_id}') já está no estado '{status_value}'. Transição ignorada (Idempotent State Hit)."
+                )
+                return
+
             update_data = {
                 "status": status_value,
-                "reason": mp_subscription.reason or local_sub.reason,
-                "payment_method_id": mp_subscription.payment_method_id or local_sub.payment_method_id,
-                "card_id": str(mp_subscription.card_id) if mp_subscription.card_id else local_sub.card_id,
-                "next_payment_date": mp_subscription.next_payment_date or local_sub.next_payment_date,
+                "reason": new_reason,
+                "payment_method_id": new_pm_id,
+                "card_id": new_card_id,
+                "next_payment_date": new_next_payment,
             }
 
             if mp_subscription.auto_recurring:

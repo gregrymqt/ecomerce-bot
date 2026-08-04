@@ -1,3 +1,5 @@
-from app.features.mercadopago.workers.webhook_worker import AsyncWebhookWorker
+from app.features.mercadopago.workers.webhook_worker import WebhookDispatcherWorker
 
-__all__ = ["AsyncWebhookWorker"]
+AsyncWebhookWorker = WebhookDispatcherWorker
+
+__all__ = ["WebhookDispatcherWorker", "AsyncWebhookWorker"]

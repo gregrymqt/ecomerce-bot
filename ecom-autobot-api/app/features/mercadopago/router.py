@@ -50,14 +50,14 @@ async def mercadopago_webhook(
         )
 
     # 2. Prevenção de Replay Attack via Redis (Idempotência TTL 24 horas)
-    idempotency_key = f"webhook:processed:{resource_id}:{x_request_id or ''}"
+    event_type = notification.effective_action
+    idempotency_key = f"webhook:processed:{resource_id}:{event_type}"
     is_already_processed = await redis_cache.get(idempotency_key)
     if is_already_processed:
-        logger.info(f"[Webhook] Evento duplicado ignorado (Idempotency Hit): {resource_id}")
+        logger.info(f"[Webhook] Evento duplicado ignorado (Idempotency Hit): {resource_id} | Evento: {event_type}")
         return {"status": "already_processed"}
 
     await redis_cache.set(idempotency_key, "1", expire_seconds=86400)
-    event_type = notification.effective_action
 
     event_payload = WebhookEventPayload(
         topic=notification.type,

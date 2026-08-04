@@ -10,7 +10,7 @@ from app.features.checkout.schemas import (
     RefundMPOrderRequest,
     RefundMPOrderResponse,
 )
-from app.features.mercadopago.client import MercadoPagoClient
+from app.features.mercadopago.infrastructure.client import MercadoPagoClient
 
 logger = logging.getLogger(__name__)
 
