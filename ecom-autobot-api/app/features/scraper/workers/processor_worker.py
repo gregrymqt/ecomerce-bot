@@ -113,22 +113,17 @@ class ProcessorWorker:
         try:
             product_model = Product(**product_dict)
             is_demo = tenant_id == "demo_tenant"
-            current_llm = self.llm
 
-            # Avaliação de chaves criptografadas (BYOK)
-            if tenant_id and not is_demo:
-                tenant_deepseek_key = await get_tenant_key(tenant_id, "deepseek")
-                tenant_groq_key = await get_tenant_key(tenant_id, "groq")
-                
-                if tenant_deepseek_key or tenant_groq_key:
-                    logger.info(f"Usando BYOK (Chave do Cliente) para o tenant: {tenant_id}")
-                    current_llm = LLMService(
-                        deepseek_api_key=tenant_deepseek_key,
-                        groq_api_key=tenant_groq_key,
-                        is_demo=False
-                    )
-            elif is_demo:
-                current_llm = LLMService(is_demo=True)
+            if is_demo:
+                source_url = product_dict.get("metadata", {}).get("source_url", "") if isinstance(product_dict.get("metadata"), dict) else ""
+                await publish_demo_progress(
+                    url=source_url,
+                    status="processing",
+                    progress=50
+                )
+
+            # Instanciação via Factory assíncrona com suporte total a BYOK (DeepSeek, Groq, OpenRouter)
+            current_llm = await LLMService.create_for_tenant(tenant_id=tenant_id, is_demo=is_demo)
 
             # Aciona as LLMs com política de Retry Backoff Exponencial
             processed_data = await self._process_with_retry(product_model, current_llm)
@@ -136,6 +131,12 @@ class ProcessorWorker:
             processed_data.status = ProductStatus.PROCESSED
             processed_data.updated_at = datetime.now(timezone.utc)
             await self.repo.upsert_product(processed_data)
+
+            provider_names = [p.name for p in current_llm.providers] if hasattr(current_llm, "providers") else []
+            logger.info(
+                f"Produto SKU '{sku}' enriquecido com sucesso via {', '.join(provider_names)} para o tenant '{tenant_id}'",
+                extra=log_extra
+            )
 
             if is_demo:
                 await self._publish_demo_success(product_dict, processed_data)
@@ -145,8 +146,9 @@ class ProcessorWorker:
             await self.repo.set_status(tenant_id, sku, ProductStatus.FAILED.value)
             
             if is_demo:
+                source_url = product_dict.get("metadata", {}).get("source_url", "") if isinstance(product_dict.get("metadata"), dict) else ""
                 await publish_demo_progress(
-                    url=product_dict.get("metadata", {}).get("source_url", ""),
+                    url=source_url,
                     status="failed",
                     progress=100,
                     error=f"Erro no processamento da IA: {str(e)}"
