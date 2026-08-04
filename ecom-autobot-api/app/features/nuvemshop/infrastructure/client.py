@@ -125,23 +125,40 @@ class NuvemshopClient:
         retry=retry_if_exception(is_rate_limit_error),
         reraise=True,
     )
-    async def update_stock_price_batch(self, batch_data: List[dict]) -> List[dict]:
+    async def _send_single_stock_price_batch(self, chunk: List[dict]) -> List[dict]:
         url = f"{self.base_url}/products/stock-price"
-        if len(batch_data) > 50:
-            raise ValueError("A API da Nuvemshop permite o limite máximo de 50 variantes por lote no PATCH.")
-
         async with httpx.AsyncClient() as client:
             try:
-                response = await client.patch(url, headers=self.headers, json=batch_data)
+                response = await client.patch(url, headers=self.headers, json=chunk)
                 response.raise_for_status()
-                logger.info("Atualização em lote de preço/estoque processada.")
-                return response.json()
+                logger.info(f"Sub-lote de preço/estoque ({len(chunk)} itens) processado na Nuvemshop.")
+                res = response.json()
+                return res if isinstance(res, list) else [res]
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429:
-                    logger.warning("Rate limit (429) atingido na Nuvemshop no PATCH em lote. Acionando retry...")
+                    logger.warning("Rate limit (429) atingido na Nuvemshop no PATCH de sub-lote. Acionando retry...")
                 else:
-                    logger.error(f"Erro no PATCH em lote da Nuvemshop: {e.response.text}")
+                    logger.error(f"Erro no PATCH de sub-lote da Nuvemshop: {e.response.text}")
                 raise e
+
+    async def update_stock_price_batch(self, batch_data: List[dict]) -> List[dict]:
+        """
+        Atualiza em lote preço/estoque na Nuvemshop com particionamento automático (auto-chunking).
+        Subdivide listas superiores a 50 elementos em pacotes de até 50 itens e executa com retries.
+        """
+        if not batch_data:
+            return []
+
+        chunk_size = 50
+        chunks = [batch_data[i:i + chunk_size] for i in range(0, len(batch_data), chunk_size)]
+
+        all_results = []
+        for idx, chunk in enumerate(chunks):
+            logger.info(f"Enviando sub-lote Nuvemshop {idx + 1}/{len(chunks)} com {len(chunk)} itens...")
+            result_chunk = await self._send_single_stock_price_batch(chunk)
+            all_results.extend(result_chunk)
+
+        return all_results
 
     @retry(
         stop=stop_after_attempt(3),

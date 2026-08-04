@@ -24,7 +24,14 @@ from app.features.shopify.schemas import (
 logger = logging.getLogger(__name__)
 
 
+class ShopifyRateLimitError(Exception):
+    """Exceção customizada para rate limits da API Shopify (HTTP 429 ou GraphQL Cost Throttling em 200 OK)."""
+    pass
+
+
 def is_rate_limit_error(exception: Exception) -> bool:
+    if isinstance(exception, ShopifyRateLimitError):
+        return True
     return isinstance(exception, httpx.HTTPStatusError) and exception.response.status_code == 429
 
 
@@ -46,6 +53,21 @@ class ShopifyClient:
             "Accept": "application/json",
         }
 
+    def _check_graphql_errors(self, response_json: dict) -> None:
+        """
+        Verifica o payload JSON por erros do GraphQL. Se for detectado Cost Throttling (200 OK),
+        dispara a exceção ShopifyRateLimitError para acionar o retry com backoff do tenacity.
+        """
+        if "errors" in response_json:
+            errors = response_json["errors"]
+            errors_str = str(errors).lower()
+            if any(keyword in errors_str for keyword in ["throttled", "max_cost_exceeded", "call_limit_exceeded", "rate limit"]):
+                logger.warning(f"GraphQL Cost Throttling detectado na API do Shopify: {errors}")
+                raise ShopifyRateLimitError(f"Shopify GraphQL Rate Limit Exceeded: {errors}")
+            
+            logger.error(f"Erro de sintaxe/ambiente na API do Shopify: {errors}")
+            raise ValueError(f"GraphQL Syntax Error: {errors}")
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -65,9 +87,7 @@ class ShopifyClient:
                 response.raise_for_status()
                 response_json = response.json()
 
-                if "errors" in response_json:
-                    logger.error(f"Erro de sintaxe/ambiente na API do Shopify: {response_json['errors']}")
-                    raise ValueError(f"GraphQL Syntax Error: {response_json['errors']}")
+                self._check_graphql_errors(response_json)
 
                 product_set_result = response_json.get("data", {}).get("productSet", {})
                 user_errors = product_set_result.get("userErrors", [])
@@ -113,8 +133,7 @@ class ShopifyClient:
                 response.raise_for_status()
                 response_json = response.json()
 
-                if "errors" in response_json:
-                    raise ValueError(f"GraphQL Syntax Error: {response_json['errors']}")
+                self._check_graphql_errors(response_json)
 
                 result = response_json.get("data", {}).get("productCreateMedia", {})
                 user_errors = result.get("userErrors", [])
@@ -175,8 +194,7 @@ class ShopifyClient:
                 response.raise_for_status()
                 response_json = response.json()
 
-                if "errors" in response_json:
-                    raise ValueError(f"GraphQL Syntax Error: {response_json['errors']}")
+                self._check_graphql_errors(response_json)
 
                 result = response_json.get("data", {}).get("productUpdate", {})
                 user_errors = result.get("userErrors", [])
@@ -212,8 +230,7 @@ class ShopifyClient:
                 response.raise_for_status()
                 response_json = response.json()
 
-                if "errors" in response_json:
-                    raise ValueError(f"GraphQL Syntax Error: {response_json['errors']}")
+                self._check_graphql_errors(response_json)
 
                 result = response_json.get("data", {}).get("productDelete", {})
                 user_errors = result.get("userErrors", [])
@@ -251,8 +268,7 @@ class ShopifyClient:
                 response.raise_for_status()
                 response_json = response.json()
 
-                if "errors" in response_json:
-                    raise ValueError(f"GraphQL Syntax Error: {response_json['errors']}")
+                self._check_graphql_errors(response_json)
 
                 products_connection = response_json.get("data", {}).get("products", {})
                 return products_connection
