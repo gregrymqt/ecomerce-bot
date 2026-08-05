@@ -3,7 +3,6 @@ from typing import Optional
 from fastapi import HTTPException, Response, status
 
 from app.core.config.settings import settings
-from app.core.security.auth import add_token_to_blacklist, create_access_token
 from app.features.auth.domain import UserModel, hash_password, verify_password
 from app.features.auth.repositories import UserRepository
 from app.features.auth.schemas import (
@@ -109,6 +108,7 @@ class AuthService:
         }
 
         expires_in_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        from app.core.security.auth import create_access_token
         access_token = create_access_token(data=token_data)
 
         response.set_cookie(
@@ -164,4 +164,5 @@ class AuthService:
         )
 
     async def revoke_token(self, token: str) -> None:
+        from app.core.security.auth import add_token_to_blacklist
         await add_token_to_blacklist(token, expire_seconds=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
