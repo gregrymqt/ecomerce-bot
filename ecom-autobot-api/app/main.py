@@ -61,12 +61,19 @@ async def lifespan(app: FastAPI):
     yield
 
     logger.info("Encerrando aplicação e fechando conexões...")
-    for task in app.state.worker_tasks:
-        task.cancel()
+    if hasattr(app.state, "worker_tasks"):
+        for task in app.state.worker_tasks:
+            task.cancel()
+        await asyncio.gather(*app.state.worker_tasks, return_exceptions=True)
 
-    await asyncio.gather(*app.state.worker_tasks, return_exceptions=True)
-    await rabbitmq_conn.close()
-    await redis_cache.disconnect()
+    try:
+        if rabbitmq_conn and not rabbitmq_conn.is_closed:
+            await rabbitmq_conn.close()
+    except Exception as e:
+        logger.warning(f"Erro ao fechar conexão do RabbitMQ: {e}")
+    finally:
+        await redis_cache.disconnect()
+
     logger.info("Serviços encerrados com sucesso.")
 
 
