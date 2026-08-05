@@ -2,6 +2,9 @@ from app.features.system.domain import (
     RobotActivityModel,
     TokenTelemetryModel,
 )
+from app.features.system.repositories import (
+    TelemetryRepository,
+)
 from app.features.system.schemas import (
     DemoRequest,
     ProductStatusSummary,
@@ -19,6 +22,8 @@ __all__ = [
     # Models
     "RobotActivityModel",
     "TokenTelemetryModel",
+    # Repositories
+    "TelemetryRepository",
     # Schemas
     "DemoRequest",
     "ProductStatusSummary",
