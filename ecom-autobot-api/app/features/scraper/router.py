@@ -2,6 +2,7 @@ import logging
 from fastapi import APIRouter, Depends, Header, status
 
 from app.core.security.auth import get_current_tenant_user
+from app.features.auth.schemas import AuthenticatedUser
 from app.features.scraper.services import AIScraperService
 from app.features.scraper.schemas import AICredentialsRequest, WebScraperRequest
 
@@ -12,7 +13,7 @@ router = APIRouter(tags=["AI & Scraper"])
 async def save_ai_credentials(
     payload: AICredentialsRequest,
     x_tenant_id: str = Header(..., alias="X-Tenant-ID"),
-    current_user: dict = Depends(get_current_tenant_user)
+    current_user: AuthenticatedUser = Depends(get_current_tenant_user)
 ):
     """
     Registra ou atualiza as credenciais de IA (BYOK) para o Tenant atual.
@@ -28,12 +29,12 @@ async def save_ai_credentials(
 async def start_extraction(
     payload: WebScraperRequest,
     x_tenant_id: str = Header(..., alias="X-Tenant-ID"),
-    current_user: dict = Depends(get_current_tenant_user)
+    current_user: AuthenticatedUser = Depends(get_current_tenant_user)
 ):
     """
     Dispara o processo assíncrono de Web Scraping publicando uma mensagem no RabbitMQ.
     """
-    user_plan = current_user.get("plan", "free").lower()
+    user_plan = (current_user.plan or "free").lower()
     return await AIScraperService.enqueue_extraction_task(
         tenant_id=x_tenant_id,
         target_url=str(payload.url),

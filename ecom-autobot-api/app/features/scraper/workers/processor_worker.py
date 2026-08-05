@@ -3,10 +3,10 @@ import time
 import asyncio
 import logging
 from typing import Optional, Tuple
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import aio_pika
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.database import AsyncSessionLocal
@@ -36,6 +36,39 @@ class ProcessorWorker:
             return self.session, False
         return AsyncSessionLocal(), True
 
+    async def reset_stuck_processing_jobs(self, timeout_minutes: int = 10) -> int:
+        """
+        Resgata e reseta produtos travados no estado 'Processing' há mais de timeout_minutes minutos,
+        retornando-os para o estado 'Raw' para permitirem re-processamento.
+        """
+        session, should_close = await self._get_session()
+        try:
+            cutoff = datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)
+            stmt = (
+                update(ProductModel)
+                .where(
+                    ProductModel.status == ProductStatus.PROCESSING.value,
+                    ProductModel.updated_at <= cutoff,
+                )
+                .values(
+                    status=ProductStatus.RAW.value,
+                    updated_at=datetime.now(timezone.utc),
+                )
+            )
+            result = await session.execute(stmt)
+            await session.commit()
+            count = result.rowcount
+            if count > 0:
+                logger.info(f"🔄 Resetados {count} produtos travados em 'Processing' de volta para 'Raw'.")
+            return count
+        except Exception as err:
+            logger.error(f"Erro ao resetar produtos travados em Processing: {err}")
+            await session.rollback()
+            return 0
+        finally:
+            if should_close:
+                await session.close()
+
     @retry(
         wait=wait_exponential(multiplier=1, min=4, max=60),
         stop=stop_after_attempt(5),
@@ -52,6 +85,7 @@ class ProcessorWorker:
         Agora o worker é acionado 100% por mensageria via RabbitMQ.
         """
         try:
+            await self.reset_stuck_processing_jobs(timeout_minutes=10)
             if channel is None:
                 connection = await get_rabbitmq_connection()
                 channel = await connection.channel()

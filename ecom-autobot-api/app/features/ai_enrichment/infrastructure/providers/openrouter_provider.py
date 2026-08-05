@@ -1,6 +1,7 @@
 import os
 from typing import List, Optional
 import httpx
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from app.core.config.settings import settings
 from app.core.shared.logger import get_logger
@@ -17,8 +18,16 @@ DEFAULT_FALLBACK_MODELS = [
 ]
 
 
+def _is_transient_openrouter_error(exc: BaseException) -> bool:
+    if isinstance(exc, (httpx.RequestError, httpx.NetworkError, httpx.TimeoutException)):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code in {429, 500, 502, 503, 504}
+    return False
+
+
 class OpenRouterLLMProvider(LLMProvider):
-    """Provedor de LLM assíncrono para OpenRouter com suporte a fallback de modelos e headers customizados."""
+    """Provedor de LLM assíncrono para OpenRouter com suporte a fallback de modelos, retries resilientes e headers customizados."""
 
     OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -45,6 +54,26 @@ class OpenRouterLLMProvider(LLMProvider):
             "Content-Type": "application/json",
         }
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception(_is_transient_openrouter_error),
+        reraise=True,
+    )
+    async def _post_request(self, payload: dict) -> httpx.Response:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                self.OPENROUTER_URL,
+                headers=self._get_headers(),
+                json=payload,
+            )
+            if response.status_code in {429, 500, 502, 503, 504}:
+                logger.warning(
+                    f"Status transitório {response.status_code} na API do OpenRouter. Tentando novamente via Tenacity..."
+                )
+                response.raise_for_status()
+            return response
+
     async def enrich(self, prompt: str) -> EnrichedProductResponse:
         payload = {
             "models": self.models,
@@ -53,12 +82,7 @@ class OpenRouterLLMProvider(LLMProvider):
         }
 
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(
-                    self.OPENROUTER_URL,
-                    headers=self._get_headers(),
-                    json=payload,
-                )
+            response = await self._post_request(payload)
         except httpx.RequestError as e:
             logger.error(f"Erro de conexão ao acessar a API do OpenRouter: {type(e).__name__}")
             raise LLMProviderError(f"Erro de conexão com o gateway OpenRouter: {type(e).__name__}") from e
