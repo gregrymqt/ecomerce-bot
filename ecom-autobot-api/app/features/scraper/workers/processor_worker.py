@@ -125,8 +125,10 @@ class ProcessorWorker:
                     progress=50
                 )
 
-            # Instanciação via Factory assíncrona com suporte total a BYOK (DeepSeek, Groq, OpenRouter)
-            current_llm = await LLMService.create_for_tenant(tenant_id=tenant_id, is_demo=is_demo)
+            # Instanciação via Factory assíncrona com suporte a BYOK e Settings (Tom de Voz, SEO, Idioma)
+            current_llm = await LLMService.create_for_tenant(
+                tenant_id=tenant_id, is_demo=is_demo, session=session
+            )
 
             # Aciona as LLMs com política de Retry Backoff Exponencial
             processed_data = await self._process_with_retry(product_model, current_llm)
