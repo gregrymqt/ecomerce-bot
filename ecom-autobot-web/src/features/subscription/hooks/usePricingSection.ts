@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { BillingCycle, PlanTier } from '../types/subscription.type';
+import type { PlanResponse } from '@/features/plans/types/plans.type';
 import { subscriptionService } from '../services/subscription.service';
 
 export interface UsePricingSectionOptions {
@@ -20,9 +21,9 @@ export function usePricingSection(options?: UsePricingSectionOptions) {
       .then((data) => {
         if (!isMounted) return;
         if (Array.isArray(data) && data.length > 0) {
-          const mapped: PlanTier[] = data.map((p: any) => ({
-            id: (p.id || 'pro').toLowerCase() as any,
-            name: p.reason || p.name || 'Plano',
+          const mapped: PlanTier[] = (data as unknown as PlanResponse[]).map((p) => ({
+            id: ((p.id || 'pro').toLowerCase() as PlanTier['id']),
+            name: p.reason || 'Plano',
             priceMonthly: p.auto_recurring?.transaction_amount || 149,
             priceYearly: Math.round((p.auto_recurring?.transaction_amount || 149) * 0.8),
             credits: 1000,

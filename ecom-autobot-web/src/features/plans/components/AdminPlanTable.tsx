@@ -46,7 +46,7 @@ export const AdminPlanTable: React.FC<AdminPlanTableProps> = ({
     );
   };
 
-  const getFrequencyLabel = (auto: any) => {
+  const getFrequencyLabel = (auto?: PlanResponse['auto_recurring']) => {
     if (!auto) return 'N/A';
     const freq = auto.frequency || 1;
     const type = auto.frequency_type === 'months' ? 'Mês(es)' : 'Dia(s)';

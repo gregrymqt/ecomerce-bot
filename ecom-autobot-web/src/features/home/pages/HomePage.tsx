@@ -28,7 +28,7 @@ export const HomePage: React.FC = () => {
       else if (st === 'FAILED') status = 'Erro';
 
       let sourceDomain = 'e-commerce';
-      const productUrl = (p.attributes?.url as string) || (p as any).url;
+      const productUrl = (p.attributes?.url as string) || (p.attributes?.source_url as string) || '';
       if (productUrl) {
         try {
           sourceDomain = new URL(productUrl).hostname;

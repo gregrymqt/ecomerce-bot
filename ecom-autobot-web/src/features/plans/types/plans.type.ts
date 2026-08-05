@@ -69,9 +69,9 @@ export interface PlanResponse {
     transaction_amount?: number;
     currency_id?: string;
     free_trial?: FreeTrialDTO;
-    [key: string]: any;
+    [key: string]: unknown;
   };
-  payment_methods_allowed?: Record<string, any>;
+  payment_methods_allowed?: Record<string, unknown>;
   back_url?: string;
   external_reference?: number | string;
   init_point?: string;
