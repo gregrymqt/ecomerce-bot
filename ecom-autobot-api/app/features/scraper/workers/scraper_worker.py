@@ -1,3 +1,4 @@
+import time
 from typing import Optional, Tuple
 import httpx
 import asyncio
@@ -14,6 +15,7 @@ from app.features.scraper.schemas import ImportRequestMessage
 from app.features.scraper.parsers.json_ld_parser import JsonLdParserService
 from app.features.scraper.parsers.markdown_parser import MarkdownParserService
 from app.features.system.services import NotificationService
+from app.features.system.repositories import TelemetryRepository
 from app.core.config.database import AsyncSessionLocal
 from app.features.products.domain.models import ScrapingMetadataModel
 from app.core.config.settings import settings
@@ -172,6 +174,7 @@ class ScraperWorker:
                 async for message in queue_iter:
                     async with message.process(requeue=False, ignore_processed=True):
                         try:
+                            start_time = time.time()
                             payload = message.body.decode()
                             logging.info(f"Mensagem recebida em {queue_name}: {payload}")
                             
@@ -187,6 +190,7 @@ class ScraperWorker:
 
                                 # 1. Realiza o Scraping
                                 product = await self._process_product_page(url_to_scrape, tenant_id)
+                                duration_ms = int((time.time() - start_time) * 1000)
                                 
                                 if product:
                                     if queue_name == "demo_ecommerce":
@@ -200,6 +204,19 @@ class ScraperWorker:
                                     
                                     # 2. Salva no Banco de Dados com status RAW
                                     await self.repository.upsert_product(product)
+
+                                    # Regista atividade do robô para telemetria
+                                    try:
+                                        telemetry_repo = TelemetryRepository(session=self.session)
+                                        await telemetry_repo.log_activity(
+                                            tenant_id=tenant_id,
+                                            worker_type="scraper",
+                                            status="SUCCESS",
+                                            details={"url": url_to_scrape, "sku": product.sku},
+                                            duration_ms=duration_ms
+                                        )
+                                    except Exception as telemetry_err:
+                                        logging.warning(f"Erro ao registrar telemetria do ScraperWorker: {telemetry_err}")
                                     
                                     # ---------------------------------------------------------
                                     # 3. NOVO: Dispara evento para o ProcessorWorker (LLM)
@@ -225,6 +242,18 @@ class ScraperWorker:
                                     # ---------------------------------------------------------
                                     
                                 else:
+                                    try:
+                                        telemetry_repo = TelemetryRepository(session=self.session)
+                                        await telemetry_repo.log_activity(
+                                            tenant_id=tenant_id,
+                                            worker_type="scraper",
+                                            status="FAILED",
+                                            details={"url": url_to_scrape},
+                                            duration_ms=duration_ms
+                                        )
+                                    except Exception as telemetry_err:
+                                        logging.warning(f"Erro ao registrar telemetria de falha do ScraperWorker: {telemetry_err}")
+
                                     if queue_name == "demo_ecommerce":
                                         await publish_demo_progress(url_to_scrape, "failed", 100, error="Falha ao extrair dados do produto.")
                                         

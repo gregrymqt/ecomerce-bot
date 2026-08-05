@@ -5,7 +5,7 @@ from fastapi import Header, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.config.settings import settings
 from app.core.config.redis_db import redis_cache
-from app.features.auth.schemas import AuthenticatedUser
+from app.features.auth.schemas.auth_schemas import AuthenticatedUser
 
 security = HTTPBearer()
 

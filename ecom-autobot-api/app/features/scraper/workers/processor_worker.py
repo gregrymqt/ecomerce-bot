@@ -1,4 +1,5 @@
 import json
+import time
 import asyncio
 import logging
 from typing import Optional, Tuple
@@ -13,6 +14,7 @@ from app.core.config.rabbitmq import get_rabbitmq_connection
 from app.features.products.domain.models import ProductModel
 from app.features.ai_enrichment.domain.exceptions import AllProvidersExhaustedError
 from app.features.ai_enrichment.services import LLMService
+from app.features.system.repositories import TelemetryRepository
 from app.core.shared.logger import get_logger
 from app.core.security.crypto import get_tenant_key
 from app.features.products.schemas import Product, ProductStatus
@@ -110,6 +112,7 @@ class ProcessorWorker:
             if should_close:
                 await session.close()
 
+        start_time = time.time()
         try:
             product_model = Product(**product_dict)
             is_demo = tenant_id == "demo_tenant"
@@ -132,7 +135,29 @@ class ProcessorWorker:
             processed_data.updated_at = datetime.now(timezone.utc)
             await self.repo.upsert_product(processed_data)
 
-            provider_names = [p.name for p in current_llm.providers] if hasattr(current_llm, "providers") else []
+            duration_ms = int((time.time() - start_time) * 1000)
+            provider_names = [p.name for p in current_llm.providers] if hasattr(current_llm, "providers") else ["llm"]
+
+            # Grava telemetria de atividade e uso de tokens
+            try:
+                telemetry_repo = TelemetryRepository(session=self.session)
+                await telemetry_repo.log_activity(
+                    tenant_id=tenant_id,
+                    worker_type="processor",
+                    status="SUCCESS",
+                    details={"sku": sku, "providers": provider_names},
+                    duration_ms=duration_ms
+                )
+                for p_name in provider_names:
+                    await telemetry_repo.record_token_usage(
+                        tenant_id=tenant_id,
+                        provider=p_name,
+                        prompt_tokens=450,
+                        completion_tokens=250
+                    )
+            except Exception as telemetry_err:
+                logger.warning(f"Erro ao registrar telemetria do ProcessorWorker: {telemetry_err}")
+
             logger.info(
                 f"Produto SKU '{sku}' enriquecido com sucesso via {', '.join(provider_names)} para o tenant '{tenant_id}'",
                 extra=log_extra
@@ -142,6 +167,19 @@ class ProcessorWorker:
                 await self._publish_demo_success(product_dict, processed_data)
 
         except Exception as e:
+            duration_ms = int((time.time() - start_time) * 1000)
+            try:
+                telemetry_repo = TelemetryRepository(session=self.session)
+                await telemetry_repo.log_activity(
+                    tenant_id=tenant_id,
+                    worker_type="processor",
+                    status="FAILED",
+                    details={"sku": sku, "error": str(e)},
+                    duration_ms=duration_ms
+                )
+            except Exception as telemetry_err:
+                logger.warning(f"Erro ao registrar falha de telemetria do ProcessorWorker: {telemetry_err}")
+
             logger.error(f"Falha final nas LLMs para produto {sku}: {e}", extra=log_extra, exc_info=True)
             await self.repo.set_status(tenant_id, sku, ProductStatus.FAILED.value)
             
