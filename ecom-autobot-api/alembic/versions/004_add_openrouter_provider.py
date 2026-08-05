@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '004_add_openrouter_provider'
-down_revision: Union[str, None] = '003_enable_rls_and_tenant_security'
+down_revision: Union[str, None] = '003_enable_rls_tenant_sec'
 branch_labels: Union[Sequence[str], None] = None
 depends_on: Union[Sequence[str], None] = None
 

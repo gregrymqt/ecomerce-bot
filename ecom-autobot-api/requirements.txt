@@ -20,4 +20,4 @@ html2text
 aio_pika
 redis>=5.0.0
 PyJWT>=2.8.0
-
+email-validator

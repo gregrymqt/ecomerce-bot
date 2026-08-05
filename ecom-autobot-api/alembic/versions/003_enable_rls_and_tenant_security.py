@@ -9,7 +9,7 @@ from typing import Sequence, Union
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '003_enable_rls_and_tenant_security'
+revision: str = '003_enable_rls_tenant_sec'
 down_revision: Union[str, None] = '002_billing_and_checkout'
 branch_labels: Union[Sequence[str], None] = None
 depends_on: Union[Sequence[str], None] = None
