@@ -1,7 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from '@/layouts/MainLayout';
-import { HomePage } from '@/features/home';
 import { AuthPage, AdminRouteGuard } from '@/features/auth';
 import { LiveDemoPage } from '@/features/live-demo';
 import { CatalogPage } from '@/features/catalog';

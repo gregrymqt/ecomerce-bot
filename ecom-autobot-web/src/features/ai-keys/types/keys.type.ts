@@ -6,6 +6,7 @@ export const AIProviderEnum = {
   GROQ: 'groq',
   OPENAI: 'openai',
   GEMINI: 'gemini',
+  OPENROUTER: 'openrouter',
 } as const;
 
 export type AIProvider = (typeof AIProviderEnum)[keyof typeof AIProviderEnum];
@@ -18,6 +19,7 @@ export const AI_PROVIDER_LABELS: Record<AIProvider, string> = {
   groq: 'Groq',
   openai: 'OpenAI',
   gemini: 'Gemini',
+  openrouter: 'OpenRouter Gateway',
 };
 
 /**
@@ -28,6 +30,7 @@ export interface AICredentialsRequest {
   provider: AIProvider;
   access_token: string;
   tenant_id?: string;
+  preferred_models?: string[];
 }
 
 /**
@@ -35,6 +38,23 @@ export interface AICredentialsRequest {
  */
 export interface AICredentialsResponse {
   status: string;
+  message: string;
+}
+
+/**
+ * DTO para teste de validade da chave de API do provedor em tempo real.
+ */
+export interface TestAIKeyRequest {
+  provider: AIProvider;
+  api_key: string;
+  preferred_models?: string[];
+}
+
+/**
+ * Resposta da rota de teste da chave de API de IA.
+ */
+export interface TestAIKeyResponse {
+  status: 'success' | 'error';
   message: string;
 }
 

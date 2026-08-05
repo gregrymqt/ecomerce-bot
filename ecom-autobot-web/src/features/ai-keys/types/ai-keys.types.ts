@@ -1,4 +1,4 @@
-export type AiProviderId = 'deepseek' | 'groq' | 'openai' | 'gemini';
+export type AiProviderId = 'deepseek' | 'groq' | 'openai' | 'gemini' | 'openrouter';
 
 export interface AiProviderMeta {
   id: AiProviderId;
@@ -7,6 +7,7 @@ export interface AiProviderMeta {
   placeholder: string;
   logoUrl: string;
   docUrl: string;
+  defaultModels?: string[];
 }
 
 export interface UserAiKey {
@@ -15,4 +16,5 @@ export interface UserAiKey {
   isValidated: boolean;
   pingTime?: string;
   isCustomActive: boolean;
+  preferred_models?: string[];
 }

@@ -33,7 +33,6 @@ export const DashboardPage: React.FC = () => {
     refreshing,
     error,
     setError,
-    fetchDashboard,
     handlePeriodChange,
     refreshActivities,
     formatLastUpdated,

@@ -33,4 +33,17 @@ export const AI_PROVIDERS_META: AiProviderMeta[] = [
     logoUrl: '/logos/gemini.svg',
     docUrl: 'https://aistudio.google.com/app/apikey',
   },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter Gateway',
+    badgeText: 'Multi-Modelo / BYOK',
+    placeholder: 'sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxx',
+    logoUrl: '/logos/openrouter.svg',
+    docUrl: 'https://openrouter.ai/keys',
+    defaultModels: [
+      'groq/llama-3.3-70b',
+      'deepseek/deepseek-chat',
+      'anthropic/claude-3.5-sonnet',
+    ],
+  },
 ];

@@ -17,6 +17,7 @@ const PROVIDER_OPTIONS: { value: AIProvider; label: string }[] = [
   { value: AIProviderEnum.GROQ, label: AI_PROVIDER_LABELS.groq },
   { value: AIProviderEnum.OPENAI, label: AI_PROVIDER_LABELS.openai },
   { value: AIProviderEnum.GEMINI, label: AI_PROVIDER_LABELS.gemini },
+  { value: AIProviderEnum.OPENROUTER, label: AI_PROVIDER_LABELS.openrouter },
 ];
 
 export const AIKeysForm: React.FC<AIKeysFormProps> = ({ className }) => {
@@ -63,7 +64,7 @@ export const AIKeysForm: React.FC<AIKeysFormProps> = ({ className }) => {
           <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
             Provedor de IA
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             {PROVIDER_OPTIONS.map((opt) => (
               <button
                 key={opt.value}

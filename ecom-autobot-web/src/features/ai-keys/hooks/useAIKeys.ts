@@ -95,6 +95,13 @@ const DEFAULT_KEYS: Record<AiProviderId, UserAiKey> = {
   groq: { providerId: 'groq', apiKey: '', isValidated: false, isCustomActive: false },
   openai: { providerId: 'openai', apiKey: '', isValidated: false, isCustomActive: false },
   gemini: { providerId: 'gemini', apiKey: '', isValidated: false, isCustomActive: false },
+  openrouter: {
+    providerId: 'openrouter',
+    apiKey: '',
+    isValidated: false,
+    isCustomActive: false,
+    preferred_models: ['groq/llama-3.3-70b', 'deepseek/deepseek-chat', 'anthropic/claude-3.5-sonnet'],
+  },
 };
 
 interface StoredAiKeysState {
@@ -107,11 +114,12 @@ export interface UseAiKeysReturn {
   activeProvider: AiProviderId;
   testingProvider: AiProviderId | null;
   visibleKeys: Record<AiProviderId, boolean>;
-  saveKey: (providerId: AiProviderId, key: string) => Promise<void>;
+  saveKey: (providerId: AiProviderId, key: string, preferredModels?: string[]) => Promise<void>;
   removeKey: (providerId: AiProviderId) => void;
   setActiveProvider: (providerId: AiProviderId) => void;
   toggleKeyVisibility: (providerId: AiProviderId) => void;
   testKey: (providerId: AiProviderId) => Promise<void>;
+  updatePreferredModels: (providerId: AiProviderId, models: string[]) => void;
   getMaskedKey: (apiKey: string) => string;
 }
 
@@ -130,6 +138,7 @@ export const useAiKeys = (): UseAiKeysReturn => {
     groq: false,
     openai: false,
     gemini: false,
+    openrouter: false,
   });
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -194,17 +203,18 @@ export const useAiKeys = (): UseAiKeysReturn => {
 
   const testKey = useCallback(
     async (providerId: AiProviderId) => {
+      const currentKey = keys[providerId]?.apiKey;
+      if (!currentKey || !currentKey.trim()) return;
+
       setTestingProvider(providerId);
       const startTime = performance.now();
 
       try {
-        const currentKey = keys[providerId]?.apiKey;
-        if (currentKey) {
-          await keysService.saveCredentials({
-            provider: providerId,
-            access_token: currentKey,
-          });
-        }
+        await keysService.testAIKey({
+          provider: providerId as AIProvider,
+          api_key: currentKey.trim(),
+          preferred_models: keys[providerId]?.preferred_models,
+        });
         const pingTimeMs = `${Math.round(performance.now() - startTime)}ms`;
 
         setKeys((prev) => {
@@ -240,17 +250,19 @@ export const useAiKeys = (): UseAiKeysReturn => {
   );
 
   const saveKey = useCallback(
-    async (providerId: AiProviderId, key: string) => {
+    async (providerId: AiProviderId, key: string, preferredModels?: string[]) => {
       const trimmedKey = key.trim();
       if (!trimmedKey) return;
 
       setTestingProvider(providerId);
       const startTime = performance.now();
+      const modelsToSave = preferredModels || keys[providerId]?.preferred_models;
 
       try {
         await keysService.saveCredentials({
-          provider: providerId,
+          provider: providerId as AIProvider,
           access_token: trimmedKey,
+          preferred_models: modelsToSave,
         });
         const pingTimeMs = `${Math.round(performance.now() - startTime)}ms`;
 
@@ -263,6 +275,7 @@ export const useAiKeys = (): UseAiKeysReturn => {
               isValidated: true,
               pingTime: pingTimeMs,
               isCustomActive: providerId === activeProvider,
+              preferred_models: modelsToSave,
             },
           };
           persistState(updated, activeProvider);
@@ -278,6 +291,7 @@ export const useAiKeys = (): UseAiKeysReturn => {
               isValidated: false,
               pingTime: undefined,
               isCustomActive: providerId === activeProvider,
+              preferred_models: modelsToSave,
             },
           };
           persistState(updated, activeProvider);
@@ -286,6 +300,23 @@ export const useAiKeys = (): UseAiKeysReturn => {
       } finally {
         setTestingProvider(null);
       }
+    },
+    [keys, activeProvider, persistState]
+  );
+
+  const updatePreferredModels = useCallback(
+    (providerId: AiProviderId, models: string[]) => {
+      setKeys((prev) => {
+        const updated = {
+          ...prev,
+          [providerId]: {
+            ...prev[providerId],
+            preferred_models: models,
+          },
+        };
+        persistState(updated, activeProvider);
+        return updated;
+      });
     },
     [activeProvider, persistState]
   );
@@ -301,6 +332,7 @@ export const useAiKeys = (): UseAiKeysReturn => {
             isValidated: false,
             pingTime: undefined,
             isCustomActive: false,
+            preferred_models: undefined,
           },
         };
         persistState(updated, activeProvider);
@@ -324,6 +356,7 @@ export const useAiKeys = (): UseAiKeysReturn => {
     setActiveProvider,
     toggleKeyVisibility,
     testKey,
+    updatePreferredModels,
     getMaskedKey,
   };
 };

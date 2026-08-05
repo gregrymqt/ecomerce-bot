@@ -23,35 +23,31 @@ export const AiKeysModal: React.FC<AiKeysModalProps> = ({ isOpen, onClose }) => 
     setActiveProvider,
     toggleKeyVisibility,
     testKey,
+    updatePreferredModels,
   } = useAiKeys();
 
   if (!isOpen) return null;
 
+  const totalProviders = AI_PROVIDERS_META.length;
   const configuredCount = Object.values(keys).filter((k) => Boolean(k.apiKey.trim())).length;
 
   const footer = (
     <div className="flex items-center justify-between w-full">
       <div className="text-xs text-slate-400 font-mono">
-        <span className="font-medium text-slate-300">{configuredCount} de 4</span> chaves personalizadas ativas.
+        <span className="font-medium text-slate-300">
+          {configuredCount} de {totalProviders}
+        </span>{' '}
+        chaves personalizadas ativas.
       </div>
 
-      <Button
-        type="button"
-        variant="primary"
-        onClick={onClose}
-      >
+      <Button type="button" variant="primary" onClick={onClose}>
         Concluído
       </Button>
     </div>
   );
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      size="lg"
-      footer={footer}
-    >
+    <Modal isOpen={isOpen} onClose={onClose} size="lg" footer={footer}>
       <div className="space-y-6">
         {/* Header Title & Subtitle */}
         <div className="flex items-center gap-3">
@@ -96,7 +92,7 @@ export const AiKeysModal: React.FC<AiKeysModalProps> = ({ isOpen, onClose }) => 
           {/* Provider List Rows */}
           <div className="flex flex-col gap-4">
             <h3 className="font-semibold text-sm text-slate-300 font-mono">
-              Credenciais dos Provedores ({configuredCount}/4 configurados)
+              Credenciais dos Provedores ({configuredCount}/{totalProviders} configurados)
             </h3>
             {AI_PROVIDERS_META.map((meta) => (
               <ProviderKeyRow
@@ -110,6 +106,7 @@ export const AiKeysModal: React.FC<AiKeysModalProps> = ({ isOpen, onClose }) => 
                 onRemove={removeKey}
                 onToggleVisibility={toggleKeyVisibility}
                 onTestKey={testKey}
+                onUpdatePreferredModels={updatePreferredModels}
               />
             ))}
           </div>
@@ -118,4 +115,3 @@ export const AiKeysModal: React.FC<AiKeysModalProps> = ({ isOpen, onClose }) => 
     </Modal>
   );
 };
-
