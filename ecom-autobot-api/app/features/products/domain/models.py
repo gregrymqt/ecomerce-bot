@@ -29,6 +29,9 @@ class TenantConfigModel(Base):
     tenant_id = Column(String(100), primary_key=True)
     # BYOK: Armazena chaves de API criptografadas por AES-256 GCM
     encrypted_keys = Column(JSONB, nullable=False)
+    ai_settings = Column(JSONB, nullable=False, server_default="{}")
+    pricing_settings = Column(JSONB, nullable=False, server_default="{}")
+    store_profile = Column(JSONB, nullable=False, server_default="{}")
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
