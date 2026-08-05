@@ -34,7 +34,9 @@ class TenantConfigRepository:
         return {
             "tenant_id": model.tenant_id,
             "encrypted_keys": model.encrypted_keys or {},
-            "created_at": model.created_at.isoformat() if hasattr(model, "created_at") and model.created_at else None,
+            "ai_settings": model.ai_settings or {},
+            "pricing_settings": model.pricing_settings or {},
+            "store_profile": model.store_profile or {},
             "updated_at": model.updated_at.isoformat() if hasattr(model, "updated_at") and model.updated_at else None,
         }
 
@@ -43,11 +45,9 @@ class TenantConfigRepository:
         return TenantConfigModel(
             tenant_id=data["tenant_id"],
             encrypted_keys=data.get("encrypted_keys", {}),
-            created_at=(
-                datetime.fromisoformat(data["created_at"])
-                if data.get("created_at")
-                else datetime.now(timezone.utc)
-            ),
+            ai_settings=data.get("ai_settings", {}),
+            pricing_settings=data.get("pricing_settings", {}),
+            store_profile=data.get("store_profile", {}),
             updated_at=(
                 datetime.fromisoformat(data["updated_at"])
                 if data.get("updated_at")
@@ -129,14 +129,35 @@ class TenantConfigRepository:
         access_token = decrypt_api_key(raw_token)
         return str(store_id), access_token, str(app_email)
 
-    async def upsert(self, tenant_id: str, encrypted_keys: dict) -> None:
+    async def upsert(
+        self,
+        tenant_id: str,
+        encrypted_keys: dict,
+        ai_settings: Optional[dict] = None,
+        pricing_settings: Optional[dict] = None,
+        store_profile: Optional[dict] = None,
+    ) -> None:
         session, owned = await self._get_session()
         try:
             existing = await session.get(TenantConfigModel, tenant_id)
             if existing is None:
-                session.add(TenantConfigModel(tenant_id=tenant_id, encrypted_keys=encrypted_keys))
+                session.add(
+                    TenantConfigModel(
+                        tenant_id=tenant_id,
+                        encrypted_keys=encrypted_keys,
+                        ai_settings=ai_settings if ai_settings is not None else {},
+                        pricing_settings=pricing_settings if pricing_settings is not None else {},
+                        store_profile=store_profile if store_profile is not None else {},
+                    )
+                )
             else:
                 existing.encrypted_keys = encrypted_keys
+                if ai_settings is not None:
+                    existing.ai_settings = ai_settings
+                if pricing_settings is not None:
+                    existing.pricing_settings = pricing_settings
+                if store_profile is not None:
+                    existing.store_profile = store_profile
             await session.commit()
 
             # Invalida o cache após salvar/atualizar credenciais

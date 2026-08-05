@@ -17,8 +17,11 @@ def setup_test_environment() -> Generator[None, None, None]:
     test_aes_key = base64.b64encode(os.urandom(32)).decode("utf-8")
     settings.AES_MASTER_KEY = test_aes_key
     settings.JWT_SECRET_KEY = "test_jwt_secret_key_for_unit_testing_only_32bytes!"
+    settings.DEEPSEEK_API_KEY = "sk-dummy-deepseek-key-for-unit-testing"
     os.environ["AES_MASTER_KEY"] = test_aes_key
     os.environ["JWT_SECRET_KEY"] = settings.JWT_SECRET_KEY
+    os.environ["DEEPSEEK_API_KEY"] = "sk-dummy-deepseek-key-for-unit-testing"
+    os.environ["OPENAI_API_KEY"] = "sk-dummy-openai-key-for-unit-testing"
     yield
 
 

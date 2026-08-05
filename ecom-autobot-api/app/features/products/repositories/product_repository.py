@@ -100,7 +100,7 @@ class ProductRepository:
             except Exception:
                 existing = None
 
-            if existing is None and product.id:
+            if existing is None:
                 stmt = select(ProductModel).where(
                     ProductModel.tenant_id == product.tenant_id,
                     ProductModel.sku == product.sku,
