@@ -34,9 +34,9 @@ describe('CreditCardPaymentTab / CreditCardForm Component', () => {
     const cardNumberInput = screen.getByLabelText(/Número do Cartão/i) as HTMLInputElement;
     const expiryInput = screen.getByLabelText(/Validade \(MM\/AA\)/i) as HTMLInputElement;
 
-    // Digitar número do cartão
-    await user.type(cardNumberInput, '4111222233334444');
-    expect(cardNumberInput.value).toBe('4111 2222 3333 4444');
+    // Digitar número do cartão 4111111111111111 e verificar formato 4111 1111 1111 1111
+    await user.type(cardNumberInput, '4111111111111111');
+    expect(cardNumberInput.value).toBe('4111 1111 1111 1111');
 
     // Digitar data de validade (MM/AA)
     await user.type(expiryInput, '1226');

@@ -23,6 +23,10 @@ describe('cn utility function', () => {
   });
 
   it('should merge conflicting Tailwind CSS classes correctly (tailwind-merge)', () => {
+    // p-4 deve se sobrepor a px-2 py-1
+    const pResult = cn('px-2 py-1', 'p-4');
+    expect(pResult).toBe('p-4');
+
     // px-4 deve se sobrepor a px-2
     const paddingResult = cn('px-2 py-1', 'px-4');
     expect(paddingResult).toBe('py-1 px-4');

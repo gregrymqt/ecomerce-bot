@@ -122,6 +122,27 @@ describe('useAIKeys hook', () => {
     expect(result.current.error).toBe('Chave de API do DeepSeek inválida.');
   });
 
+  it('should set error state when API returns HTTP 500 server error', async () => {
+    vi.mocked(keysService.saveCredentials).mockRejectedValue(
+      new Error('Erro interno no servidor (500). Tente novamente mais tarde.')
+    );
+
+    const { result } = renderHook(() => useAIKeys());
+
+    act(() => {
+      result.current.setProvider('openrouter');
+      result.current.setAccessToken('sk-or-v1-testkey123');
+    });
+
+    await act(async () => {
+      await result.current.saveCredentials();
+    });
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.error).toBe('Erro interno no servidor (500). Tente novamente mais tarde.');
+    expect(result.current.successMessage).toBeNull();
+  });
+
   it('should reset all states when reset() is called', () => {
     const { result } = renderHook(() => useAIKeys());
 
