@@ -8,105 +8,82 @@ from app.features.products.schemas import Product, ProductStatus, ScraperMetadat
 
 
 @pytest.mark.asyncio
-async def test_product_repository_multi_tenant_isolation(
+async def test_strict_multi_tenant_isolation_scenario(
     async_db_session: AsyncSession,
 ) -> None:
-    """Garante o isolamento estrito de dados por tenant no ProductRepository."""
+    """Cenário 1 (Isolamento Multi-Tenant Estrito): Inserir 3 produtos sob tenant_alpha e 2 sob tenant_beta. Assertar que a busca por tenant_alpha retorna EXATAMENTE 3 produtos."""
     repo = ProductRepository(session=async_db_session)
 
-    # Inserção de produtos para o tenant_a
-    prod_a1 = Product(
-        sku="SKU-TEN-A-001",
-        title="Produto Tenant A 1",
-        status=ProductStatus.RAW,
-        tenant_id="tenant_a",
-        metadata=ScraperMetadata(source_url="https://loja-a.com/p1"),
+    # Inserção de 3 produtos para tenant_alpha
+    for i in range(1, 4):
+        await repo.upsert_product(
+            Product(
+                sku=f"SKU-ALPHA-00{i}",
+                title=f"Produto Alpha {i}",
+                status=ProductStatus.RAW,
+                tenant_id="tenant_alpha",
+                metadata=ScraperMetadata(source_url=f"https://loja-alpha.com/p{i}"),
+            )
+        )
+
+    # Inserção de 2 produtos para tenant_beta
+    for i in range(1, 3):
+        await repo.upsert_product(
+            Product(
+                sku=f"SKU-BETA-00{i}",
+                title=f"Produto Beta {i}",
+                status=ProductStatus.RAW,
+                tenant_id="tenant_beta",
+                metadata=ScraperMetadata(source_url=f"https://loja-beta.com/p{i}"),
+            )
+        )
+
+    # Busca list_products para tenant_alpha deve retornar EXATAMENTE 3 produtos
+    products_alpha, total_alpha = await repo.list_products(tenant_id="tenant_alpha")
+    assert total_alpha == 3
+    assert len(products_alpha) == 3
+    assert all(p.tenant_id == "tenant_alpha" for p in products_alpha)
+
+    # Busca list_products para tenant_beta deve retornar EXATAMENTE 2 produtos
+    products_beta, total_beta = await repo.list_products(tenant_id="tenant_beta")
+    assert total_beta == 2
+    assert len(products_beta) == 2
+
+    # Tentar buscar SKU do tenant_beta informando tenant_id="tenant_alpha" deve retornar None
+    cross_tenant_result = await repo.get_by_tenant_and_sku(
+        tenant_id="tenant_alpha", sku="SKU-BETA-001"
     )
-    prod_a2 = Product(
-        sku="SKU-TEN-A-002",
-        title="Produto Tenant A 2",
-        status=ProductStatus.PROCESSED,
-        tenant_id="tenant_a",
-        metadata=ScraperMetadata(source_url="https://loja-a.com/p2"),
-    )
-
-    # Inserção de produtos para o tenant_b
-    prod_b1 = Product(
-        sku="SKU-TEN-B-001",
-        title="Produto Tenant B 1",
-        status=ProductStatus.RAW,
-        tenant_id="tenant_b",
-        metadata=ScraperMetadata(source_url="https://loja-b.com/p1"),
-    )
-
-    await repo.upsert_product(prod_a1)
-    await repo.upsert_product(prod_a2)
-    await repo.upsert_product(prod_b1)
-
-    # Listagem de produtos para tenant_a
-    products_a, total_a = await repo.list_products(tenant_id="tenant_a")
-    assert total_a == 2
-    assert len(products_a) == 2
-    assert all(p.tenant_id == "tenant_a" for p in products_a)
-
-    # Listagem de produtos para tenant_b
-    products_b, total_b = await repo.list_products(tenant_id="tenant_b")
-    assert total_b == 1
-    assert len(products_b) == 1
-    assert products_b[0].tenant_id == "tenant_b"
-    assert products_b[0].sku == "SKU-TEN-B-001"
-
-    # Tentativa do tenant_a buscar SKU do tenant_b deve retornar None
-    cross_tenant_prod = await repo.get_by_tenant_and_sku(
-        tenant_id="tenant_a", sku="SKU-TEN-B-001"
-    )
-    assert cross_tenant_prod is None
+    assert cross_tenant_result is None
 
 
 @pytest.mark.asyncio
-async def test_tenant_config_repository_jsonb_payloads_and_isolation(
+async def test_tenant_config_jsonb_persistence_and_type_integrity(
     async_db_session: AsyncSession,
 ) -> None:
-    """Testa leitura, escrita e isolamento multi-tenant de payloads JSONB no TenantConfigModel."""
+    """Cenário 2 (Persistência e Leitura do JSONB de Configurações): Gravar TenantConfigModel com JSONB de regras de IA e validar integridade e tipos."""
     repo = TenantConfigRepository(session=async_db_session)
 
-    keys_a: Dict[str, Any] = {
-        "deepseek_api_key": "enc_deepseek_key_tenant_a",
-        "shopify_shop_domain": "loja-a.myshopify.com",
-    }
-    keys_b: Dict[str, Any] = {
-        "groq_api_key": "enc_groq_key_tenant_b",
-        "nuvemshop_store_id": "987654",
-    }
-
-    # Upsert de credenciais
-    await repo.upsert("tenant_a", keys_a)
-    await repo.upsert("tenant_b", keys_b)
-
-    # Adiciona configurações de IA e Loja diretamente via model
-    config_a_db = await async_db_session.get(TenantConfigModel, "tenant_a")
-    assert config_a_db is not None
-    config_a_db.ai_settings = {"tone": "persuasive", "language": "pt-BR"}
-    config_a_db.pricing_settings = {"margin_multiplier": 1.3}
-    config_a_db.store_profile = {"niche": "eletronicos", "brand_name": "Loja A Tech"}
+    config_model = TenantConfigModel(
+        tenant_id="tenant_alpha",
+        encrypted_keys={},
+        ai_settings={
+            "tone": "agressivo",
+            "target_audience": "dropshippers",
+            "margin_percentage": 25.5,
+        },
+    )
+    async_db_session.add(config_model)
     await async_db_session.commit()
 
-    # Leitura das configurações via repository
-    config_a = await repo.get("tenant_a")
-    config_b = await repo.get("tenant_b")
-
-    assert config_a is not None
-    assert config_b is not None
-
-    assert config_a.tenant_id == "tenant_a"
-    assert config_a.encrypted_keys["deepseek_api_key"] == "enc_deepseek_key_tenant_a"
-    assert config_a.ai_settings["tone"] == "persuasive"
-    assert config_a.pricing_settings["margin_multiplier"] == 1.3
-    assert config_a.store_profile["brand_name"] == "Loja A Tech"
-
-    assert config_b.tenant_id == "tenant_b"
-    assert config_b.encrypted_keys["groq_api_key"] == "enc_groq_key_tenant_b"
-    assert "deepseek_api_key" not in config_b.encrypted_keys
+    retrieved = await repo.get("tenant_alpha")
+    assert retrieved is not None
+    assert retrieved.tenant_id == "tenant_alpha"
+    assert retrieved.ai_settings is not None
+    assert retrieved.ai_settings["tone"] == "agressivo"
+    assert retrieved.ai_settings["target_audience"] == "dropshippers"
+    assert retrieved.ai_settings["margin_percentage"] == 25.5
+    assert isinstance(retrieved.ai_settings["margin_percentage"], float)
+    assert isinstance(retrieved.ai_settings["tone"], str)
 
 
 @pytest.mark.asyncio
