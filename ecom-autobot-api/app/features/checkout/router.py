@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.database import get_db
 from app.core.security.auth import get_current_tenant_user
+from app.core.security.rate_limiter import rate_limit_dependency
 from app.features.auth.schemas import AuthenticatedUser
 from app.features.checkout.repositories.order_repository import OrderRepository
 from app.features.checkout.schemas.service_schemas import (
@@ -27,6 +28,7 @@ router = APIRouter(prefix="/checkout", tags=["Checkout & Payments"])
     status_code=status.HTTP_201_CREATED,
     summary="Criar pagamento PIX",
     description="Gera a preferência de pagamento instantâneo PIX com QR Code e Copia e Cola.",
+    dependencies=[Depends(rate_limit_dependency(times=10, seconds=60))],
 )
 async def create_pix_checkout(
     payload: CreatePixCheckoutInput,
@@ -54,6 +56,7 @@ async def create_pix_checkout(
     status_code=status.HTTP_201_CREATED,
     summary="Processar pagamento via Cartão de Crédito",
     description="Processa cobrança transparente direta no cartão de crédito via token gerado no frontend.",
+    dependencies=[Depends(rate_limit_dependency(times=10, seconds=60))],
 )
 async def create_credit_card_checkout(
     payload: CreateCreditCardCheckoutInput,

@@ -1,4 +1,5 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from app.core.security.rate_limiter import rate_limit_dependency
 
 from app.features.auth.router import router as auth_router
 from app.features.shopify.router import router as shopify_router
@@ -13,7 +14,7 @@ from app.features.products.router import router as products_router
 from app.features.ai_keys.router import router as ai_keys_router
 from app.features.settings.router import router as settings_router
 
-api_router = APIRouter()
+api_router = APIRouter(dependencies=[Depends(rate_limit_dependency(times=120, seconds=60))])
 
 api_router.include_router(auth_router)
 api_router.include_router(shopify_router)

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, status, Response, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.core.security.auth import get_current_tenant_user
+from app.core.security.rate_limiter import rate_limit_dependency
 from app.features.auth.schemas import (
     LoginRequest, 
     CreateUserRequest, 
@@ -28,7 +29,7 @@ async def register(
     """
     return await service.register_user(payload)
 
-@router.post("/login", response_model=UserResponse)
+@router.post("/login", response_model=UserResponse, dependencies=[Depends(rate_limit_dependency(times=5, seconds=60))])
 async def login(
     credentials: LoginRequest,
     response: Response,

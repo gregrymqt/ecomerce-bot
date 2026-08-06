@@ -4,6 +4,7 @@ from app.features.ai_keys.domain.enums import AIProvider
 from app.features.ai_keys.services.ai_key_service import AIKeyService
 from app.features.ai_enrichment.domain.exceptions import LLMProviderError
 from app.core.security.auth import get_current_tenant_user
+from app.core.security.rate_limiter import rate_limit_dependency
 from app.features.auth.schemas import AuthenticatedUser
 from app.core.shared.logger import get_logger
 
@@ -12,7 +13,7 @@ logger = get_logger("AIKeysRouter")
 router = APIRouter(prefix="/ai-keys", tags=["AI Keys"])
 
 
-@router.post("/test", status_code=status.HTTP_200_OK)
+@router.post("/test", status_code=status.HTTP_200_OK, dependencies=[Depends(rate_limit_dependency(times=10, seconds=60))])
 async def test_ai_key(
     payload: AIKeyCreate,
     x_tenant_id: str = Header(..., alias="X-Tenant-ID"),
