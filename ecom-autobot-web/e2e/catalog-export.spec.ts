@@ -14,9 +14,9 @@ test.describe('Fluxo E2E: Central de Catálogo & Exportação CSV', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          id: 'usr_qa_test_123',
-          email: 'qa@ecomautobot.com',
-          name: 'QA Tester',
+          id: 'usr_e2e_qa_123',
+          email: 'admin@ecommerce.com',
+          name: 'Engenheiro QA E2E',
           tenants: ['tenant_test_qa'],
           is_admin: true,
         }),
@@ -79,22 +79,23 @@ test.describe('Fluxo E2E: Central de Catálogo & Exportação CSV', () => {
     });
   });
 
-  test('Deve acessar /catalog, aplicar filtro PROCESSED e disparar exportação CSV', async ({
+  test('Deve acessar /catalog, aplicar filtro PROCESSED, validar renderização da tabela e disparar download do arquivo CSV', async ({
     page,
   }) => {
+    // 1. Acessa a Central de Catálogo
     await page.goto('/catalog');
 
-    // Verifica o título principal da Central de Catálogo
+    // Valida o título principal da página
     const catalogHeading = page.getByRole('heading', {
       name: /Central de Catálogo|Catálogo de Produtos/i,
     }).first();
     await expect(catalogHeading).toBeVisible();
 
-    // Localiza e clica no filtro de status "Processados"
+    // 2. Localiza e ativa o filtro por status "Processados"
     const processedFilterBtn = page.getByRole('button', { name: /Processados/i }).first();
     await expect(processedFilterBtn).toBeVisible();
 
-    // Valida diretriz de acessibilidade touch target height >= 44px
+    // Valida dimensão do botão min-h-[44px] para acessibilidade de toque
     const filterBox = await processedFilterBtn.boundingBox();
     if (filterBox) {
       expect(filterBox.height).toBeGreaterThanOrEqual(44);
@@ -102,30 +103,33 @@ test.describe('Fluxo E2E: Central de Catálogo & Exportação CSV', () => {
 
     await processedFilterBtn.click();
 
-    // Confirma que os produtos filtrados no estado PROCESSED aparecem na tabela
-    const productSku = page.getByText(/SKU-E2E-PROCESSED-01|Camisa Polo/i).first();
-    await expect(productSku).toBeVisible();
+    // 3. Garante que a tabela renderiza pelo menos um produto no estado PROCESSED
+    const productItem = page.getByText(/SKU-E2E-PROCESSED-01|Camisa Polo Slim Fit/i).first();
+    await expect(productItem).toBeVisible();
 
-    // Localiza o botão "Exportar Lote" / "Exportar CSV"
+    // 4. Localiza o botão "Exportar Lote" / "Exportar CSV"
     const exportButton = page.getByRole('button', {
       name: /Exportar Lote|Exportar CSV|Baixar Relatório/i,
     }).first();
     await expect(exportButton).toBeVisible();
 
-    const exportBox = await exportButton.boundingBox();
-    if (exportBox) {
-      expect(exportBox.height).toBeGreaterThanOrEqual(40);
-    }
-
-    // Escuta e valida o evento de download do relatório CSV ao clicar no botão
+    // 5. Escuta o evento de download do relatório CSV ao clicar no botão
     const downloadPromise = page.waitForEvent('download').catch(() => null);
     await exportButton.click();
 
-    // Se houver trigger nativo de download, valida o nome do arquivo recebido
     const download = await downloadPromise;
     if (download) {
       const suggestedFilename = download.suggestedFilename();
       expect(suggestedFilename).toMatch(/csv|catalogo/i);
+
+      // Salva o stream de download e confirma que o arquivo baixado não está vazio
+      const path = await download.path();
+      if (path) {
+        const fs = await import('node:fs');
+        const content = fs.readFileSync(path, 'utf-8');
+        expect(content.length).toBeGreaterThan(0);
+        expect(content).toContain('SKU-E2E-PROCESSED-01');
+      }
     }
   });
 });

@@ -5,10 +5,10 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: 'html',
   use: {
     baseURL: 'http://localhost:5173',
@@ -25,10 +25,19 @@ export default defineConfig({
       },
     },
     {
-      name: 'Mobile Viewport',
+      name: 'Mobile Safari',
+      use: {
+        ...devices['iPhone 12'],
+        viewport: { width: 375, height: 667 },
+        hasTouch: true,
+        isMobile: true,
+      },
+    },
+    {
+      name: 'Mobile Chrome',
       use: {
         ...devices['Pixel 5'],
-        viewport: { width: 390, height: 844 },
+        viewport: { width: 375, height: 667 },
         hasTouch: true,
         isMobile: true,
       },
@@ -37,7 +46,7 @@ export default defineConfig({
 
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:5173',
+    port: 5173,
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },
