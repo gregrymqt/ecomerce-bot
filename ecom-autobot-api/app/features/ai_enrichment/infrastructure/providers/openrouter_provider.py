@@ -83,9 +83,9 @@ class OpenRouterLLMProvider(LLMProvider):
 
         try:
             response = await self._post_request(payload)
-        except httpx.RequestError as e:
-            logger.error(f"Erro de conexão ao acessar a API do OpenRouter: {type(e).__name__}")
-            raise LLMProviderError(f"Erro de conexão com o gateway OpenRouter: {type(e).__name__}") from e
+        except (httpx.RequestError, httpx.HTTPStatusError) as e:
+            logger.error(f"Erro ao acessar a API do OpenRouter: {type(e).__name__}")
+            raise LLMProviderError(f"Erro de comunicação com o gateway OpenRouter: {type(e).__name__}") from e
 
         if response.status_code == 401:
             logger.error("Falha de autenticação (401) no OpenRouter: Credenciais inválidas ou token expirado.")

@@ -41,19 +41,34 @@ async def mock_async_session() -> AsyncGenerator[AsyncMock, None]:
 
 
 @pytest.fixture
-def test_tenant_id() -> str:
-    """Retorna o ID de tenant padrão utilizado no QA de testes."""
-    return "tenant_test_qa"
+def sample_tenant_id() -> str:
+    """Retorna o ID de tenant padrão de teste conforme requisitos."""
+    return "tenant_qa_test"
 
 
 @pytest.fixture
-def test_jwt_payload(test_tenant_id: str) -> Dict[str, object]:
+def tenant_headers(sample_tenant_id: str) -> Dict[str, str]:
+    """Retorna o cabeçalho HTTP padrão com X-Tenant-ID e Authorization Bearer token."""
+    return {
+        "X-Tenant-ID": sample_tenant_id,
+        "Authorization": "Bearer token_test_qa",
+    }
+
+
+@pytest.fixture
+def test_tenant_id(sample_tenant_id: str) -> str:
+    """Alias/Fixture de retrocompatibilidade para o ID de tenant de QA."""
+    return sample_tenant_id
+
+
+@pytest.fixture
+def test_jwt_payload(sample_tenant_id: str) -> Dict[str, object]:
     """Payload JWT padrão para testes unitários."""
     return {
         "sub": "usr_qa_test_123",
         "email": "qa@ecomautobot.com",
         "name": "QA Tester",
-        "tenants": [test_tenant_id],
+        "tenants": [sample_tenant_id],
         "role": "user",
         "is_admin": False,
     }
@@ -66,9 +81,10 @@ def test_jwt_token(test_jwt_payload: Dict[str, object]) -> str:
 
 
 @pytest.fixture
-def auth_headers(test_tenant_id: str, test_jwt_token: str) -> Dict[str, str]:
+def auth_headers(sample_tenant_id: str, test_jwt_token: str) -> Dict[str, str]:
     """Cabeçalhos HTTP padrão contendo 'X-Tenant-ID' e 'Authorization' Bearer JWT token."""
     return {
         "Authorization": f"Bearer {test_jwt_token}",
-        "X-Tenant-ID": test_tenant_id,
+        "X-Tenant-ID": sample_tenant_id,
     }
+

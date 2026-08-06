@@ -36,6 +36,46 @@ def mock_openrouter_success_payload() -> Dict[str, Any]:
 
 @respx.mock
 @pytest.mark.asyncio
+async def test_openrouter_rate_limit_retry_recovers_on_third_attempt(
+    mock_openrouter_success_payload: Dict[str, Any]
+) -> None:
+    """Caso 1 (Rate Limit Retry): Simular HTTP 429 nas 2 primeiras tentativas e HTTP 200 na 3ª tentativa. Assertar que o tenacity recupera o resultado."""
+    route = respx.post("https://openrouter.ai/api/v1/chat/completions")
+    route.side_effect = [
+        Response(429, json={"error": {"message": "Rate limit exceeded"}}),
+        Response(429, json={"error": {"message": "Rate limit exceeded"}}),
+        Response(200, json=mock_openrouter_success_payload),
+    ]
+    provider = OpenRouterLLMProvider(api_key="sk-or-v1-testkey123")
+    provider._post_request.retry.wait = wait_none()  # type: ignore[attr-defined]
+
+    with patch("asyncio.sleep", new_callable=AsyncMock):
+        result = await provider.enrich("Prompt de teste de rate limit")
+
+    assert result.title == "Produto Teste Enriquecido"
+    assert route.call_count == 3
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_openrouter_fallback_service_unavailable_raises_llm_provider_error() -> None:
+    """Caso 2 (Fallback / Timeout): Simular HTTP 503 em todas as tentativas e verificar lançamento de LLMProviderError."""
+    route = respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
+        return_value=Response(503, json={"error": {"message": "Service Unavailable"}})
+    )
+    provider = OpenRouterLLMProvider(api_key="sk-or-v1-testkey123")
+    provider._post_request.retry.wait = wait_none()  # type: ignore[attr-defined]
+
+    with patch("asyncio.sleep", new_callable=AsyncMock):
+        with pytest.raises(LLMProviderError) as exc_info:
+            await provider.enrich("Prompt de teste com falha de serviço")
+
+    assert "communication" in str(exc_info.value).lower() or "comunicação" in str(exc_info.value).lower() or "status" in str(exc_info.value).lower()
+    assert route.call_count == 3
+
+
+@respx.mock
+@pytest.mark.asyncio
 async def test_openrouter_retry_on_429_rate_limit() -> None:
     """Simula retorno HTTP 429 (Rate Limit) no OpenRouter e valida os 3 retries antes de falhar."""
     route = respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
@@ -118,3 +158,4 @@ async def test_ai_key_service_openrouter_validation_rate_limit() -> None:
 
     with pytest.raises(LLMProviderError, match="excedido"):
         await AIKeyService.test_openrouter_key("sk-or-v1-testkey")
+

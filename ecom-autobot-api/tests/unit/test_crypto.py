@@ -9,8 +9,8 @@ from app.core.security.crypto import decrypt_api_key, encrypt_api_key
 
 
 def test_encrypt_decrypt_success() -> None:
-    """Valida se a descriptografia recupera exatamente a chave original (AES-256 GCM)."""
-    original_key = "sk-or-v1-1234567890abcdefghijklmnopqrstuvwxyz"
+    """Caso 1 (Sucesso): Criptografar a string 'sk-openrouter-test-key-12345' e verificar que a descriptografia retorna exatamente o valor original."""
+    original_key = "sk-openrouter-test-key-12345"
     encrypted_key = encrypt_api_key(original_key)
 
     assert encrypted_key != original_key
@@ -21,8 +21,8 @@ def test_encrypt_decrypt_success() -> None:
 
 
 def test_different_iv_for_same_plaintext() -> None:
-    """Validar que a criptografia da mesma string gera vetores de inicialização (IV) diferentes."""
-    plain_text = "sk-or-v1-secret-token-to-encrypt"
+    """Caso 2 (Vetor de Inicialização Único): Criptografar a MESMA string duas vezes e assertar que as cyphertexts são DIFERENTES."""
+    plain_text = "sk-openrouter-test-key-12345"
     encrypted1 = encrypt_api_key(plain_text)
     encrypted2 = encrypt_api_key(plain_text)
 

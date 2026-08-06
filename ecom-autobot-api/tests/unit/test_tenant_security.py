@@ -69,15 +69,23 @@ async def test_get_current_tenant_user_success(test_tenant_id: str, test_jwt_tok
 
 
 @pytest.mark.asyncio
-async def test_get_current_tenant_user_forbidden_tenant_raises_403(test_jwt_token: str) -> None:
-    """Garante HTTP 403 quando o usuário tenta acessar um tenant para o qual não possui permissão."""
-    credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=test_jwt_token)
+async def test_get_current_tenant_user_forbidden_tenant_raises_403() -> None:
+    """Caso 2 (Tenant Não Autorizado): Simular payload JWT contendo tenants=['tenant_A'], enviando X-Tenant-ID: tenant_B. Assertar HTTPException status 403."""
+    from app.core.security.auth import create_access_token
+    token_tenant_a = create_access_token({
+        "sub": "usr_tenant_a",
+        "email": "user_a@test.com",
+        "tenants": ["tenant_A"],
+        "role": "user",
+    })
+    credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token_tenant_a)
 
     with patch("app.core.security.auth.is_token_blacklisted", return_value=False):
         with pytest.raises(HTTPException) as exc_info:
-            await get_current_tenant_user(x_tenant_id="tenant_nao_autorizado", credentials=credentials)
+            await get_current_tenant_user(x_tenant_id="tenant_B", credentials=credentials)
 
     assert exc_info.value.status_code == 403
+    assert "Acesso negado" in exc_info.value.detail
 
 
 @pytest.mark.asyncio
