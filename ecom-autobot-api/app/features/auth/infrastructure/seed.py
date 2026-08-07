@@ -2,7 +2,8 @@ import logging
 from sqlalchemy import select
 
 from app.core.config.database import AsyncSessionLocal, Base, engine
-from app.features.auth.domain.models import RoleModel
+from app.core.config.settings import settings
+from app.features.auth.domain.models import RoleModel, UserModel
 
 logger = logging.getLogger(__name__)
 
@@ -48,4 +49,34 @@ async def seed_initial_roles() -> None:
     except Exception as err:
         logger.warning(
             f"[DB Seed] Não foi possível verificar/popular as roles no banco de dados: {err}"
+        )
+
+
+async def seed_admin_users() -> None:
+    """
+    Verifica a lista de e-mails de administradores configurada no .env (ADMIN_EMAILS)
+    e atualiza a role dos usuários cadastrados no banco para 'admin'.
+    """
+    admin_emails = settings.get_admin_emails_list()
+    if not admin_emails:
+        return
+
+    try:
+        async with AsyncSessionLocal() as session:
+            promoted_count = 0
+            for email in admin_emails:
+                stmt = select(UserModel).where(UserModel.email == email)
+                result = await session.execute(stmt)
+                user = result.scalar_one_or_none()
+                if user and user.role != "admin":
+                    user.role = "admin"
+                    promoted_count += 1
+                    logger.info(f"[DB Seed] Usuário '{email}' promovido para a role 'admin'.")
+
+            if promoted_count > 0:
+                await session.commit()
+                logger.info(f"[DB Seed] {promoted_count} usuário(s) promovido(s) para 'admin' com sucesso.")
+    except Exception as err:
+        logger.warning(
+            f"[DB Seed] Não foi possível sincronizar usuários admins do .env no banco de dados: {err}"
         )

@@ -39,7 +39,12 @@ class AuthService:
 
         tenants = request.tenants if request.tenants else ["ecommerce_demo", "ecommerce_prod"]
         pwd_hash = hash_password(request.password)
-        role = request.role if request.role in {"user", "ecommerce", "admin"} else "user"
+
+        admin_emails = settings.get_admin_emails_list()
+        if request.email.lower() in admin_emails:
+            role = "admin"
+        else:
+            role = request.role if request.role in {"user", "ecommerce", "admin"} else "user"
 
         new_user = UserModel(
             email=request.email.lower(),
@@ -90,9 +95,25 @@ class AuthService:
                 detail="Credenciais inválidas. Verifique o e-mail e a senha.",
             )
 
+        admin_emails = settings.get_admin_emails_list()
+        clean_email = credentials.email.lower()
+        is_configured_admin = clean_email in admin_emails
+
         user_id = user.id if user else f"usr_{hash(credentials.email) & 0xffffffff}"
         user_name = user.name if user else credentials.email.split("@")[0].capitalize()
-        user_role = user.role if user else ("admin" if credentials.email.lower().startswith("admin@") else "user")
+
+        if is_configured_admin:
+            user_role = "admin"
+            if user and user.role != "admin":
+                try:
+                    await self.user_repo.update_user(user.id, {"role": "admin"})
+                    user.role = "admin"
+                    logger.info(f"Usuário '{clean_email}' promovido para 'admin' no banco durante login.")
+                except Exception as update_err:
+                    logger.warning(f"Erro ao promover usuário admin '{clean_email}' no banco: {update_err}")
+        else:
+            user_role = user.role if user else "user"
+
         user_tenants = user.tenants if user else ["ecommerce_demo", "ecommerce_prod"]
 
         if credentials.tenant_id and credentials.tenant_id not in user_tenants:

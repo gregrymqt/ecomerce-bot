@@ -1,5 +1,5 @@
 from app.features.auth.domain import RoleModel, UserModel, hash_password, verify_password
-from app.features.auth.infrastructure import seed_initial_roles
+from app.features.auth.infrastructure import seed_initial_roles, seed_admin_users
 from app.features.auth.repositories import UserRepository
 from app.features.auth.schemas import (
     AuthenticatedUser,
@@ -34,4 +34,5 @@ __all__ = [
     "AuthService",
     # Infrastructure
     "seed_initial_roles",
+    "seed_admin_users",
 ]

@@ -8,7 +8,7 @@ import uvicorn
 from app.core.config.settings import settings
 from app.core.config.redis_db import redis_cache
 from app.core.config.rabbitmq import get_rabbitmq_connection, configure_rabbitmq_topology
-from app.features.auth.infrastructure import seed_initial_roles
+from app.features.auth.infrastructure import seed_initial_roles, seed_admin_users
 from app.features.products.repositories import ProductRepository
 from app.features.scraper.workers.scraper_worker import ScraperWorker
 from app.features.scraper.workers.processor_worker import ProcessorWorker
@@ -35,6 +35,7 @@ async def lifespan(app: FastAPI):
         raise err
 
     await seed_initial_roles()
+    await seed_admin_users()
 
     repository = ProductRepository()
     llm_service = LLMService()

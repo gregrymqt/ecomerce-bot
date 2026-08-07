@@ -68,6 +68,27 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("MERCADOPAGO_ACCESS_TOKEN", "MercadoPago_Access_Token", "MP_ACCESS_TOKEN")
     )
+    ADMIN_EMAILS: str | List[str] = Field(
+        default=[],
+        validation_alias=AliasChoices("ADMIN_EMAILS", "ADMIN_EMAIL_LIST")
+    )
+
+    def get_admin_emails_list(self) -> List[str]:
+        """Retorna uma lista higienizada em lowercase dos e-mails com privilégio de admin."""
+        if isinstance(self.ADMIN_EMAILS, list):
+            return [e.strip().lower() for e in self.ADMIN_EMAILS if e and e.strip()]
+        if isinstance(self.ADMIN_EMAILS, str) and self.ADMIN_EMAILS.strip():
+            import json
+            raw = self.ADMIN_EMAILS.strip()
+            if raw.startswith("[") and raw.endswith("]"):
+                try:
+                    parsed = json.loads(raw)
+                    if isinstance(parsed, list):
+                        return [str(e).strip().lower() for e in parsed if e and str(e).strip()]
+                except Exception:
+                    pass
+            return [e.strip().lower() for e in raw.split(",") if e and e.strip()]
+        return []
 
     @property
     def JWT__Key(self) -> str:
