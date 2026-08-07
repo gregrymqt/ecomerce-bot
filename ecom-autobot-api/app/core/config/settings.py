@@ -60,6 +60,10 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("GROQ_API_KEY", "Groq_API_KEY", "GROQ_KEY")
     )
+    OPENROUTER_API_KEY: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("OPENROUTER_API_KEY", "OpenRouter_API_Key", "OPENROUTER_KEY")
+    )
     MERCADOPAGO_ACCESS_TOKEN: str | None = Field(
         default=None,
         validation_alias=AliasChoices("MERCADOPAGO_ACCESS_TOKEN", "MercadoPago_Access_Token", "MP_ACCESS_TOKEN")
@@ -85,7 +89,7 @@ class Settings(BaseSettings):
         return url
 
     model_config = SettingsConfigDict(
-        env_file=('../.env', '.env'),
+        env_file=('../.env', '.env', '../infra/dev/.env.dev', 'infra/dev/.env.dev', '../../infra/dev/.env.dev'),
         env_file_encoding='utf-8',
         extra='ignore',
         case_sensitive=False

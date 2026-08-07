@@ -50,44 +50,7 @@ services:
       timeout: 5s
       retries: 5
 
-  api:
-    build:
-      context: ../../ecom-autobot-api
-      dockerfile: Dockerfile
-    container_name: dev-api-bot
-    ports:
-      - "8000:8000"
-    environment:
-      - ENVIRONMENT=development
-      - LOG_LEVEL=INFO
-      - CORS_ORIGINS=["*"]
-      - POSTGRES_URI=postgresql+asyncpg://postgres:postgrespassword@postgres:5432/ecommerce_bot_db
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
-      - REDIS_URL=redis://redis:6379/0
-      - AES_MASTER_KEY=ZGV2X2Flc19tYXN0ZXJfa2V5XzMyYnl0ZXNfZGV2IQ==
-      - JWT_SECRET_KEY=dev_jwt_secret_key_for_local_testing_32bytes!
-      - DEEPSEEK_API_KEY=sk-dummy-deepseek-key-dev
-      - GROQ_API_KEY=gsk-dummy-groq-key-dev
-      - OPENAI_API_KEY=sk-dummy-openai-key-dev
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    restart: unless-stopped
 
-  web:
-    build:
-      context: ../../ecom-autobot-web
-      dockerfile: Dockerfile
-    container_name: dev-web-bot
-    ports:
-      - "5173:80"
-    depends_on:
-      - api
-    restart: unless-stopped
 
 volumes:
   postgres-dev-data:

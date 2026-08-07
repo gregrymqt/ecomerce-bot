@@ -15,6 +15,12 @@ DEFAULT_DB_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/ecommerc
 DATABASE_URL = settings.get_transaction_db_url() or DEFAULT_DB_URL
 
 def resolve_ssl_context():
+    # Em desenvolvimento local conectando ao Postgres do Docker (localhost/127.0.0.1), desativa SSL
+    is_dev = settings.ENVIRONMENT.lower() in ["development", "dev"]
+    is_local_db = any(host in DATABASE_URL for host in ["localhost", "127.0.0.1", "postgres:5432", "dev-postgres"])
+    if is_dev and is_local_db and "supabase" not in DATABASE_URL:
+        return None
+
     cert_file = settings.DB_SSL_CERT_PATH or "prod-ca-2021.crt"
     candidates = [
         cert_file,
