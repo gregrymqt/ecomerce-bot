@@ -3,6 +3,7 @@ import { AlertTriangle, Trash2, CheckCircle2, HelpCircle } from 'lucide-react';
 import { Modal } from './Modal';
 import { Button } from '../Button';
 import { cn } from '@/lib/utils';
+import { getErrorMessage } from '@/utils/errors';
 
 export type ConfirmDialogVariant = 'danger' | 'warning' | 'success' | 'info';
 
@@ -80,7 +81,8 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       await onConfirm();
       onClose();
     } catch (error) {
-      console.error('Erro ao executar confirmação:', error);
+      const msg = getErrorMessage(error, 'Erro ao executar confirmação.');
+      console.error(msg, error);
     } finally {
       setInternalLoading(false);
     }

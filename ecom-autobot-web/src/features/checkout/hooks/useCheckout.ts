@@ -16,6 +16,7 @@ import type {
   CreditCardPaymentResponse,
   OrderStatusSyncResponse,
 } from '../types/checkout.type';
+import { getErrorMessage } from '@/utils/errors';
 
 export function useCheckout(initialPlanId?: string) {
   // 1. Estados Reativos Principais
@@ -136,7 +137,7 @@ export function useCheckout(initialPlanId?: string) {
       setTimeLeft(900); // 15 minutos zerados para novo QR Code
       return response;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Erro ao solicitar pagamento via PIX.';
+      const message = getErrorMessage(err, 'Erro ao solicitar pagamento via PIX.');
       setError(message);
       return null;
     } finally {
@@ -159,7 +160,7 @@ export function useCheckout(initialPlanId?: string) {
         }
         return response;
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Erro ao processar cartão de crédito.';
+        const message = getErrorMessage(err, 'Erro ao processar cartão de crédito.');
         setError(message);
         return null;
       } finally {
@@ -182,7 +183,7 @@ export function useCheckout(initialPlanId?: string) {
       setPaymentStatus(res.status);
       return res;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Erro ao sincronizar pagamento.';
+      const message = getErrorMessage(err, 'Erro ao sincronizar pagamento.');
       setError(message);
       return null;
     } finally {

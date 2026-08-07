@@ -12,6 +12,7 @@ import { useScraperStream } from '../hooks/useScraperStream';
 import type { ScraperFormProps } from '../types/scrapper.type';
 import { scrapperService } from '../services/scrapper.service';
 import { isValidHttpUrl } from '@/utils/security';
+import { getErrorMessage } from '@/utils/errors';
 
 interface BatchQueueItem {
   id: number;
@@ -79,9 +80,10 @@ export const ScraperForm: React.FC<ScraperFormProps> = ({ className }) => {
           prev.map((item, idx) => (idx === i ? { ...item, status: 'completed' } : item))
         );
       } catch (err: unknown) {
+        const errorMsg = getErrorMessage(err, 'Falha no enfileiramento');
         setBatchQueue((prev) =>
           prev.map((item, idx) =>
-            idx === i ? { ...item, status: 'failed', error: 'Falha no enfileiramento' } : item
+            idx === i ? { ...item, status: 'failed', error: errorMsg } : item
           )
         );
       }

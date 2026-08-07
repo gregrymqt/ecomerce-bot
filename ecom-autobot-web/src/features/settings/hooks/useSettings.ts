@@ -14,6 +14,7 @@ import type {
   StoreProfilePayload,
   BillingProfilePayload,
 } from '../types/settings.type';
+import { getErrorMessage } from '@/utils/errors';
 
 const DEFAULT_SETTINGS: TenantSettingsResponse = {
   ai: {
@@ -173,7 +174,7 @@ export function useSettings(initialTab: SettingsTab = 'AI_RULES') {
         setShowToast(false);
       }, 5000);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Erro ao salvar configurações do tenant.';
+      const message = getErrorMessage(err, 'Erro ao salvar configurações do tenant.');
       setError(message);
     } finally {
       setSaving(false);

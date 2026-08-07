@@ -1,7 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { CatalogProduct, FilterStatus, AITone, ProductStatus, EcomPlatform } from '../types/catalog.types';
+import type { AlertVariant } from '@/components/ui/feedback/Alert';
 import { useProducts } from './useProducts';
 import { productService } from '../services/product.service';
+
+export interface CatalogAlert {
+  variant: AlertVariant;
+  title?: string;
+  message: string;
+}
 
 /**
  * Normaliza a string de status vinda do backend para o union type ProductStatus da UI.
@@ -26,6 +33,11 @@ export function useCatalogPage() {
 
   // Estado dos produtos do catálogo
   const [localCatalogProducts, setLocalCatalogProducts] = useState<CatalogProduct[]>([]);
+
+  // Estado de Alerta Customizado para UI Feedback
+  const [alertInfo, setAlertInfo] = useState<CatalogAlert | null>(null);
+
+  const clearAlert = () => setAlertInfo(null);
 
   // Sincroniza produtos vindos da API FastAPI (`/api/v1/products`) quando retornados do backend
   useEffect(() => {
@@ -133,7 +145,11 @@ export function useCatalogPage() {
         })
       );
     } catch {
-      alert(`Falha ao re-gerar título por IA para o produto SKU ${product.sku}.`);
+      setAlertInfo({
+        variant: 'error',
+        title: 'Erro na IA',
+        message: `Falha ao re-gerar título por IA para o produto SKU ${product.sku}.`,
+      });
     } finally {
       setRegeneratingSku(null);
     }
@@ -165,7 +181,11 @@ export function useCatalogPage() {
         })
       );
     } catch {
-      alert(`Falha ao sincronizar o produto SKU ${product.sku} com a plataforma.`);
+      setAlertInfo({
+        variant: 'error',
+        title: 'Erro de Sincronização',
+        message: `Falha ao sincronizar o produto SKU ${product.sku} com a plataforma.`,
+      });
     } finally {
       setSyncingSku(null);
     }
@@ -180,7 +200,11 @@ export function useCatalogPage() {
         setLocalCatalogProducts((prev) => prev.filter((p) => p.sku !== sku));
         setSelectedSkus((prev) => prev.filter((item) => item !== sku));
       } catch {
-        alert(`Falha ao remover o produto SKU ${sku} no servidor.`);
+        setAlertInfo({
+          variant: 'error',
+          title: 'Erro ao Remover',
+          message: `Falha ao remover o produto SKU ${sku} no servidor.`,
+        });
       } finally {
         setDeletingSku(null);
       }
@@ -220,7 +244,11 @@ export function useCatalogPage() {
         })
       );
     } catch {
-      alert(`Falha ao salvar as alterações do produto SKU ${sku}.`);
+      setAlertInfo({
+        variant: 'error',
+        title: 'Erro ao Salvar',
+        message: `Falha ao salvar as alterações do produto SKU ${sku}.`,
+      });
     } finally {
       setIsSavingDrawer(false);
       setEditingProduct(null);
@@ -234,7 +262,11 @@ export function useCatalogPage() {
       : filteredProducts;
 
     if (itemsToExport.length === 0) {
-      alert('Nenhum produto selecionado ou disponível para exportação.');
+      setAlertInfo({
+        variant: 'warning',
+        title: 'Exportação Indisponível',
+        message: 'Nenhum produto selecionado ou disponível para exportação.',
+      });
       return;
     }
 
@@ -269,6 +301,8 @@ export function useCatalogPage() {
     deletingSku,
     isSavingDrawer,
     isApiLoading,
+    alertInfo,
+    clearAlert,
     handleRegenerateAiTitle,
     handleSyncProduct,
     handleDeleteProduct,

@@ -48,7 +48,8 @@ export const AiKeysModal: React.FC<AiKeysModalProps> = ({ isOpen, onClose }) => 
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg" footer={footer}>
-      <div className="space-y-6">
+      {/* Container com limite de altura baseado em 100vh e rolagem interna */}
+      <div className="max-h-[calc(100vh-10rem)] overflow-y-auto pr-2 space-y-6 scrollbar-thin scrollbar-thumb-slate-700">
         {/* Header Title & Subtitle */}
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30 shadow-[0_0_15px_rgba(139,92,246,0.3)]">

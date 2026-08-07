@@ -8,6 +8,7 @@ import { Plus, Search, ShieldCheck, Database, Cloud, RefreshCw, Filter } from 'l
 import { useAdminPlans } from '../hooks/useAdminPlans';
 import { AdminPlanTable } from '../components/AdminPlanTable';
 import { AdminPlanModal } from '../components/AdminPlanModal';
+import { Alert } from '@/components/ui/feedback/Alert';
 
 export const AdminPlansPage: React.FC = () => {
   const {
@@ -23,6 +24,8 @@ export const AdminPlansPage: React.FC = () => {
     isModalOpen,
     editingPlan,
     submitting,
+    alertInfo,
+    clearAlert,
     openCreateModal,
     openEditModal,
     closeModal,
@@ -35,6 +38,17 @@ export const AdminPlansPage: React.FC = () => {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+      {/* Alerta de Feedback Customizado */}
+      {alertInfo && (
+        <Alert
+          variant={alertInfo.variant}
+          title={alertInfo.title}
+          onClose={clearAlert}
+        >
+          {alertInfo.message}
+        </Alert>
+      )}
+
       {/* Top Header & Page Title */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#15121B]/90 p-6 rounded-3xl border border-slate-800 shadow-xl backdrop-blur-md">
         <div>

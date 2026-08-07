@@ -5,6 +5,7 @@ import { EditCopyDrawer } from '../components/EditCopyDrawer';
 import { ScraperForm } from '@/features/scraper';
 import { X, Sparkles } from 'lucide-react';
 import { useCatalogPage } from '../hooks/useCatalogPage';
+import { Alert } from '@/components/ui/feedback/Alert';
 
 export const CatalogPage: React.FC = () => {
   const {
@@ -27,6 +28,8 @@ export const CatalogPage: React.FC = () => {
     deletingSku,
     isSavingDrawer,
     isApiLoading,
+    alertInfo,
+    clearAlert,
     handleRegenerateAiTitle,
     handleSyncProduct,
     handleDeleteProduct,
@@ -36,6 +39,17 @@ export const CatalogPage: React.FC = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
+      {/* Alerta de Feedback Customizado */}
+      {alertInfo && (
+        <Alert
+          variant={alertInfo.variant}
+          title={alertInfo.title}
+          onClose={clearAlert}
+        >
+          {alertInfo.message}
+        </Alert>
+      )}
+
       {/* 1. Toolbar Principal & Filtros Rápidos */}
       <CatalogToolbar
         searchTerm={searchTerm}

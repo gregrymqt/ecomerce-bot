@@ -13,6 +13,7 @@ import type {
   PeriodFilter,
   RobotActivity,
 } from '../types/dashboard.type';
+import { getErrorMessage } from '@/utils/errors';
 
 export function useDashboard(initialPeriod: PeriodFilter = 'WEEK') {
   // 1. Estados Reativos Principais
@@ -40,7 +41,7 @@ export function useDashboard(initialPeriod: PeriodFilter = 'WEEK') {
         const response = await dashboardService.getTelemetry(selectedPeriod);
         setData(response);
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Erro ao carregar telemetria do Dashboard.';
+        const message = getErrorMessage(err, 'Erro ao carregar telemetria do Dashboard.');
         setError(message);
       } finally {
         setLoading(false);

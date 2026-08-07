@@ -28,8 +28,9 @@ export function useSubscription(initialParams?: SearchSubscriptionsParams) {
     try {
       const statusData = await subscriptionService.getBillingStatus();
       setBillingStatus(statusData);
-    } catch (err) {
-      console.warn('[SubscriptionHook] Falha ao obter status de faturamento:', err);
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Falha ao obter status de faturamento.');
+      console.warn('[SubscriptionHook]', msg);
     }
   }, []);
 

@@ -14,6 +14,7 @@ import type {
   ShopifyCredentialsPayload,
   StoreIntegration,
 } from '../types/integration.type';
+import { getErrorMessage } from '@/utils/errors';
 
 export function useIntegrations() {
   // 1. Estados Reativos Principais
@@ -42,7 +43,7 @@ export function useIntegrations() {
       setSummary(summaryRes);
       setIntegrations(integrationsRes);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Erro ao carregar dados das integrações.';
+      const message = getErrorMessage(err, 'Erro ao carregar dados das integrações.');
       setError(message);
     } finally {
       setLoading(false);
@@ -67,7 +68,7 @@ export function useIntegrations() {
         await fetchData();
         return true;
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Erro ao salvar credenciais Shopify.';
+        const message = getErrorMessage(err, 'Erro ao salvar credenciais Shopify.');
         setError(message);
         return false;
       } finally {
@@ -102,7 +103,7 @@ export function useIntegrations() {
 
         return res;
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Erro ao testar conexão.';
+        const message = getErrorMessage(err, 'Erro ao testar conexão.');
         setError(message);
         return null;
       } finally {
@@ -129,7 +130,7 @@ export function useIntegrations() {
         await fetchData();
         return true;
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Erro ao desconectar a loja.';
+        const message = getErrorMessage(err, 'Erro ao desconectar a loja.');
         setError(message);
         return false;
       } finally {
@@ -151,7 +152,7 @@ export function useIntegrations() {
         throw new Error('URL de autorização OAuth da Nuvemshop inválida.');
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Erro ao iniciar autorização Nuvemshop.';
+      const message = getErrorMessage(err, 'Erro ao iniciar autorização Nuvemshop.');
       setError(message);
     } finally {
       setActionState('connect_nuvemshop', false);

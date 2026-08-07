@@ -6,8 +6,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { plansService } from '../services/plans.service';
 import type { CreatePlanRequest, PlanResponse, UpdatePlanRequest } from '../types/plans.type';
+import type { AlertVariant } from '@/components/ui/feedback/Alert';
+import { getErrorMessage } from '@/utils/errors';
 
 export type PlanSourceMode = 'local' | 'mp';
+
+export interface AdminPlanAlert {
+  variant: AlertVariant;
+  title?: string;
+  message: string;
+}
 
 export function useAdminPlans() {
   const [sourceMode, setSourceMode] = useState<PlanSourceMode>('local');
@@ -16,6 +24,10 @@ export function useAdminPlans() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // Estado de Alerta Customizado para UI Feedback
+  const [alertInfo, setAlertInfo] = useState<AdminPlanAlert | null>(null);
+  const clearAlert = () => setAlertInfo(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -51,8 +63,8 @@ export function useAdminPlans() {
         });
         setPlans(response.results || []);
       }
-    } catch (err: any) {
-      const msg = err.response?.data?.detail || err.message || 'Falha ao carregar planos de assinatura.';
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Falha ao carregar planos de assinatura.');
       setError(msg);
     } finally {
       setLoading(false);
@@ -89,8 +101,8 @@ export function useAdminPlans() {
       }
       closeModal();
       await fetchPlans();
-    } catch (err: any) {
-      const msg = err.response?.data?.detail || err.message || 'Erro ao salvar o plano no Mercado Pago.';
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro ao salvar o plano no Mercado Pago.');
       throw new Error(msg);
     } finally {
       setSubmitting(false);
@@ -106,9 +118,13 @@ export function useAdminPlans() {
     try {
       await plansService.updatePlan(plan.id, { status: newStatus });
       await fetchPlans();
-    } catch (err: any) {
-      const msg = err.response?.data?.detail || err.message || 'Falha ao atualizar status do plano.';
-      alert(msg);
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Falha ao atualizar status do plano.');
+      setAlertInfo({
+        variant: 'error',
+        title: 'Erro de Status do Plano',
+        message: msg,
+      });
     } finally {
       setLoading(false);
     }
@@ -127,6 +143,8 @@ export function useAdminPlans() {
     isModalOpen,
     editingPlan,
     submitting,
+    alertInfo,
+    clearAlert,
     openCreateModal,
     openEditModal,
     closeModal,
