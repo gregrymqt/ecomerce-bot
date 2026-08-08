@@ -21,7 +21,7 @@ export function usePricingSection(options?: UsePricingSectionOptions) {
       .then((data) => {
         if (!isMounted) return;
         if (Array.isArray(data) && data.length > 0) {
-          const mapped: PlanTier[] = (data as unknown as PlanResponse[]).map((p) => ({
+          const mapped: PlanTier[] = data.map((p) => ({
             id: ((p.id || 'pro').toLowerCase() as PlanTier['id']),
             name: p.reason || 'Plano',
             priceMonthly: p.auto_recurring?.transaction_amount || 149,

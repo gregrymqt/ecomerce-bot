@@ -44,7 +44,7 @@ export class SSEClient<T = unknown> {
         const parsedData: T = JSON.parse(event.data);
         onMessage(parsedData);
       } catch {
-        onMessage(event.data as unknown as T);
+        onMessage(event.data as T);
       }
     };
 

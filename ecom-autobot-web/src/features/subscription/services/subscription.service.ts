@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/apiClient';
+import type { PlanResponse } from '@/features/plans/types/plans.type';
 import type {
   Subscription,
   TenantBillingStatus,
@@ -80,8 +81,8 @@ export const subscriptionService = {
   /**
    * Obtém a lista de planos públicos ativos do backend (/api/v1/plans/public).
    */
-  getPublicPlans: async () => {
-    const response = await apiClient.get('/api/v1/plans/public');
+  getPublicPlans: async (): Promise<PlanResponse[]> => {
+    const response = await apiClient.get<PlanResponse[]>('/api/v1/plans/public');
     return response.data;
   },
 };
