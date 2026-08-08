@@ -78,3 +78,25 @@ class NuvemshopProductUpdatePayload(BaseModel):
     published: Optional[bool] = None
     brand: Optional[str] = None
     tags: Optional[str] = None
+
+
+class NuvemshopProductResponse(BaseModel):
+    """DTO de resposta genérico para operações de produto na Nuvemshop (criação, atualização, busca)."""
+
+    nuvemshop_id: Optional[int] = Field(None, description="ID do produto na Nuvemshop.")
+    sku: Optional[str] = Field(None, description="SKU do produto.")
+    status: str = Field(..., description="Status da operação: 'success' ou 'error'.")
+    message: Optional[str] = Field(None, description="Mensagem complementar ou descrição de erro.")
+    errors: List[str] = Field(default=[], description="Lista de erros retornados pela API Nuvemshop.")
+
+    model_config = {"from_attributes": True}
+
+
+class NuvemshopBatchStockPriceResponse(BaseModel):
+    """DTO de resposta para operações em lote de estoque e preço na Nuvemshop."""
+
+    updated: int = Field(default=0, description="Quantidade de variantes atualizadas com sucesso.")
+    failed: int = Field(default=0, description="Quantidade de variantes que falharam.")
+    errors: List[str] = Field(default=[], description="Lista de erros por item do lote.")
+
+    model_config = {"from_attributes": True}

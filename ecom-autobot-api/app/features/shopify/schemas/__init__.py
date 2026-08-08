@@ -14,11 +14,13 @@ from app.features.shopify.schemas.shopify_schemas import (
     ShopifyProductDeleteVariables,
     ShopifyProductListRequest,
     ShopifyProductOptionInput,
+    ShopifyProductResponse,
     ShopifyProductSetInput,
     ShopifyProductUpdateInput,
     ShopifyProductUpdateRequest,
     ShopifyProductUpdateVariables,
     ShopifySEOInput,
+    ShopifySyncRequest,
     ShopifyVariantInput,
 )
 
@@ -44,4 +46,6 @@ __all__ = [
     "ShopifyMediaAddRequest",
     "ShopifyCreateMediaVariables",
     "ShopifyCreateMediaRequest",
+    "ShopifySyncRequest",
+    "ShopifyProductResponse",
 ]

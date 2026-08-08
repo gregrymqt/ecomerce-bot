@@ -1,10 +1,11 @@
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Optional
 from fastapi import APIRouter, Depends, Header, Query, status
 
 from app.core.security.auth import get_current_tenant_user
 from app.core.shared.logger import get_logger
 from app.features.ai_enrichment.schemas.metering_schema import (
+    PaginatedLLMUsageLogResponse,
     TenantCreditBalanceResponse,
 )
 from app.features.ai_enrichment.services.metering_service import (
@@ -31,7 +32,7 @@ async def get_tenant_balance(
     return await metering_service.get_tenant_credit_balance(tenant_id=x_tenant_id)
 
 
-@router.get("/usage", status_code=status.HTTP_200_OK)
+@router.get("/usage", response_model=PaginatedLLMUsageLogResponse, status_code=status.HTTP_200_OK)
 async def get_tenant_usage_logs(
     page: int = Query(default=1, ge=1, description="Número da página (inicia em 1)"),
     limit: int = Query(default=20, ge=1, le=100, description="Quantidade de registros por página"),
@@ -40,7 +41,7 @@ async def get_tenant_usage_logs(
     x_tenant_id: str = Header(..., alias="X-Tenant-ID"),
     current_user: AuthenticatedUser = Depends(get_current_tenant_user),
     metering_service: LLMMeteringService = Depends(get_llm_metering_service),
-) -> Dict[str, Any]:
+) -> PaginatedLLMUsageLogResponse:
     """
     Retorna o extrato paginado de logs de consumo de tokens do tenant autenticado.
     """

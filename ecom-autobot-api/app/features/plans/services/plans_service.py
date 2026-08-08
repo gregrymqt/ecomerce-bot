@@ -1,5 +1,5 @@
 import logging
-from typing import Any, List, Optional
+from typing import List, Optional, Union
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,7 +26,7 @@ class PlansService:
     def __init__(
         self,
         repository: Optional[PlansRepository] = None,
-        client: Optional[Any] = None,
+        client: Optional[object] = None,
     ) -> None:
         self.repository = repository or PlansRepository()
         if client is None:
@@ -36,7 +36,7 @@ class PlansService:
             self.client = client
 
     @staticmethod
-    def _parse_int(value: Any) -> Optional[int]:
+    def _parse_int(value: Union[str, int, float, None]) -> Optional[int]:
         if value is None:
             return None
         try:

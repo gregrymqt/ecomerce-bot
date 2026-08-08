@@ -2,6 +2,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Header, Query, status
 
 from app.core.security.auth import get_current_tenant_user
+from app.features.auth.schemas import AuthenticatedUser
 from app.features.products.services.product_service import ProductService
 from app.features.products.schemas import (
     Product, 
@@ -18,7 +19,7 @@ async def list_products(
     page: int = Query(1, ge=1, description="Número da página"),
     limit: int = Query(20, ge=1, le=100, description="Itens por página"),
     x_tenant_id: str = Header(..., alias="X-Tenant-ID"),
-    current_user: dict = Depends(get_current_tenant_user)
+    current_user: AuthenticatedUser = Depends(get_current_tenant_user)
 ):
     """
     Retorna a lista paginada de produtos para a Datatable do Catálogo.
@@ -37,7 +38,7 @@ async def update_product(
     sku: str,
     payload: ProductUpdateSchema,
     x_tenant_id: str = Header(..., alias="X-Tenant-ID"),
-    current_user: dict = Depends(get_current_tenant_user)
+    current_user: AuthenticatedUser = Depends(get_current_tenant_user)
 ):
     """
     Edita informações do produto no catálogo (título, copy, preço e tags).
@@ -53,7 +54,7 @@ async def update_product(
 async def delete_product(
     sku: str,
     x_tenant_id: str = Header(..., alias="X-Tenant-ID"),
-    current_user: dict = Depends(get_current_tenant_user)
+    current_user: AuthenticatedUser = Depends(get_current_tenant_user)
 ):
     """
     Remove um produto indesejado do banco de dados e do cache.

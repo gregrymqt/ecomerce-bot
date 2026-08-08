@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, timedelta
 import logging
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -167,7 +167,7 @@ class TelemetryRepository:
         tenant_id: str,
         worker_type: str,
         status: str,
-        details: Optional[Any] = None,
+        details: Optional[Dict[str, Union[str, int, float, bool]]] = None,
         duration_ms: Optional[int] = None,
     ) -> RobotActivityModel:
         """

@@ -1,10 +1,14 @@
-from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from app.features.shopify.services import ShopifyService
 from app.core.security.auth import get_current_tenant_user, sanitize_tenant_id
 from app.features.auth.schemas import AuthenticatedUser
-from app.features.shopify.schemas import ShopifyMediaAddRequest
+from app.features.shopify.schemas import (
+    ShopifyMediaAddRequest,
+    ShopifyProductResponse,
+    ShopifyProductUpdateInput,
+    ShopifySyncRequest,
+)
 
 router = APIRouter(
     prefix="/shopify",
@@ -28,14 +32,14 @@ def get_shopify_service(
         )
     return ShopifyService(tenant_id=clean_tenant)
 
-@router.post("/products", status_code=status.HTTP_201_CREATED, response_model=dict)
+@router.post("/products", status_code=status.HTTP_201_CREATED, response_model=ShopifyProductResponse)
 async def sync_product_to_shopify(
-    product_data: dict, 
+    product_data: ShopifySyncRequest,
     service: ShopifyService = Depends(get_shopify_service)
 ):
-    return await service.sync_product(product_data)
+    return await service.sync_product(product_data.model_dump())
 
-@router.post("/products/{product_id}/media", status_code=status.HTTP_201_CREATED)
+@router.post("/products/{product_id}/media", status_code=status.HTTP_201_CREATED, response_model=ShopifyProductResponse)
 async def add_media_to_product(
     product_id: str,
     media_payload: ShopifyMediaAddRequest,
@@ -43,25 +47,25 @@ async def add_media_to_product(
 ):
     return await service.add_media_to_product(product_id, media_payload)
 
-@router.put("/products/{product_id}", response_model=dict)
+@router.put("/products/{product_id}", response_model=ShopifyProductResponse)
 async def update_shopify_product(
     product_id: str,
-    update_payload: dict,
+    update_payload: ShopifyProductUpdateInput,
     service: ShopifyService = Depends(get_shopify_service)
 ):
-    return await service.update_product(product_id, update_payload)
+    return await service.update_product(product_id, update_payload.model_dump(exclude_none=True))
 
 @router.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_shopify_product(
-    product_id: str, 
+    product_id: str,
     service: ShopifyService = Depends(get_shopify_service)
 ):
     return await service.delete_product(product_id)
 
-@router.get("/products", response_model=dict)
+@router.get("/products", response_model=ShopifyProductResponse)
 async def list_shopify_products(
     first: int = 10,
-    after: Optional[str] = None,
+    after: str | None = None,
     service: ShopifyService = Depends(get_shopify_service)
 ):
     return await service.list_products(first=first, after=after)

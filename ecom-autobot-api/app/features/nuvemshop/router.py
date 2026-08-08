@@ -3,9 +3,11 @@ from typing import List
 
 from app.features.nuvemshop.services import NuvemshopService
 from app.features.nuvemshop.schemas import (
+    NuvemshopBatchStockPriceItem,
+    NuvemshopBatchStockPriceResponse,
     NuvemshopProductRequest,
+    NuvemshopProductResponse,
     NuvemshopProductUpdatePayload,
-    NuvemshopBatchStockPriceItem
 )
 from app.core.security.auth import get_current_tenant_user, sanitize_tenant_id
 from app.features.auth.schemas import AuthenticatedUser
@@ -32,45 +34,45 @@ def get_nuvemshop_service(
         )
     return NuvemshopService(tenant_id=clean_tenant)
 
-@router.post("/products", status_code=status.HTTP_201_CREATED, response_model=dict)
+@router.post("/products", status_code=status.HTTP_201_CREATED, response_model=NuvemshopProductResponse)
 async def create_product(
-    product: NuvemshopProductRequest, 
+    product: NuvemshopProductRequest,
     service: NuvemshopService = Depends(get_nuvemshop_service)
 ):
     return await service.create_product(product)
 
-@router.get("/products/{product_id}", response_model=dict)
+@router.get("/products/{product_id}", response_model=NuvemshopProductResponse)
 async def get_product_by_id(
-    product_id: int, 
+    product_id: int,
     service: NuvemshopService = Depends(get_nuvemshop_service)
 ):
     return await service.get_product_by_id(product_id)
 
-@router.get("/products/sku/{sku}", response_model=dict)
+@router.get("/products/sku/{sku}", response_model=NuvemshopProductResponse)
 async def get_product_by_sku(
-    sku: str, 
+    sku: str,
     service: NuvemshopService = Depends(get_nuvemshop_service)
 ):
     return await service.get_product_by_sku(sku)
 
-@router.put("/products/{product_id}", response_model=dict)
+@router.put("/products/{product_id}", response_model=NuvemshopProductResponse)
 async def update_product_metadata(
-    product_id: int, 
-    update_data: NuvemshopProductUpdatePayload, 
+    product_id: int,
+    update_data: NuvemshopProductUpdatePayload,
     service: NuvemshopService = Depends(get_nuvemshop_service)
 ):
     return await service.update_product_metadata(product_id, update_data.model_dump(exclude_none=True))
 
-@router.patch("/products/stock-price", response_model=List[dict])
+@router.patch("/products/stock-price", response_model=NuvemshopBatchStockPriceResponse)
 async def update_stock_price_batch(
-    batch_data: List[NuvemshopBatchStockPriceItem], 
+    batch_data: List[NuvemshopBatchStockPriceItem],
     service: NuvemshopService = Depends(get_nuvemshop_service)
 ):
     return await service.update_stock_price_batch([item.model_dump(exclude_none=True) for item in batch_data])
 
 @router.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_product(
-    product_id: int, 
+    product_id: int,
     service: NuvemshopService = Depends(get_nuvemshop_service)
 ):
     return await service.delete_product(product_id)

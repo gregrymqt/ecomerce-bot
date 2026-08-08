@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 import logging
-from typing import Optional, Tuple, AsyncGenerator, Any
+from typing import Optional, Tuple, AsyncGenerator
 import aiofiles
 from dotenv import load_dotenv
 from sqlalchemy import select, update, func
@@ -113,7 +113,7 @@ class ExporterWorker:
         )
 
         try:
-            async def product_batch_generator() -> AsyncGenerator[list[Any], None]:
+            async def product_batch_generator() -> AsyncGenerator[list, None]:
                 nonlocal processed_items
                 async for batch in self._fetch_products_in_batches():
                     if not batch:

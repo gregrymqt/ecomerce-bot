@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -85,3 +85,15 @@ class TokenEstimateRequest(BaseModel):
     average_tokens_per_product: int = Field(
         default=1500, gt=0, description="Média estimada de tokens consumidos por produto."
     )
+
+
+class PaginatedLLMUsageLogResponse(BaseModel):
+    """DTO paginado para o extrato de consumo de tokens do tenant no endpoint GET /usage."""
+
+    items: List[LLMUsageLogResponse] = Field(..., description="Lista de registros de uso na página atual.")
+    total: int = Field(..., ge=0, description="Total de registros correspondentes ao filtro.")
+    page: int = Field(..., ge=1, description="Número da página atual.")
+    limit: int = Field(..., ge=1, description="Quantidade de itens por página.")
+    total_pages: int = Field(..., ge=1, description="Total de páginas disponíveis.")
+
+    model_config = ConfigDict(from_attributes=True)

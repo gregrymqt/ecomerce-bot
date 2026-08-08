@@ -241,3 +241,31 @@ class ShopifyCreateMediaRequest(BaseModel):
     }
     """
     variables: ShopifyCreateMediaVariables
+
+
+class ShopifySyncRequest(BaseModel):
+    """Corpo da requisição para sincronizar um produto para a Shopify via API interna."""
+
+    tenant_id: str = Field(..., description="Identificador do tenant.")
+    sku: str = Field(..., description="SKU do produto a sincronizar.")
+    title: str = Field(..., description="Título do produto.")
+    description: str = Field(default="", description="Descrição HTML do produto.")
+    vendor: str = Field(default="Default Vendor", description="Marca/fornecedor.")
+    price: float = Field(default=0.0, ge=0.0, description="Preço de venda.")
+    images: List[str] = Field(default=[], description="URLs de imagens do produto.")
+    tags: Optional[str] = Field(None, description="Tags separadas por vírgula.")
+    seo_title: Optional[str] = Field(None, description="Título SEO do produto.")
+    seo_description: Optional[str] = Field(None, description="Descrição SEO do produto.")
+
+    model_config = {"from_attributes": True}
+
+
+class ShopifyProductResponse(BaseModel):
+    """DTO de resposta genérico para operações de produto na Shopify (criação, atualização)."""
+
+    shopify_id: Optional[str] = Field(None, description="GID do produto criado/atualizado na Shopify.")
+    status: str = Field(..., description="Status da operação: 'success' ou 'error'.")
+    message: Optional[str] = Field(None, description="Mensagem complementar ou descrição de erro.")
+    errors: List[str] = Field(default=[], description="Lista de erros reportáveis pelo Shopify GraphQL.")
+
+    model_config = {"from_attributes": True}

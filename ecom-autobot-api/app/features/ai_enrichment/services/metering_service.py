@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 import logging
 from math import ceil
-from typing import Any, Dict, Optional, Union
+from typing import Dict, Optional, Union
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +15,7 @@ from app.features.ai_enrichment.repositories.metering_repository import (
 from app.features.ai_enrichment.schemas.metering_schema import (
     LLMUsageLogCreate,
     LLMUsageLogResponse,
+    PaginatedLLMUsageLogResponse,
     TenantCreditBalanceResponse,
 )
 
@@ -251,7 +252,7 @@ class LLMMeteringService:
         limit: int = 20,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
-    ) -> Dict[str, Any]:
+    ) -> PaginatedLLMUsageLogResponse:
         """Recupera o extrato paginado de logs de consumo do tenant."""
         logs, total_items = await self.repository.get_usage_logs_paginated(
             tenant_id=tenant_id,
@@ -264,13 +265,13 @@ class LLMMeteringService:
         items = [LLMUsageLogResponse.model_validate(log) for log in logs]
         total_pages = ceil(total_items / limit) if total_items > 0 else 1
 
-        return {
-            "items": items,
-            "total": total_items,
-            "page": page,
-            "limit": limit,
-            "total_pages": total_pages,
-        }
+        return PaginatedLLMUsageLogResponse(
+            items=items,
+            total=total_items,
+            page=page,
+            limit=limit,
+            total_pages=total_pages,
+        )
 
 
 def get_llm_metering_service(db: AsyncSession = Depends(get_db)) -> LLMMeteringService:

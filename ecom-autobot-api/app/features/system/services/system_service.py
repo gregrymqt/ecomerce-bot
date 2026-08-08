@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 import aio_pika
 from sqlalchemy import select
 
@@ -149,7 +149,7 @@ class SystemService:
         )
 
     @staticmethod
-    async def process_demo_request(urls: List[str]):
+    async def process_demo_request(urls: List[str]) -> None:
         connection = await get_rabbitmq_connection()
         async with connection:
             channel = await connection.channel()
@@ -173,7 +173,7 @@ class SystemService:
                 )
 
     @staticmethod
-    async def process_export(tenant_id: str, platform: str):
+    async def process_export(tenant_id: str, platform: str) -> None:
         logger.info(f"Processando exportação para tenant: {tenant_id}, plataforma: {platform}")
         exporter = ExporterWorker(tenant_id=tenant_id, platform=platform)
         await exporter.export()
