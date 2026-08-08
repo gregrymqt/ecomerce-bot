@@ -20,6 +20,15 @@ export const GoogleCallbackPage: React.FC = () => {
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
 
   const hasProcessed = useRef<boolean>(false);
+  const navigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const urlParams = new URLSearchParams(window.location.search);
   const code = urlParams.get('code');
@@ -50,7 +59,10 @@ export const GoogleCallbackPage: React.FC = () => {
       setIsSuccess(true);
       setIsLoading(false);
 
-      setTimeout(() => {
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+      navigationTimeoutRef.current = setTimeout(() => {
         navigate('/dashboard', { replace: true });
       }, 1200);
     } catch (err: unknown) {
