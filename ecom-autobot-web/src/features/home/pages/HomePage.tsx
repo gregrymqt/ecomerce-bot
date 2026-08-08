@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { HomeHeader } from '../components/HomeHeader';
@@ -18,6 +18,15 @@ export const HomePage: React.FC = () => {
 
   const [isKeysModalOpen, setIsKeysModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Mapeia os produtos reais do catálogo para jobs na tabela da Home
   const jobs: ExtractionJob[] = useMemo(() => {
@@ -75,7 +84,13 @@ export const HomePage: React.FC = () => {
 
   const handleExportJob = (job: ExtractionJob) => {
     setToastMessage(`Iniciando download para "${job.productName}"...`);
-    setTimeout(() => setToastMessage(null), 3500);
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimeoutRef.current = null;
+    }, 3500);
   };
 
   const handleOpenSupport = () => {
