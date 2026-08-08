@@ -159,3 +159,98 @@ async def test_ai_key_service_openrouter_validation_rate_limit() -> None:
     with pytest.raises(LLMProviderError, match="excedido"):
         await AIKeyService.test_openrouter_key("sk-or-v1-testkey")
 
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_openrouter_generate_completion_success() -> None:
+    """Valida a execução de generate_completion com retorno estruturado em LLMCompletionResponse."""
+    from app.features.ai_enrichment.schemas import LLMCompletionRequest, LLMCompletionResponse
+    from app.core.config.settings import settings
+
+    route = respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
+        return_value=Response(
+            200,
+            json={
+                "model": "deepseek/deepseek-chat",
+                "choices": [{"message": {"content": "Resposta de teste gerada pela LLM"}}],
+                "usage": {
+                    "prompt_tokens": 15,
+                    "completion_tokens": 8,
+                    "total_tokens": 23,
+                },
+            },
+        )
+    )
+
+    provider = OpenRouterLLMProvider(api_key="sk-or-v1-testkey123")
+    req = LLMCompletionRequest(
+        prompt="Escreva uma frase de efeito",
+        system_prompt="Você é um assistente de vendas",
+        temperature=0.7,
+        max_tokens=500,
+    )
+
+    response = await provider.generate_completion(req, api_key="sk-or-v1-testkey123")
+
+    assert isinstance(response, LLMCompletionResponse)
+    assert response.content == "Resposta de teste gerada pela LLM"
+    assert response.model_used == "deepseek/deepseek-chat"
+    assert response.prompt_tokens == 15
+    assert response.completion_tokens == 8
+    assert response.total_tokens == 23
+    assert response.provider_response_time_ms >= 0.0
+    assert route.call_count == 1
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_openrouter_generate_completion_rate_limit_error() -> None:
+    """Valida que HTTP 429 dispara OpenRouterRateLimitError."""
+    from app.features.ai_enrichment.schemas import LLMCompletionRequest
+    from app.features.ai_enrichment.domain.exceptions import OpenRouterRateLimitError
+
+    respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
+        return_value=Response(429, json={"error": {"message": "Rate limit exceeded"}})
+    )
+
+    provider = OpenRouterLLMProvider(api_key="sk-or-v1-testkey123")
+    provider._post_request.retry.wait = wait_none()  # type: ignore[attr-defined]
+
+    req = LLMCompletionRequest(prompt="Teste rate limit")
+    with patch("asyncio.sleep", new_callable=AsyncMock):
+        with pytest.raises(OpenRouterRateLimitError) as exc_info:
+            await provider.generate_completion(req, api_key="sk-or-v1-testkey123")
+
+    assert exc_info.value.status_code == 429
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_openrouter_generate_completion_api_error() -> None:
+    """Valida que status HTTP 400 dispara OpenRouterAPIError sem retries."""
+    from app.features.ai_enrichment.schemas import LLMCompletionRequest
+    from app.features.ai_enrichment.domain.exceptions import OpenRouterAPIError
+
+    respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
+        return_value=Response(400, json={"error": {"message": "Bad Request"}})
+    )
+
+    provider = OpenRouterLLMProvider(api_key="sk-or-v1-testkey123")
+    req = LLMCompletionRequest(prompt="Teste bad request")
+
+    with pytest.raises(OpenRouterAPIError) as exc_info:
+        await provider.generate_completion(req, api_key="sk-or-v1-testkey123")
+
+    assert exc_info.value.status_code == 400
+
+
+def test_openrouter_settings_config() -> None:
+    """Valida que as variáveis de ambiente do OpenRouter estão configuradas no Settings."""
+    from app.core.config.settings import settings
+
+    assert settings.OPENROUTER_BASE_URL == "https://openrouter.ai/api/v1"
+    assert settings.DEFAULT_PRIMARY_MODEL == "deepseek/deepseek-chat"
+    assert settings.DEFAULT_FALLBACK_MODEL_1 == "groq/llama-3.3-70b-versatile"
+    assert settings.DEFAULT_FALLBACK_MODEL_2 == "google/gemini-2.0-flash-001"
+
+

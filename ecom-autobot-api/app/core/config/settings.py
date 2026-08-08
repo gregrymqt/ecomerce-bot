@@ -60,9 +60,25 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("GROQ_API_KEY", "Groq_API_KEY", "GROQ_KEY")
     )
-    OPENROUTER_API_KEY: str | None = Field(
-        default=None,
+    OPENROUTER_API_KEY: str = Field(
+        default="",
         validation_alias=AliasChoices("OPENROUTER_API_KEY", "OpenRouter_API_Key", "OPENROUTER_KEY")
+    )
+    OPENROUTER_BASE_URL: str = Field(
+        default="https://openrouter.ai/api/v1",
+        validation_alias=AliasChoices("OPENROUTER_BASE_URL", "OpenRouter_Base_Url")
+    )
+    DEFAULT_PRIMARY_MODEL: str = Field(
+        default="deepseek/deepseek-chat",
+        validation_alias=AliasChoices("DEFAULT_PRIMARY_MODEL", "Primary_Model")
+    )
+    DEFAULT_FALLBACK_MODEL_1: str = Field(
+        default="groq/llama-3.3-70b-versatile",
+        validation_alias=AliasChoices("DEFAULT_FALLBACK_MODEL_1", "Fallback_Model_1")
+    )
+    DEFAULT_FALLBACK_MODEL_2: str = Field(
+        default="google/gemini-2.0-flash-001",
+        validation_alias=AliasChoices("DEFAULT_FALLBACK_MODEL_2", "Fallback_Model_2")
     )
     MERCADOPAGO_ACCESS_TOKEN: str | None = Field(
         default=None,
