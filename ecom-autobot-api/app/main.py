@@ -82,14 +82,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Ecommerce Bot API", lifespan=lifespan)
 
-# Configuração de CORS Seguro
+# Configuração de CORS Seguro (Suporte a localhost e ngrok)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.get_cors_origins_list(),
+    allow_origin_regex=r"https://.*\.ngrok-free\.app|https://.*\.ngrok\.app|https://.*\.ngrok\.io|https://.*\.ngrok\.dev",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Tenant-ID"],
+    allow_headers=["Authorization", "Content-Type", "X-Tenant-ID", "ngrok-skip-browser-warning"],
 )
+
 
 # Middleware de Segurança e Limite de Payload (DoS Protection)
 @app.middleware("http")

@@ -3,6 +3,12 @@ from app.features.auth.schemas.auth_schemas import (
     LoginRequest,
     LogoutResponse,
 )
+from app.features.auth.schemas.google_auth_schema import (
+    AuthTokenResponse,
+    GoogleCallbackRequest,
+    GoogleLoginUrlResponse,
+    GoogleUserPayload,
+)
 from app.features.auth.schemas.user_schemas import (
     CreateUserRequest,
     RoleResponse,
@@ -15,9 +21,14 @@ __all__ = [
     "AuthenticatedUser",
     "LoginRequest",
     "LogoutResponse",
+    "GoogleLoginUrlResponse",
+    "GoogleCallbackRequest",
+    "GoogleUserPayload",
+    "AuthTokenResponse",
     "CreateUserRequest",
     "UpdateUserRequest",
     "RoleResponse",
     "UserInfo",
     "UserResponse",
 ]
+

@@ -6,21 +6,24 @@ export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
   headers: {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
   },
   timeout: 10000, // 10s
   withCredentials: true,
 });
 
-// Interceptor de Requisição: Injeção do Tenant ID
+// Interceptor de Requisição: Injeção do Tenant ID e Bypass da tela de aviso do ngrok
 apiClient.interceptors.request.use((config) => {
   const tenantId = getTenantId();
 
   if (tenantId) {
     config.headers['X-Tenant-ID'] = tenantId;
   }
+  config.headers['ngrok-skip-browser-warning'] = 'true';
 
   return config;
 });
+
 
 // Interceptor de Resposta: Proteção contra Token Expirado / Sessão Inválida / 401 & 403
 apiClient.interceptors.response.use(

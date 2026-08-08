@@ -5,8 +5,8 @@ from typing import List
 class Settings(BaseSettings):
     ENVIRONMENT: str = Field(default="development", validation_alias=AliasChoices("ENVIRONMENT", "ENV"))
     
-    # CORS: Whitelist de domínios permitidos em produção/dev
-    CORS_ORIGINS: List[str] = Field(
+    # CORS: Whitelist de domínios permitidos em produção/dev/ngrok
+    CORS_ORIGINS: str | List[str] = Field(
         default=["http://localhost:5173", "http://localhost:3000"],
         validation_alias=AliasChoices("CORS_ORIGINS", "ALLOWED_ORIGINS")
     )
@@ -72,6 +72,19 @@ class Settings(BaseSettings):
         default=[],
         validation_alias=AliasChoices("ADMIN_EMAILS", "ADMIN_EMAIL_LIST")
     )
+    GOOGLE_CLIENT_ID: str = Field(
+        default="mock_google_client_id",
+        validation_alias=AliasChoices("GOOGLE_CLIENT_ID", "Google_Client_Id")
+    )
+    GOOGLE_CLIENT_SECRET: str = Field(
+        default="mock_google_client_secret",
+        validation_alias=AliasChoices("GOOGLE_CLIENT_SECRET", "Google_Client_Secret")
+    )
+    GOOGLE_REDIRECT_URI: str = Field(
+        default="http://localhost:5173/auth/google/callback",
+        validation_alias=AliasChoices("GOOGLE_REDIRECT_URI", "Google_Redirect_Uri")
+    )
+
 
     def get_admin_emails_list(self) -> List[str]:
         """Retorna uma lista higienizada em lowercase dos e-mails com privilégio de admin."""
@@ -89,6 +102,23 @@ class Settings(BaseSettings):
                     pass
             return [e.strip().lower() for e in raw.split(",") if e and e.strip()]
         return []
+
+    def get_cors_origins_list(self) -> List[str]:
+        """Retorna uma lista higienizada dos domínios permitidos via CORS."""
+        if isinstance(self.CORS_ORIGINS, list):
+            return [o.strip() for o in self.CORS_ORIGINS if o and o.strip()]
+        if isinstance(self.CORS_ORIGINS, str) and self.CORS_ORIGINS.strip():
+            import json
+            raw = self.CORS_ORIGINS.strip()
+            if raw.startswith("[") and raw.endswith("]"):
+                try:
+                    parsed = json.loads(raw)
+                    if isinstance(parsed, list):
+                        return [str(o).strip() for o in parsed if o and str(o).strip()]
+                except Exception:
+                    pass
+            return [o.strip() for o in raw.split(",") if o and o.strip()]
+        return ["http://localhost:5173", "http://localhost:3000"]
 
     @property
     def JWT__Key(self) -> str:
