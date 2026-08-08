@@ -9,6 +9,10 @@ from app.features.auth.schemas.google_auth_schema import (
     GoogleLoginUrlResponse,
     GoogleUserPayload,
 )
+from app.features.auth.schemas.enterprise_lead_schema import (
+    EnterpriseLeadRequest,
+    EnterpriseLeadResponse,
+)
 from app.features.auth.schemas.user_schemas import (
     CreateUserRequest,
     RoleResponse,
@@ -25,10 +29,13 @@ __all__ = [
     "GoogleCallbackRequest",
     "GoogleUserPayload",
     "AuthTokenResponse",
+    "EnterpriseLeadRequest",
+    "EnterpriseLeadResponse",
     "CreateUserRequest",
     "UpdateUserRequest",
     "RoleResponse",
     "UserInfo",
     "UserResponse",
 ]
+
 

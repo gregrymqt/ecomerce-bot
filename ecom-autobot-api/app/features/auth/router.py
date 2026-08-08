@@ -11,6 +11,8 @@ from app.features.auth.schemas import (
     AuthenticatedUser,
     AuthTokenResponse,
     CreateUserRequest,
+    EnterpriseLeadRequest,
+    EnterpriseLeadResponse,
     GoogleCallbackRequest,
     GoogleLoginUrlResponse,
     LoginRequest,
@@ -18,7 +20,8 @@ from app.features.auth.schemas import (
     UpdateUserRequest,
     UserResponse,
 )
-from app.features.auth.services import AuthService, GoogleAuthService
+from app.features.auth.services import AuthService, EnterpriseLeadService, GoogleAuthService
+
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 security = HTTPBearer()
@@ -152,4 +155,33 @@ async def google_callback(
     )
 
     return token_response
+
+
+# -------------------------------------------------------------------
+# SSO Enterprise Lead Capture Endpoint (Fake Door Test)
+# -------------------------------------------------------------------
+
+def get_enterprise_lead_service() -> EnterpriseLeadService:
+    return EnterpriseLeadService()
+
+
+@router.post(
+    "/sso-enterprise/lead",
+    response_model=EnterpriseLeadResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit_dependency(times=5, seconds=60))]
+)
+async def create_enterprise_lead(
+    payload: EnterpriseLeadRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    service: EnterpriseLeadService = Depends(get_enterprise_lead_service)
+) -> EnterpriseLeadResponse:
+    """
+    Captura leads corporativos interessados no SSO Enterprise (Fake Door Test),
+    persistindo no PostgreSQL, emitindo telemetria e notificando a equipe comercial.
+    """
+    client_ip = request.client.host if request.client else None
+    return await service.register_lead(db=db, payload=payload, ip_address=client_ip)
+
 
