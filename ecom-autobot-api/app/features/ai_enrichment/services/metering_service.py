@@ -1,19 +1,22 @@
+from datetime import datetime
 from decimal import Decimal
 import logging
+from math import ceil
 from typing import Any, Dict, Optional, Union
 from fastapi import Depends
-from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.database import get_db
 from app.features.ai_enrichment.domain.exceptions import InsufficientCreditsException
 from app.features.ai_enrichment.domain.models import LLMUsageLogModel
+from app.features.ai_enrichment.repositories.metering_repository import (
+    LLMMeteringRepository,
+)
 from app.features.ai_enrichment.schemas.metering_schema import (
     LLMUsageLogCreate,
     LLMUsageLogResponse,
     TenantCreditBalanceResponse,
 )
-from app.features.products.domain.models import TenantConfigModel
 
 logger = logging.getLogger(__name__)
 
@@ -47,10 +50,11 @@ PRICING_TABLE: Dict[str, Dict[str, Decimal]] = {
 
 
 class LLMMeteringService:
-    """Serviço central de metrificação de tokens, tarifação de LLM e gestão de créditos."""
+    """Serviço de aplicação responsável pelas regras de metrificação de tokens, tarifação de LLM e saldo."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, repository: Optional[LLMMeteringRepository] = None):
         self.db = db
+        self.repository = repository or LLMMeteringRepository(session=db)
 
     def calculate_token_cost(
         self,
@@ -76,19 +80,13 @@ class LLMMeteringService:
         """Verifica se o tenant possui saldo suficiente de créditos gerenciados.
 
         Se is_byok for True, retorna True imediatamente (bypass de créditos do sistema).
-        Caso contrário, consulta managed_credit_balance em tenant_configs e lança InsufficientCreditsException se insuficiente.
+        Caso contrário, consulta o repositório e lança InsufficientCreditsException se insuficiente.
         """
         if is_byok:
             return True
 
         req_dec = Decimal(str(required_credits))
-
-        stmt = select(TenantConfigModel.managed_credit_balance).where(
-            TenantConfigModel.tenant_id == tenant_id
-        )
-        result = await self.db.execute(stmt)
-        balance = result.scalar_one_or_none()
-
+        balance = await self.repository.get_managed_credit_balance(tenant_id=tenant_id)
         current_balance = Decimal(str(balance)) if balance is not None else Decimal("0.000000")
 
         if current_balance < req_dec:
@@ -105,7 +103,7 @@ class LLMMeteringService:
         tenant_id: str,
         usage_dto: LLMUsageLogCreate,
     ) -> LLMUsageLogModel:
-        """Registra a chamada de LLM na tabela llm_usage_logs e efetua o débito atômico do saldo se modo Gerenciado."""
+        """Registra a chamada de LLM no repositório e efetua o débito atômico do saldo se modo Gerenciado."""
         cost = usage_dto.estimated_cost_usd
         if cost == Decimal("0.000000") and (usage_dto.prompt_tokens > 0 or usage_dto.completion_tokens > 0):
             cost = self.calculate_token_cost(
@@ -126,66 +124,70 @@ class LLMMeteringService:
             is_byok=usage_dto.is_byok,
             execution_time_ms=usage_dto.execution_time_ms,
         )
-        self.db.add(log_model)
+
+        saved_log = await self.repository.create_usage_log(log_model)
 
         if not usage_dto.is_byok and cost > Decimal("0.000000"):
-            stmt = (
-                update(TenantConfigModel)
-                .where(
-                    TenantConfigModel.tenant_id == tenant_id,
-                    TenantConfigModel.managed_credit_balance >= cost,
-                )
-                .values(
-                    managed_credit_balance=TenantConfigModel.managed_credit_balance - cost
-                )
-            )
-            res = await self.db.execute(stmt)
-            if res.rowcount == 0:
+            success = await self.repository.atomic_deduct_credits(tenant_id=tenant_id, cost=cost)
+            if not success:
                 logger.warning(
                     f"[LLMMeteringService] Débito atômico não realizado para tenant '{tenant_id}'. "
                     f"Saldo insuficiente para debitar {cost} USD no registro de uso."
                 )
 
-        await self.db.flush()
-        return log_model
+        return saved_log
 
     async def get_tenant_credit_balance(
         self,
         tenant_id: str,
     ) -> TenantCreditBalanceResponse:
-        """Recupera o extrato e saldo atual do tenant."""
-        stmt = select(TenantConfigModel).where(TenantConfigModel.tenant_id == tenant_id)
-        res = await self.db.execute(stmt)
-        config = res.scalar_one_or_none()
+        """Recupera o extrato e saldo atual do tenant consultando o repositório."""
+        config = await self.repository.get_tenant_config(tenant_id=tenant_id)
 
         balance = config.managed_credit_balance if (config and config.managed_credit_balance is not None) else Decimal("0.000000")
         has_byok = False
         if config and config.encrypted_keys:
             has_byok = bool(config.encrypted_keys.get("openrouter_api_key"))
 
-        first_day_of_month = func.date_trunc('month', func.now())
-
-        monthly_stmt = select(
-            func.coalesce(func.sum(LLMUsageLogModel.total_tokens), 0),
-            func.coalesce(func.sum(LLMUsageLogModel.estimated_cost_usd), 0),
-        ).where(
-            LLMUsageLogModel.tenant_id == tenant_id,
-            LLMUsageLogModel.created_at >= first_day_of_month,
-        )
-        monthly_res = await self.db.execute(monthly_stmt)
-        row = monthly_res.one()
-        monthly_tokens, monthly_cost = row[0], row[1]
-
+        monthly_tokens, monthly_cost = await self.repository.get_monthly_telemetry(tenant_id=tenant_id)
         active_mode = "byok" if has_byok else "managed"
 
         return TenantCreditBalanceResponse(
             tenant_id=tenant_id,
             managed_credit_balance=balance,
-            monthly_total_tokens=int(monthly_tokens),
-            monthly_total_cost_usd=Decimal(str(monthly_cost)),
+            monthly_total_tokens=monthly_tokens,
+            monthly_total_cost_usd=monthly_cost,
             is_byok_enabled=has_byok,
             active_mode=active_mode,
         )
+
+    async def get_tenant_usage_logs(
+        self,
+        tenant_id: str,
+        page: int = 1,
+        limit: int = 20,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+    ) -> Dict[str, Any]:
+        """Recupera o extrato paginado de logs de consumo do tenant."""
+        logs, total_items = await self.repository.get_usage_logs_paginated(
+            tenant_id=tenant_id,
+            page=page,
+            limit=limit,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+        items = [LLMUsageLogResponse.model_validate(log) for log in logs]
+        total_pages = ceil(total_items / limit) if total_items > 0 else 1
+
+        return {
+            "items": items,
+            "total": total_items,
+            "page": page,
+            "limit": limit,
+            "total_pages": total_pages,
+        }
 
 
 def get_llm_metering_service(db: AsyncSession = Depends(get_db)) -> LLMMeteringService:

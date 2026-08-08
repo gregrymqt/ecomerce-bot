@@ -8,9 +8,9 @@ from app.features.mercadopago.schemas import (
     MercadoPagoNotificationPayload,
 )
 from app.features.plans.domain.models import PlanModel
-from app.features.plans.infrastructure.client import PlansClient
 from app.features.plans.repositories.plans_repository import PlansRepository
 from app.features.plans.schemas import PlanResponse
+
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +26,15 @@ class PlanNotificationService(BaseNotificationHandler):
     def __init__(
         self,
         repository: Optional[PlansRepository] = None,
-        client: Optional[PlansClient] = None,
+        client: Optional[Any] = None,
     ) -> None:
         self.repository = repository or PlansRepository()
-        self.client = client or PlansClient()
+        if client is None:
+            from app.features.plans.infrastructure.client import PlansClient
+            self.client = PlansClient()
+        else:
+            self.client = client
+
 
     @staticmethod
     def _parse_int(value: Any) -> Optional[int]:

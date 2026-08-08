@@ -4,7 +4,6 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.plans.domain.models import PlanModel
-from app.features.plans.infrastructure.client import PlansClient
 from app.features.plans.repositories.plans_repository import PlansRepository
 from app.features.plans.schemas import (
     CreatePlanRequest,
@@ -27,11 +26,14 @@ class PlansService:
     def __init__(
         self,
         repository: Optional[PlansRepository] = None,
-        client: Optional[PlansClient] = None,
-        session: Optional[AsyncSession] = None,
+        client: Optional[Any] = None,
     ) -> None:
-        self.repository = repository or PlansRepository(session=session)
-        self.client = client or PlansClient()
+        self.repository = repository or PlansRepository()
+        if client is None:
+            from app.features.plans.infrastructure.client import PlansClient
+            self.client = PlansClient()
+        else:
+            self.client = client
 
     @staticmethod
     def _parse_int(value: Any) -> Optional[int]:

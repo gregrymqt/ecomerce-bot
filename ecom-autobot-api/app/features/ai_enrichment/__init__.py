@@ -12,6 +12,9 @@ from app.features.ai_enrichment.infrastructure.providers import (
     GroqProvider,
     OpenRouterLLMProvider,
 )
+from app.features.ai_enrichment.repositories.metering_repository import (
+    LLMMeteringRepository,
+)
 from app.features.ai_enrichment.schemas.enrichment_schemas import EnrichedProductResponse
 from app.features.ai_enrichment.schemas.metering_schema import (
     LLMUsageLogCreate,
@@ -30,6 +33,7 @@ __all__ = [
     "LLMService",
     "LLMEngineRouter",
     "LLMMeteringService",
+    "LLMMeteringRepository",
     "get_llm_metering_service",
     "AllProvidersExhaustedError",
     "InsufficientCreditsException",
@@ -47,6 +51,7 @@ __all__ = [
     "TenantCreditBalanceResponse",
     "TokenEstimateRequest",
 ]
+
 
 
 

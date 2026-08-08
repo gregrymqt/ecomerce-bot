@@ -12,8 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config.database import AsyncSessionLocal
 from app.core.config.rabbitmq import get_rabbitmq_connection
 from app.features.products.domain.models import ProductModel
-from app.features.ai_enrichment.domain.exceptions import AllProvidersExhaustedError
-from app.features.ai_enrichment.services import LLMService
+from app.features.ai_enrichment.domain.exceptions import (
+    AllProvidersExhaustedError,
+    InsufficientCreditsException,
+)
+from app.features.ai_enrichment.services import LLMService, LLMMeteringService
+from app.features.ai_enrichment.schemas import LLMUsageLogCreate
 from app.features.system.repositories import TelemetryRepository
 from app.core.shared.logger import get_logger
 from app.core.security.crypto import get_tenant_key
@@ -122,6 +126,7 @@ class ProcessorWorker:
         logger.info(f"Iniciando Enriquecimento LLM - SKU: {sku} | Tenant: {tenant_id}", extra=log_extra)
 
         session, should_close = await self._get_session()
+        product_id = None
         try:
             # Busca estritamente o produto designado pela mensagem do RabbitMQ
             stmt = select(ProductModel).where(
@@ -135,6 +140,8 @@ class ProcessorWorker:
             if not row:
                 logger.warning(f"SKU {sku} não encontrado em estado RAW ou pertence a outro tenant. Ignorando.", extra=log_extra)
                 return
+
+            product_id = row.id
 
             # Lock Otimista: Marca como PROCESSING para evitar que outro worker pegue (caso haja retries/requeues)
             row.status = ProductStatus.PROCESSING.value
@@ -164,6 +171,32 @@ class ProcessorWorker:
                 tenant_id=tenant_id, is_demo=is_demo, session=session
             )
 
+            # Validação de BYOK e Créditos antes do disparo da requisição de IA
+            metering_service = LLMMeteringService(db=session)
+            is_byok_active = False
+            if current_llm and current_llm.llm_router:
+                tenant_key = await current_llm.llm_router._resolve_tenant_key(tenant_id, session)
+                if tenant_key:
+                    is_byok_active = True
+
+            try:
+                await metering_service.check_tenant_credits(tenant_id=tenant_id, is_byok=is_byok_active)
+            except InsufficientCreditsException as credit_err:
+                logger.warning(
+                    f"[ProcessorWorker] Saldo de créditos insuficiente para tenant '{tenant_id}' (SKU: {sku}). Produto marcado como FAILED.",
+                    extra=log_extra,
+                )
+                await self.repo.set_status(tenant_id, sku, ProductStatus.FAILED.value)
+                if is_demo:
+                    source_url = product_dict.get("metadata", {}).get("source_url", "") if isinstance(product_dict.get("metadata"), dict) else ""
+                    await publish_demo_progress(
+                        url=source_url,
+                        status="failed",
+                        progress=100,
+                        error="Saldo de créditos insuficiente para processar a requisição de IA. Ative o modo BYOK ou recarregue seu saldo."
+                    )
+                return
+
             # Aciona o enriquecimento via LLMEngineRouter com política de Retry
             processed_data = await self._process_with_retry(product_model, current_llm)
 
@@ -191,6 +224,23 @@ class ProcessorWorker:
 
             duration_ms = int((time.time() - start_time) * 1000)
 
+            # Grava o log de uso de LLM e decrementa o saldo de créditos do tenant se modo Gerenciado
+            try:
+                usage_dto = LLMUsageLogCreate(
+                    tenant_id=tenant_id,
+                    product_id=product_id,
+                    provider="openrouter",
+                    model_used=model_used,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    total_tokens=prompt_tokens + completion_tokens,
+                    is_byok=is_byok_active,
+                    execution_time_ms=int(response_time_ms) if response_time_ms else duration_ms,
+                )
+                await metering_service.record_usage_and_deduct(tenant_id=tenant_id, usage_dto=usage_dto)
+            except Exception as metering_err:
+                logger.warning(f"Erro ao registrar consumo e débito no LLMMeteringService: {metering_err}")
+
             # Grava telemetria de atividade e uso real de tokens do OpenRouter
             try:
                 telemetry_repo = TelemetryRepository(session=self.session)
@@ -214,6 +264,7 @@ class ProcessorWorker:
                 f"[ProcessorWorker] Produto {sku} enriquecido com sucesso via {model_used} em {response_time_ms}ms",
                 extra=log_extra
             )
+
 
             if is_demo:
                 await self._publish_demo_success(product_dict, processed_data)
