@@ -200,7 +200,7 @@ Descrição Original: {product.description or ''}
             "total_tokens": completion_res.total_tokens,
             "response_time_ms": completion_res.provider_response_time_ms,
         }
-        product.attributes["enrichment_metadata"] = enrichment_metadata
+        product.attributes["enrichment_metadata"] = json.dumps(enrichment_metadata)
         setattr(product, "ai_enriched_data", enrichment_metadata)
 
         product.status = ProductStatus.PROCESSED

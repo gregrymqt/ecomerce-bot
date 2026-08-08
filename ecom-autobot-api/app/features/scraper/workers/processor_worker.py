@@ -169,7 +169,16 @@ class ProcessorWorker:
 
             # Extrai metadados do enriquecimento (model_used, tokens, tempo de resposta)
             attrs = processed_data.attributes or {}
-            enrichment_metadata = attrs.get("enrichment_metadata") or getattr(processed_data, "ai_enriched_data", {}) or {}
+            raw_meta = attrs.get("enrichment_metadata") or getattr(processed_data, "ai_enriched_data", {}) or {}
+            if isinstance(raw_meta, str):
+                try:
+                    enrichment_metadata = json.loads(raw_meta)
+                except Exception:
+                    enrichment_metadata = {}
+            elif isinstance(raw_meta, dict):
+                enrichment_metadata = raw_meta
+            else:
+                enrichment_metadata = {}
 
             model_used = enrichment_metadata.get("model_used", "OpenRouter")
             prompt_tokens = enrichment_metadata.get("prompt_tokens", 0)
