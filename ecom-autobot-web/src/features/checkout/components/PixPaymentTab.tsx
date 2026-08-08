@@ -90,7 +90,7 @@ export const PixPaymentTab: React.FC<PixPaymentTabProps> = ({
             readOnly
             value={pixCode}
             aria-label="Código Pix Copia e Cola"
-            className="w-full min-h-[44px] h-11 px-3 py-2 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-200 text-xs sm:text-sm font-mono truncate focus:outline-none focus:border-violet-500 transition-colors"
+            className="w-full min-h-[44px] h-11 px-3 py-2 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-200 text-base sm:text-sm font-mono truncate focus:outline-none focus:border-violet-500 transition-colors"
           />
           <button
             type="button"

@@ -182,7 +182,7 @@ export const AdminPlansPage: React.FC = () => {
             onClick={refreshPlans}
             title="Atualizar Lista"
             className="min-h-[44px] min-w-[44px] p-2.5 bg-[#100D14] border border-slate-800 hover:bg-slate-800 text-slate-300 rounded-xl transition-colors flex items-center justify-center"
-          >
+           aria-label="Atualizar planos">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
           </button>
         </div>

@@ -100,7 +100,7 @@ export const CatalogPage: React.FC = () => {
               <button
                 onClick={closeIngestionModal}
                 className="p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
-              >
+               aria-label="Fechar modal">
                 <X className="w-5 h-5" />
               </button>
             </div>
