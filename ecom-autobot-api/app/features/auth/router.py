@@ -1,23 +1,36 @@
-from fastapi import APIRouter, Depends, status, Response, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import Optional
+from fastapi import APIRouter, Depends, Query, Request, Response, status
+from fastapi.security import HTTPBearer
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config.database import get_db
+from app.core.config.settings import settings
 from app.core.security.auth import get_current_tenant_user
 from app.core.security.rate_limiter import rate_limit_dependency
 from app.features.auth.schemas import (
-    LoginRequest, 
-    CreateUserRequest, 
-    UpdateUserRequest, 
-    UserResponse, 
+    AuthenticatedUser,
+    AuthTokenResponse,
+    CreateUserRequest,
+    GoogleCallbackRequest,
+    GoogleLoginUrlResponse,
+    LoginRequest,
     LogoutResponse,
-    AuthenticatedUser
+    UpdateUserRequest,
+    UserResponse,
 )
-from app.features.auth.services import AuthService
+from app.features.auth.services import AuthService, GoogleAuthService
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 security = HTTPBearer()
 
+
 def get_auth_service() -> AuthService:
     return AuthService()
+
+
+def get_google_auth_service() -> GoogleAuthService:
+    return GoogleAuthService()
+
 
 @router.post("/register", status_code=status.HTTP_201_CREATED, response_model=UserResponse)
 async def register(
@@ -29,6 +42,7 @@ async def register(
     """
     return await service.register_user(payload)
 
+
 @router.post("/login", response_model=UserResponse, dependencies=[Depends(rate_limit_dependency(times=5, seconds=60))])
 async def login(
     credentials: LoginRequest,
@@ -36,6 +50,7 @@ async def login(
     service: AuthService = Depends(get_auth_service)
 ) -> UserResponse:
     return await service.authenticate_user(credentials, response)
+
 
 @router.post("/logout", response_model=LogoutResponse)
 async def logout(
@@ -62,6 +77,7 @@ async def logout(
     
     return LogoutResponse(message="Logout realizado com sucesso. Cookie e sessão limpos.")
 
+
 @router.get("/me", response_model=AuthenticatedUser)
 async def get_me(
     current_user: AuthenticatedUser = Depends(get_current_tenant_user)
@@ -70,6 +86,7 @@ async def get_me(
     Retorna o DTO tipado do perfil do usuário autenticado contido no token JWT.
     """
     return current_user
+
 
 @router.put("/me", response_model=UserResponse)
 async def update_me(
@@ -81,3 +98,58 @@ async def update_me(
     Atualiza as informações do usuário autenticado no banco de dados.
     """
     return await service.update_profile(current_user.user_id, payload)
+
+
+# -------------------------------------------------------------------
+# Google OAuth 2.0 Endpoints
+# -------------------------------------------------------------------
+
+@router.get("/google/login", response_model=GoogleLoginUrlResponse)
+async def google_login(
+    state: Optional[str] = Query(None, description="Estado OAuth para prevenção de CSRF"),
+    service: GoogleAuthService = Depends(get_google_auth_service)
+) -> GoogleLoginUrlResponse:
+    """
+    Gera e retorna a URL de redirecionamento para o consentimento do Google OAuth 2.0.
+    """
+    auth_url = service.get_google_auth_url(state=state)
+    return GoogleLoginUrlResponse(url=auth_url)
+
+
+@router.post(
+    "/google/callback",
+    response_model=AuthTokenResponse,
+    dependencies=[Depends(rate_limit_dependency(times=10, seconds=60))]
+)
+async def google_callback(
+    payload: GoogleCallbackRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    service: GoogleAuthService = Depends(get_google_auth_service)
+) -> AuthTokenResponse:
+    """
+    Processa o callback do Google OAuth 2.0:
+    - Realiza a troca assíncrona do 'code' pelos dados do perfil via API Google.
+    - Autentica usuário existente ou realiza cadastro do novo usuário com o tenant_name fornecido.
+    - Seta o cookie HttpOnly de acesso e retorna o JWT com a lista de tenants autorizados.
+    """
+    google_user = await service.exchange_code_for_user_info(payload.code)
+    token_response = await service.authenticate_google_user(
+        db=db,
+        google_user=google_user,
+        tenant_name=payload.tenant_name
+    )
+
+    # Seta o cookie HttpOnly idêntico ao fluxo de login tradicional
+    expires_in_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    response.set_cookie(
+        key="access_token",
+        value=token_response.access_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=expires_in_seconds,
+    )
+
+    return token_response
+

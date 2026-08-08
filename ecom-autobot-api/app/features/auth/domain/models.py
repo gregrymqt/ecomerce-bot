@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 
@@ -31,5 +31,7 @@ class UserModel(Base):
     name = Column(String(255), nullable=False)
     role = Column(String(50), nullable=False, default="user")
     tenants = Column(JSONB, nullable=False, default=["ecommerce_demo", "ecommerce_prod"])
+    is_google_user = Column(Boolean, default=False, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
