@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime, timezone
 import logging
 from typing import Optional, Tuple, AsyncGenerator, Any
+import aiofiles
 from dotenv import load_dotenv
 from sqlalchemy import select, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -187,18 +188,21 @@ class ExporterWorker:
 
     async def export(self) -> str:
         """
-        Exporta o CSV gravando diretamente em disco por streaming de chunks, 
+        Exporta o CSV gravando diretamente em disco por streaming de chunks,
         sem acumular a lista completa de produtos na RAM.
+
+        Utiliza `aiofiles` para I/O assíncrono, garantindo que a gravação em
+        disco nunca bloqueie a Event Loop durante exportações de catálogos grandes.
         """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"export_{self.platform}_{self.tenant_id}_{timestamp}.csv"
 
         logger.info(f"Iniciando gravação streaming em arquivo '{filename}' (Tenant: {self.tenant_id})...")
         count_chunks = 0
-        
-        with open(filename, mode="w", encoding="utf-8-sig") as f:
+
+        async with aiofiles.open(filename, mode="w", encoding="utf-8-sig") as f:
             async for chunk in self.stream_export():
-                f.write(chunk)
+                await f.write(chunk)
                 count_chunks += 1
 
         logger.info(f"Sucesso: Arquivo '{filename}' gerado com {count_chunks} chunks.")

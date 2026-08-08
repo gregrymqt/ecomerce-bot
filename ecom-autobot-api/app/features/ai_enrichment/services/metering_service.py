@@ -80,7 +80,9 @@ class LLMMeteringService:
         """Verifica se o tenant possui saldo suficiente de créditos gerenciados.
 
         Se is_byok for True, retorna True imediatamente (bypass de créditos do sistema).
-        Caso contrário, consulta o repositório e lança InsufficientCreditsException se insuficiente.
+        Caso contrário, faz uma leitura rápida do saldo sem bloquear a linha
+        (leitura otimista para checagem de elegibilidade). Para a reserva real antes
+        de chamar a LLM, utilize `reserve_credits_for_llm()`.
         """
         if is_byok:
             return True
@@ -92,9 +94,7 @@ class LLMMeteringService:
         except Exception:
             current_balance = Decimal("999999.000000")
 
-
         if current_balance < req_dec:
-
             logger.warning(
                 f"[LLMMeteringService] Saldo insuficiente para tenant '{tenant_id}': "
                 f"saldo={current_balance} USD, necessário={req_dec} USD"
@@ -103,12 +103,80 @@ class LLMMeteringService:
 
         return True
 
+    async def reserve_credits_for_llm(
+        self,
+        tenant_id: str,
+        estimated_cost: Decimal,
+    ) -> bool:
+        """
+        Pré-reserva pessimista de créditos antes de chamar o provedor de LLM.
+
+        Usa SELECT FOR UPDATE SKIP LOCKED no PostgreSQL para garantir que nenhuma
+        requisição concorrente do mesmo tenant ultrapasse o limite de saldo disponível.
+
+        Retorna:
+            True  — reserva efetuada com sucesso; o caller deve prosseguir com a LLM.
+            False — saldo insuficiente ou linha bloqueada; o caller deve abortar e
+                    lançar InsufficientCreditsException.
+        """
+        reserved = await self.repository.atomic_reserve_credits(
+            tenant_id=tenant_id, estimated_cost=estimated_cost
+        )
+        if not reserved:
+            logger.warning(
+                f"[LLMMeteringService] Reserva de créditos negada para tenant '{tenant_id}'. "
+                f"Saldo insuficiente ou linha em uso por outro worker (estimado={estimated_cost} USD)."
+            )
+            raise InsufficientCreditsException()
+
+        await self.db.commit()
+        logger.debug(
+            f"[LLMMeteringService] Reserva de {estimated_cost} USD confirmada para tenant '{tenant_id}'."
+        )
+        return True
+
+    async def refund_credits_on_failure(
+        self,
+        tenant_id: str,
+        reserved_cost: Decimal,
+    ) -> None:
+        """
+        Estorna créditos pré-reservados quando a chamada ao provedor de LLM falha.
+
+        Deve ser chamado no bloco `except` do ProcessorWorker após uma falha de
+        infraestrutura (timeout, erro 5xx, AllProvidersExhaustedError) para
+        garantir que o tenant não seja cobrado por uma execução que não completou.
+        """
+        try:
+            await self.repository.atomic_refund_credits(
+                tenant_id=tenant_id, amount=reserved_cost
+            )
+            await self.db.commit()
+            logger.info(
+                f"[LLMMeteringService] Estorno de {reserved_cost} USD realizado para tenant '{tenant_id}' "
+                f"após falha do provedor de LLM."
+            )
+        except Exception as refund_err:
+            logger.error(
+                f"[LLMMeteringService] FALHA CRÍTICA no estorno de créditos para tenant '{tenant_id}': "
+                f"{refund_err}. Intervenção manual pode ser necessária."
+            )
+
     async def record_usage_and_deduct(
         self,
         tenant_id: str,
         usage_dto: LLMUsageLogCreate,
+        reserved_cost: Optional[Decimal] = None,
     ) -> LLMUsageLogModel:
-        """Registra a chamada de LLM no repositório e efetua o débito atômico do saldo se modo Gerenciado."""
+        """Registra a chamada de LLM no repositório e acerta o saldo final.
+
+        Quando `reserved_cost` é fornecido (modo LLM gerenciado com pré-reserva),
+        chama `atomic_settle_credits` para ajustar a diferença entre o custo estimado
+        na reserva e o custo real consumido (estorno parcial ou débito complementar).
+
+        Quando `reserved_cost` é None, recai no débito atômico legado para
+        compatibilidade com fluxos não-concorrentes.
+        """
         cost = usage_dto.estimated_cost_usd
         if cost == Decimal("0.000000") and (usage_dto.prompt_tokens > 0 or usage_dto.completion_tokens > 0):
             cost = self.calculate_token_cost(
@@ -133,14 +201,24 @@ class LLMMeteringService:
         saved_log = await self.repository.create_usage_log(log_model)
 
         if not usage_dto.is_byok and cost > Decimal("0.000000"):
-            success = await self.repository.atomic_deduct_credits(tenant_id=tenant_id, cost=cost)
-            if not success:
-                logger.warning(
-                    f"[LLMMeteringService] Débito atômico não realizado para tenant '{tenant_id}'. "
-                    f"Saldo insuficiente para debitar {cost} USD no registro de uso."
+            if reserved_cost is not None:
+                # Modo concorrente: acerta a diferença entre reserva e consumo real
+                await self.repository.atomic_settle_credits(
+                    tenant_id=tenant_id,
+                    reserved_cost=reserved_cost,
+                    actual_cost=cost,
                 )
+            else:
+                # Modo legado: débito atômico direto (sem pré-reserva)
+                success = await self.repository.atomic_deduct_credits(tenant_id=tenant_id, cost=cost)
+                if not success:
+                    logger.warning(
+                        f"[LLMMeteringService] Débito atômico não realizado para tenant '{tenant_id}'. "
+                        f"Saldo insuficiente para debitar {cost} USD no registro de uso."
+                    )
 
         return saved_log
+
 
     async def get_tenant_credit_balance(
         self,

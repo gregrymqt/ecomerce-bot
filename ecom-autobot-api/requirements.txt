@@ -21,3 +21,4 @@ aio_pika
 redis>=5.0.0
 PyJWT>=2.8.0
 email-validator
+aiofiles>=23.0.0
