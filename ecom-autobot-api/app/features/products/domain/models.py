@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, DateTime, String
+from sqlalchemy import Column, DateTime, Numeric, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 
@@ -32,7 +32,9 @@ class TenantConfigModel(Base):
     ai_settings = Column(JSONB, nullable=False, server_default="{}")
     pricing_settings = Column(JSONB, nullable=False, server_default="{}")
     store_profile = Column(JSONB, nullable=False, server_default="{}")
+    managed_credit_balance = Column(Numeric(10, 6), nullable=False, server_default="0.000000")
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
 
 
 class RateLimitModel(Base):

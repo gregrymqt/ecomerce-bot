@@ -5,6 +5,7 @@ from app.features.ai_enrichment.domain.exceptions import (
     OpenRouterRateLimitError,
 )
 from app.features.ai_enrichment.domain.interfaces import LLMProvider
+from app.features.ai_enrichment.domain.models import LLMUsageLogModel
 
 __all__ = [
     "AllProvidersExhaustedError",
@@ -12,5 +13,7 @@ __all__ = [
     "OpenRouterAPIError",
     "OpenRouterRateLimitError",
     "LLMProvider",
+    "LLMUsageLogModel",
 ]
+
 
