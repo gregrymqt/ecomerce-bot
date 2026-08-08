@@ -5,8 +5,8 @@ from fastapi.responses import JSONResponse
 
 from app.core.shared.csv_exporter import CsvExportService
 from app.features.nuvemshop.infrastructure.client import NuvemshopClient
+from app.features.nuvemshop.repositories import NuvemshopRepository
 from app.features.nuvemshop.schemas import NuvemshopProductRequest
-from app.features.products.repositories import TenantConfigRepository
 
 logger = logging.getLogger(__name__)
 
@@ -14,30 +14,29 @@ logger = logging.getLogger(__name__)
 class NuvemshopService:
     """
     Serviço de Lógica de Negócio para a Nuvemshop.
-    Consome o TenantConfigRepository (para dados do banco) e o NuvemshopClient (para a API REST).
+    Consome o NuvemshopRepository (para credenciais) e o NuvemshopClient (para a API REST).
     """
 
     def __init__(
         self,
         tenant_id: str,
-        tenant_repo: Optional[TenantConfigRepository] = None,
+        nuvemshop_repo: Optional[NuvemshopRepository] = None,
         client: Optional[NuvemshopClient] = None,
     ):
         self.tenant_id = tenant_id
-        self.tenant_repo = tenant_repo or TenantConfigRepository()
+        self.nuvemshop_repo = nuvemshop_repo or NuvemshopRepository()
         self.client = client
 
     async def _ensure_client(self) -> NuvemshopClient:
         if self.client:
             return self.client
-        creds = await self.tenant_repo.get_nuvemshop_credentials(self.tenant_id)
+        creds = await self.nuvemshop_repo.get_credentials(self.tenant_id)
         if not creds:
             raise HTTPException(
                 status_code=status.HTTP_412_PRECONDITION_FAILED,
                 detail=f"Credenciais da Nuvemshop não configuradas ou ausentes para o Tenant '{self.tenant_id}'.",
             )
-        store_id, access_token, app_email = creds
-        client = NuvemshopClient(store_id=store_id, access_token=access_token, app_email=app_email)
+        client = NuvemshopClient(store_id=creds.store_id, access_token=creds.access_token, app_email=creds.app_email)
 
         is_valid_scope = await client.validate_scopes()
         if not is_valid_scope:

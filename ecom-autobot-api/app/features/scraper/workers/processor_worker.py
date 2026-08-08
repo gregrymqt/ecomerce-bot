@@ -283,7 +283,11 @@ class ProcessorWorker:
             if isinstance(raw_meta, str):
                 try:
                     enrichment_metadata = json.loads(raw_meta)
-                except Exception:
+                except Exception as json_err:
+                    logger.warning(
+                        f"[ProcessorWorker] Falha ao decodificar JSON de enrichment_metadata para SKU '{sku}': {json_err}",
+                        extra=log_extra,
+                    )
                     enrichment_metadata = {}
             elif isinstance(raw_meta, dict):
                 enrichment_metadata = raw_meta

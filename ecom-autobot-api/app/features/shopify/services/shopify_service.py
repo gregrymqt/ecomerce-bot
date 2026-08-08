@@ -4,8 +4,8 @@ from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
 
 from app.core.shared.csv_exporter import CsvExportService
-from app.features.products.repositories import TenantConfigRepository
 from app.features.shopify.infrastructure.client import ShopifyClient
+from app.features.shopify.repositories import ShopifyRepository
 from app.features.shopify.schemas import (
     ShopifyMediaAddRequest,
     ShopifyProductSetInput,
@@ -17,30 +17,29 @@ logger = logging.getLogger(__name__)
 class ShopifyService:
     """
     Serviço de Lógica de Negócio para o Shopify.
-    Consome o TenantConfigRepository (para dados do banco) e o ShopifyClient (para a API).
+    Consome o ShopifyRepository (para credenciais) e o ShopifyClient (para a API GraphQL).
     """
 
     def __init__(
         self,
         tenant_id: str,
-        tenant_repo: Optional[TenantConfigRepository] = None,
+        shopify_repo: Optional[ShopifyRepository] = None,
         client: Optional[ShopifyClient] = None,
     ):
         self.tenant_id = tenant_id
-        self.tenant_repo = tenant_repo or TenantConfigRepository()
+        self.shopify_repo = shopify_repo or ShopifyRepository()
         self.client = client
 
     async def _ensure_client(self) -> ShopifyClient:
         if self.client:
             return self.client
-        creds = await self.tenant_repo.get_shopify_credentials(self.tenant_id)
+        creds = await self.shopify_repo.get_credentials(self.tenant_id)
         if not creds:
             raise HTTPException(
                 status_code=status.HTTP_412_PRECONDITION_FAILED,
                 detail=f"Credenciais do Shopify não configuradas para o Tenant '{self.tenant_id}'.",
             )
-        shop_domain, access_token = creds
-        self.client = ShopifyClient(shop_domain=shop_domain, access_token=access_token)
+        self.client = ShopifyClient(shop_domain=creds.shop_domain, access_token=creds.access_token)
         return self.client
 
     async def sync_product(self, product_data: dict) -> dict:

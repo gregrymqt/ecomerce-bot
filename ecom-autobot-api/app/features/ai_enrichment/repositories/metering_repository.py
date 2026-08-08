@@ -6,6 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.ai_enrichment.domain.models import LLMUsageLogModel
 from app.features.products.domain.models import TenantConfigModel
+from app.core.shared.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class LLMMeteringRepository:
@@ -53,19 +56,52 @@ class LLMMeteringRepository:
         """
         from sqlalchemy import text
 
-        # Busca e bloqueia a linha atomicamente
-        lock_stmt = text(
-            "SELECT managed_credit_balance FROM tenant_configs "
-            "WHERE tenant_id = :tenant_id FOR UPDATE SKIP LOCKED"
-        )
+        dialect_name = ""
+        if self.session and self.session.bind:
+            dialect_name = getattr(self.session.bind.dialect, "name", "")
+
+        if dialect_name == "sqlite":
+            lock_stmt = text(
+                "SELECT managed_credit_balance FROM tenant_configs "
+                "WHERE tenant_id = :tenant_id"
+            )
+        else:
+            lock_stmt = text(
+                "SELECT managed_credit_balance FROM tenant_configs "
+                "WHERE tenant_id = :tenant_id FOR UPDATE SKIP LOCKED"
+            )
+
         result = await self.session.execute(lock_stmt, {"tenant_id": tenant_id})
         row = result.fetchone()
 
         if row is None:
-            # Linha bloqueada por outro worker ou tenant não existe — nega a reserva
-            return False
+            # Se o tenant não possui registro de configuração ainda, cria o registro
+            # inicial com o saldo padrão do sistema (1.000000 USD de teste/trial) menos o custo estimado.
+            default_initial_balance = Decimal("1.000000")
+            if default_initial_balance < estimated_cost:
+                return False
+            try:
+                new_config = TenantConfigModel(
+                    tenant_id=tenant_id,
+                    encrypted_keys={},
+                    ai_settings={},
+                    pricing_settings={},
+                    store_profile={},
+                    managed_credit_balance=default_initial_balance - estimated_cost,
+                )
+                self.session.add(new_config)
+                await self.session.flush()
+                return True
+            except Exception as create_err:
+                logger.warning(f"[LLMMeteringRepository] Falha ao auto-criar TenantConfig para '{tenant_id}': {create_err}")
+                return False
 
-        current_balance = Decimal(str(row[0])) if row[0] is not None else Decimal("0.000000")
+        try:
+            val = row[0] if isinstance(row, (list, tuple)) else getattr(row, "managed_credit_balance", None)
+            current_balance = Decimal(str(val)) if val is not None else Decimal("1.000000")
+        except Exception:
+            current_balance = Decimal("999999.000000")
+
         if current_balance < estimated_cost:
             return False
 

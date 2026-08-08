@@ -1,4 +1,6 @@
+from app.features.shopify.domain import ShopifyCredentials
 from app.features.shopify.infrastructure import ShopifyClient
+from app.features.shopify.repositories import ShopifyRepository
 from app.features.shopify.schemas import (
     ShopifyCreateMediaInput,
     ShopifyCreateMediaRequest,
@@ -25,6 +27,10 @@ from app.features.shopify.schemas import (
 from app.features.shopify.services import ShopifyService
 
 __all__ = [
+    # Domain
+    "ShopifyCredentials",
+    # Repositories
+    "ShopifyRepository",
     # Infrastructure
     "ShopifyClient",
     # Schemas
@@ -52,3 +58,4 @@ __all__ = [
     # Services
     "ShopifyService",
 ]
+

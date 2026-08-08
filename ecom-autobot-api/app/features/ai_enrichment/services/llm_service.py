@@ -96,8 +96,10 @@ class LLMService:
             if isinstance(tags, str):
                 tags = [t.strip() for t in tags.split(",") if t.strip()]
             return title, description, tags
-        except Exception:
-            logger.warning(f"Não foi possível converter a resposta da LLM em JSON puro. Conteúdo recebido: {clean[:100]}")
+        except Exception as parse_err:
+            logger.warning(
+                f"[LLMService] Não foi possível converter a resposta da LLM em JSON puro: {parse_err}. Conteúdo recebido: {clean[:100]}"
+            )
             return default_title, clean or default_description, []
 
     async def enrich_product(

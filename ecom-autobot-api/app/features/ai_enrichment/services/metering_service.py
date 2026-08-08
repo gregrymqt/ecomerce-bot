@@ -92,7 +92,10 @@ class LLMMeteringService:
         balance = await self.repository.get_managed_credit_balance(tenant_id=tenant_id)
         try:
             current_balance = Decimal(str(balance)) if balance is not None else Decimal("1.000000")
-        except Exception:
+        except Exception as conv_err:
+            logger.warning(
+                f"[LLMMeteringService] Falha ao converter saldo '{balance}' para Decimal para tenant '{tenant_id}': {conv_err}"
+            )
             current_balance = Decimal("999999.000000")
 
         if current_balance < req_dec:
