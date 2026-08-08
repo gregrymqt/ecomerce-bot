@@ -5,3 +5,4 @@ export * from './components/CreditBalanceWidget';
 export * from './components/EngineStatusBadge';
 export * from './components/UsageHistoryTable';
 export * from './components/TopUpCreditModal';
+export * from './pages/MeteringDashboardPage';

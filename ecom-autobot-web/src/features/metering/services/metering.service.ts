@@ -1,7 +1,6 @@
 import { apiClient } from '@/lib/apiClient';
 import type {
   TenantCreditBalanceResponse,
-  LLMUsageLogResponse,
   LLMUsageFilterParams,
   PaginatedLLMUsageResponse,
 } from '../types/metering.type';

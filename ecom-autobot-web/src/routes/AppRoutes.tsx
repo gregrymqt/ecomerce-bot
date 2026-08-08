@@ -10,6 +10,7 @@ import { CheckoutPage } from '@/features/checkout';
 import { IntegrationsPage } from '@/features/integrations';
 import { DashboardPage } from '@/features/dashboard';
 import { SettingsPage } from '@/features/settings';
+import { MeteringDashboardPage } from '@/features/metering';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -34,6 +35,8 @@ export const AppRoutes: React.FC = () => {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/settings/ai-keys" element={<SettingsPage />} />
         <Route path="/billing" element={<SubscriptionPage />} />
+        <Route path="/billing/metering" element={<MeteringDashboardPage />} />
+        <Route path="/metering" element={<MeteringDashboardPage />} />
         <Route path="/subscriptions" element={<SubscriptionPage />} />
         <Route path="/plans" element={<SubscriptionPage />} />
         
