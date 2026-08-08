@@ -1,18 +1,32 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, Header, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from app.features.shopify.services import ShopifyService
-from app.core.security.auth import get_current_tenant_user
+from app.core.security.auth import get_current_tenant_user, sanitize_tenant_id
+from app.features.auth.schemas import AuthenticatedUser
 from app.features.shopify.schemas import ShopifyMediaAddRequest
 
 router = APIRouter(
-    prefix="/shopify", 
+    prefix="/shopify",
     tags=["Shopify GraphQL Integration"],
-    dependencies=[Depends(get_current_tenant_user)]
 )
 
-def get_shopify_service(x_tenant_id: str = Header(..., alias="X-Tenant-ID")) -> ShopifyService:
-    return ShopifyService(tenant_id=x_tenant_id)
+
+def get_shopify_service(
+    x_tenant_id: str = Header(..., alias="X-Tenant-ID"),
+    current_user: AuthenticatedUser = Depends(get_current_tenant_user),
+) -> ShopifyService:
+    """
+    Fábrica de serviço que valida se o X-Tenant-ID do header está
+    explicitamente autorizado nas claims do token JWT do usuário.
+    """
+    clean_tenant = sanitize_tenant_id(x_tenant_id)
+    if clean_tenant not in current_user.tenants:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado ao tenant especificado.",
+        )
+    return ShopifyService(tenant_id=clean_tenant)
 
 @router.post("/products", status_code=status.HTTP_201_CREATED, response_model=dict)
 async def sync_product_to_shopify(

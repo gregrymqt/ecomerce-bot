@@ -121,37 +121,63 @@ class ProcessorWorker:
         except Exception as e:
             logger.error(f"Erro assíncrono na conexão/consumo do RabbitMQ no ProcessorWorker: {e}")
 
-    async def _process_llm_task(self, tenant_id: str, sku: str, queue_name: str):
+    async def _process_llm_task(self, tenant_id: str, sku: str, queue_name: str) -> None:
         log_extra = {"sku": sku}
         logger.info(f"Iniciando Enriquecimento LLM - SKU: {sku} | Tenant: {tenant_id}", extra=log_extra)
 
         session, should_close = await self._get_session()
         product_id = None
         try:
-            # Busca estritamente o produto designado pela mensagem do RabbitMQ
-            stmt = select(ProductModel).where(
+            # ─────────────────────────────────────────────────────────────────
+            # Transição ATÔMICA: RAW → PROCESSING via UPDATE … WHERE status='RAW'
+            # Garante que somente UM worker processe este produto mesmo que a
+            # mensagem seja reentregue ou múltiplos workers escutem a mesma fila.
+            # ─────────────────────────────────────────────────────────────────
+            atomic_stmt = (
+                update(ProductModel)
+                .where(
+                    ProductModel.tenant_id == tenant_id,
+                    ProductModel.sku == sku,
+                    ProductModel.status == ProductStatus.RAW.value,
+                )
+                .values(
+                    status=ProductStatus.PROCESSING.value,
+                    updated_at=datetime.now(timezone.utc),
+                )
+            )
+            result = await session.execute(atomic_stmt)
+            await session.commit()
+
+            if result.rowcount == 0:
+                logger.info(
+                    f"[ProcessorWorker] Produto {sku} do tenant {tenant_id} já está em processamento "
+                    f"por outro worker ou não está no estado RAW. Abortando.",
+                    extra=log_extra,
+                )
+                return
+
+            # Busca o registro agora em PROCESSING para extrair o payload
+            row_stmt = select(ProductModel).where(
                 ProductModel.tenant_id == tenant_id,
                 ProductModel.sku == sku,
-                ProductModel.status == ProductStatus.RAW.value
             )
-            result = await session.execute(stmt)
-            row = result.scalar_one_or_none()
+            row_result = await session.execute(row_stmt)
+            row = row_result.scalar_one_or_none()
 
             if not row:
-                logger.warning(f"SKU {sku} não encontrado em estado RAW ou pertence a outro tenant. Ignorando.", extra=log_extra)
+                logger.error(
+                    f"[ProcessorWorker] Produto {sku} do tenant {tenant_id} não encontrado após UPDATE atômico. "
+                    f"Inconsistência de banco de dados detectada.",
+                    extra=log_extra,
+                )
                 return
 
             product_id = row.id
-
-            # Lock Otimista: Marca como PROCESSING para evitar que outro worker pegue (caso haja retries/requeues)
-            row.status = ProductStatus.PROCESSING.value
-            row.updated_at = datetime.now(timezone.utc)
-            await session.commit()
-            
             product_dict = dict(row.raw_payload or {})
         finally:
             if should_close:
                 await session.close()
+
 
         start_time = time.time()
         try:
