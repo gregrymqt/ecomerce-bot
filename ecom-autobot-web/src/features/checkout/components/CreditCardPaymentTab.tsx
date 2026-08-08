@@ -118,7 +118,7 @@ export const CreditCardPaymentTab: React.FC<CreditCardPaymentTabProps> = ({
             placeholder="0000 0000 0000 0000"
             required
             maxLength={19}
-            className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-sm sm:text-base placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
+            className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base sm:text-sm placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
           />
           <CreditCard className="absolute left-3 top-3 h-5 w-5 text-slate-400 pointer-events-none" />
         </div>
@@ -137,7 +137,7 @@ export const CreditCardPaymentTab: React.FC<CreditCardPaymentTabProps> = ({
             onChange={(e) => setCardholderName(e.target.value.toUpperCase())}
             placeholder="NOME COMO ESTÁ NO CARTÃO"
             required
-            className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-sm sm:text-base placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors uppercase"
+            className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base sm:text-sm placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors uppercase"
           />
           <User className="absolute left-3 top-3 h-5 w-5 text-slate-400 pointer-events-none" />
         </div>
@@ -158,7 +158,7 @@ export const CreditCardPaymentTab: React.FC<CreditCardPaymentTabProps> = ({
               placeholder="MM/AA"
               required
               maxLength={5}
-              className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-sm sm:text-base placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
+              className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base sm:text-sm placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
             />
             <Calendar className="absolute left-3 top-3 h-5 w-5 text-slate-400 pointer-events-none" />
           </div>
@@ -177,7 +177,7 @@ export const CreditCardPaymentTab: React.FC<CreditCardPaymentTabProps> = ({
               placeholder="123"
               required
               maxLength={4}
-              className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-sm sm:text-base placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
+              className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base sm:text-sm placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
             />
             <Lock className="absolute left-3 top-3 h-5 w-5 text-slate-400 pointer-events-none" />
           </div>
@@ -194,7 +194,7 @@ export const CreditCardPaymentTab: React.FC<CreditCardPaymentTabProps> = ({
             id="card-installments"
             value={installments}
             onChange={(e) => setInstallments(Number(e.target.value))}
-            className="w-full min-h-[44px] h-11 px-3 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-sm sm:text-base focus:outline-none focus:border-violet-500 transition-colors"
+            className="w-full min-h-[44px] h-11 px-3 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base sm:text-sm focus:outline-none focus:border-violet-500 transition-colors"
           >
             {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
               <option key={num} value={num} className="bg-[#090D16] text-slate-100">
@@ -217,7 +217,7 @@ export const CreditCardPaymentTab: React.FC<CreditCardPaymentTabProps> = ({
               placeholder="000.000.000-00"
               required
               maxLength={14}
-              className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-sm sm:text-base placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
+              className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base sm:text-sm placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
             />
             <FileText className="absolute left-3 top-3 h-5 w-5 text-slate-400 pointer-events-none" />
           </div>

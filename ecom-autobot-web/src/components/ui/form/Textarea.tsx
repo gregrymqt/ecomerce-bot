@@ -15,7 +15,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         aria-invalid={error ? 'true' : undefined}
         className={cn(
           'w-full rounded-lg border bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-sm transition-all duration-200 resize-y',
-          'p-3 text-base md:text-sm min-h-[88px]',
+          'p-3 text-base sm:text-sm min-h-[88px]',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
           error
             ? 'border-red-500 text-red-900 dark:text-red-100 focus-visible:ring-red-500 focus-visible:border-red-500'

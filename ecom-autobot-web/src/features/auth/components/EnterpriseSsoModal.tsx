@@ -209,7 +209,7 @@ export const EnterpriseSsoModal: React.FC<EnterpriseSsoModalProps> = ({
                     name="team_size"
                     value={formData.team_size}
                     onChange={handleChange}
-                    className="w-full pl-10 pr-4 min-h-[44px] h-11 text-sm rounded-lg bg-slate-950/60 border border-slate-800 text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer"
+                    className="w-full pl-10 pr-4 min-h-[44px] h-11 text-base sm:text-sm rounded-lg bg-slate-950/60 border border-slate-800 text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer"
                   >
                     <option value="1-10 colaboradores">1-10 colaboradores</option>
                     <option value="11-50 colaboradores">11-50 colaboradores</option>
@@ -242,7 +242,7 @@ export const EnterpriseSsoModal: React.FC<EnterpriseSsoModalProps> = ({
                     placeholder="ex: Utilizamos Okta SAML 2.0 e desejamos provisionamento automático."
                     value={formData.notes || ''}
                     onChange={handleChange}
-                    className="w-full p-3 text-sm rounded-lg bg-slate-950/60 border border-slate-800 text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"
+                    className="w-full p-3 text-base sm:text-sm rounded-lg bg-slate-950/60 border border-slate-800 text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"
                   />
                 </div>
               </div>
