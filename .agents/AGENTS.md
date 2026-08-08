@@ -50,12 +50,12 @@ ecommerce-bot/
 │   ├── app/
 │   │   ├── main.py             # Entrypoint FastAPI, Lifespan e inicializador dos Workers
 │   │   ├── core/               # Infraestrutura compartilhada
-│   │   │   ├── config/         # Settings (Pydantic), Database, RabbitMQ, Redis
+│   │   │   ├── config/         # Settings (OpenRouter, Pydantic), Database, RabbitMQ, Redis
 │   │   │   ├── security/       # Auth JWT, AES-256 GCM (BYOK), Rate Limiter
 │   │   │   └── shared/         # Logger, CSV Exporter, Progress SSE Helper
 │   │   └── features/           # Módulos Funcionais DDD (Domain-Driven Design Architecture)
 │   │       ├── api_router.py   # Roteador central de v1 (/api/v1)
-│   │       ├── ai_enrichment/  # Providers (DeepSeek, Groq), Enriquecimento via LLM (domain, infra, schemas, services)
+│   │       ├── ai_enrichment/  # LLMEngineRouter, OpenRouterLLMProvider (DeepSeek/Llama/Gemini), Providers nativos, Schemas, Services
 │   │       ├── auth/           # Login, Register, Users, Blacklist (domain, infra, repo, schemas, services)
 │   │       ├── checkout/       # Mercado Pago Transparente, Pagamentos, Pedidos e Estornos (domain, infra, repo, schemas, services)
 │   │       ├── mercadopago/    # Cliente Async Mercado Pago, Dispatcher & Worker de Webhooks (domain, infra, schemas, services, workers)
@@ -73,7 +73,7 @@ ecommerce-bot/
     ├── src/
     │   ├── components/ui/      # Atomic Design System (display, feedback, form, navigation, overlay, Button)
     │   ├── features/           # Módulos Funcionais DDD (Types -> Services -> Hooks -> UI Components)
-    │   │   ├── ai-keys/        # Gestão de credenciais de IA por Tenant (BYOK: DeepSeek, Groq, OpenAI, Gemini)
+    │   │   ├── ai-keys/        # Gestão de credenciais de IA por Tenant (BYOK: OpenRouter, DeepSeek, Groq, OpenAI, Gemini)
     │   │   ├── auth/           # Autenticação JWT, Login, Cadastro e Contexto Multi-Tenant (X-Tenant-ID)
     │   │   ├── catalog/        # Central do Catálogo, Tabela de Produtos Enriquecidos, Filtros e Exportação
     │   │   ├── checkout/       # Checkout Transparente MP (PIX QR Code/Copia e Cola e Cartão de Crédito)
@@ -97,14 +97,17 @@ ecommerce-bot/
 - **Framework:** Python 3.10+ com **FastAPI** e `uvicorn`.
 - **ORMs / DB:** SQLAlchemy 2.0 Async (`asyncpg`) em PostgreSQL.
 - **Mensageria:** RabbitMQ via `aio-pika`.
+- **Gateway LLM & Resiliência:** **OpenRouter** com lista de fallback encadeada (`models: [...]`) e `tenacity` para retries com exponencial backoff.
 - **Cache & Pub/Sub:** Redis via `redis-py` assíncrono.
 - **Segurança:** Cryptography (`cryptography.hazmat`) para AES-256 GCM e PyJWT.
-- **Resiliência:** `tenacity` para retries com exponencial backoff.
 
 ### 🏢 Multi-Tenancy & Criptografia (BYOK - Bring Your Own Key):
 1. **Isolamento de Dados:** Cada consulta no repositório de produtos OU configurações DEVE conter o filtro por `tenant_id`. Chaves primárias/lógicas são compostas `(tenant_id, sku)`.
 2. **Validação por Header:** O header `X-Tenant-ID` é obrigatório em rotas protegidas e validado em `get_current_tenant_user` contra a lista de `tenants` permitidos no token JWT.
-3. **Criptografia AES-256 GCM:** Chaves de API dos clientes (OpenAI, Gemini, DeepSeek, Groq, Tokens Shopify/Nuvemshop) NUNCA são salvas em texto puro. Elas usam `encrypt_api_key()` e `decrypt_api_key()` no módulo `app.core.security.crypto` utilizando a chave mestre `AES_MASTER_KEY`.
+3. **Criptografia AES-256 GCM:** Chaves de API dos clientes (OpenRouter, DeepSeek, Groq, OpenAI, Gemini, Tokens Shopify/Nuvemshop) NUNCA são salvas em texto puro. Elas usam `encrypt_api_key()` e `decrypt_api_key()` no módulo `app.core.security.crypto` utilizando a chave mestre `AES_MASTER_KEY`.
+4. **Resolução de Chave LLM (`LLMEngineRouter`):**
+   - O `LLMEngineRouter` busca primeiro a chave BYOK do tenant (`openrouter_api_key`) no PostgreSQL via `TenantConfigRepository`.
+   - Se a chave do tenant falhar com erro 401 (não autorizada) ou 402 (sem crédito), o serviço faz **fallback automático** para a chave mestre do sistema (`OPENROUTER_API_KEY`).
 
 ### 🔄 Pipeline de Scraping & Enriquecimento de Dados (Worker Flow):
 1. **Disparo / Ingestão:** `POST /api/v1/scraper/extract` envia uma mensagem para a fila RabbitMQ (`ecommerce_prod` ou `ecommerce_demo`).
@@ -114,11 +117,16 @@ ecommerce-bot/
    - **Estratégia 2 (Fallback):** Se JSON-LD falhar ou vier sem título/descrição, aciona `MarkdownParserService` enviando o HTML/Markdown para LLM.
    - Salva o produto no banco com estado `status = ProductStatus.RAW`.
    - Gerencia contadores de falhas por domínio (`scraping_metadata`). Ao atingir 3 falhas consecutivas sem silenciamento, dispara webhook de alerta no Discord (`NotificationService`).
-3. **ProcessorWorker:**
+3. **ProcessorWorker & LLMEngineRouter:**
    - Worker contínuo de background que busca produtos em estado `RAW`.
    - Altera status para `PROCESSING` e executa um timeout/cleanup para resetar jobs travados há mais de 10 minutos.
-   - Invoca `LLMService` para enriquecer título (foco em conversão), copywriting magnético e tags de SEO.
-   - Tenta primeiramente as chaves de API próprias do tenant (BYOK); se ausentes, faz fallback para as chaves globais do sistema.
+   - Invoca `LLMService` e `LLMEngineRouter` para enriquecer título (foco em conversão), copywriting magnético e tags de SEO enviando a lista encadeada de modelos fallback ao OpenRouter:
+     1. `deepseek/deepseek-chat`
+     2. `meta-llama/llama-3.3-70b-instruct`
+     3. `google/gemini-flash-1.5`
+   - Salva no JSON `enrichment_metadata` do produto os dados de auditoria: `model_used`, `prompt_tokens`, `completion_tokens`, `total_tokens` e `response_time_ms`.
+   - Registra a telemetria com uso real de tokens no `TelemetryRepository`.
+   - Registra log estruturado: `[ProcessorWorker] Produto {sku} enriquecido com sucesso via {model_used} em {response_time_ms}ms`.
    - Envia updates de progresso para o Redis Pub/Sub (canal `demo_progress`) se for requisição de demo.
    - Atualiza o produto para `PROCESSED` ou `FAILED`.
 
@@ -158,7 +166,7 @@ Todo módulo funcional em `src/features/<feature>/` DEVE seguir estritamente o f
    - Exibição da assinatura ativa do tenant (`SubscriptionBillingCard`), validade, valor recorrente e diálogo de confirmação de cancelamento.
    - Tabela de histórico de assinaturas (`SubscriptionHistoryTable`) com badges coloridos (`authorized` = verde, `pending` = amarelo, `cancelled` = vermelho, `paused` = azul) e exportação para CSV.
 7. **Credenciais de IA / BYOK (`src/features/ai-keys`):**
-   - Modal para cadastro e atualização criptografada de chaves de API próprias por tenant (DeepSeek, Groq, OpenAI, Gemini).
+   - Modal para cadastro e atualização criptografada de chaves de API próprias por tenant (OpenRouter, DeepSeek, Groq, OpenAI, Gemini).
 8. **Web Scraper & Ingestão (`src/features/scraper`):**
    - Formulário de disparo assíncrono de extração de produtos a partir de URLs de e-commerce.
 
