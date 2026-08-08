@@ -3,6 +3,8 @@ import { Mail, Lock, Eye, EyeOff, Building, LogIn } from 'lucide-react';
 import type { LoginFormData } from '../types/auth.types';
 import { useAuth } from '../hooks/useAuth';
 import { GoogleAuthButton } from './GoogleAuthButton';
+import { EnterpriseSsoButton } from './EnterpriseSsoButton';
+import { EnterpriseSsoModal } from './EnterpriseSsoModal';
 import { Button } from '@/components/ui/Button';
 
 import { Card } from '@/components/ui/display/Card';
@@ -52,6 +54,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
   const [internalShowPassword, setInternalShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [isSsoModalOpen, setIsSsoModalOpen] = useState(false);
 
   const isLoading = propsIsLoading ?? authIsLoading;
   const isPasswordVisible = propsShowPassword ?? internalShowPassword;
@@ -246,11 +249,24 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         </div>
       </div>
 
-      {/* Botão Google OAuth */}
-      <GoogleAuthButton
-        text="Entrar com o Google"
-        tenantName={formData.tenant?.trim() || undefined}
-        isLoading={isLoading}
+      {/* Botões de Login Social e Enterprise */}
+      <div className="space-y-3">
+        <GoogleAuthButton
+          text="Entrar com o Google"
+          tenantName={formData.tenant?.trim() || undefined}
+          isLoading={isLoading}
+        />
+        <EnterpriseSsoButton
+          text="SSO Enterprise (Okta / SAML)"
+          onClick={() => setIsSsoModalOpen(true)}
+        />
+      </div>
+
+      {/* Modal SSO Enterprise (Fake Door) */}
+      <EnterpriseSsoModal
+        isOpen={isSsoModalOpen}
+        onClose={() => setIsSsoModalOpen(false)}
+        initialEmail={formData.email}
       />
 
 

@@ -51,6 +51,23 @@ export interface AuthTokenResponse {
   tenant_id?: string;
 }
 
+export interface EnterpriseLeadPayload {
+  email: string;
+  company_name: string;
+  team_size?: string;
+  phone?: string;
+  notes?: string;
+}
+
+export interface EnterpriseLeadResponse {
+  id: string;
+  email: string;
+  company_name: string;
+  message: string;
+  created_at?: string;
+}
+
+
 
 // --- PAYLOADS DE REQUISIÇÃO (HTTP REQUESTS) ---
 

@@ -9,6 +9,8 @@ import type {
   GoogleLoginUrlResponse,
   GoogleCallbackRequest,
   AuthTokenResponse,
+  EnterpriseLeadPayload,
+  EnterpriseLeadResponse,
 } from '../types/auth.type';
 
 /**
@@ -71,5 +73,14 @@ export const authService = {
     const response = await apiClient.post<AuthTokenResponse>('/api/v1/auth/google/callback', payload);
     return response.data;
   },
+
+  /**
+   * Envia a solicitação de lead corporativo para o SSO Enterprise (Fake Door Test).
+   */
+  async submitEnterpriseLead(payload: EnterpriseLeadPayload): Promise<EnterpriseLeadResponse> {
+    const response = await apiClient.post<EnterpriseLeadResponse>('/api/v1/auth/sso-enterprise/lead', payload);
+    return response.data;
+  },
 };
+
 

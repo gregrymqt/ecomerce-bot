@@ -3,6 +3,8 @@ import { User, Mail, Lock, Eye, EyeOff, Building, UserPlus } from 'lucide-react'
 import type { RegisterFormData } from '../types/auth.types';
 import { useAuth } from '../hooks/useAuth';
 import { GoogleAuthButton } from './GoogleAuthButton';
+import { EnterpriseSsoButton } from './EnterpriseSsoButton';
+import { EnterpriseSsoModal } from './EnterpriseSsoModal';
 import { Button } from '@/components/ui/Button';
 
 import { Card } from '@/components/ui/display/Card';
@@ -55,6 +57,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   const [internalShowPassword, setInternalShowPassword] = useState(false);
   const [internalShowConfirmPassword, setInternalShowConfirmPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [isSsoModalOpen, setIsSsoModalOpen] = useState(false);
 
   const isLoading = propsIsLoading ?? authIsLoading;
   const isPasswordVisible = propsShowPassword ?? internalShowPassword;
@@ -298,11 +301,24 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         </div>
       </div>
 
-      {/* Botão Google OAuth */}
-      <GoogleAuthButton
-        text="Cadastrar com o Google"
-        tenantName={formData.tenantName?.trim() || undefined}
-        isLoading={isLoading}
+      {/* Botões de Cadastro Social e Enterprise */}
+      <div className="space-y-3">
+        <GoogleAuthButton
+          text="Cadastrar com o Google"
+          tenantName={formData.tenantName?.trim() || undefined}
+          isLoading={isLoading}
+        />
+        <EnterpriseSsoButton
+          text="SSO Enterprise (Okta / SAML)"
+          onClick={() => setIsSsoModalOpen(true)}
+        />
+      </div>
+
+      {/* Modal SSO Enterprise (Fake Door) */}
+      <EnterpriseSsoModal
+        isOpen={isSsoModalOpen}
+        onClose={() => setIsSsoModalOpen(false)}
+        initialEmail={formData.email}
       />
 
 
