@@ -31,6 +31,27 @@ export interface LogoutResponse {
   message: string;
 }
 
+export interface GoogleLoginUrlResponse {
+  url: string;
+}
+
+export interface GoogleCallbackRequest {
+  code: string;
+  state?: string;
+  tenant_name?: string;
+}
+
+export interface AuthTokenResponse {
+  access_token: string;
+  token_type: string;
+  user_id: string;
+  email: string;
+  name: string;
+  tenants: string[];
+  tenant_id?: string;
+}
+
+
 // --- PAYLOADS DE REQUISIÇÃO (HTTP REQUESTS) ---
 
 export interface LoginCredentials {

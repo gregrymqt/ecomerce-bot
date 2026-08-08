@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { User, Mail, Lock, Eye, EyeOff, Building, UserPlus } from 'lucide-react';
 import type { RegisterFormData } from '../types/auth.types';
 import { useAuth } from '../hooks/useAuth';
+import { GoogleAuthButton } from './GoogleAuthButton';
 import { Button } from '@/components/ui/Button';
+
 import { Card } from '@/components/ui/display/Card';
 import { Alert } from '@/components/ui/feedback/Alert';
 import { FormField } from '@/components/ui/form/FormField';
@@ -285,6 +287,24 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
           {isLoading ? 'Criando Conta...' : 'Cadastrar'}
         </Button>
       </form>
+
+      {/* Divisor "OU" */}
+      <div className="relative my-4">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-slate-800" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-slate-900 px-2 text-slate-400 font-medium">Ou cadastre-se com</span>
+        </div>
+      </div>
+
+      {/* Botão Google OAuth */}
+      <GoogleAuthButton
+        text="Cadastrar com o Google"
+        tenantName={formData.tenantName?.trim() || undefined}
+        isLoading={isLoading}
+      />
+
 
       {/* Link de Alternância para Login */}
       {onSwitchToLogin && (

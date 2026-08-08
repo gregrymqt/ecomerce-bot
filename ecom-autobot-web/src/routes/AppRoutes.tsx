@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from '@/layouts/MainLayout';
-import { AuthPage, AdminRouteGuard } from '@/features/auth';
+import { AuthPage, GoogleCallbackPage, AdminRouteGuard } from '@/features/auth';
 import { LiveDemoPage } from '@/features/live-demo';
 import { CatalogPage } from '@/features/catalog';
 import { SubscriptionPage } from '@/features/subscription';
@@ -16,9 +16,11 @@ export const AppRoutes: React.FC = () => {
     <Routes>
       {/* Rota Pública de Autenticação */}
       <Route path="/auth" element={<AuthPage />} />
+      <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
 
       {/* Rota de Checkout Transparente Standalone */}
       <Route path="/checkout" element={<CheckoutPage />} />
+
 
       {/* Rotas Protegidas com Layout Principal */}
       <Route element={<MainLayout />}>

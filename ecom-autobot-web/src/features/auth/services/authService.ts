@@ -6,6 +6,9 @@ import type {
   UserResponse,
   AuthenticatedUser,
   LogoutResponse,
+  GoogleLoginUrlResponse,
+  GoogleCallbackRequest,
+  AuthTokenResponse,
 } from '../types/auth.type';
 
 /**
@@ -51,4 +54,22 @@ export const authService = {
     const response = await apiClient.put<UserResponse>('/api/v1/auth/me', payload);
     return response.data;
   },
+
+  /**
+   * Obtém a URL de consentimento do Google OAuth 2.0.
+   */
+  async getGoogleLoginUrl(state?: string): Promise<GoogleLoginUrlResponse> {
+    const params = state ? { state } : {};
+    const response = await apiClient.get<GoogleLoginUrlResponse>('/api/v1/auth/google/login', { params });
+    return response.data;
+  },
+
+  /**
+   * Envia o código de autorização e recupera o token de acesso e tenants.
+   */
+  async googleCallback(payload: GoogleCallbackRequest): Promise<AuthTokenResponse> {
+    const response = await apiClient.post<AuthTokenResponse>('/api/v1/auth/google/callback', payload);
+    return response.data;
+  },
 };
+

@@ -10,6 +10,8 @@ import type {
   UpdateUserPayload,
   AuthStatus,
   AuthState,
+  GoogleCallbackRequest,
+  AuthTokenResponse,
 } from '../types/auth.type';
 
 export interface AuthContextType extends AuthState {
@@ -19,6 +21,8 @@ export interface AuthContextType extends AuthState {
   updateProfile: (payload: UpdateUserPayload) => Promise<void>;
   switchTenant: (tenantId: string) => void;
   checkAuth: () => Promise<void>;
+  initiateGoogleLogin: (tenantName?: string) => Promise<void>;
+  loginWithGoogleCallback: (payload: GoogleCallbackRequest) => Promise<AuthTokenResponse>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -187,6 +191,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const initiateGoogleLogin = async (tenantName?: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      if (tenantName && tenantName.trim()) {
+        sessionStorage.setItem('google_oauth_tenant_name', tenantName.trim());
+      }
+      const data = await authService.getGoogleLoginUrl();
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro ao iniciar autenticação com o Google');
+      setError(msg);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loginWithGoogleCallback = async (payload: GoogleCallbackRequest): Promise<AuthTokenResponse> => {
+    setIsLoading(true);
+    setStatus('loading');
+    setError(null);
+    try {
+      const tokenResp = await authService.googleCallback(payload);
+      setUser({
+        sub: tokenResp.user_id,
+        user_id: tokenResp.user_id,
+        email: tokenResp.email,
+        name: tokenResp.name,
+        tenants: tokenResp.tenants,
+        plan: 'free',
+      });
+      setStatus('authenticated');
+
+      const activeTenant = resolveTenant(tokenResp.tenants, tokenResp.tenant_id);
+      if (activeTenant) {
+        setCurrentTenant(activeTenant);
+        saveTenantId(activeTenant);
+      }
+      return tokenResp;
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Erro no processamento da autenticação Google');
+      setError(msg);
+      setStatus('unauthenticated');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -201,6 +257,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateProfile,
         switchTenant,
         checkAuth,
+        initiateGoogleLogin,
+        loginWithGoogleCallback,
       }}
     >
       {children}
