@@ -174,14 +174,24 @@ class ProcessorWorker:
             # Validação de BYOK e Créditos antes do disparo da requisição de IA
             metering_service = LLMMeteringService(db=session)
             is_byok_active = False
-            if current_llm and current_llm.llm_router:
-                tenant_key = await current_llm.llm_router._resolve_tenant_key(tenant_id, session)
-                if tenant_key:
-                    is_byok_active = True
+            llm_router = None
+            try:
+                llm_router = getattr(current_llm, "llm_router", None)
+            except AttributeError:
+                llm_router = None
+
+            if llm_router:
+                try:
+                    tenant_key = await llm_router._resolve_tenant_key(tenant_id, session)
+                    if tenant_key:
+                        is_byok_active = True
+                except Exception:
+                    is_byok_active = False
 
             try:
                 await metering_service.check_tenant_credits(tenant_id=tenant_id, is_byok=is_byok_active)
             except InsufficientCreditsException as credit_err:
+
                 logger.warning(
                     f"[ProcessorWorker] Saldo de créditos insuficiente para tenant '{tenant_id}' (SKU: {sku}). Produto marcado como FAILED.",
                     extra=log_extra,
