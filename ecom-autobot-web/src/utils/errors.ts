@@ -7,7 +7,17 @@ export function getErrorMessage(err: unknown, fallback: string = 'Ocorreu um err
   if (!err) return fallback;
 
   if (isAxiosError(err)) {
-    return err.response?.data?.detail || err.response?.data?.message || err.message || fallback;
+    const data = err.response?.data;
+
+    if (typeof data === 'string' && data.trim()) return data;
+
+    if (data && typeof data === 'object') {
+      const { detail, message } = data as { detail?: unknown; message?: unknown };
+      if (typeof detail === 'string' && detail.trim()) return detail;
+      if (typeof message === 'string' && message.trim()) return message;
+    }
+
+    return err.message || fallback;
   }
 
   if (err instanceof Error) {
