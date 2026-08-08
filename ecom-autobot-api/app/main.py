@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 from app.core.config.settings import settings
+from app.core.config.database import check_db_connection
 from app.core.config.redis_db import redis_cache
 from app.core.config.rabbitmq import get_rabbitmq_connection, configure_rabbitmq_topology
 from app.features.auth.infrastructure import seed_initial_roles, seed_admin_users
@@ -24,6 +25,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Iniciando aplicação e conectando aos serviços...")
+    await check_db_connection()
     await redis_cache.connect()
 
     rabbitmq_conn = await get_rabbitmq_connection()

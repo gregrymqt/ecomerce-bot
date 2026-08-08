@@ -27,7 +27,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("POSTGRES_URI_SESSION", "POSTGRE_URI_SESSION", "POSTRGRE_URI_SESSION", "POSTGRES_SESSION_URI")
     )
     DB_SSL_CERT_PATH: str | None = Field(
-        default="prod-ca-2021.crt",
+        default=None,
         validation_alias=AliasChoices("DB_SSL_CERT_PATH", "SSL_CERT_PATH", "POSTGRES_SSL_CERT")
     )
     RABBITMQ_URL: str = Field(
