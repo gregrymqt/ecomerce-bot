@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '../feedback/Skeleton';
 
 export interface TableColumn<T> {
-  key: keyof T | string;
+  key: Extract<keyof T, string> | (string & {});
   header: React.ReactNode;
   render?: (row: T, index: number) => React.ReactNode;
   className?: string;
