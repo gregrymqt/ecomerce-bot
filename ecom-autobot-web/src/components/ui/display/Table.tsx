@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '../feedback/Skeleton';
 
 export interface TableColumn<T> {
-  key: string;
+  key: keyof T | string;
   header: React.ReactNode;
   render?: (row: T, index: number) => React.ReactNode;
   className?: string;
@@ -90,8 +90,17 @@ export function Table<T extends object>({
                   )}
                 >
                   {columns.map((col) => {
-                    const rawVal = col.key in row ? row[col.key as keyof T] : undefined;
-                    const content = col.render ? col.render(row, rIdx) : (rawVal as React.ReactNode);
+                    const isKeyOfT = (k: string | number | symbol, obj: T): k is keyof T => k in obj;
+                    const rawVal = isKeyOfT(col.key, row) ? row[col.key] : undefined;
+
+                    const defaultRender = (val: unknown): React.ReactNode => {
+                      if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
+                        return String(val);
+                      }
+                      return null;
+                    };
+
+                    const content = col.render ? col.render(row, rIdx) : defaultRender(rawVal);
 
                     return (
                       <td
