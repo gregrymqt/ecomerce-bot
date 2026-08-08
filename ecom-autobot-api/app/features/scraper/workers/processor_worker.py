@@ -159,43 +159,50 @@ class ProcessorWorker:
                     progress=50
                 )
 
-            # Instanciação via Factory assíncrona com suporte a BYOK e Settings (Tom de Voz, SEO, Idioma)
+            # Instanciação via Factory assíncrona com suporte a BYOK e Settings
             current_llm = await LLMService.create_for_tenant(
                 tenant_id=tenant_id, is_demo=is_demo, session=session
             )
 
-            # Aciona as LLMs com política de Retry Backoff Exponencial
+            # Aciona o enriquecimento via LLMEngineRouter com política de Retry
             processed_data = await self._process_with_retry(product_model, current_llm)
+
+            # Extrai metadados do enriquecimento (model_used, tokens, tempo de resposta)
+            attrs = processed_data.attributes or {}
+            enrichment_metadata = attrs.get("enrichment_metadata") or getattr(processed_data, "ai_enriched_data", {}) or {}
+
+            model_used = enrichment_metadata.get("model_used", "OpenRouter")
+            prompt_tokens = enrichment_metadata.get("prompt_tokens", 0)
+            completion_tokens = enrichment_metadata.get("completion_tokens", 0)
+            response_time_ms = enrichment_metadata.get("response_time_ms", round((time.time() - start_time) * 1000, 2))
 
             processed_data.status = ProductStatus.PROCESSED
             processed_data.updated_at = datetime.now(timezone.utc)
             await self.repo.upsert_product(processed_data)
 
             duration_ms = int((time.time() - start_time) * 1000)
-            provider_names = [p.name for p in current_llm.providers] if hasattr(current_llm, "providers") else ["llm"]
 
-            # Grava telemetria de atividade e uso de tokens
+            # Grava telemetria de atividade e uso real de tokens do OpenRouter
             try:
                 telemetry_repo = TelemetryRepository(session=self.session)
                 await telemetry_repo.log_activity(
                     tenant_id=tenant_id,
                     worker_type="processor",
                     status="SUCCESS",
-                    details={"sku": sku, "providers": provider_names},
+                    details={"sku": sku, "model": model_used},
                     duration_ms=duration_ms
                 )
-                for p_name in provider_names:
-                    await telemetry_repo.record_token_usage(
-                        tenant_id=tenant_id,
-                        provider=p_name,
-                        prompt_tokens=450,
-                        completion_tokens=250
-                    )
+                await telemetry_repo.record_token_usage(
+                    tenant_id=tenant_id,
+                    provider="openrouter",
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens
+                )
             except Exception as telemetry_err:
                 logger.warning(f"Erro ao registrar telemetria do ProcessorWorker: {telemetry_err}")
 
             logger.info(
-                f"Produto SKU '{sku}' enriquecido com sucesso via {', '.join(provider_names)} para o tenant '{tenant_id}'",
+                f"[ProcessorWorker] Produto {sku} enriquecido com sucesso via {model_used} em {response_time_ms}ms",
                 extra=log_extra
             )
 

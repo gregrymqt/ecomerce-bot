@@ -1,17 +1,22 @@
+import json
 import asyncio
 import time
-from typing import Optional, List
+from typing import Optional, List, Tuple, Dict, Any
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.shared.logger import get_logger
-from app.features.ai_enrichment.domain.exceptions import AllProvidersExhaustedError
-from app.features.ai_enrichment.domain.interfaces import LLMProvider
-from app.features.ai_enrichment.infrastructure.providers import (
-    DeepSeekProvider,
-    GroqProvider,
-    OpenRouterLLMProvider,
+from app.features.ai_enrichment.domain.exceptions import (
+    AllProvidersExhaustedError,
+    LLMProviderError,
+    OpenRouterAPIError,
 )
+from app.features.ai_enrichment.schemas import (
+    EnrichedProductResponse,
+    LLMCompletionRequest,
+    LLMCompletionResponse,
+)
+from app.features.ai_enrichment.services.llm_router_service import LLMEngineRouter
 from app.features.products.schemas import Product, ProductStatus
 from app.features.settings.schemas.settings_schemas import (
     TenantSettingsResponse,
@@ -25,50 +30,20 @@ load_dotenv()
 
 class LLMService:
     """
-    Serviço da camada de aplicação responsável por orquestrar o enriquecimento
-    de produtos utilizando múltiplos provedores LLM com estratégia de Fallback, Resiliência
-    e injeção dinâmica de preferências do tenant (tom de voz, idioma, SEO e diretrizes customizadas).
+    Serviço de aplicação responsável por orquestrar o enriquecimento de copy de produtos
+    utilizando o LLMEngineRouter (OpenRouter com suporte a BYOK do Tenant e Fallback Global).
     """
 
     def __init__(
         self,
-        deepseek_api_key: Optional[str] = None,
-        groq_api_key: Optional[str] = None,
-        openrouter_api_key: Optional[str] = None,
-        openrouter_preferred_models: Optional[List[str]] = None,
-        is_demo: bool = False,
-        providers: Optional[List[LLMProvider]] = None,
+        llm_router: Optional[LLMEngineRouter] = None,
         tenant_settings: Optional[TenantSettingsResponse] = None,
+        providers: Optional[List[Any]] = None,
         **kwargs,
     ):
+        self.llm_router = llm_router or LLMEngineRouter()
         self.tenant_settings = tenant_settings or TenantSettingsResponse(tenant_id="default")
-
-        if providers is not None:
-            self.providers = providers
-        else:
-            self.providers = []
-            try:
-                self.providers.append(DeepSeekProvider(api_key=deepseek_api_key))
-            except Exception as e:
-                logger.warning(f"DeepSeekProvider não configurado: {e}")
-
-            try:
-                self.providers.append(GroqProvider(api_key=groq_api_key))
-            except Exception as e:
-                logger.warning(f"GroqProvider não configurado: {e}")
-
-            try:
-                self.providers.append(
-                    OpenRouterLLMProvider(
-                        api_key=openrouter_api_key,
-                        preferred_models=openrouter_preferred_models,
-                    )
-                )
-            except Exception as e:
-                logger.warning(f"OpenRouterLLMProvider não configurado: {e}")
-
-        if is_demo:
-            self.providers.sort(key=lambda p: 0 if p.name == "Groq" else 1)
+        self.providers = providers or [self.llm_router.provider]
 
     @classmethod
     async def create_for_tenant(
@@ -78,40 +53,63 @@ class LLMService:
         session: Optional[AsyncSession] = None,
     ) -> "LLMService":
         """
-        Factory method que busca as chaves criptografadas (BYOK) do tenant no PostgreSQL
-        e as preferências personalizadas da marca (Settings) para instanciar o LLMService.
+        Factory method assíncrono que busca as preferências personalizadas da marca no PostgreSQL/Redis (Settings)
+        e instancia o LLMService com o LLMEngineRouter pronto para uso.
         """
-        if is_demo or tenant_id == "demo_tenant":
-            return cls(is_demo=True, tenant_id=tenant_id)
-
-        from app.core.security.crypto import get_tenant_key, get_tenant_preferred_models
         from app.features.settings.services.settings_service import SettingsService
         from app.features.settings.repositories.settings_repository import SettingsRepository
 
-        deepseek_key = await get_tenant_key(tenant_id, "deepseek")
-        groq_key = await get_tenant_key(tenant_id, "groq")
-        openrouter_key = await get_tenant_key(tenant_id, "openrouter")
-        openrouter_models = await get_tenant_preferred_models(tenant_id, "openrouter")
+        tenant_settings = None
+        if not is_demo and tenant_id != "demo_tenant":
+            try:
+                settings_repo = SettingsRepository(session=session)
+                settings_service = SettingsService(repository=settings_repo)
+                tenant_settings = await settings_service.get_settings(tenant_id=tenant_id)
+            except Exception as e:
+                logger.warning(f"Erro ao carregar preferências para tenant '{tenant_id}': {e}. Usando padrões.")
 
-        # Carrega as configurações operacionais do tenant (Tom de Voz, Idioma, SEO, Instruções)
-        try:
-            settings_repo = SettingsRepository(session=session)
-            settings_service = SettingsService(repository=settings_repo)
-            tenant_settings = await settings_service.get_settings(tenant_id=tenant_id)
-        except Exception as e:
-            logger.warning(f"Erro ao carregar preferências para tenant '{tenant_id}': {e}. Usando padrões.")
+        if tenant_settings is None:
             tenant_settings = TenantSettingsResponse(tenant_id=tenant_id)
 
+        router = LLMEngineRouter()
         return cls(
-            deepseek_api_key=deepseek_key,
-            groq_api_key=groq_key,
-            openrouter_api_key=openrouter_key,
-            openrouter_preferred_models=openrouter_models,
-            is_demo=False,
+            llm_router=router,
             tenant_settings=tenant_settings,
         )
 
-    async def enrich_product(self, product: Product) -> Product:
+    def _parse_completion_json(self, content_raw: str, default_title: str, default_description: str) -> Tuple[str, str, List[str]]:
+        """Limpa blocos de código Markdown (```json) e extrai title, description e tags do JSON."""
+        clean = content_raw.strip()
+        if clean.startswith("```json"):
+            clean = clean[7:]
+        if clean.startswith("```"):
+            clean = clean[3:]
+        if clean.endswith("```"):
+            clean = clean[:-3]
+        clean = clean.strip()
+
+        try:
+            parsed = json.loads(clean)
+            title = parsed.get("title") or default_title
+            description = parsed.get("description") or default_description
+            tags = parsed.get("tags") or []
+            if isinstance(tags, str):
+                tags = [t.strip() for t in tags.split(",") if t.strip()]
+            return title, description, tags
+        except Exception:
+            logger.warning(f"Não foi possível converter a resposta da LLM em JSON puro. Conteúdo recebido: {clean[:100]}")
+            return default_title, clean or default_description, []
+
+    async def enrich_product(
+        self,
+        product: Product,
+        tenant_id: Optional[str] = None,
+        session: Optional[AsyncSession] = None,
+    ) -> Product:
+        """
+        Enriquece os campos de título, descrição e tags SEO do produto chamando o LLMEngineRouter.
+        """
+        effective_tenant_id = tenant_id or product.tenant_id or "default"
         ai_sets = getattr(self.tenant_settings, "ai_settings", AiSettingsSchema())
         store_prof = getattr(self.tenant_settings, "store_profile", StoreProfileSchema())
 
@@ -142,52 +140,69 @@ class LLMService:
 
         prompt = f"""
 Você é um especialista em e-commerce, copywriting de vendas e SEO.
-Com base no produto abaixo, gere:
-1. Um título otimizado e focado em conversão de vendas.
-2. Uma descrição magnética e persuasiva seguindo estritamente as diretrizes da marca.
-{seo_clause}
+Com base no produto abaixo, gere o enriquecimento e retorne obrigatoriamente um objeto JSON válido com os campos "title", "description" e "tags".
+
+Exemplo de formato esperado:
+{{
+  "title": "Título otimizado para conversão de vendas",
+  "description": "Descrição persuasiva e magnética com gatilhos mentais",
+  "tags": ["tag1", "tag2", "tag3"]
+}}
 
 Diretrizes da Marca & Formatação:
 - Idioma Alvo: Escreva todos os textos estritamente em {target_language}.
 - Tom de Voz: Utilize um tom de voz {tone_of_voice}.{store_details}{custom_clause}
 
-Produto Original: {product.title}
-Descrição Original: {product.description}
-
-Retorne os dados respeitando o formato solicitado.
+Produto Original: {product.title or ''}
+Descrição Original: {product.description or ''}
 """
 
-        sku = product.sku
-        start_time = time.time()
+        system_prompt = "Você é um assistente de IA especialista em e-commerce, copywriting e otimização de conversão."
 
-        for provider in self.providers:
-            log_extra = {"sku": sku, "provider": provider.name}
-            try:
-                logger.info(f"Tentando {provider.name} para SKU: {sku}...", extra=log_extra)
+        prompt_req = LLMCompletionRequest(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            temperature=0.7,
+            max_tokens=1000,
+        )
 
-                if provider != self.providers[0]:
-                    await asyncio.sleep(5)
+        try:
+            completion_res = await self.llm_router.generate_completion(
+                tenant_id=effective_tenant_id,
+                prompt_data=prompt_req,
+                db=session,
+            )
+        except Exception as exc:
+            logger.error(f"Erro no enriquecimento LLM para SKU '{product.sku}': {exc}")
+            raise AllProvidersExhaustedError(f"Falha ao gerar conclusão no OpenRouter: {exc}") from exc
 
-                enriched_response = await provider.enrich(prompt)
+        # Extrai título, descrição e tags
+        title, description, tags = self._parse_completion_json(
+            completion_res.content,
+            default_title=product.title or "",
+            default_description=product.description or "",
+        )
 
-                product.title = enriched_response.title
-                product.description = enriched_response.description
+        product.title = title
+        product.description = description
 
-                if hasattr(product, "attributes"):
-                    if product.attributes is None:
-                        product.attributes = {}
-                    if seo_enabled and enriched_response.tags:
-                        product.attributes["seo_tags"] = ",".join(enriched_response.tags)
+        if not hasattr(product, "attributes") or product.attributes is None:
+            product.attributes = {}
 
-                product.status = ProductStatus.PROCESSED
+        if seo_enabled and tags:
+            product.attributes["seo_tags"] = ",".join(tags)
 
-                duration = round(time.time() - start_time, 2)
-                logger.info(f"Sucesso com {provider.name} para SKU: {sku} em {duration}s.", extra=log_extra)
-                return product
+        # Dados de auditoria do enriquecimento
+        enrichment_metadata = {
+            "model_used": completion_res.model_used,
+            "prompt_tokens": completion_res.prompt_tokens,
+            "completion_tokens": completion_res.completion_tokens,
+            "total_tokens": completion_res.total_tokens,
+            "response_time_ms": completion_res.provider_response_time_ms,
+        }
+        product.attributes["enrichment_metadata"] = enrichment_metadata
+        setattr(product, "ai_enriched_data", enrichment_metadata)
 
-            except Exception as e:
-                logger.warning(f"Falha {provider.name} ({type(e).__name__}). Tentando próximo provider...", extra=log_extra)
-                continue
+        product.status = ProductStatus.PROCESSED
+        return product
 
-        logger.error(f"Todos os provedores de LLM falharam para SKU: {sku}.", extra={"sku": sku})
-        raise AllProvidersExhaustedError("Nenhum provedor de LLM disponível conseguiu processar a requisição.")
