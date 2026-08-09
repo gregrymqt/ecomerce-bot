@@ -1,0 +1,9 @@
+# E-Commerce AutoBot
+
+> Plataforma SaaS de automação, extração de produtos via scraping e enriquecimento magnético de catálogos de e-commerce com inteligência artificial.
+
+## Recursos e Seções
+- [Início](https://ecommercebot.com/): Plataforma principal, visão geral e painel de controle de catálogos.
+- [Demonstração em Tempo Real](https://ecommercebot.com/demo): Teste em tempo real da extração e enriquecimento de produtos via Server-Sent Events (SSE).
+- [Planos e Assinaturas](https://ecommercebot.com/plans): Planos de assinatura flexíveis e gestão de pagamentos via Mercado Pago Preapproval.
+- [Autenticação & BYOK](https://ecommercebot.com/auth): Login multi-tenant, gestão de chaves de IA (BYOK: OpenRouter, DeepSeek, Groq, OpenAI, Gemini).

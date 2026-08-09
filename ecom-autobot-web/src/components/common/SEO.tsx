@@ -16,6 +16,8 @@ export interface SEOProps {
   keywords?: string;
   /** Se verdadeiro, instrui robôs a não indexarem a página */
   noIndex?: boolean;
+  /** Dados estruturados Schema.org (JSON-LD) */
+  schemaData?: Record<string, any>;
 }
 
 const DEFAULT_TITLE = 'E-Commerce AutoBot - Extração e Enriquecimento de Catálogos com IA';
@@ -32,6 +34,7 @@ export const SEO: React.FC<SEOProps> = ({
   type = 'website',
   keywords,
   noIndex = false,
+  schemaData,
 }) => {
   const pageTitle = title ? `${title} | ${SITE_NAME}` : DEFAULT_TITLE;
 
@@ -56,6 +59,13 @@ export const SEO: React.FC<SEOProps> = ({
       <meta name="twitter:title" content={pageTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={image} />
+
+      {/* Schema.org / JSON-LD */}
+      {schemaData && (
+        <script type="application/ld+json">
+          {JSON.stringify(schemaData)}
+        </script>
+      )}
     </Helmet>
   );
 };
