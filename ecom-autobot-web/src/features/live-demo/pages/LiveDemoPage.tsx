@@ -9,7 +9,11 @@ import {
   Cpu,
   Lock,
   ArrowRight,
+  User as UserIcon,
+  LogOut,
+  ShieldCheck,
 } from 'lucide-react';
+import { useAuth } from '@/features/auth';
 import { useLiveDemoSSE } from '@/features/live-demo';
 import { DemoHeroInput } from '@/features/live-demo';
 import { LiveSseTerminal } from '@/features/live-demo';
@@ -18,6 +22,7 @@ import { BottomCtaBanner } from '@/features/live-demo';
 
 export const LiveDemoPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user, currentTenant, logout } = useAuth();
   const { status, logs, progress, result, targetUrl, startExtraction, resetDemo } =
     useLiveDemoSSE();
 
@@ -50,23 +55,53 @@ export const LiveDemoPage: React.FC = () => {
               <span>Pub/Sub Engine Online</span>
             </div>
 
-            <button
-              type="button"
-              onClick={() => navigate('/auth')}
-              className="min-h-[44px] h-11 px-4 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-900 border border-slate-800 transition-all flex items-center gap-1.5"
-            >
-              <Lock className="w-3.5 h-3.5 text-purple-400" />
-              <span>Entrar</span>
-            </button>
+            {user ? (
+              <div className="flex items-center gap-3">
+                {currentTenant && (
+                  <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-950/60 border border-purple-500/30 text-xs font-semibold text-purple-300">
+                    <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Tenant: {currentTenant}</span>
+                  </div>
+                )}
 
-            <button
-              type="button"
-              onClick={() => navigate('/auth')}
-              className="min-h-[44px] h-11 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-md shadow-purple-600/30 transition-all active:scale-95 flex items-center gap-1.5"
-            >
-              <span>Criar Conta</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-200">
+                  <UserIcon className="w-4 h-4 text-purple-400" />
+                  <span className="font-semibold max-w-[140px] truncate">
+                    {user.name || user.email}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  title="Sair da conta"
+                  className="min-h-[44px] h-11 px-3.5 rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 border border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden sm:inline">Sair</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => navigate('/auth')}
+                  className="min-h-[44px] h-11 px-4 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-900 border border-slate-800 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Lock className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Entrar</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/auth')}
+                  className="min-h-[44px] h-11 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-md shadow-purple-600/30 transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>Criar Conta</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>

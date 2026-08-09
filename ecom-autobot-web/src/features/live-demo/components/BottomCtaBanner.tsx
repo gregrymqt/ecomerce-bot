@@ -17,7 +17,7 @@ export const BottomCtaBanner: React.FC<BottomCtaBannerProps> = ({
   return (
     <div
       className={cn(
-        'fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-5xl z-50 rounded-2xl p-4 sm:p-5 bg-slate-900/95 border border-purple-500/40 shadow-2xl shadow-purple-950/60 backdrop-blur-xl flex flex-col sm:flex-row items-center justify-between gap-4 transition-all',
+        'sticky bottom-6 z-30 w-[calc(100%-2rem)] max-w-5xl mx-auto rounded-2xl p-4 sm:p-5 bg-slate-900/95 border border-purple-500/40 shadow-2xl shadow-purple-950/60 backdrop-blur-xl flex flex-col sm:flex-row items-center justify-between gap-4 transition-all',
         className
       )}
     >

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Network } from 'lucide-react';
 import { AuthLeftPanel } from '@/features/auth';
 import { LoginForm } from '@/features/auth';
 import { RegisterForm } from '@/features/auth';
