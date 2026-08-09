@@ -4,6 +4,7 @@ import { LoginForm } from '@/features/auth';
 import { RegisterForm } from '@/features/auth';
 import { cn } from '@/lib/utils';
 import { useAuthForm } from '@/features/auth';
+import { SEO } from '@/components/common/SEO';
 
 export interface AuthPageProps {
   initialMode?: 'login' | 'register';
@@ -34,6 +35,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         className
       )}
     >
+      <SEO
+        title={mode === 'login' ? 'Entrar na Conta' : 'Criar Nova Conta'}
+        description="Acesse ou crie sua conta na plataforma E-Commerce AutoBot para automatizar e enriquecer seus catálogos de e-commerce com IA."
+      />
       {/* 1. Painel Esquerdo de Branding */}
       <AuthLeftPanel />
 

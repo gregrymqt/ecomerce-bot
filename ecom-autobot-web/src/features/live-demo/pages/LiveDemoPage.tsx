@@ -11,6 +11,7 @@ import { DemoHeroInput } from '@/features/live-demo';
 import { LiveSseTerminal } from '@/features/live-demo';
 import { ResultPreviewCard } from '@/features/live-demo';
 import { BottomCtaBanner } from '@/features/live-demo';
+import { SEO } from '@/components/common/SEO';
 
 export const LiveDemoPage: React.FC = () => {
   const navigate = useNavigate();
@@ -21,6 +22,10 @@ export const LiveDemoPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#090D16] text-white flex flex-col selection:bg-purple-500 selection:text-white pb-32">
+      <SEO
+        title="Demonstração em Tempo Real"
+        description="Assista ao robô extraindo e enriquecendo títulos e descrições de e-commerce ao vivo via Server-Sent Events."
+      />
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 space-y-12 flex-1 w-full">
         {/* Hero Section */}

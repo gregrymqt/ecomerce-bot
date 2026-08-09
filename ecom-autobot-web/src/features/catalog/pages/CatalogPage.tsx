@@ -6,6 +6,7 @@ import { ScraperForm } from '@/features/scraper';
 import { X, Sparkles } from 'lucide-react';
 import { useCatalogPage } from '@/features/catalog';
 import { Alert } from '@/components/ui/feedback/Alert';
+import { SEO } from '@/components/common/SEO';
 
 export const CatalogPage: React.FC = () => {
   const {
@@ -39,6 +40,10 @@ export const CatalogPage: React.FC = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
+      <SEO
+        title="Catálogo de Produtos Enriquecidos"
+        description="Gerencie, edite e exporte seus produtos de e-commerce enriquecidos por inteligência artificial."
+      />
       {/* Alerta de Feedback Customizado */}
       {alertInfo && (
         <Alert

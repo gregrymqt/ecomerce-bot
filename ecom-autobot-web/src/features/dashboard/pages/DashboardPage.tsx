@@ -23,6 +23,7 @@ import { RecentActivityTable } from '@/features/dashboard';
 import { TokenTelemetryCard } from '@/features/dashboard';
 import { SystemHealthWidget } from '@/features/dashboard';
 import { AiKeysModal } from '@/features/ai-keys';
+import { SEO } from '@/components/common/SEO';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -42,6 +43,10 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-16 px-4 sm:px-6 text-slate-100 animate-in fade-in duration-300">
+      <SEO
+        title="Dashboard & Telemetria"
+        description="Painel de controle do E-Commerce AutoBot. Acompanhe métricas de ingestão, uso de tokens de IA e saúde do sistema."
+      />
       {/* Cabeçalho da Página */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1E293B] pb-6">
         <div>
