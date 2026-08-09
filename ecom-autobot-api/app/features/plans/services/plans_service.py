@@ -27,8 +27,9 @@ class PlansService:
         self,
         repository: Optional[PlansRepository] = None,
         client: Optional[object] = None,
+        session: Optional[AsyncSession] = None,
     ) -> None:
-        self.repository = repository or PlansRepository()
+        self.repository = repository or PlansRepository(session=session)
         if client is None:
             from app.features.plans.infrastructure.client import PlansClient
             self.client = PlansClient()

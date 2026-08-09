@@ -2,6 +2,7 @@ import logging
 from typing import Dict, List, Optional, Tuple
 import aio_pika
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.database import AsyncSessionLocal
 from app.core.config.rabbitmq import get_rabbitmq_connection
@@ -25,8 +26,13 @@ TIMEFRAME_HOURS: Dict[str, int] = {
 
 
 class SystemService:
-    def __init__(self, telemetry_repo: Optional[TelemetryRepository] = None):
-        self.telemetry_repo = telemetry_repo or TelemetryRepository()
+    def __init__(
+        self,
+        telemetry_repo: Optional[TelemetryRepository] = None,
+        repository: Optional[TelemetryRepository] = None,
+        session: Optional[AsyncSession] = None,
+    ):
+        self.telemetry_repo = telemetry_repo or repository or TelemetryRepository(session=session)
 
     async def get_telemetry_metrics(
         self, tenant_id: str, timeframe: str = "24h"

@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.redis_db import redis_cache
 from app.features.settings.repositories.settings_repository import SettingsRepository
@@ -17,8 +18,12 @@ class SettingsService:
     com estratégia Cache-Aside (TTL 1h) e invalidação imediata no salvamento (PUT).
     """
 
-    def __init__(self, repository: Optional[SettingsRepository] = None):
-        self.repository = repository or SettingsRepository()
+    def __init__(
+        self,
+        repository: Optional[SettingsRepository] = None,
+        session: Optional[AsyncSession] = None,
+    ):
+        self.repository = repository or SettingsRepository(session=session)
 
     async def get_settings(self, tenant_id: str) -> TenantSettingsResponse:
         """

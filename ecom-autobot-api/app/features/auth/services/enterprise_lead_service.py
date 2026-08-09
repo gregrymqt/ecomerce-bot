@@ -22,9 +22,11 @@ class EnterpriseLeadService:
     def __init__(
         self,
         lead_repo: Optional[EnterpriseLeadRepository] = None,
+        repository: Optional[EnterpriseLeadRepository] = None,
         notification_service: Optional[NotificationService] = None,
+        session: Optional[AsyncSession] = None,
     ):
-        self.lead_repo = lead_repo
+        self.lead_repo = lead_repo or repository or EnterpriseLeadRepository(session=session)
         self.notification_service = notification_service or NotificationService()
 
     async def register_lead(

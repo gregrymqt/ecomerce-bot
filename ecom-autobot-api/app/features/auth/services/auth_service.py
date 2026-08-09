@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, Response, status
 
 from app.core.config.settings import settings
@@ -21,8 +22,13 @@ class AuthService:
     Gestão de Perfil de Usuário e Revogação de JWT (Blacklist via Redis).
     """
 
-    def __init__(self, user_repo: Optional[UserRepository] = None):
-        self.user_repo = user_repo or UserRepository()
+    def __init__(
+        self,
+        user_repo: Optional[UserRepository] = None,
+        repository: Optional[UserRepository] = None,
+        session: Optional[AsyncSession] = None,
+    ):
+        self.user_repo = user_repo or repository or UserRepository(session=session)
 
     async def register_user(self, request: CreateUserRequest) -> UserResponse:
         try:

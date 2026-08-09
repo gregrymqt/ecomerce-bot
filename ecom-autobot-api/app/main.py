@@ -2,6 +2,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response, status
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -88,9 +89,18 @@ app.add_middleware(
     allow_origins=settings.get_cors_origins_list(),
     allow_origin_regex=r"https://.*\.ngrok-free\.app|https://.*\.ngrok\.app|https://.*\.ngrok\.io|https://.*\.ngrok\.dev",
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Tenant-ID", "ngrok-skip-browser-warning"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Erro não tratado na requisição '{request.method} {request.url.path}': {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Erro interno do servidor."},
+    )
 
 
 # Middleware de Segurança e Limite de Payload (DoS Protection)

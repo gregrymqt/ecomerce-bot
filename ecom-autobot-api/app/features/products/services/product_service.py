@@ -2,6 +2,8 @@ import math
 from typing import Optional
 from fastapi import HTTPException, status
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.features.products.repositories.product_repository import ProductRepository
 from app.features.products.schemas import (
     Product, 
@@ -10,8 +12,13 @@ from app.features.products.schemas import (
 )
 
 class ProductService:
-    def __init__(self, repo: Optional[ProductRepository] = None):
-        self.repo = repo or ProductRepository()
+    def __init__(
+        self,
+        repo: Optional[ProductRepository] = None,
+        repository: Optional[ProductRepository] = None,
+        session: Optional[AsyncSession] = None,
+    ):
+        self.repo = repo or repository or ProductRepository(session=session)
 
     async def list_catalog_products(
         self,
