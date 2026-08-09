@@ -216,3 +216,5 @@ export const AdminPlansPage: React.FC = () => {
   );
 };
 
+export default AdminPlansPage;
+

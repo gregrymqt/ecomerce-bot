@@ -14,8 +14,6 @@ export * from './components/EnterpriseSsoModal';
 export * from './components/AuthLeftPanel';
 export * from './components/AdminRouteGuard';
 export * from './components/ProtectedRoute';
-export * from './pages/AuthPage';
-export * from './pages/GoogleCallbackPage';
 
 
 

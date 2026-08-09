@@ -163,3 +163,5 @@ export const MeteringDashboardPage: React.FC = () => {
     </div>
   );
 };
+
+export default MeteringDashboardPage;

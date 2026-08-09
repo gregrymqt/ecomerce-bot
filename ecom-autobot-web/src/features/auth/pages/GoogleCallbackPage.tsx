@@ -200,3 +200,5 @@ export const GoogleCallbackPage: React.FC = () => {
     </div>
   );
 };
+
+export default GoogleCallbackPage;
