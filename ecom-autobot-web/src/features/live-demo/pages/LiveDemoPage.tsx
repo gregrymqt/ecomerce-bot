@@ -3,17 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import {
   Zap,
   Sparkles,
-  Bot,
-  Activity,
   RotateCcw,
   Cpu,
-  Lock,
-  ArrowRight,
-  User as UserIcon,
-  LogOut,
-  ShieldCheck,
 } from 'lucide-react';
-import { useAuth } from '@/features/auth';
 import { useLiveDemoSSE } from '@/features/live-demo';
 import { DemoHeroInput } from '@/features/live-demo';
 import { LiveSseTerminal } from '@/features/live-demo';
@@ -22,7 +14,6 @@ import { BottomCtaBanner } from '@/features/live-demo';
 
 export const LiveDemoPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, currentTenant, logout } = useAuth();
   const { status, logs, progress, result, targetUrl, startExtraction, resetDemo } =
     useLiveDemoSSE();
 
@@ -30,84 +21,8 @@ export const LiveDemoPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#090D16] text-white flex flex-col selection:bg-purple-500 selection:text-white pb-32">
-      {/* Header Público */}
-      <header className="w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          {/* Logo & Marca */}
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-600/30">
-              <Bot className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-extrabold text-base tracking-tight text-white flex items-center gap-1.5">
-                E-Commerce Bot
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-950 text-purple-300 border border-purple-500/30 uppercase">
-                  DEMO SSE
-                </span>
-              </span>
-            </div>
-          </div>
-
-          {/* Status do Servidor & Botões de Ação */}
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs font-medium text-slate-300">
-              <Activity className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-              <span>Pub/Sub Engine Online</span>
-            </div>
-
-            {user ? (
-              <div className="flex items-center gap-3">
-                {currentTenant && (
-                  <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-950/60 border border-purple-500/30 text-xs font-semibold text-purple-300">
-                    <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-                    <span>Tenant: {currentTenant}</span>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-200">
-                  <UserIcon className="w-4 h-4 text-purple-400" />
-                  <span className="font-semibold max-w-[140px] truncate">
-                    {user.name || user.email}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => logout()}
-                  title="Sair da conta"
-                  className="min-h-[44px] h-11 px-3.5 rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 border border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span className="hidden sm:inline">Sair</span>
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => navigate('/auth')}
-                  className="min-h-[44px] h-11 px-4 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-900 border border-slate-800 transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Lock className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Entrar</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => navigate('/auth')}
-                  className="min-h-[44px] h-11 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-md shadow-purple-600/30 transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>Criar Conta</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 space-y-12 flex-1 w-full">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 space-y-12 flex-1 w-full">
         {/* Hero Section */}
         <section className="text-center space-y-4 max-w-4xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-purple-950/60 text-purple-300 border border-purple-500/30 shadow-lg backdrop-blur-md">

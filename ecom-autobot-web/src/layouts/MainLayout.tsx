@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Zap, User, Bot, ShoppingBag, CreditCard, LogOut, ShieldCheck, Key, Store, Settings } from 'lucide-react';
+import { LayoutDashboard, Zap, User, Bot, ShoppingBag, CreditCard, LogOut, ShieldCheck, Key, Store, Settings, Activity } from 'lucide-react';
 import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar';
-import { useAuth } from '@/features/auth';
+import { useAuth, useFeatureGate } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/feedback/Badge';
 import { AiKeysModal } from '@/features/ai-keys';
@@ -11,9 +11,11 @@ export const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, currentTenant, logout } = useAuth();
+  const { isFeatureLocked, getPlanName } = useFeatureGate();
   const [isAiKeysModalOpen, setIsAiKeysModalOpen] = useState(false);
 
   const isAdmin = Boolean(user && (user.is_admin === true || user.role === 'admin'));
+  const isIntegrationsLocked = isFeatureLocked('integrations');
 
   const navItems: SidebarNavItem[] = [
     {
@@ -50,10 +52,12 @@ export const MainLayout: React.FC = () => {
       id: 'integrations',
       label: 'Central de Integrações',
       icon: <Store className="w-5 h-5" />,
-      badge: 'Lojas',
+      badge: isIntegrationsLocked ? undefined : 'Lojas',
       badgeVariant: 'indigo',
+      locked: isIntegrationsLocked,
+      lockedBadge: 'PRO',
       active: location.pathname === '/integrations' || location.pathname === '/credentials',
-      onClick: () => navigate('/integrations'),
+      onClick: () => (isIntegrationsLocked ? navigate('/billing') : navigate('/integrations')),
     },
     {
       id: 'settings',
@@ -152,10 +156,14 @@ export const MainLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <Badge variant="success" icon={<Activity className="w-3.5 h-3.5" />}>
+              {getPlanName()}
+            </Badge>
+
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setIsAiKeysModalOpen(true)}
+              onClick={() => (isFeatureLocked('byok_keys') ? navigate('/billing') : setIsAiKeysModalOpen(true))}
               iconLeft={<Key className="w-4 h-4 text-purple-500 dark:text-purple-400" />}
               className="h-9 min-h-[36px] text-xs font-semibold border-purple-500/30 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40"
             >

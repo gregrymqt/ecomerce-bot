@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Menu, X, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface SidebarNavItem {
@@ -10,6 +10,8 @@ export interface SidebarNavItem {
   badge?: string | number;
   badgeVariant?: 'indigo' | 'emerald' | 'rose' | 'amber';
   active?: boolean;
+  locked?: boolean;
+  lockedBadge?: string;
   onClick?: () => void;
 }
 
@@ -106,6 +108,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <nav className="flex-1 overflow-y-auto p-3 space-y-1.5">
           {items.map((item) => {
             const isActive = item.active;
+            const isLocked = item.locked;
 
             return (
               <button
@@ -119,28 +122,49 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 min-h-[44px] cursor-pointer group relative',
                   isActive
                     ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-semibold shadow-xs'
+                    : isLocked
+                    ? 'text-slate-400 dark:text-slate-500 hover:bg-amber-500/10 dark:hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100',
                   isCollapsed && 'lg:justify-center lg:px-0'
                 )}
-                title={isCollapsed ? item.label : undefined}
+                title={
+                  isCollapsed
+                    ? isLocked
+                      ? `${item.label} (Bloqueado - Requer ${item.lockedBadge || 'PRO'})`
+                      : item.label
+                    : isLocked
+                    ? `Recurso Bloqueado - Clique para Upgrade (${item.lockedBadge || 'PRO'})`
+                    : undefined
+                }
               >
-                <span className={cn('shrink-0 text-lg', isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300')}>
+                <span className={cn('shrink-0 text-lg', isActive ? 'text-indigo-600 dark:text-indigo-400' : isLocked ? 'text-amber-500' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300')}>
                   {item.icon}
                 </span>
 
                 {(!isCollapsed || isMobileOpen) && (
-                  <span className="truncate flex-1 text-left">{item.label}</span>
+                  <span className="truncate flex-1 text-left flex items-center gap-1.5">
+                    {item.label}
+                    {isLocked && <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                  </span>
                 )}
 
-                {item.badge && (!isCollapsed || isMobileOpen) && (
-                  <span
-                    className={cn(
-                      'ml-auto px-2 py-0.5 rounded-full text-xs font-semibold shrink-0',
-                      badgeVariants[item.badgeVariant || 'indigo']
-                    )}
-                  >
-                    {item.badge}
-                  </span>
+                {item.locked ? (
+                  (!isCollapsed || isMobileOpen) && (
+                    <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase shrink-0 bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                      {item.lockedBadge || 'PRO'}
+                    </span>
+                  )
+                ) : (
+                  item.badge && (!isCollapsed || isMobileOpen) && (
+                    <span
+                      className={cn(
+                        'ml-auto px-2 py-0.5 rounded-full text-xs font-semibold shrink-0',
+                        badgeVariants[item.badgeVariant || 'indigo']
+                      )}
+                    >
+                      {item.badge}
+                    </span>
+                  )
                 )}
               </button>
             );

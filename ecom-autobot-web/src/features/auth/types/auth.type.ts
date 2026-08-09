@@ -12,6 +12,7 @@ export interface UserResponse {
   name: string;
   tenants: string[];
   created_at?: string;
+  plan?: string;
   is_admin?: boolean;
   role?: string;
 }
