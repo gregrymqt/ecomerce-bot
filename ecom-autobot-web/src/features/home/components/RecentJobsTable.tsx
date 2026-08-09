@@ -2,7 +2,7 @@ import React from 'react';
 import { Eye, Download, CheckCircle2, Clock, XCircle, Globe, Cpu } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Card, Badge, Table, Button, type TableColumn } from '@/components/ui';
-import { type ExtractionJob, type JobStatus } from '../types/home.types';
+import { type ExtractionJob, type JobStatus } from '@/features/home';
 
 export interface RecentJobsTableProps {
   jobs?: ExtractionJob[];

@@ -1,6 +1,6 @@
 import { apiClient } from '@/lib/apiClient';
 import { SSEClient } from '@/lib/sseClient';
-import type { DemoLogEvent, ScrapedProductResult } from '../types/live-demo.types';
+import type { DemoLogEvent, ScrapedProductResult } from '@/features/live-demo';
 
 export interface DemoStreamPayload {
   log?: DemoLogEvent;

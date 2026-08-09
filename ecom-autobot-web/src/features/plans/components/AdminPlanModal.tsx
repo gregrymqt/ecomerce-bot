@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { X, Sparkles, AlertCircle, RefreshCw, Lock } from 'lucide-react';
-import type { CreatePlanRequest, PlanResponse, UpdatePlanRequest } from '../types/plans.type';
+import type { CreatePlanRequest, PlanResponse, UpdatePlanRequest } from '@/features/plans';
 import { getErrorMessage } from '@/utils/errors';
 
 interface AdminPlanModalProps {

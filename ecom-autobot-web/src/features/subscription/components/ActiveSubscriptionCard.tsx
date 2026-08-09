@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sparkles, Calendar, Zap, CreditCard, XCircle, ShieldCheck } from 'lucide-react';
 import { Card, Badge, Button, ProgressBar } from '@/components/ui';
-import type { SubscriptionDetails } from '../types/subscription.type';
+import type { SubscriptionDetails } from '@/features/subscription';
 import { cn } from '@/utils/cn';
 
 export interface ActiveSubscriptionCardProps {

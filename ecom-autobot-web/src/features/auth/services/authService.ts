@@ -11,7 +11,7 @@ import type {
   AuthTokenResponse,
   EnterpriseLeadPayload,
   EnterpriseLeadResponse,
-} from '../types/auth.type';
+} from '@/features/auth';
 
 /**
  * Serviço de comunicação HTTP com a API FastAPI de Autenticação.

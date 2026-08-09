@@ -17,7 +17,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import type { StoreIntegration } from '../types/integration.type';
+import type { StoreIntegration } from '@/features/integrations';
 
 interface ShopifyCardProps {
   integration?: StoreIntegration | null;

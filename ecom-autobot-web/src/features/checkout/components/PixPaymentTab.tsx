@@ -8,7 +8,7 @@
 import React from 'react';
 import { Clock, Copy, CheckCircle, QrCode, Loader2, RefreshCw } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import type { PixPaymentResponse, PaymentStatus } from '../types/checkout.type';
+import type { PixPaymentResponse, PaymentStatus } from '@/features/checkout';
 
 interface PixPaymentTabProps {
   pixData: PixPaymentResponse | null;

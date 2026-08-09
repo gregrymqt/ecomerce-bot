@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Edit2, ExternalLink, Power, RefreshCw, ShieldAlert, CheckCircle2, XCircle } from 'lucide-react';
-import type { PlanResponse } from '../types/plans.type';
+import type { PlanResponse } from '@/features/plans';
 
 interface AdminPlanTableProps {
   plans: PlanResponse[];

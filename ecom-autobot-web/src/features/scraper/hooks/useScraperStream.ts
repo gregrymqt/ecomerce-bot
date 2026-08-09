@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { SSEClient } from '@/lib/sseClient';
-import type { ScraperStreamEvent, UseScraperStreamReturn } from '../types/scrapper.type';
+import type { ScraperStreamEvent, UseScraperStreamReturn } from '@/features/scraper';
 
 export const useScraperStream = (): UseScraperStreamReturn => {
   const [events, setEvents] = useState<ScraperStreamEvent[]>([]);

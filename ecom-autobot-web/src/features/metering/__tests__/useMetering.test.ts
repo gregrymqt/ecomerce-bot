@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useMetering } from '../hooks/useMetering';
-import { meteringService } from '../services/metering.service';
+import { useMetering } from '@/features/metering';
+import { meteringService } from '@/features/metering';
 import type {
   TenantCreditBalanceResponse,
   PaginatedLLMUsageResponse,
-} from '../types/metering.type';
+} from '@/features/metering';
 
 vi.mock('../services/metering.service', () => ({
   meteringService: {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Building, Mail, Phone, Users, CheckCircle, X, Loader2, FileText } from 'lucide-react';
-import { authService } from '../services/authService';
-import type { EnterpriseLeadPayload } from '../types/auth.type';
+import { authService } from '@/features/auth';
+import type { EnterpriseLeadPayload } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/display/Card';
 import { Alert } from '@/components/ui/feedback/Alert';

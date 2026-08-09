@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { meteringService } from '../services/metering.service';
+import { meteringService } from '@/features/metering';
 import { getErrorMessage } from '@/utils/errors';
 import type {
   TenantCreditBalanceResponse,
   PaginatedLLMUsageResponse,
   LLMUsageFilterParams,
-} from '../types/metering.type';
+} from '@/features/metering';
 
 export interface UseMeteringReturn {
   balance: TenantCreditBalanceResponse | null;

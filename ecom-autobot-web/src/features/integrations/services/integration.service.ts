@@ -12,7 +12,7 @@ import type {
   IntegrationSummary,
   ShopifyCredentialsPayload,
   StoreIntegration,
-} from '@/features/integrations/types/integration.type';
+} from '@/features/integrations';
 
 export const integrationService = {
   /**

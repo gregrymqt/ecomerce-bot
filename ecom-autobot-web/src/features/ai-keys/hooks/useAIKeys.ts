@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { keysService } from '../services/keys.service';
+import { keysService } from '@/features/ai-keys';
 import { getErrorMessage } from '@/utils/errors';
 import { getLocalStorage, setLocalStorage } from '@/utils/storage';
-import type { AIProvider, UseAIKeysReturn as LegacyUseAIKeysReturn } from '../types/keys.type';
-import type { AiProviderId, UserAiKey } from '../types/ai-keys.types';
+import type { AIProvider, UseAIKeysReturn as LegacyUseAIKeysReturn } from '@/features/ai-keys';
+import type { AiProviderId, UserAiKey } from '@/features/ai-keys';
 
 // ==========================================
 // 1. Hook Legado: useAIKeys (AIKeysForm.tsx)

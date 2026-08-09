@@ -8,7 +8,7 @@
 import React from 'react';
 import { Server, Activity } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import type { SystemHealthItem } from '../types/dashboard.type';
+import type { SystemHealthItem } from '@/features/dashboard';
 
 interface SystemHealthWidgetProps {
   healthItems?: SystemHealthItem[];

@@ -8,9 +8,9 @@ import {
   AIProviderEnum,
   AI_PROVIDER_LABELS,
   type AIProvider,
-} from '../types/keys.type';
-import { useAIKeys } from '../hooks/useAIKeys';
-import type { AIKeysFormProps } from '../types/keys.type';
+} from '@/features/ai-keys';
+import { useAIKeys } from '@/features/ai-keys';
+import type { AIKeysFormProps } from '@/features/ai-keys';
 
 const PROVIDER_OPTIONS: { value: AIProvider; label: string }[] = [
   { value: AIProviderEnum.DEEPSEEK, label: AI_PROVIDER_LABELS.deepseek },

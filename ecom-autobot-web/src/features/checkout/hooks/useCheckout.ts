@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { checkoutService } from '../services/checkout.service';
+import { checkoutService } from '@/features/checkout';
 import type {
   PaymentMethod,
   PaymentStatus,
@@ -15,7 +15,7 @@ import type {
   CreditCardPaymentPayload,
   CreditCardPaymentResponse,
   OrderStatusSyncResponse,
-} from '../types/checkout.type';
+} from '@/features/checkout';
 import { getErrorMessage } from '@/utils/errors';
 
 export function useCheckout(initialPlanId?: string) {

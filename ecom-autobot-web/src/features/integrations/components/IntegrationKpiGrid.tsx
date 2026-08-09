@@ -8,7 +8,7 @@
 import React from 'react';
 import { Store, Activity, RefreshCw } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import type { IntegrationSummary } from '../types/integration.type';
+import type { IntegrationSummary } from '@/features/integrations';
 
 interface IntegrationKpiGridProps {
   summary: IntegrationSummary | null;

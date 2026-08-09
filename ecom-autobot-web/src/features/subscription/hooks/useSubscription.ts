@@ -5,8 +5,8 @@ import type {
   SearchSubscriptionsParams,
   CreateSubscriptionPayload,
   UpdateSubscriptionPayload,
-} from '../types/subscription.type';
-import { subscriptionService } from '../services/subscription.service';
+} from '@/features/subscription';
+import { subscriptionService } from '@/features/subscription';
 import { getErrorMessage } from '@/utils/errors';
 
 export function useSubscription(initialParams?: SearchSubscriptionsParams) {

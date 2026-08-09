@@ -10,10 +10,10 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bot, ArrowLeft, ShieldCheck, QrCode, CreditCard, HelpCircle } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import { useCheckout } from '../hooks/useCheckout';
-import { OrderSummaryCard } from '../components/OrderSummaryCard';
-import { PixPaymentTab } from '../components/PixPaymentTab';
-import { CreditCardPaymentTab } from '../components/CreditCardPaymentTab';
+import { useCheckout } from '@/features/checkout';
+import { OrderSummaryCard } from '@/features/checkout';
+import { PixPaymentTab } from '@/features/checkout';
+import { CreditCardPaymentTab } from '@/features/checkout';
 
 export const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();

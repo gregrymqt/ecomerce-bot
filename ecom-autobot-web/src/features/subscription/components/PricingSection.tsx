@@ -1,8 +1,8 @@
 import React from 'react';
 import { CheckCircle2, Sparkles, Zap, Building2, Check, ArrowRight } from 'lucide-react';
 import { Card, Badge, Button } from '@/components/ui';
-import type { BillingCycle, PlanTier } from '../types/subscription.type';
-import { usePricingSection } from '../hooks/usePricingSection';
+import type { BillingCycle, PlanTier } from '@/features/subscription';
+import { usePricingSection } from '@/features/subscription';
 import { cn } from '@/utils/cn';
 
 export interface PricingSectionProps {

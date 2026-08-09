@@ -7,7 +7,7 @@
 import React from 'react';
 import { Receipt, Building, FileText, Mail, MapPin } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import type { BillingProfilePayload } from '../types/settings.type';
+import type { BillingProfilePayload } from '@/features/settings';
 
 interface BillingProfileTabProps {
   data: BillingProfilePayload;

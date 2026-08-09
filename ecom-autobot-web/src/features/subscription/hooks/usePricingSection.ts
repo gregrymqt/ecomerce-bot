@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { BillingCycle, PlanTier } from '../types/subscription.type';
-import type { PlanResponse } from '@/features/plans/types/plans.type';
-import { subscriptionService } from '../services/subscription.service';
+import { subscriptionService, type BillingCycle, type PlanTier } from '@/features/subscription';
 
 export interface UsePricingSectionOptions {
   onSelectPlan?: (plan: PlanTier, cycle: BillingCycle) => void;

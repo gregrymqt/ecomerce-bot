@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/apiClient';
-import type { PlanResponse } from '@/features/plans/types/plans.type';
+import type { PlanResponse } from '@/features/plans';
 import type {
   Subscription,
   TenantBillingStatus,
@@ -7,7 +7,7 @@ import type {
   UpdateSubscriptionPayload,
   SearchSubscriptionsParams,
   PaginatedSubscriptionsResponse,
-} from '../types/subscription.type';
+} from '@/features/subscription';
 
 export const subscriptionService = {
   /**

@@ -5,9 +5,9 @@
 
 import React from 'react';
 import { Plus, Search, ShieldCheck, Database, Cloud, RefreshCw, Filter } from 'lucide-react';
-import { useAdminPlans } from '../hooks/useAdminPlans';
-import { AdminPlanTable } from '../components/AdminPlanTable';
-import { AdminPlanModal } from '../components/AdminPlanModal';
+import { useAdminPlans } from '@/features/plans';
+import { AdminPlanTable } from '@/features/plans';
+import { AdminPlanModal } from '@/features/plans';
 import { Alert } from '@/components/ui/feedback/Alert';
 
 export const AdminPlansPage: React.FC = () => {

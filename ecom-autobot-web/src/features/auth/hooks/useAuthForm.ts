@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './useAuth';
-import type { AuthMode, LoginFormData, RegisterFormData } from '../types/auth.types';
+import type { AuthMode, LoginFormData, RegisterFormData } from '@/features/auth';
 import { getErrorMessage } from '@/utils/errors';
 
 export interface UseAuthFormReturn {

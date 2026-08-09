@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/apiClient';
-import type { WebScraperRequest, WebScraperResponse } from '../types/scrapper.type';
+import type { WebScraperRequest, WebScraperResponse } from '@/features/scraper';
 
 export const scrapperService = {
   /**

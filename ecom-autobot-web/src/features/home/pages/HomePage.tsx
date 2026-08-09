@@ -1,14 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
-import { HomeHeader } from '../components/HomeHeader';
-import { KpiMetricsGrid } from '../components/KpiMetricsGrid';
-import { RecentJobsTable } from '../components/RecentJobsTable';
-import { IntegrationsStatus } from '../components/IntegrationsStatus';
-import type { ExtractionJob, HomeMetrics, JobStatus } from '../types/home.types';
+import { HomeHeader, KpiMetricsGrid, RecentJobsTable, IntegrationsStatus, type ExtractionJob, type HomeMetrics, type JobStatus } from '@/features/home';
 import { ScraperForm } from '@/features/scraper';
-import { useProducts } from '@/features/catalog/hooks/useProducts';
-import { AIKeysForm } from '@/features/ai-keys/components/AIKeysForm';
+import { useProducts } from '@/features/catalog';
+import { AIKeysForm } from '@/features/ai-keys';
 import { Modal, Alert } from '@/components/ui';
 
 export const HomePage: React.FC = () => {

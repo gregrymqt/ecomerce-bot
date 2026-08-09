@@ -6,14 +6,14 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { settingsService } from '../services/settings.service';
+import { settingsService } from '@/features/settings';
 import type {
   SettingsTab,
   TenantSettingsResponse,
   AiSettingsPayload,
   StoreProfilePayload,
   BillingProfilePayload,
-} from '../types/settings.type';
+} from '@/features/settings';
 import { getErrorMessage } from '@/utils/errors';
 
 const DEFAULT_SETTINGS: TenantSettingsResponse = {

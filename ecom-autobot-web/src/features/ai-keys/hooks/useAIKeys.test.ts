@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useAIKeys, useAiKeys } from './useAIKeys';
-import { keysService } from '../services/keys.service';
-import type { AICredentialsResponse, TestAIKeyResponse } from '../types/keys.type';
+import { keysService } from '@/features/ai-keys';
+import type { AICredentialsResponse, TestAIKeyResponse } from '@/features/ai-keys';
 
 vi.mock('../services/keys.service', () => ({
   keysService: {

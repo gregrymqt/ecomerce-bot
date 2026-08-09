@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { EngineStatusBadge } from '../components/EngineStatusBadge';
+import { EngineStatusBadge } from '@/features/metering';
 
 describe('EngineStatusBadge component', () => {
   it('deve renderizar o texto "Sua Chave OpenRouter (BYOK)" quando isByokActive for true', () => {

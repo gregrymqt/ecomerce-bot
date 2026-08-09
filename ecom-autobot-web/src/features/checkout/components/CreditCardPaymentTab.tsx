@@ -8,7 +8,7 @@
 import React, { useState } from 'react';
 import { CreditCard, Calendar, Lock, User, FileText, ShieldCheck, Loader2 } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import type { CreditCardPaymentPayload } from '../types/checkout.type';
+import type { CreditCardPaymentPayload } from '@/features/checkout';
 
 interface CreditCardPaymentTabProps {
   planId: string;

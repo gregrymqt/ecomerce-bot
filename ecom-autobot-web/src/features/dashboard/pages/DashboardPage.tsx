@@ -16,12 +16,12 @@ import {
   AlertCircle,
   RefreshCw,
 } from 'lucide-react';
-import { useDashboard } from '../hooks/useDashboard';
-import { DashboardKpiGrid } from '../components/DashboardKpiGrid';
-import { VolumePerformanceChart } from '../components/VolumePerformanceChart';
-import { RecentActivityTable } from '../components/RecentActivityTable';
-import { TokenTelemetryCard } from '../components/TokenTelemetryCard';
-import { SystemHealthWidget } from '../components/SystemHealthWidget';
+import { useDashboard } from '@/features/dashboard';
+import { DashboardKpiGrid } from '@/features/dashboard';
+import { VolumePerformanceChart } from '@/features/dashboard';
+import { RecentActivityTable } from '@/features/dashboard';
+import { TokenTelemetryCard } from '@/features/dashboard';
+import { SystemHealthWidget } from '@/features/dashboard';
 import { AiKeysModal } from '@/features/ai-keys';
 
 export const DashboardPage: React.FC = () => {

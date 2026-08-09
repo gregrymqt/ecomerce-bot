@@ -10,7 +10,7 @@ import type {
   PlanSearchResponse,
   SearchPlansQueryParams,
   UpdatePlanRequest,
-} from '../types/plans.type';
+} from '@/features/plans';
 
 export const plansService = {
   /**

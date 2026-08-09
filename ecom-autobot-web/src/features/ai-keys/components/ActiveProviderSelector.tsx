@@ -2,7 +2,7 @@ import React from 'react';
 import { Zap, Check } from 'lucide-react';
 import { Card } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import type { AiProviderId, AiProviderMeta, UserAiKey } from '../types/ai-keys.types';
+import type { AiProviderId, AiProviderMeta, UserAiKey } from '@/features/ai-keys';
 
 export interface ActiveProviderSelectorProps {
   providers: AiProviderMeta[];

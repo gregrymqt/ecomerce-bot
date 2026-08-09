@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, Check, HelpCircle, Trash2, Zap, Layers, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
-import type { AiProviderMeta, UserAiKey } from '../types/ai-keys.types';
+import type { AiProviderMeta, UserAiKey } from '@/features/ai-keys';
 
 const AVAILABLE_OPENROUTER_MODELS = [
   { id: 'groq/llama-3.3-70b', name: 'Groq Llama 3.3 70B' },

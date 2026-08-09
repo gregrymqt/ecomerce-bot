@@ -3,8 +3,8 @@ import type {
   ConnectionStatus,
   DemoLogEvent,
   ScrapedProductResult,
-} from '../types/live-demo.types';
-import { liveDemoService } from '../services/liveDemoService';
+} from '@/features/live-demo';
+import { liveDemoService } from '@/features/live-demo';
 
 export interface UseLiveDemoSSEReturn {
   status: ConnectionStatus;

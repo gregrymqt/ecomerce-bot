@@ -17,12 +17,12 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import { useSettings } from '../hooks/useSettings';
-import { AiRulesTab } from '../components/AiRulesTab';
-import { StoreProfileTab } from '../components/StoreProfileTab';
-import { BillingProfileTab } from '../components/BillingProfileTab';
-import { SettingsSuccessToast } from '../components/SettingsSuccessToast';
-import type { SettingsTab } from '../types/settings.type';
+import { useSettings } from '@/features/settings';
+import { AiRulesTab } from '@/features/settings';
+import { StoreProfileTab } from '@/features/settings';
+import { BillingProfileTab } from '@/features/settings';
+import { SettingsSuccessToast } from '@/features/settings';
+import type { SettingsTab } from '@/features/settings';
 
 export const SettingsPage: React.FC = () => {
   const {

@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
-import { productService } from '../services/product.service';
+import { productService } from '@/features/catalog';
 import type {
   Product,
   ProductUpdatePayload,
-} from '../types/product.type';
+} from '@/features/catalog';
 import { getErrorMessage } from '@/utils/errors';
 
 export function useProducts(initialLimit = 20) {

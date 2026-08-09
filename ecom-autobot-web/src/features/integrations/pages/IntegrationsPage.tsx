@@ -7,11 +7,11 @@
 
 import React from 'react';
 import { Link as LinkIcon, Plus, ShieldCheck, AlertCircle, CheckCircle } from 'lucide-react';
-import { useIntegrations } from '../hooks/useIntegrations';
-import { IntegrationKpiGrid } from '../components/IntegrationKpiGrid';
-import { ShopifyCard } from '../components/ShopifyCard';
-import { NuvemshopCard } from '../components/NuvemshopCard';
-import { ShopifyCredentialsModal } from '../components/ShopifyCredentialsModal';
+import { useIntegrations } from '@/features/integrations';
+import { IntegrationKpiGrid } from '@/features/integrations';
+import { ShopifyCard } from '@/features/integrations';
+import { NuvemshopCard } from '@/features/integrations';
+import { ShopifyCredentialsModal } from '@/features/integrations';
 
 export const IntegrationsPage: React.FC = () => {
   const {

@@ -7,10 +7,10 @@ import { ProgressBar } from '@/components/ui/feedback/ProgressBar';
 import { Alert } from '@/components/ui/feedback/Alert';
 import { Badge, type BadgeVariant } from '@/components/ui/feedback/Badge';
 import { cn } from '@/lib/utils';
-import { useScraper } from '../hooks/useScraper';
-import { useScraperStream } from '../hooks/useScraperStream';
-import type { ScraperFormProps } from '../types/scrapper.type';
-import { scrapperService } from '../services/scrapper.service';
+import { useScraper } from '@/features/scraper';
+import { useScraperStream } from '@/features/scraper';
+import type { ScraperFormProps } from '@/features/scraper';
+import { scrapperService } from '@/features/scraper';
 import { isValidHttpUrl } from '@/utils/security';
 import { getErrorMessage } from '@/utils/errors';
 

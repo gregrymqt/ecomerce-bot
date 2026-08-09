@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
-import { scrapperService } from '../services/scrapper.service';
+import { scrapperService } from '@/features/scraper';
 import { getErrorMessage } from '@/utils/errors';
-import type { UseScraperReturn } from '../types/scrapper.type';
+import type { UseScraperReturn } from '@/features/scraper';
 
 export const useScraper = (): UseScraperReturn => {
   const [url, setUrl] = useState<string>('');

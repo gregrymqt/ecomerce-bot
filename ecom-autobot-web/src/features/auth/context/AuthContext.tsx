@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import { authService } from '../services/authService';
+import { authService } from '@/features/auth';
 import { getTenantId, saveTenantId, clearTenantId } from '@/utils/storage';
 import { getErrorMessage } from '@/utils/errors';
 import type {
@@ -12,7 +12,7 @@ import type {
   AuthState,
   GoogleCallbackRequest,
   AuthTokenResponse,
-} from '../types/auth.type';
+} from '@/features/auth';
 
 export interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;

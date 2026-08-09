@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/Button';
 import type {
   PaginatedLLMUsageResponse,
   LLMUsageFilterParams,
-} from '../types/metering.type';
+} from '@/features/metering';
 
 export interface UsageHistoryTableProps {
   usageLogs: PaginatedLLMUsageResponse | null;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { DollarSign, Zap, AlertTriangle, TrendingUp, Cpu } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import type { TenantCreditBalanceResponse } from '../types/metering.type';
+import type { TenantCreditBalanceResponse } from '@/features/metering';
 import { EngineStatusBadge } from '..';
 
 export interface CreditBalanceWidgetProps {

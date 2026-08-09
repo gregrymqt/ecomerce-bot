@@ -23,7 +23,7 @@ import type {
   DefaultLanguage,
   RoundingRule,
   ToneOfVoice,
-} from '../types/settings.type';
+} from '@/features/settings';
 
 interface AiRulesTabProps {
   data: AiSettingsPayload;

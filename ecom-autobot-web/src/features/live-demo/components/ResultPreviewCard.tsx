@@ -1,8 +1,8 @@
 import React from 'react';
 import { Eye, Code, Sparkles, CheckCircle2, Copy, Check, Tag, Award } from 'lucide-react';
 import { Card, Badge, Button } from '@/components/ui';
-import type { ScrapedProductResult } from '../types/live-demo.types';
-import { useResultPreviewCard } from '../hooks/useResultPreviewCard';
+import type { ScrapedProductResult } from '@/features/live-demo';
+import { useResultPreviewCard } from '@/features/live-demo';
 import { cn } from '@/utils/cn';
 
 export interface ResultPreviewCardProps {

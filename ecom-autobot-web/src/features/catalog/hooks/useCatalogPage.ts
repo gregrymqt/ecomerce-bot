@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
-import type { CatalogProduct, FilterStatus, AITone, ProductStatus, EcomPlatform } from '../types/catalog.types';
+import type { CatalogProduct, FilterStatus, AITone, ProductStatus, EcomPlatform } from '@/features/catalog';
 import type { AlertVariant } from '@/components/ui/feedback/Alert';
 import { useProducts } from './useProducts';
-import { productService } from '../services/product.service';
+import { productService } from '@/features/catalog';
 
 export interface CatalogAlert {
   variant: AlertVariant;

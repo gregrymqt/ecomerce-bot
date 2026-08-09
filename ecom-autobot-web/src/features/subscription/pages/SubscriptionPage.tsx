@@ -1,15 +1,15 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, RefreshCw } from 'lucide-react';
-import { useSubscription } from '../hooks/useSubscription';
-import { ActiveSubscriptionCard } from '../components/ActiveSubscriptionCard';
-import { EnterprisePromoCard } from '../components/EnterprisePromoCard';
-import { PricingSection } from '../components/PricingSection';
-import { InvoiceHistoryTable } from '../components/InvoiceHistoryTable';
+import { useSubscription } from '@/features/subscription';
+import { ActiveSubscriptionCard } from '@/features/subscription';
+import { EnterprisePromoCard } from '@/features/subscription';
+import { PricingSection } from '@/features/subscription';
+import { InvoiceHistoryTable } from '@/features/subscription';
 import { Alert } from '@/components/ui/feedback/Alert';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/features/auth';
-import type { PlanTier, BillingCycle } from '../types/subscription.type';
+import type { PlanTier, BillingCycle } from '@/features/subscription';
 
 export const SubscriptionPage: React.FC = () => {
   const navigate = useNavigate();

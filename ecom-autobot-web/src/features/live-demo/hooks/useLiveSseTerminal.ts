@@ -1,5 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react';
-import type { DemoLogEvent } from '../types/live-demo.types';
+import type { DemoLogEvent } from '@/features/live-demo';
 
 export interface UseLiveSseTerminalReturn {
   terminalEndRef: RefObject<HTMLDivElement | null>;

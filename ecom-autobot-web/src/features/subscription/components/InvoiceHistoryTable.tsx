@@ -1,7 +1,7 @@
 import React from 'react';
 import { CreditCard, QrCode, FileText, Download } from 'lucide-react';
 import { Card, Badge, Button } from '@/components/ui';
-import type { Invoice } from '../types/subscription.type';
+import type { Invoice } from '@/features/subscription';
 import { cn } from '@/utils/cn';
 
 export interface InvoiceHistoryTableProps {

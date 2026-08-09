@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, Building, LogIn } from 'lucide-react';
-import type { LoginFormData } from '../types/auth.types';
-import { useAuth } from '../hooks/useAuth';
+import type { LoginFormData } from '@/features/auth';
+import { useAuth } from '@/features/auth';
 import { GoogleAuthButton } from './GoogleAuthButton';
 import { EnterpriseSsoButton } from './EnterpriseSsoButton';
 import { EnterpriseSsoModal } from './EnterpriseSsoModal';

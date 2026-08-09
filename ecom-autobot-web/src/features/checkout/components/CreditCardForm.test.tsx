@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CreditCardPaymentTab } from './CreditCardPaymentTab';
-import type { CreditCardPaymentPayload } from '../types/checkout.type';
+import type { CreditCardPaymentPayload } from '@/features/checkout';
 
 describe('CreditCardPaymentTab / CreditCardForm Component', () => {
   const mockOnSubmit = vi.fn<(payload: CreditCardPaymentPayload) => Promise<void>>();

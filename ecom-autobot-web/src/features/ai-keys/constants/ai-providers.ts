@@ -1,4 +1,4 @@
-import type { AiProviderMeta } from '../types/ai-keys.types';
+import type { AiProviderMeta } from '@/features/ai-keys';
 
 export const AI_PROVIDERS_META: AiProviderMeta[] = [
   {

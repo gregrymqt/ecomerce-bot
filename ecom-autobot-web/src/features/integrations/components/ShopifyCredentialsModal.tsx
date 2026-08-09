@@ -7,7 +7,7 @@
 
 import React, { useState } from 'react';
 import { X, Globe, Key, Eye, EyeOff, ShieldCheck, Loader2 } from 'lucide-react';
-import type { ShopifyCredentialsPayload } from '../types/integration.type';
+import type { ShopifyCredentialsPayload } from '@/features/integrations';
 
 interface ShopifyCredentialsModalProps {
   isOpen: boolean;

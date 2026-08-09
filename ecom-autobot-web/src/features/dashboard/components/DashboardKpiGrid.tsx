@@ -8,7 +8,7 @@
 import React from 'react';
 import { Package, TrendingUp, CheckCircle, Clock, Zap } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import type { DashboardKpiMetrics } from '../types/dashboard.type';
+import type { DashboardKpiMetrics } from '@/features/dashboard';
 
 interface DashboardKpiGridProps {
   metrics?: DashboardKpiMetrics | null;

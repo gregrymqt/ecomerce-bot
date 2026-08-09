@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { Badge, Button } from '@/components/ui';
 import { cn } from '@/utils/cn';
-import type { CatalogProduct, ProductStatus } from '../types/catalog.types';
+import type { CatalogProduct, ProductStatus } from '@/features/catalog';
 import { sanitizeImageUrl } from '@/utils/security';
 
 export interface ProductCatalogTableProps {

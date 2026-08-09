@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Cpu, DollarSign, Activity, RefreshCw, Sparkles, Key } from 'lucide-react';
-import { useMetering } from '../hooks/useMetering';
-import { CreditBalanceWidget } from '../components/CreditBalanceWidget';
-import { EngineStatusBadge } from '../components/EngineStatusBadge';
-import { UsageHistoryTable } from '../components/UsageHistoryTable';
-import { TopUpCreditModal } from '../components/TopUpCreditModal';
+import { useMetering } from '@/features/metering';
+import { CreditBalanceWidget } from '@/features/metering';
+import { EngineStatusBadge } from '@/features/metering';
+import { UsageHistoryTable } from '@/features/metering';
+import { TopUpCreditModal } from '@/features/metering';
 import { Button } from '@/components/ui/Button';
 
 export const MeteringDashboardPage: React.FC = () => {

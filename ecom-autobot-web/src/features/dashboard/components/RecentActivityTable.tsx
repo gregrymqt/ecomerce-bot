@@ -8,7 +8,7 @@
 import React from 'react';
 import { History, RefreshCw, Cpu, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import type { RobotActivity } from '../types/dashboard.type';
+import type { RobotActivity } from '@/features/dashboard';
 
 interface RecentActivityTableProps {
   activities?: RobotActivity[];

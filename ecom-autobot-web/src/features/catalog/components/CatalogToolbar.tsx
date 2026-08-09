@@ -2,7 +2,7 @@ import React from 'react';
 import { Search, Plus, Download, Package } from 'lucide-react';
 import { Button, Input, Badge } from '@/components/ui';
 import { cn } from '@/utils/cn';
-import type { FilterStatus } from '../types/catalog.types';
+import type { FilterStatus } from '@/features/catalog';
 
 export interface CatalogToolbarProps {
   searchTerm: string;

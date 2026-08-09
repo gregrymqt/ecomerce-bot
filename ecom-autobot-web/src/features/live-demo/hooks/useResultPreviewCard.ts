@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { ScrapedProductResult } from '../types/live-demo.types';
+import type { ScrapedProductResult } from '@/features/live-demo';
 
 export interface UseResultPreviewCardReturn {
   activeTab: 'visual' | 'json';

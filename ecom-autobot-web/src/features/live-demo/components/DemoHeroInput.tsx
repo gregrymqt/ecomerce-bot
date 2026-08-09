@@ -1,8 +1,8 @@
 import React from 'react';
 import { Zap, Link2, Sparkles, ArrowRight } from 'lucide-react';
 import { Input, Button } from '@/components/ui';
-import { SAMPLE_URLS } from '../constants/mock-demo-data';
-import { useDemoHeroInput } from '../hooks/useDemoHeroInput';
+import { SAMPLE_URLS } from '@/features/live-demo';
+import { useDemoHeroInput } from '@/features/live-demo';
 import { cn } from '@/utils/cn';
 
 export interface DemoHeroInputProps {

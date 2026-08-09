@@ -4,7 +4,7 @@ import type {
   ProductFilterParams,
   PaginatedProductsResponse,
   ProductUpdatePayload,
-} from '../types/product.type';
+} from '@/features/catalog';
 
 export const productService = {
   /**

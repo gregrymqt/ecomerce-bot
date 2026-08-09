@@ -7,7 +7,7 @@
 import React from 'react';
 import { Store, Mail, Clock, DollarSign, Shield } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import type { StoreProfilePayload } from '../types/settings.type';
+import type { StoreProfilePayload } from '@/features/settings';
 
 interface StoreProfileTabProps {
   data: StoreProfilePayload;

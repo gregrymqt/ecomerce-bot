@@ -1,8 +1,8 @@
 import React from 'react';
 import { Terminal, Cpu, CheckCircle2, AlertTriangle, Radio } from 'lucide-react';
 import { Badge, ProgressBar } from '@/components/ui';
-import type { ConnectionStatus, DemoLogEvent, LogLevel } from '../types/live-demo.types';
-import { useLiveSseTerminal } from '../hooks/useLiveSseTerminal';
+import type { ConnectionStatus, DemoLogEvent, LogLevel } from '@/features/live-demo';
+import { useLiveSseTerminal } from '@/features/live-demo';
 import { cn } from '@/utils/cn';
 
 export interface LiveSseTerminalProps {

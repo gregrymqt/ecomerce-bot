@@ -8,7 +8,7 @@
 import React from 'react';
 import { Brain, ShieldCheck, Activity, Key } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import type { TokenProviderUsage } from '../types/dashboard.type';
+import type { TokenProviderUsage } from '@/features/dashboard';
 
 interface TokenTelemetryCardProps {
   providers?: TokenProviderUsage[];

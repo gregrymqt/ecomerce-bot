@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { SampleUrlItem } from '../constants/mock-demo-data';
+import type { SampleUrlItem } from '@/features/live-demo';
 
 export interface UseDemoHeroInputProps {
   onSubmit: (url: string) => void;

@@ -2,7 +2,7 @@ import React from 'react';
 import { Zap, PackageCheck, Activity, TrendingUp } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Card, StatCard, ProgressBar, Badge } from '@/components/ui';
-import { type HomeMetrics } from '../types/home.types';
+import { type HomeMetrics } from '@/features/home';
 
 const DEFAULT_METRICS: HomeMetrics = {
   aiCreditsUsed: 0,

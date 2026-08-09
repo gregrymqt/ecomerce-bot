@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
+import { AuthContext } from '@/features/auth';
 
 /**
  * Hook customizado para consumir o AuthContext com validação e utilitários derivados.

@@ -4,7 +4,7 @@ import type {
   AICredentialsResponse,
   TestAIKeyRequest,
   TestAIKeyResponse,
-} from '../types/keys.type';
+} from '@/features/ai-keys';
 
 export const keysService = {
   /**

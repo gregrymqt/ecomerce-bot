@@ -1,10 +1,10 @@
 import React from 'react';
-import { CatalogToolbar } from '../components/CatalogToolbar';
-import { ProductCatalogTable } from '../components/ProductCatalogTable';
-import { EditCopyDrawer } from '../components/EditCopyDrawer';
+import { CatalogToolbar } from '@/features/catalog';
+import { ProductCatalogTable } from '@/features/catalog';
+import { EditCopyDrawer } from '@/features/catalog';
 import { ScraperForm } from '@/features/scraper';
 import { X, Sparkles } from 'lucide-react';
-import { useCatalogPage } from '../hooks/useCatalogPage';
+import { useCatalogPage } from '@/features/catalog';
 import { Alert } from '@/components/ui/feedback/Alert';
 
 export const CatalogPage: React.FC = () => {

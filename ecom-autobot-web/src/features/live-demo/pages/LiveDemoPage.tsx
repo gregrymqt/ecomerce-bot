@@ -10,11 +10,11 @@ import {
   Lock,
   ArrowRight,
 } from 'lucide-react';
-import { useLiveDemoSSE } from '../hooks/useLiveDemoSSE';
-import { DemoHeroInput } from '../components/DemoHeroInput';
-import { LiveSseTerminal } from '../components/LiveSseTerminal';
-import { ResultPreviewCard } from '../components/ResultPreviewCard';
-import { BottomCtaBanner } from '../components/BottomCtaBanner';
+import { useLiveDemoSSE } from '@/features/live-demo';
+import { DemoHeroInput } from '@/features/live-demo';
+import { LiveSseTerminal } from '@/features/live-demo';
+import { ResultPreviewCard } from '@/features/live-demo';
+import { BottomCtaBanner } from '@/features/live-demo';
 
 export const LiveDemoPage: React.FC = () => {
   const navigate = useNavigate();

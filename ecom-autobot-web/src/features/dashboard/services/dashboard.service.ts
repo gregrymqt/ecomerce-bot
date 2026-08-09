@@ -11,7 +11,7 @@ import type {
   DashboardTelemetryResponse,
   PeriodFilter,
   RobotActivity,
-} from '@/features/dashboard/types/dashboard.type';
+} from '@/features/dashboard';
 
 export const dashboardService = {
   /**

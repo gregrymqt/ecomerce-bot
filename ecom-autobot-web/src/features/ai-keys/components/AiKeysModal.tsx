@@ -1,8 +1,8 @@
 import React from 'react';
 import { Key, ShieldCheck } from 'lucide-react';
 import { Modal, Button } from '@/components/ui';
-import { useAiKeys } from '../hooks/useAIKeys';
-import { AI_PROVIDERS_META } from '../constants/ai-providers';
+import { useAiKeys } from '@/features/ai-keys';
+import { AI_PROVIDERS_META } from '@/features/ai-keys';
 import { ProviderKeyRow } from './ProviderKeyRow';
 import { ActiveProviderSelector } from './ActiveProviderSelector';
 

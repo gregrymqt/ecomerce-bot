@@ -7,13 +7,13 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { integrationService } from '../services/integration.service';
+import { integrationService } from '@/features/integrations';
 import type {
   HealthCheckResponse,
   IntegrationSummary,
   ShopifyCredentialsPayload,
   StoreIntegration,
-} from '../types/integration.type';
+} from '@/features/integrations';
 import { getErrorMessage } from '@/utils/errors';
 
 export function useIntegrations() {

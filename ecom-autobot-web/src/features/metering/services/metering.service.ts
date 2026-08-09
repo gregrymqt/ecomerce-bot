@@ -3,7 +3,7 @@ import type {
   TenantCreditBalanceResponse,
   LLMUsageFilterParams,
   PaginatedLLMUsageResponse,
-} from '../types/metering.type';
+} from '@/features/metering';
 
 export const meteringService = {
   /**

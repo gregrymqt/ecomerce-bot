@@ -4,8 +4,8 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { plansService } from '../services/plans.service';
-import type { CreatePlanRequest, PlanResponse, UpdatePlanRequest } from '../types/plans.type';
+import { plansService } from '@/features/plans';
+import type { CreatePlanRequest, PlanResponse, UpdatePlanRequest } from '@/features/plans';
 import type { AlertVariant } from '@/components/ui/feedback/Alert';
 import { getErrorMessage } from '@/utils/errors';
 

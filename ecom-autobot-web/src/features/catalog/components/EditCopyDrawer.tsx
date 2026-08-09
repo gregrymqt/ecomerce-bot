@@ -3,8 +3,8 @@ import { Zap, Sparkles, Save } from 'lucide-react';
 import { Drawer } from '@/components/ui/overlay/Drawer';
 import { Input, Textarea, Button, Badge } from '@/components/ui';
 import { cn } from '@/utils/cn';
-import type { CatalogProduct, AITone } from '../types/catalog.types';
-import { useEditCopyDrawer } from '../hooks/useEditCopyDrawer';
+import type { CatalogProduct, AITone } from '@/features/catalog';
+import { useEditCopyDrawer } from '@/features/catalog';
 
 export interface EditCopyDrawerProps {
   isOpen: boolean;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { CatalogProduct, AITone } from '../types/catalog.types';
+import type { CatalogProduct, AITone } from '@/features/catalog';
 
 export interface UseEditCopyDrawerProps {
   isOpen: boolean;

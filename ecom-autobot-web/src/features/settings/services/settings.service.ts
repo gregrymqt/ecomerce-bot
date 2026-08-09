@@ -7,7 +7,7 @@
 
 import { apiClient } from '@/lib/apiClient';
 import { getErrorMessage } from '@/utils/errors';
-import type { TenantSettingsResponse } from '../types/settings.type';
+import type { TenantSettingsResponse } from '@/features/settings';
 
 export const settingsService = {
   /**

@@ -8,7 +8,7 @@
 import React from 'react';
 import { BarChart2, Calendar } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import type { PeriodFilter, VolumeChartItem } from '../types/dashboard.type';
+import type { PeriodFilter, VolumeChartItem } from '@/features/dashboard';
 
 interface VolumePerformanceChartProps {
   items?: VolumeChartItem[];

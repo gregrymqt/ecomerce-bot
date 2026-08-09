@@ -1,10 +1,10 @@
 import React from 'react';
 import { Network } from 'lucide-react';
-import { AuthLeftPanel } from '../components/AuthLeftPanel';
-import { LoginForm } from '../components/LoginForm';
-import { RegisterForm } from '../components/RegisterForm';
+import { AuthLeftPanel } from '@/features/auth';
+import { LoginForm } from '@/features/auth';
+import { RegisterForm } from '@/features/auth';
 import { cn } from '@/lib/utils';
-import { useAuthForm } from '../hooks/useAuthForm';
+import { useAuthForm } from '@/features/auth';
 
 export interface AuthPageProps {
   initialMode?: 'login' | 'register';
