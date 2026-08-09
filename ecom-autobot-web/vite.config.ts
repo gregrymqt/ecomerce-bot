@@ -12,9 +12,11 @@ export default defineConfig({
     },
   },
   build: {
+    // Alvo de compilação ES moderno para melhor performance e menor tamanho de bundle
+    target: 'esnext',
     // Não expõe código-fonte original no navegador em produção
     sourcemap: false,
-    // Garante minificação agressiva
+    // Garante minificação agressiva via ESBuild
     minify: 'esbuild',
     // Limpa a pasta dist antes da build
     emptyOutDir: true,
