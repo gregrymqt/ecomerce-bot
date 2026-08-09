@@ -16,9 +16,9 @@ export interface FeatureGateRule {
 }
 
 export const FEATURE_RULES: Record<string, FeatureGateRule> = {
-  dashboard: { minPlan: 'free' },
+  dashboard: { minPlan: 'pro' },
   live_demo: { minPlan: 'free' },
-  catalog: { minPlan: 'free' },
+  catalog: { minPlan: 'pro' },
   shopify_export: { minPlan: 'pro' },
   nuvemshop_export: { minPlan: 'pro' },
   integrations: { minPlan: 'pro' },

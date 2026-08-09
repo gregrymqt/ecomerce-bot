@@ -41,12 +41,15 @@ export function useAuthForm(initialMode: AuthMode = 'login'): UseAuthFormReturn 
     async (data: LoginFormData): Promise<void> => {
       setLocalLoading(true);
       try {
-        await login({
+        const userResp = await login({
           email: data.email,
           password: data.password,
           tenant_id: data.tenant?.trim() || undefined,
         });
-        navigate('/catalog');
+        const plan = userResp?.plan?.toLowerCase() || 'free';
+        const isAdmin = userResp?.is_admin === true || userResp?.role === 'admin';
+        const isPaidUser = isAdmin || plan === 'pro' || plan === 'enterprise';
+        navigate(isPaidUser ? '/catalog' : '/demo');
       } catch (err) {
         getErrorMessage(err);
       } finally {
@@ -60,13 +63,16 @@ export function useAuthForm(initialMode: AuthMode = 'login'): UseAuthFormReturn 
     async (data: RegisterFormData): Promise<void> => {
       setLocalLoading(true);
       try {
-        await register({
+        const userResp = await register({
           name: data.name,
           email: data.email,
           password: data.password,
           tenants: data.tenantName?.trim() ? [data.tenantName.trim()] : undefined,
         });
-        navigate('/catalog');
+        const plan = userResp?.plan?.toLowerCase() || 'free';
+        const isAdmin = userResp?.is_admin === true || userResp?.role === 'admin';
+        const isPaidUser = isAdmin || plan === 'pro' || plan === 'enterprise';
+        navigate(isPaidUser ? '/catalog' : '/demo');
       } catch (err) {
         getErrorMessage(err);
       } finally {

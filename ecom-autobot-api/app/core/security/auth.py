@@ -1,13 +1,31 @@
 from datetime import datetime, timedelta, timezone
 import re
+from typing import Optional
 import jwt
-from fastapi import Header, HTTPException, status, Depends
+from fastapi import Header, HTTPException, status, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.config.settings import settings
 from app.core.config.redis_db import redis_cache
 from app.features.auth.schemas.auth_schemas import AuthenticatedUser
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
+
+
+def extract_token_from_request(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> str:
+    """Extrai o token JWT do header Authorization: Bearer ou do cookie HttpOnly access_token."""
+    if credentials and credentials.credentials:
+        return credentials.credentials
+    cookie_token = request.cookies.get("access_token")
+    if cookie_token:
+        return cookie_token
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token de autenticação não fornecido.",
+    )
+
 
 def sanitize_tenant_id(tenant_id: str) -> str:
     """Sanitiza o X-Tenant-ID garantindo apenas caracteres alfanuméricos e hífens."""
@@ -59,14 +77,13 @@ async def is_token_blacklisted(token: str) -> bool:
 
 async def get_current_tenant_user(
     x_tenant_id: str = Header(..., alias="X-Tenant-ID"),
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    token: str = Depends(extract_token_from_request),
 ) -> AuthenticatedUser:
     """
     Valida e injeta o usuário autenticado garantindo que ele possui permissão
     no tenant solicitado via X-Tenant-ID.
     """
     clean_tenant = sanitize_tenant_id(x_tenant_id)
-    token = credentials.credentials
 
     if await is_token_blacklisted(token):
         raise HTTPException(
@@ -110,7 +127,7 @@ async def get_current_tenant_user(
             detail="Acesso negado. Você não possui autorização para operar neste Tenant."
         )
 
-    # REMOVIDA A VULNERABILIDADE DA CHECAGEM DE PREFIXO 'admin@'
+    # Checagem de role/claim de admin
     is_admin = payload.get("is_admin") is True or payload.get("role") == "admin"
 
     return AuthenticatedUser(
@@ -125,13 +142,11 @@ async def get_current_tenant_user(
 
 
 async def get_current_user_admin(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    token: str = Depends(extract_token_from_request),
 ) -> AuthenticatedUser:
     """
     Valida privilégios administrativos estritos baseados em roles/claims JWT explícitas.
     """
-    token = credentials.credentials
-
     if await is_token_blacklisted(token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -163,7 +178,6 @@ async def get_current_user_admin(
             detail="Token inválido."
         )
 
-    # REMOVIDA A VULNERABILIDADE DA CHECAGEM DE PREFIXO 'admin@'
     is_admin = payload.get("is_admin") is True or payload.get("role") == "admin"
 
     if not is_admin:

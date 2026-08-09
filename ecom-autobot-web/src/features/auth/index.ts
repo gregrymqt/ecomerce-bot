@@ -13,6 +13,7 @@ export * from './components/EnterpriseSsoButton';
 export * from './components/EnterpriseSsoModal';
 export * from './components/AuthLeftPanel';
 export * from './components/AdminRouteGuard';
+export * from './components/PaidRouteGuard';
 export * from './components/ProtectedRoute';
 
 

@@ -15,6 +15,8 @@ export const MainLayout: React.FC = () => {
   const [isAiKeysModalOpen, setIsAiKeysModalOpen] = useState(false);
 
   const isAdmin = Boolean(user && (user.is_admin === true || user.role === 'admin'));
+  const isDashboardLocked = isFeatureLocked('dashboard');
+  const isCatalogLocked = isFeatureLocked('catalog');
   const isIntegrationsLocked = isFeatureLocked('integrations');
 
   const navItems: SidebarNavItem[] = [
@@ -22,8 +24,10 @@ export const MainLayout: React.FC = () => {
       id: 'dashboard',
       label: 'Dashboard & Telemetria',
       icon: <LayoutDashboard className="w-5 h-5" />,
+      locked: isDashboardLocked,
+      lockedBadge: 'PRO',
       active: location.pathname === '/' || location.pathname === '/home' || location.pathname === '/dashboard',
-      onClick: () => navigate('/dashboard'),
+      onClick: () => (isDashboardLocked ? navigate('/billing') : navigate('/dashboard')),
     },
     {
       id: 'demo',
@@ -43,10 +47,12 @@ export const MainLayout: React.FC = () => {
       id: 'catalog',
       label: 'Central do Catálogo',
       icon: <ShoppingBag className="w-5 h-5" />,
-      badge: 'Hub',
+      badge: isCatalogLocked ? undefined : 'Hub',
       badgeVariant: 'indigo',
+      locked: isCatalogLocked,
+      lockedBadge: 'PRO',
       active: location.pathname === '/catalog' || location.pathname === '/products',
-      onClick: () => navigate('/catalog'),
+      onClick: () => (isCatalogLocked ? navigate('/billing') : navigate('/catalog')),
     },
     {
       id: 'integrations',

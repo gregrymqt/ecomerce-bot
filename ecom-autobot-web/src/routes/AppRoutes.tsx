@@ -1,7 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from '@/layouts/MainLayout';
-import { ProtectedRoute, AdminRouteGuard } from '@/features/auth';
+import { ProtectedRoute, PaidRouteGuard, AdminRouteGuard } from '@/features/auth';
 import { PageLoader } from '@/components/ui/feedback/PageLoader';
 
 // Carregamento Sob Demanda das Páginas (Code Splitting / Lazy Loading)
@@ -31,20 +31,72 @@ export const AppRoutes: React.FC = () => {
         {/* Rotas Protegidas com Guarda de Autenticação e Layout Principal */}
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/home" element={<DashboardPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
+            {/* Rotas de Degustação / Gratuitas */}
             <Route path="/demo" element={<LiveDemoPage />} />
             <Route path="/scraper" element={<LiveDemoPage />} />
-            <Route path="/catalog" element={<CatalogPage />} />
-            <Route path="/integrations" element={<IntegrationsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/settings/ai-keys" element={<SettingsPage />} />
             <Route path="/billing" element={<SubscriptionPage />} />
-            <Route path="/billing/metering" element={<MeteringDashboardPage />} />
-            <Route path="/metering" element={<MeteringDashboardPage />} />
             <Route path="/subscriptions" element={<SubscriptionPage />} />
             <Route path="/plans" element={<SubscriptionPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings/ai-keys" element={<SettingsPage />} />
+
+            {/* Rotas Protegidas para Usuários Pagantes (Pro / Enterprise) */}
+            <Route
+              path="/"
+              element={
+                <PaidRouteGuard featureKey="dashboard">
+                  <DashboardPage />
+                </PaidRouteGuard>
+              }
+            />
+            <Route
+              path="/home"
+              element={
+                <PaidRouteGuard featureKey="dashboard">
+                  <DashboardPage />
+                </PaidRouteGuard>
+              }
+            />
+            <Route
+              path="/dashboard"
+              element={
+                <PaidRouteGuard featureKey="dashboard">
+                  <DashboardPage />
+                </PaidRouteGuard>
+              }
+            />
+            <Route
+              path="/catalog"
+              element={
+                <PaidRouteGuard featureKey="catalog">
+                  <CatalogPage />
+                </PaidRouteGuard>
+              }
+            />
+            <Route
+              path="/integrations"
+              element={
+                <PaidRouteGuard featureKey="integrations">
+                  <IntegrationsPage />
+                </PaidRouteGuard>
+              }
+            />
+            <Route
+              path="/billing/metering"
+              element={
+                <PaidRouteGuard featureKey="metering">
+                  <MeteringDashboardPage />
+                </PaidRouteGuard>
+              }
+            />
+            <Route
+              path="/metering"
+              element={
+                <PaidRouteGuard featureKey="metering">
+                  <MeteringDashboardPage />
+                </PaidRouteGuard>
+              }
+            />
 
             {/* Rotas de Administração Protegidas por AdminRouteGuard */}
             <Route
@@ -69,7 +121,7 @@ export const AppRoutes: React.FC = () => {
         </Route>
 
         {/* Rota Fallback para URLs desconhecidas */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/demo" replace />} />
       </Routes>
     </Suspense>
   );

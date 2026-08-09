@@ -15,8 +15,8 @@ import type {
 } from '@/features/auth';
 
 export interface AuthContextType extends AuthState {
-  login: (credentials: LoginCredentials) => Promise<void>;
-  register: (payload: RegisterPayload) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<UserResponse>;
+  register: (payload: RegisterPayload) => Promise<UserResponse>;
   logout: () => Promise<void>;
   updateProfile: (payload: UpdateUserPayload) => Promise<void>;
   switchTenant: (tenantId: string) => void;
@@ -100,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuth();
   }, [checkAuth]);
 
-  const login = async (credentials: LoginCredentials) => {
+  const login = async (credentials: LoginCredentials): Promise<UserResponse> => {
     setIsLoading(true);
     setStatus('loading');
     setError(null);
@@ -114,6 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentTenant(activeTenant);
         saveTenantId(activeTenant);
       }
+      return userResp;
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'Erro ao realizar login');
       setError(msg);
@@ -124,7 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (payload: RegisterPayload) => {
+  const register = async (payload: RegisterPayload): Promise<UserResponse> => {
     setIsLoading(true);
     setStatus('loading');
     setError(null);
@@ -138,6 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentTenant(activeTenant);
         saveTenantId(activeTenant);
       }
+      return userResp;
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'Erro ao realizar cadastro');
       setError(msg);
