@@ -83,12 +83,15 @@ async def logout(
 
 @router.get("/me", response_model=AuthenticatedUser)
 async def get_me(
-    current_user: AuthenticatedUser = Depends(get_current_tenant_user)
+    request: Request,
+    current_user: AuthenticatedUser = Depends(get_current_tenant_user),
+    service: AuthService = Depends(get_auth_service),
 ) -> AuthenticatedUser:
     """
-    Retorna o DTO tipado do perfil do usuário autenticado contido no token JWT.
+    Retorna o DTO tipado do perfil do usuário autenticado resolvendo dinamicamente seu plano ativo.
     """
-    return current_user
+    tenant_id = request.headers.get("X-Tenant-ID")
+    return await service.resolve_user_active_plan(current_user, tenant_id=tenant_id)
 
 
 @router.put("/me", response_model=UserResponse)

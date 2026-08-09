@@ -282,3 +282,38 @@ class SubscriptionsRepository:
         finally:
             if owned:
                 await session.close()
+
+    async def get_active_tenant_plan_name(self, tenant_id: str) -> Optional[str]:
+        """
+        Consulta a assinatura ativa (status='authorized') do tenant e retorna o nome do plano (ex: 'pro', 'enterprise')
+        ou None se o tenant não possuir assinatura autorizada.
+        """
+        session, owned = await self._get_session()
+        try:
+            stmt = (
+                select(SubscriptionModel)
+                .where(
+                    SubscriptionModel.tenant_id == tenant_id,
+                    SubscriptionModel.status == "authorized",
+                )
+                .order_by(SubscriptionModel.created_at.desc())
+            )
+            result = await session.execute(stmt)
+            sub = result.scalars().first()
+
+            if not sub:
+                return None
+
+            if sub.plan_id:
+                from app.features.plans.domain.models import PlanModel
+                plan_stmt = select(PlanModel).where(PlanModel.id == sub.plan_id)
+                plan_res = await session.execute(plan_stmt)
+                plan_obj = plan_res.scalar_one_or_none()
+                if plan_obj and plan_obj.name:
+                    return plan_obj.name.lower()
+
+            return "pro"
+        finally:
+            if owned:
+                await session.close()
+

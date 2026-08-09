@@ -7,6 +7,7 @@ from app.core.config.settings import settings
 from app.features.auth.domain import UserModel, hash_password, verify_password
 from app.features.auth.repositories import UserRepository
 from app.features.auth.schemas import (
+    AuthenticatedUser,
     CreateUserRequest,
     LoginRequest,
     UpdateUserRequest,
@@ -193,3 +194,29 @@ class AuthService:
     async def revoke_token(self, token: str) -> None:
         from app.core.security.auth import add_token_to_blacklist
         await add_token_to_blacklist(token, expire_seconds=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+
+    async def resolve_user_active_plan(
+        self, current_user: AuthenticatedUser, tenant_id: Optional[str] = None
+    ) -> AuthenticatedUser:
+        """
+        Resolve dinamicamente o plano ativo do usuário consultando o SubscriptionsRepository.
+        Se for administrador, mantém plano 'admin'.
+        """
+        if current_user.is_admin or current_user.role == "admin":
+            current_user.plan = "admin"
+            return current_user
+
+        if tenant_id and current_user.tenants:
+            try:
+                from app.features.subscriptions.repositories.subscriptions_repository import SubscriptionsRepository
+                sub_repo = SubscriptionsRepository(session=self.user_repo.session)
+                active_plan = await sub_repo.get_active_tenant_plan_name(tenant_id)
+                current_user.plan = active_plan if active_plan else "free"
+            except Exception as err:
+                logger.warning(f"[AuthService] Erro ao resolver plano dinâmico para o tenant '{tenant_id}': {err}")
+                current_user.plan = "free"
+        else:
+            current_user.plan = "free"
+
+        return current_user
+
