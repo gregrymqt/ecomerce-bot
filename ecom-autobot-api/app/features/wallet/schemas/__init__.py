@@ -1,9 +1,4 @@
-from app.features.wallet.domain import (
-    CreditTransactionModel,
-    TransactionType,
-    WalletModel,
-)
-from app.features.wallet.schemas import (
+from app.features.wallet.schemas.wallet_schema import (
     ConsumeCreditsRequest,
     CreditTransactionResponse,
     RechargeRequest,
@@ -13,11 +8,6 @@ from app.features.wallet.schemas import (
 )
 
 __all__ = [
-    # Domain Models
-    "WalletModel",
-    "CreditTransactionModel",
-    "TransactionType",
-    # Schemas DTOs
     "CreditTransactionResponse",
     "WalletResponse",
     "WalletStatementResponse",
