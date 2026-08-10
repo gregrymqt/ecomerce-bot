@@ -1,3 +1,7 @@
+from app.features.wallet.dependencies import (
+    get_credit_service,
+    require_wallet_balance,
+)
 from app.features.wallet.domain import (
     CreditTransactionModel,
     TransactionType,
@@ -32,6 +36,9 @@ __all__ = [
     "CreditService",
     "RechargeService",
     "CREDIT_PACKAGES",
+    # Dependencies / Gatekeeper
+    "get_credit_service",
+    "require_wallet_balance",
     # Schemas DTOs
     "CreditTransactionResponse",
     "WalletResponse",
@@ -40,3 +47,4 @@ __all__ = [
     "RechargeResponse",
     "ConsumeCreditsRequest",
 ]
+
