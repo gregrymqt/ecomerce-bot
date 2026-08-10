@@ -26,6 +26,7 @@ from app.features.products.schemas import Product, ProductStatus
 from app.core.shared.progress import publish_demo_progress
 from app.features.wallet.repositories import WalletRepository
 from app.features.wallet.services import CreditService
+from app.features.wallet.exceptions import InsufficientBalanceException
 
 logger = get_logger("ProcessorWorker")
 
@@ -219,7 +220,7 @@ class ProcessorWorker:
                 await metering_service.reserve_credits_for_llm(
                     tenant_id=tenant_id, estimated_cost=reserved_cost
                 )
-            except InsufficientCreditsException:
+            except (InsufficientCreditsException, InsufficientBalanceException):
                 logger.warning(
                     f"[ProcessorWorker] Saldo de créditos insuficiente para tenant '{tenant_id}' (SKU: {sku}). Produto marcado como FAILED.",
                     extra=log_extra,
