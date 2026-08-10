@@ -15,7 +15,6 @@ from app.features.products.repositories import ProductRepository
 from app.features.scraper.workers.scraper_worker import ScraperWorker
 from app.features.scraper.workers.processor_worker import ProcessorWorker
 from app.features.checkout.workers.payment_worker import PaymentWorker
-from app.features.subscriptions.workers import SubscriptionWorker
 from app.features.mercadopago.workers.webhook_worker import WebhookDispatcherWorker
 from app.features.api_router import api_router as v1_router
 from app.features.ai_enrichment.services.llm_service import LLMService
@@ -47,7 +46,6 @@ async def lifespan(app: FastAPI):
     processor_worker = ProcessorWorker(repository, llm_service)
     webhook_worker = WebhookDispatcherWorker()
     payment_worker = PaymentWorker()
-    subscription_worker = SubscriptionWorker()
 
     worker_tasks = [
         asyncio.create_task(scraper_worker.start_consuming("ecommerce", channel=channel), name="worker_scraper_prod"),
@@ -56,7 +54,6 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(processor_worker.start_consuming("demo_llm", channel=channel), name="worker_processor_llm_demo"),
         asyncio.create_task(webhook_worker.start_consuming("webhook", channel=channel), name="worker_webhook"),
         asyncio.create_task(payment_worker.start_consuming("payments", channel=channel), name="worker_payments"),
-        asyncio.create_task(subscription_worker.start_consuming("subscription", channel=channel), name="worker_subscription"),
     ]
 
     app.state.worker_tasks = worker_tasks

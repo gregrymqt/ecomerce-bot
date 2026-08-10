@@ -12,7 +12,7 @@ from app.features.ai_enrichment.domain.exceptions import LLMProviderError
 from app.features.ai_enrichment.infrastructure.providers.openrouter_provider import (
     OpenRouterLLMProvider,
 )
-from app.features.ai_keys.services.ai_key_service import AIKeyService
+
 
 
 @pytest.fixture
@@ -148,16 +148,7 @@ async def test_openrouter_non_transient_401_error_no_retry() -> None:
     assert route.call_count == 1
 
 
-@respx.mock
-@pytest.mark.asyncio
-async def test_ai_key_service_openrouter_validation_rate_limit() -> None:
-    """Valida o teste de chave do OpenRouter no AIKeyService lidando com HTTP 429."""
-    respx.get("https://openrouter.ai/api/v1/auth/key").mock(
-        return_value=Response(429, json={"error": "Rate limit"})
-    )
 
-    with pytest.raises(LLMProviderError, match="excedido"):
-        await AIKeyService.test_openrouter_key("sk-or-v1-testkey")
 
 
 @respx.mock

@@ -30,16 +30,14 @@ from app.features.checkout.domain.models import OrderItemModel, OrderModel
 # Modelos do módulo AI Enrichment
 from app.features.ai_enrichment.domain.models import LLMUsageLogModel
 
+# Modelos do módulo Plans (Planos locais)
+from app.features.plans.domain.models import PlanModel
+
 # Modelos do módulo System / Telemetria
 from app.features.system.domain.models import (
     RobotActivityModel,
     TokenTelemetryModel,
 )
-
-# NOTA: Modelos legados desativados/removidos das referências globais:
-# - SubscriptionModel (app.features.subscriptions.domain.models)
-# - PlanModel (app.features.plans.domain.models)
-# - AIKeyModel (Obsoleto / substituído por BYOK no TenantConfigModel)
 
 __all__ = [
     "Base",
@@ -60,6 +58,8 @@ __all__ = [
     "OrderItemModel",
     # AI Enrichment
     "LLMUsageLogModel",
+    # Plans
+    "PlanModel",
     # System
     "RobotActivityModel",
     "TokenTelemetryModel",

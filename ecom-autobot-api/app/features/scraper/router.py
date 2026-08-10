@@ -4,27 +4,11 @@ from fastapi import APIRouter, Depends, Header, status
 from app.core.security.auth import get_current_tenant_user
 from app.features.auth.schemas import AuthenticatedUser
 from app.features.scraper.services import AIScraperService
-from app.features.scraper.schemas import AICredentialsRequest, WebScraperRequest
+from app.features.scraper.schemas import WebScraperRequest
 from app.features.wallet.dependencies import require_wallet_balance
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["AI & Scraper"])
-
-@router.post("/ai/credentials", status_code=status.HTTP_200_OK)
-async def save_ai_credentials(
-    payload: AICredentialsRequest,
-    x_tenant_id: str = Header(..., alias="X-Tenant-ID"),
-    current_user: AuthenticatedUser = Depends(get_current_tenant_user)
-):
-    """
-    Registra ou atualiza as credenciais de IA (BYOK) para o Tenant atual.
-    """
-    raw_token = payload.access_token.get_secret_value()
-    return await AIScraperService.save_credentials(
-        tenant_id=x_tenant_id,
-        provider=payload.provider,
-        raw_token=raw_token
-    )
 
 @router.post(
     "/scraper/extract",

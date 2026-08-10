@@ -1,18 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Zap, User, Bot, ShoppingBag, CreditCard, LogOut, ShieldCheck, Key, Store, Settings, Activity } from 'lucide-react';
+import { LayoutDashboard, Zap, User, Bot, ShoppingBag, CreditCard, LogOut, ShieldCheck, Store, Settings, Activity } from 'lucide-react';
 import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar';
 import { useAuth, useFeatureGate } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/feedback/Badge';
-import { AiKeysModal } from '@/features/ai-keys';
 
 export const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, currentTenant, logout } = useAuth();
   const { isFeatureLocked, getPlanName } = useFeatureGate();
-  const [isAiKeysModalOpen, setIsAiKeysModalOpen] = useState(false);
 
   const isAdmin = Boolean(user && (user.is_admin === true || user.role === 'admin'));
   const isDashboardLocked = isFeatureLocked('dashboard');
@@ -27,7 +25,7 @@ export const MainLayout: React.FC = () => {
       locked: isDashboardLocked,
       lockedBadge: 'PRO',
       active: location.pathname === '/' || location.pathname === '/home' || location.pathname === '/dashboard',
-      onClick: () => (isDashboardLocked ? navigate('/billing') : navigate('/dashboard')),
+      onClick: () => (isDashboardLocked ? navigate('/checkout') : navigate('/dashboard')),
     },
     {
       id: 'demo',
@@ -52,7 +50,7 @@ export const MainLayout: React.FC = () => {
       locked: isCatalogLocked,
       lockedBadge: 'PRO',
       active: location.pathname === '/catalog' || location.pathname === '/products',
-      onClick: () => (isCatalogLocked ? navigate('/billing') : navigate('/catalog')),
+      onClick: () => (isCatalogLocked ? navigate('/checkout') : navigate('/catalog')),
     },
     {
       id: 'integrations',
@@ -63,7 +61,7 @@ export const MainLayout: React.FC = () => {
       locked: isIntegrationsLocked,
       lockedBadge: 'PRO',
       active: location.pathname === '/integrations' || location.pathname === '/credentials',
-      onClick: () => (isIntegrationsLocked ? navigate('/billing') : navigate('/integrations')),
+      onClick: () => (isIntegrationsLocked ? navigate('/checkout') : navigate('/integrations')),
     },
     {
       id: 'settings',
@@ -73,17 +71,16 @@ export const MainLayout: React.FC = () => {
       onClick: () => navigate('/settings'),
     },
     {
-      id: 'billing',
-      label: 'Faturamento & Planos',
+      id: 'checkout',
+      label: 'Recargas & Checkout',
       icon: <CreditCard className="w-5 h-5" />,
       badge: 'Hub',
       badgeVariant: 'indigo',
       active:
+        location.pathname === '/checkout' ||
         location.pathname === '/billing' ||
-        location.pathname === '/subscriptions' ||
-        location.pathname === '/plans' ||
-        location.pathname === '/checkout',
-      onClick: () => navigate('/billing'),
+        location.pathname === '/plans',
+      onClick: () => navigate('/checkout'),
     },
     ...(isAdmin
       ? [
@@ -166,16 +163,6 @@ export const MainLayout: React.FC = () => {
               {getPlanName()}
             </Badge>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => (isFeatureLocked('byok_keys') ? navigate('/billing') : setIsAiKeysModalOpen(true))}
-              iconLeft={<Key className="w-4 h-4 text-purple-500 dark:text-purple-400" />}
-              className="h-9 min-h-[36px] text-xs font-semibold border-purple-500/30 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40"
-            >
-              Chaves IA (BYOK)
-            </Button>
-
             {currentTenant ? (
               <Badge variant="info" icon={<ShieldCheck className="w-3.5 h-3.5" />}>
                 Tenant: {currentTenant}
@@ -191,13 +178,8 @@ export const MainLayout: React.FC = () => {
           <Outlet />
         </main>
       </div>
-
-      {/* Modal Global de Chaves de IA */}
-      <AiKeysModal
-        isOpen={isAiKeysModalOpen}
-        onClose={() => setIsAiKeysModalOpen(false)}
-      />
     </div>
   );
 };
+
 

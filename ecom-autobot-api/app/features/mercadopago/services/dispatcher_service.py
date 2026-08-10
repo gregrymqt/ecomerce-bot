@@ -7,7 +7,6 @@ from app.features.mercadopago.schemas import (
     MercadoPagoNotificationPayload,
 )
 from app.features.plans.services.plan_notification_service import PlanNotificationService
-from app.features.subscriptions.services import SubscriptionNotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +20,7 @@ class PaymentApprovedService(BaseNotificationHandler):
 class NotificationDispatcher:
     """
     Dispatcher central para rotear notificações de Webhook do Mercado Pago
-    para os seus respectivos handlers de serviços (Planos, Assinaturas, Checkout Orders).
+    para os seus respectivos handlers de serviços (Planos, Checkout Orders).
     """
 
     def __init__(self):
@@ -33,7 +32,6 @@ class NotificationDispatcher:
 
     def _register_default_handlers(self):
         plan_service = PlanNotificationService()
-        subscription_service = SubscriptionNotificationService()
         checkout_service = CheckoutNotificationService()
 
         # Handlers de Planos
@@ -41,11 +39,6 @@ class NotificationDispatcher:
         self.register("subscription_preapproval_plan.updated", plan_service)
         self.register("plan.created", plan_service)
         self.register("plan.updated", plan_service)
-
-        # Handlers de Assinaturas (subscription_preapproval)
-        self.register("subscription_preapproval", subscription_service)
-        self.register("subscription_preapproval.created", subscription_service)
-        self.register("subscription_preapproval.updated", subscription_service)
 
         # Handlers de Orders / Checkout Transparente
         self.register("order", checkout_service)

@@ -1,4 +1,3 @@
-from app.features.plans.infrastructure import PlansClient
 from app.features.plans.repositories import PlansRepository
 from app.features.plans.schemas import (
     AutoRecurringCreateDTO,
@@ -19,8 +18,6 @@ from app.features.plans.services import (
 )
 
 __all__ = [
-    # Infrastructure Client
-    "PlansClient",
     # Repositories
     "PlansRepository",
     # Schemas DTOs

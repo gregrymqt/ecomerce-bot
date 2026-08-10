@@ -10,7 +10,6 @@ const GoogleCallbackPage = lazy(() => import('@/features/auth/pages/GoogleCallba
 const CheckoutPage = lazy(() => import('@/features/checkout/pages/CheckoutPage'));
 const LiveDemoPage = lazy(() => import('@/features/live-demo/pages/LiveDemoPage'));
 const CatalogPage = lazy(() => import('@/features/catalog/pages/CatalogPage'));
-const SubscriptionPage = lazy(() => import('@/features/subscription/pages/SubscriptionPage'));
 const AdminPlansPage = lazy(() => import('@/features/plans/pages/AdminPlansPage'));
 const IntegrationsPage = lazy(() => import('@/features/integrations/pages/IntegrationsPage'));
 const DashboardPage = lazy(() => import('@/features/dashboard/pages/DashboardPage'));
@@ -34,11 +33,10 @@ export const AppRoutes: React.FC = () => {
             {/* Rotas de Degustação / Gratuitas */}
             <Route path="/demo" element={<LiveDemoPage />} />
             <Route path="/scraper" element={<LiveDemoPage />} />
-            <Route path="/billing" element={<SubscriptionPage />} />
-            <Route path="/subscriptions" element={<SubscriptionPage />} />
-            <Route path="/plans" element={<SubscriptionPage />} />
+            <Route path="/billing" element={<Navigate to="/checkout" replace />} />
+            <Route path="/subscriptions" element={<Navigate to="/checkout" replace />} />
+            <Route path="/plans" element={<Navigate to="/checkout" replace />} />
             <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/settings/ai-keys" element={<SettingsPage />} />
 
             {/* Rotas Protegidas para Usuários Pagantes (Pro / Enterprise) */}
             <Route

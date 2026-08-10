@@ -5,13 +5,12 @@
  * Layout Synthetica Dark (#090D16) responsivo com KPIs, gráfico de volume, atividades dos robôs, telemetria de tokens e saúde.
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Zap,
   Download,
-  Key,
   Sparkles,
   AlertCircle,
   RefreshCw,
@@ -22,7 +21,6 @@ import { VolumePerformanceChart } from '@/features/dashboard';
 import { RecentActivityTable } from '@/features/dashboard';
 import { TokenTelemetryCard } from '@/features/dashboard';
 import { SystemHealthWidget } from '@/features/dashboard';
-import { AiKeysModal } from '@/features/ai-keys';
 import { SEO } from '@/components/common/SEO';
 
 export const DashboardPage: React.FC = () => {
@@ -38,8 +36,6 @@ export const DashboardPage: React.FC = () => {
     refreshActivities,
     formatLastUpdated,
   } = useDashboard('WEEK');
-
-  const [isAiKeysOpen, setIsAiKeysOpen] = useState(false);
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-16 px-4 sm:px-6 text-slate-100 animate-in fade-in duration-300">
@@ -80,15 +76,6 @@ export const DashboardPage: React.FC = () => {
           >
             <Download className="h-4 w-4 text-emerald-400" />
             <span>Exportar Catálogo</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsAiKeysOpen(true)}
-            className="min-h-[44px] h-11 px-4 rounded-xl bg-[#15121B] hover:bg-[#1E293B] border border-[#1E293B] text-slate-200 text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer"
-          >
-            <Key className="h-4 w-4 text-purple-400" />
-            <span>AI Keys (BYOK)</span>
           </button>
         </div>
       </div>
@@ -161,9 +148,6 @@ export const DashboardPage: React.FC = () => {
           <SystemHealthWidget healthItems={data?.system_health} />
         </div>
       </section>
-
-      {/* Modal de Gestão de Chaves de IA (BYOK) */}
-      <AiKeysModal isOpen={isAiKeysOpen} onClose={() => setIsAiKeysOpen(false)} />
     </div>
   );
 };

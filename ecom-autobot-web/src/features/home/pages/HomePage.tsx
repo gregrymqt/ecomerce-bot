@@ -4,15 +4,13 @@ import { useAuth } from '@/features/auth';
 import { HomeHeader, KpiMetricsGrid, RecentJobsTable, IntegrationsStatus, type ExtractionJob, type HomeMetrics, type JobStatus } from '@/features/home';
 import { ScraperForm } from '@/features/scraper';
 import { useProducts } from '@/features/catalog';
-import { AIKeysForm } from '@/features/ai-keys';
-import { Modal, Alert } from '@/components/ui';
+import { Alert } from '@/components/ui';
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { products } = useProducts(50);
 
-  const [isKeysModalOpen, setIsKeysModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -141,23 +139,11 @@ export const HomePage: React.FC = () => {
         {/* Sidebar Lateral (1/3): Status de Integrações & Suporte */}
         <aside aria-label="Status de Integrações e Suporte" className="lg:col-span-1">
           <IntegrationsStatus
-            onConfigureKeys={() => setIsKeysModalOpen(true)}
+            onConfigureKeys={() => navigate('/settings')}
             onOpenSupport={handleOpenSupport}
           />
         </aside>
       </div>
-
-      {/* Modal de Configuração de Chaves BYOK */}
-      <Modal
-        isOpen={isKeysModalOpen}
-        onClose={() => setIsKeysModalOpen(false)}
-        title="Gerenciamento de Credenciais de IA (BYOK)"
-        size="lg"
-      >
-        <div className="p-4">
-          <AIKeysForm />
-        </div>
-      </Modal>
     </div>
   );
 };
