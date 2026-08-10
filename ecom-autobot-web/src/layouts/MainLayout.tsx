@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Zap, User, Bot, ShoppingBag, CreditCard, LogOut, ShieldCheck, Store, Settings, Activity } from 'lucide-react';
+import { LayoutDashboard, Zap, User, Bot, ShoppingBag, LogOut, ShieldCheck, Store, Settings, Activity, Wallet } from 'lucide-react';
 import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar';
 import { useAuth, useFeatureGate } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
@@ -23,9 +23,9 @@ export const MainLayout: React.FC = () => {
       label: 'Dashboard & Telemetria',
       icon: <LayoutDashboard className="w-5 h-5" />,
       locked: isDashboardLocked,
-      lockedBadge: 'PRO',
+      lockedBadge: 'CRD',
       active: location.pathname === '/' || location.pathname === '/home' || location.pathname === '/dashboard',
-      onClick: () => (isDashboardLocked ? navigate('/checkout') : navigate('/dashboard')),
+      onClick: () => (isDashboardLocked ? navigate('/wallet?reason=insufficient_credits') : navigate('/dashboard')),
     },
     {
       id: 'demo',
@@ -48,9 +48,9 @@ export const MainLayout: React.FC = () => {
       badge: isCatalogLocked ? undefined : 'Hub',
       badgeVariant: 'indigo',
       locked: isCatalogLocked,
-      lockedBadge: 'PRO',
+      lockedBadge: 'CRD',
       active: location.pathname === '/catalog' || location.pathname === '/products',
-      onClick: () => (isCatalogLocked ? navigate('/checkout') : navigate('/catalog')),
+      onClick: () => (isCatalogLocked ? navigate('/wallet?reason=insufficient_credits') : navigate('/catalog')),
     },
     {
       id: 'integrations',
@@ -59,9 +59,23 @@ export const MainLayout: React.FC = () => {
       badge: isIntegrationsLocked ? undefined : 'Lojas',
       badgeVariant: 'indigo',
       locked: isIntegrationsLocked,
-      lockedBadge: 'PRO',
+      lockedBadge: 'CRD',
       active: location.pathname === '/integrations' || location.pathname === '/credentials',
-      onClick: () => (isIntegrationsLocked ? navigate('/checkout') : navigate('/integrations')),
+      onClick: () => (isIntegrationsLocked ? navigate('/wallet?reason=insufficient_credits') : navigate('/integrations')),
+    },
+    {
+      id: 'wallet',
+      label: 'Carteira & Créditos',
+      icon: <Wallet className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />,
+      badge: 'SaaS',
+      badgeVariant: 'indigo',
+      active:
+        location.pathname === '/wallet' ||
+        location.pathname === '/checkout' ||
+        location.pathname === '/billing' ||
+        location.pathname === '/plans' ||
+        location.pathname === '/subscriptions',
+      onClick: () => navigate('/wallet'),
     },
     {
       id: 'settings',
@@ -69,18 +83,6 @@ export const MainLayout: React.FC = () => {
       icon: <Settings className="w-5 h-5" />,
       active: location.pathname === '/settings',
       onClick: () => navigate('/settings'),
-    },
-    {
-      id: 'checkout',
-      label: 'Recargas & Checkout',
-      icon: <CreditCard className="w-5 h-5" />,
-      badge: 'Hub',
-      badgeVariant: 'indigo',
-      active:
-        location.pathname === '/checkout' ||
-        location.pathname === '/billing' ||
-        location.pathname === '/plans',
-      onClick: () => navigate('/checkout'),
     },
     ...(isAdmin
       ? [

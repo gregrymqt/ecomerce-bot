@@ -1,7 +1,9 @@
 /**
  * src/features/auth/components/PaidRouteGuard.tsx
- * Componente de Guarda de Rota para proteger páginas exclusivas de Usuários Pagantes (Pro / Enterprise).
- * Redireciona usuários do plano Gratuito (free) para a Vitrine de Planos (/billing).
+ *
+ * Componente de Guarda de Rota para proteger páginas funcionais e de execução de extração/robô.
+ * Valida o saldo ativo de créditos do tenant (hasActiveCredits / balance_credits > 0).
+ * Redireciona usuários com saldo zerado para /wallet?reason=insufficient_credits.
  */
 
 import React from 'react';
@@ -16,14 +18,14 @@ interface PaidRouteGuardProps {
 
 export const PaidRouteGuard: React.FC<PaidRouteGuardProps> = ({ featureKey = 'catalog', children }) => {
   const { user, status, isLoading } = useAuth();
-  const { canAccess, isAdmin } = useFeatureGate();
+  const { canAccess, isAdmin, hasActiveCredits } = useFeatureGate();
 
-  // 1. Estado de carregamento da sessão JWT
+  // 1. Estado de carregamento da sessão JWT e dados da conta
   if (isLoading || status === 'loading') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-slate-400">
         <RefreshCw className="w-8 h-8 animate-spin text-indigo-500" />
-        <span className="text-sm font-medium">Verificando plano de assinatura...</span>
+        <span className="text-sm font-medium">Verificando saldo de créditos da carteira...</span>
       </div>
     );
   }
@@ -33,15 +35,15 @@ export const PaidRouteGuard: React.FC<PaidRouteGuardProps> = ({ featureKey = 'ca
     return <>{children || <Outlet />}</>;
   }
 
-  // 3. Validação de acesso ao recurso por nível de plano
-  const isAllowed = canAccess(featureKey);
-
-  if (status === 'unauthenticated' || !user || !isAllowed) {
-    console.warn(`Acesso negado ao recurso '${featureKey}': Requer plano Pro ou Enterprise. Redirecionando para /billing...`);
-    return <Navigate to="/billing" replace />;
+  // 3. Validação de acesso ao recurso por saldo de créditos ativo (balance_credits > 0)
+  if (status === 'unauthenticated' || !user || !hasActiveCredits || !canAccess(featureKey)) {
+    console.warn(
+      `Acesso negado ao recurso '${featureKey}': Saldo de créditos zerado. Redirecionando para /wallet?reason=insufficient_credits...`
+    );
+    return <Navigate to="/wallet?reason=insufficient_credits" replace />;
   }
 
-  // 4. Usuário pagante autorizado
+  // 4. Usuário com saldo ativo de créditos autorizado
   return <>{children || <Outlet />}</>;
 };
 

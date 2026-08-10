@@ -15,6 +15,7 @@ const IntegrationsPage = lazy(() => import('@/features/integrations/pages/Integr
 const DashboardPage = lazy(() => import('@/features/dashboard/pages/DashboardPage'));
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage'));
 const MeteringDashboardPage = lazy(() => import('@/features/metering/pages/MeteringDashboardPage'));
+const WalletPage = lazy(() => import('@/features/wallet/pages/WalletPage'));
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -30,12 +31,13 @@ export const AppRoutes: React.FC = () => {
         {/* Rotas Protegidas com Guarda de Autenticação e Layout Principal */}
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
-            {/* Rotas de Degustação / Gratuitas */}
+            {/* Rotas de Degustação / Gratuitas / Carteira */}
             <Route path="/demo" element={<LiveDemoPage />} />
             <Route path="/scraper" element={<LiveDemoPage />} />
-            <Route path="/billing" element={<Navigate to="/checkout" replace />} />
-            <Route path="/subscriptions" element={<Navigate to="/checkout" replace />} />
-            <Route path="/plans" element={<Navigate to="/checkout" replace />} />
+            <Route path="/wallet" element={<WalletPage />} />
+            <Route path="/billing" element={<Navigate to="/wallet" replace />} />
+            <Route path="/subscriptions" element={<Navigate to="/wallet" replace />} />
+            <Route path="/plans" element={<Navigate to="/wallet" replace />} />
             <Route path="/settings" element={<SettingsPage />} />
 
             {/* Rotas Protegidas para Usuários Pagantes (Pro / Enterprise) */}

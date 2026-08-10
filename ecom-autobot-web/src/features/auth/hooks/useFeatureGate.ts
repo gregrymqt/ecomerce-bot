@@ -1,56 +1,56 @@
 /**
  * src/features/auth/hooks/useFeatureGate.ts
  *
- * Hook customizado para Feature Gating e controle de permissões por Plano (Free, Pro, Enterprise).
- * Permite verificar acessos, obter o nome formatado do plano e identificar recursos bloqueados.
+ * Hook customizado para Feature Gating e controle de permissões por Saldo de Créditos da Carteira (Wallet).
+ * Substitui as antigas checagens de nível de plano estático (pro/enterprise) pela verificação
+ * reativa do saldo ativo de créditos (balance_credits > 0).
  */
 
 import { useMemo } from 'react';
 import { useAuth } from '@/features/auth';
+import { useWallet } from '@/features/wallet/hooks/useWallet';
 
 export type PlanType = 'free' | 'pro' | 'enterprise';
 
 export interface FeatureGateRule {
-  minPlan: PlanType;
+  requiresCredits?: boolean;
   requiredRole?: 'admin';
 }
 
 export const FEATURE_RULES: Record<string, FeatureGateRule> = {
-  dashboard: { minPlan: 'pro' },
-  live_demo: { minPlan: 'free' },
-  catalog: { minPlan: 'pro' },
-  shopify_export: { minPlan: 'pro' },
-  nuvemshop_export: { minPlan: 'pro' },
-  integrations: { minPlan: 'pro' },
-  byok_keys: { minPlan: 'pro' },
-  metering: { minPlan: 'enterprise' },
-  sso_enterprise: { minPlan: 'enterprise' },
-  admin_plans: { minPlan: 'free', requiredRole: 'admin' },
-};
-
-const PLAN_HIERARCHY: Record<PlanType, number> = {
-  free: 1,
-  pro: 2,
-  enterprise: 3,
+  dashboard: { requiresCredits: true },
+  live_demo: { requiresCredits: false },
+  catalog: { requiresCredits: true },
+  shopify_export: { requiresCredits: true },
+  nuvemshop_export: { requiresCredits: true },
+  integrations: { requiresCredits: true },
+  byok_keys: { requiresCredits: true },
+  metering: { requiresCredits: true },
+  wallet: { requiresCredits: false },
+  sso_enterprise: { requiresCredits: true },
+  admin_plans: { requiresCredits: false, requiredRole: 'admin' },
 };
 
 export function useFeatureGate() {
   const { user, currentTenant } = useAuth();
-
-  const userPlan: PlanType = useMemo(() => {
-    if (!user) return 'free';
-    const rawPlan = user.plan || 'free';
-    const normalized = rawPlan.toLowerCase().trim() as PlanType;
-    if (normalized in PLAN_HIERARCHY) return normalized;
-    return 'free';
-  }, [user]);
+  const { balance, loadingBalance } = useWallet();
 
   const isAdmin = useMemo(() => {
     return Boolean(user && (user.is_admin === true || user.role === 'admin'));
   }, [user]);
 
   /**
-   * Retorna se o usuário/tenant atual possui acesso ao recurso especificado.
+   * Propriedade reativa que valida se o tenant possui saldo de créditos ativo (balance_credits > 0)
+   * ou se possui privilégio de administrador do sistema.
+   */
+  const hasActiveCredits = useMemo(() => {
+    if (isAdmin) return true;
+    if (balance === null) return true; // Enquanto carrega, evita bloqueio preventivo (flash)
+    return balance > 0;
+  }, [isAdmin, balance]);
+
+  /**
+   * Retorna se o usuário/tenant atual possui permissão para acessar o recurso especificado.
    */
   const canAccess = (featureKey: string): boolean => {
     const rule = FEATURE_RULES[featureKey];
@@ -60,48 +60,39 @@ export function useFeatureGate() {
       return false;
     }
 
-    const userLevel = PLAN_HIERARCHY[userPlan] || 1;
-    const requiredLevel = PLAN_HIERARCHY[rule.minPlan] || 1;
+    if (rule.requiresCredits && !hasActiveCredits) {
+      return false;
+    }
 
-    return userLevel >= requiredLevel;
+    return true;
   };
 
   /**
-   * Retorna se um recurso está bloqueado para o plano atual.
+   * Retorna se um recurso está bloqueado devido a saldo zerado ou falta de permissão.
    */
   const isFeatureLocked = (featureKey: string): boolean => {
     return !canAccess(featureKey);
   };
 
   /**
-   * Retorna o plano mínimo exigido para desbloquear uma feature.
-   */
-  const getRequiredPlan = (featureKey: string): PlanType => {
-    return FEATURE_RULES[featureKey]?.minPlan || 'free';
-  };
-
-  /**
-   * Retorna o nome exibível e formatado do plano ativo.
+   * Retorna o nome formatado do status de crédito/plano ativo.
    */
   const getPlanName = (): string => {
-    switch (userPlan) {
-      case 'pro':
-        return 'Plano Pro';
-      case 'enterprise':
-        return 'Plano Enterprise';
-      case 'free':
-      default:
-        return 'Plano Grátis';
-    }
+    if (isAdmin) return 'Administrador';
+    if (hasActiveCredits) return 'Carteira Ativa';
+    return 'Saldo Insuficiente';
   };
 
   return {
-    userPlan,
+    hasActiveCredits,
+    balance,
+    loadingBalance,
     currentTenant,
     isAdmin,
     canAccess,
     isFeatureLocked,
-    getRequiredPlan,
     getPlanName,
   };
 }
+
+export default useFeatureGate;
