@@ -13,6 +13,7 @@ from app.features.wallet.schemas import (
     WalletResponse,
     WalletStatementResponse,
 )
+from app.features.wallet.services import CreditService
 
 __all__ = [
     # Domain Models
@@ -23,6 +24,8 @@ __all__ = [
     "InsufficientBalanceException",
     # Repositories
     "WalletRepository",
+    # Services
+    "CreditService",
     # Schemas DTOs
     "CreditTransactionResponse",
     "WalletResponse",
