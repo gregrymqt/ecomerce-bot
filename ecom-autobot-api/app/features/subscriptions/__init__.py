@@ -1,4 +1,3 @@
-from app.features.subscriptions.domain import SubscriptionModel
 from app.features.subscriptions.infrastructure import SubscriptionsClient
 from app.features.subscriptions.repositories import SubscriptionsRepository
 from app.features.subscriptions.schemas import (
@@ -26,8 +25,6 @@ from app.features.subscriptions.services import (
 from app.features.subscriptions.workers import SubscriptionWorker
 
 __all__ = [
-    # Domain Model
-    "SubscriptionModel",
     # Infrastructure Client
     "SubscriptionsClient",
     # Repositories

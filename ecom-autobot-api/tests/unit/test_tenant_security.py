@@ -58,10 +58,8 @@ def test_sanitize_tenant_id_invalid_format_raises_400() -> None:
 @pytest.mark.asyncio
 async def test_get_current_tenant_user_success(test_tenant_id: str, test_jwt_token: str) -> None:
     """Valida retorno com sucesso da dependência de tenant quando token e tenant são válidos."""
-    credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=test_jwt_token)
-
     with patch("app.core.security.auth.is_token_blacklisted", return_value=False):
-        user = await get_current_tenant_user(x_tenant_id=test_tenant_id, credentials=credentials)
+        user = await get_current_tenant_user(x_tenant_id=test_tenant_id, token=test_jwt_token)
 
     assert isinstance(user, AuthenticatedUser)
     assert user.user_id == "usr_qa_test_123"
@@ -78,11 +76,10 @@ async def test_get_current_tenant_user_forbidden_tenant_raises_403() -> None:
         "tenants": ["tenant_A"],
         "role": "user",
     })
-    credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token_tenant_a)
 
     with patch("app.core.security.auth.is_token_blacklisted", return_value=False):
         with pytest.raises(HTTPException) as exc_info:
-            await get_current_tenant_user(x_tenant_id="tenant_B", credentials=credentials)
+            await get_current_tenant_user(x_tenant_id="tenant_B", token=token_tenant_a)
 
     assert exc_info.value.status_code == 403
     assert "Acesso negado" in exc_info.value.detail
@@ -93,11 +90,9 @@ async def test_get_current_tenant_user_blacklisted_token_raises_401(
     test_tenant_id: str, test_jwt_token: str
 ) -> None:
     """Garante HTTP 401 quando o token está revogado na blacklist."""
-    credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=test_jwt_token)
-
     with patch("app.core.security.auth.is_token_blacklisted", return_value=True):
         with pytest.raises(HTTPException) as exc_info:
-            await get_current_tenant_user(x_tenant_id=test_tenant_id, credentials=credentials)
+            await get_current_tenant_user(x_tenant_id=test_tenant_id, token=test_jwt_token)
 
     assert exc_info.value.status_code == 401
 

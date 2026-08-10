@@ -1,3 +1,5 @@
-from app.features.subscriptions.domain.models import SubscriptionModel
+# Modelo legado desativado na transição para Carteira Pré-paga
+# from app.features.subscriptions.domain.models import SubscriptionModel
 
-__all__ = ["SubscriptionModel"]
+__all__ = []
+
