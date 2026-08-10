@@ -100,20 +100,12 @@ async def test_openrouter_extracts_model_used() -> None:
 # ============================================================================
 
 @pytest.mark.asyncio
-async def test_router_uses_byok_when_available() -> None:
-    """Valida se o LLMEngineRouter recupera e descriptografa a chave BYOK do tenant para efetuar a chamada."""
+async def test_router_uses_global_master_key_directly() -> None:
+    """Valida se o LLMEngineRouter efetua as chamadas utilizando diretamente a chave mestre global OPENROUTER_API_KEY."""
     mock_session = AsyncMock()
-    raw_key = "sk-or-v1-tenant-custom-key-999"
-    encrypted_key = encrypt_api_key(raw_key)
-
-    tenant_config = TenantConfigModel(
-        tenant_id="tenant_premium",
-        encrypted_keys={"openrouter_api_key": encrypted_key},
-    )
-
     mock_provider = AsyncMock(spec=OpenRouterLLMProvider)
     mock_provider.generate_completion.return_value = LLMCompletionResponse(
-        content="Conteúdo via BYOK Tenant",
+        content="Conteúdo via Chave Global do Sistema",
         model_used="deepseek/deepseek-chat",
         prompt_tokens=14,
         completion_tokens=7,
@@ -123,57 +115,15 @@ async def test_router_uses_byok_when_available() -> None:
 
     router = LLMEngineRouter(provider=mock_provider)
 
-    with patch("app.features.products.repositories.tenant_config_repository.TenantConfigRepository.get", new_callable=AsyncMock) as mock_repo_get:
-        mock_repo_get.return_value = tenant_config
-
-        req = LLMCompletionRequest(prompt="Prompt do tenant premium")
+    with patch.object(settings, "OPENROUTER_API_KEY", "sk-or-v1-system-master-key"):
+        req = LLMCompletionRequest(prompt="Prompt com chave mestre unificada")
         response = await router.generate_completion(tenant_id="tenant_premium", prompt_data=req, db=mock_session)
 
-        assert response.content == "Conteúdo via BYOK Tenant"
+        assert response.content == "Conteúdo via Chave Global do Sistema"
         mock_provider.generate_completion.assert_called_once_with(
             request=req,
-            api_key=raw_key,
+            api_key="sk-or-v1-system-master-key",
         )
-
-
-@pytest.mark.asyncio
-async def test_router_fallback_to_global_key_on_auth_failure() -> None:
-    """Simula falha 401 Unauthorized na chave BYOK do tenant e valida se o router executa fallback automático para a chave global."""
-    mock_session = AsyncMock()
-    encrypted_key = encrypt_api_key("sk-or-v1-expired-tenant-key")
-    tenant_config = TenantConfigModel(
-        tenant_id="tenant_expired_key",
-        encrypted_keys={"openrouter_api_key": encrypted_key},
-    )
-
-    mock_provider = AsyncMock(spec=OpenRouterLLMProvider)
-    # Primeira chamada com a chave do tenant lança 401; Segunda chamada com a chave global tem sucesso
-    mock_provider.generate_completion.side_effect = [
-        OpenRouterAPIError("Unauthorized BYOK key", status_code=401),
-        LLMCompletionResponse(
-            content="Conteúdo via Chave Global do Sistema",
-            model_used="google/gemini-flash-1.5",
-            prompt_tokens=30,
-            completion_tokens=20,
-            total_tokens=50,
-            provider_response_time_ms=110.0,
-        ),
-    ]
-
-    router = LLMEngineRouter(provider=mock_provider)
-
-    with patch.object(settings, "OPENROUTER_API_KEY", "sk-or-v1-system-master-key"):
-        with patch("app.features.products.repositories.tenant_config_repository.TenantConfigRepository.get", new_callable=AsyncMock) as mock_repo_get:
-            mock_repo_get.return_value = tenant_config
-
-            req = LLMCompletionRequest(prompt="Prompt com chave BYOK expirada")
-            response = await router.generate_completion(tenant_id="tenant_expired_key", prompt_data=req, db=mock_session)
-
-            assert response.content == "Conteúdo via Chave Global do Sistema"
-            assert mock_provider.generate_completion.call_count == 2
-            # Garante que a 2ª chamada usou a chave global
-            second_call_args = mock_provider.generate_completion.call_args_list[1][1]
-            assert second_call_args["api_key"] == "sk-or-v1-system-master-key"
 
 
 @respx.mock

@@ -195,83 +195,56 @@ class ProcessorWorker:
                     progress=50
                 )
 
-            # Instanciação via Factory assíncrona com suporte a BYOK e Settings
+            # Instanciação via Factory assíncrona com suporte a Settings
             current_llm = await LLMService.create_for_tenant(
                 tenant_id=tenant_id, is_demo=is_demo, session=session
             )
 
-            # Validação de BYOK e Créditos antes do disparo da requisição de IA
+            # Validação de Créditos e reserva antes do disparo da requisição de IA
             metering_service = LLMMeteringService(db=session)
-            is_byok_active = False
-            llm_router = None
-            try:
-                llm_router = getattr(current_llm, "llm_router", None)
-            except AttributeError:
-                llm_router = None
-
-            if llm_router:
-                try:
-                    tenant_key = await llm_router._resolve_tenant_key(tenant_id, session)
-                    if tenant_key:
-                        is_byok_active = True
-                except Exception as byok_err:
-                    logger.warning(
-                        f"[ProcessorWorker] Erro ao resolver chave BYOK para tenant '{tenant_id}': {byok_err}",
-                        extra=log_extra,
-                    )
-                    is_byok_active = False
 
             # ──────────────────────────────────────────────────────────────────
             # Reserva pessimista de créditos (SELECT FOR UPDATE SKIP LOCKED)
             # Calcula o custo estimado com o modelo padrão antes de chamar a LLM.
             # Isso garante que chamadas concorrentes não ultrapassem o saldo.
             # ──────────────────────────────────────────────────────────────────
-            reserved_cost: Decimal = Decimal("0.000000")
-            if not is_byok_active:
-                # Estimativa conservadora usando o modelo padrão (deepseek) com tokens medianos
-                estimated_prompt = 500
-                estimated_completion = 300
-                reserved_cost = metering_service.calculate_token_cost(
-                    model_used="deepseek/deepseek-chat",
-                    prompt_tokens=estimated_prompt,
-                    completion_tokens=estimated_completion,
+            estimated_prompt = 500
+            estimated_completion = 300
+            reserved_cost: Decimal = metering_service.calculate_token_cost(
+                model_used="deepseek/deepseek-chat",
+                prompt_tokens=estimated_prompt,
+                completion_tokens=estimated_completion,
+            )
+            try:
+                await metering_service.reserve_credits_for_llm(
+                    tenant_id=tenant_id, estimated_cost=reserved_cost
                 )
-                try:
-                    await metering_service.reserve_credits_for_llm(
-                        tenant_id=tenant_id, estimated_cost=reserved_cost
+            except InsufficientCreditsException:
+                logger.warning(
+                    f"[ProcessorWorker] Saldo de créditos insuficiente para tenant '{tenant_id}' (SKU: {sku}). Produto marcado como FAILED.",
+                    extra=log_extra,
+                )
+                await self.repo.set_status(tenant_id, sku, ProductStatus.FAILED.value)
+                logger.info(
+                    f"[ProcessorWorker] Enriquecimento falhou para o SKU {sku}. Saldo mantido sem cobrança.",
+                    extra=log_extra,
+                )
+                if is_demo:
+                    source_url = product_dict.get("metadata", {}).get("source_url", "") if isinstance(product_dict.get("metadata"), dict) else ""
+                    await publish_demo_progress(
+                        url=source_url,
+                        status="failed",
+                        progress=100,
+                        error="Saldo de créditos insuficiente para processar a requisição de IA. Recarregue seu saldo."
                     )
-                except InsufficientCreditsException:
-                    logger.warning(
-                        f"[ProcessorWorker] Saldo de créditos insuficiente para tenant '{tenant_id}' (SKU: {sku}). Produto marcado como FAILED.",
-                        extra=log_extra,
-                    )
-                    await self.repo.set_status(tenant_id, sku, ProductStatus.FAILED.value)
-                    logger.info(
-                        f"[ProcessorWorker] Enriquecimento falhou para o SKU {sku}. Saldo mantido sem cobrança.",
-                        extra=log_extra,
-                    )
-                    if is_demo:
-                        source_url = product_dict.get("metadata", {}).get("source_url", "") if isinstance(product_dict.get("metadata"), dict) else ""
-                        await publish_demo_progress(
-                            url=source_url,
-                            status="failed",
-                            progress=100,
-                            error="Saldo de créditos insuficiente para processar a requisição de IA. Ative o modo BYOK ou recarregue seu saldo."
-                        )
-                    return
-            else:
-                # Verificação leve sem reserva (BYOK: sem débito de saldo gerenciado)
-                try:
-                    await metering_service.check_tenant_credits(tenant_id=tenant_id, is_byok=True)
-                except InsufficientCreditsException:
-                    pass  # Nunca levantado em modo BYOK
+                return
 
             # Aciona o enriquecimento via LLMEngineRouter com política de Retry
             try:
                 processed_data = await self._process_with_retry(product_model, current_llm)
             except (AllProvidersExhaustedError, Exception) as llm_err:
                 # Estorna créditos pré-reservados — o tenant não foi atendido
-                if not is_byok_active and reserved_cost > Decimal("0.000000"):
+                if reserved_cost > Decimal("0.000000"):
                     try:
                         await metering_service.refund_credits_on_failure(
                             tenant_id=tenant_id, reserved_cost=reserved_cost
@@ -339,13 +312,13 @@ class ProcessorWorker:
                     prompt_tokens=prompt_tokens,
                     completion_tokens=completion_tokens,
                     total_tokens=prompt_tokens + completion_tokens,
-                    is_byok=is_byok_active,
+                    is_byok=False,
                     execution_time_ms=int(response_time_ms) if response_time_ms else duration_ms,
                 )
                 await metering_service.record_usage_and_deduct(
                     tenant_id=tenant_id,
                     usage_dto=usage_dto,
-                    reserved_cost=reserved_cost if not is_byok_active else None,
+                    reserved_cost=reserved_cost,
                 )
             except Exception as metering_err:
                 logger.warning(f"Erro ao registrar consumo e débito no LLMMeteringService: {metering_err}")
