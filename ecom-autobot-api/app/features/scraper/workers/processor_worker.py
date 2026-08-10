@@ -24,6 +24,8 @@ from app.core.shared.logger import get_logger
 from app.core.security.crypto import get_tenant_key
 from app.features.products.schemas import Product, ProductStatus
 from app.core.shared.progress import publish_demo_progress
+from app.features.wallet.repositories import WalletRepository
+from app.features.wallet.services import CreditService
 
 logger = get_logger("ProcessorWorker")
 
@@ -244,6 +246,10 @@ class ProcessorWorker:
                         extra=log_extra,
                     )
                     await self.repo.set_status(tenant_id, sku, ProductStatus.FAILED.value)
+                    logger.info(
+                        f"[ProcessorWorker] Enriquecimento falhou para o SKU {sku}. Saldo mantido sem cobrança.",
+                        extra=log_extra,
+                    )
                     if is_demo:
                         source_url = product_dict.get("metadata", {}).get("source_url", "") if isinstance(product_dict.get("metadata"), dict) else ""
                         await publish_demo_progress(
@@ -302,6 +308,24 @@ class ProcessorWorker:
             processed_data.status = ProductStatus.PROCESSED
             processed_data.updated_at = datetime.now(timezone.utc)
             await self.repo.upsert_product(processed_data)
+
+            # Debita 1 crédito da carteira do tenant APENAS após o sucesso no enriquecimento
+            try:
+                credit_service = CreditService(repository=WalletRepository(session=session))
+                await credit_service.consume_credits(
+                    tenant_id=tenant_id,
+                    amount=1,
+                    description=f"Enriquecimento de produto SKU {sku}",
+                )
+                logger.info(
+                    f"[ProcessorWorker] 1 crédito consumido do tenant {tenant_id} para o SKU {sku}.",
+                    extra=log_extra,
+                )
+            except Exception as credit_err:
+                logger.warning(
+                    f"[ProcessorWorker] Erro ao debitar crédito para tenant '{tenant_id}', SKU '{sku}': {credit_err}",
+                    extra=log_extra,
+                )
 
             duration_ms = int((time.time() - start_time) * 1000)
 
@@ -371,6 +395,10 @@ class ProcessorWorker:
 
             logger.error(f"Falha final nas LLMs para produto {sku}: {e}", extra=log_extra, exc_info=True)
             await self.repo.set_status(tenant_id, sku, ProductStatus.FAILED.value)
+            logger.info(
+                f"[ProcessorWorker] Enriquecimento falhou para o SKU {sku}. Saldo mantido sem cobrança.",
+                extra=log_extra,
+            )
             
             if is_demo:
                 source_url = product_dict.get("metadata", {}).get("source_url", "") if isinstance(product_dict.get("metadata"), dict) else ""
