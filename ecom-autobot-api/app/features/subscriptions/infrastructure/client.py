@@ -1,5 +1,7 @@
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Optional
+
+from fastapi import HTTPException, status
 
 from app.features.mercadopago.infrastructure.client import MercadoPagoClient
 from app.features.subscriptions.schemas import (
@@ -16,74 +18,42 @@ logger = logging.getLogger(__name__)
 
 class SubscriptionsClient(MercadoPagoClient):
     """
-    Cliente HTTP assíncrono especializado para gerenciamento de Assinaturas 
-    e Recorrências (/preapproval) na REST API do Mercado Pago.
+    [DEPRECATED / DESATIVADO]
+    Cliente de assinaturas recorrentes (/preapproval).
+    O sistema foi migrado para o modelo de Carteira Pré-Paga (/v1/payments).
     """
 
     async def create_subscription(
         self,
         data: CreateSubscriptionRequest,
     ) -> MercadoPagoPreapprovalResponse:
-        logger.info(
-            f"[SubscriptionsClient] Disparando criação de assinatura para payer_email: '{data.payer_email}' | Plan ID: '{data.preapproval_plan_id}'"
+        logger.warning("[SubscriptionsClient] Tentativa de criação de assinatura recorrente em módulo desativado.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O sistema de assinaturas recorrentes (/preapproval) foi desativado. Utilize a recarga de carteira pré-paga.",
         )
-
-        payload: Dict[str, Any] = data.model_dump(exclude_none=True, mode="json")
-
-        response = await self.post(
-            path="/preapproval",
-            json_data=payload,
-            response_model=MercadoPagoPreapprovalResponse,
-        )
-
-        logger.info(
-            f"[SubscriptionsClient] Assinatura criada com sucesso no Mercado Pago! ID: '{response.id}' | Status: '{response.status}'"
-        )
-
-        return response
 
     async def search_subscriptions(
         self,
         params: Optional[MercadoPagoSearchQueryParams] = None,
         **kwargs: Any,
     ) -> MercadoPagoSearchSubscriptionsResponse:
-        query_params = params.model_dump(exclude_none=True, mode="json") if params else {}
-
-        logger.info(
-            f"[SubscriptionsClient] Buscando assinaturas no Mercado Pago com parâmetros: {query_params}"
+        logger.warning("[SubscriptionsClient] Consulta de assinaturas recorrentes em módulo desativado.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O sistema de assinaturas recorrentes foi desativado.",
         )
-
-        response = await self.get(
-            path="/preapproval/search",
-            params=query_params,
-            response_model=MercadoPagoSearchSubscriptionsResponse,
-            **kwargs,
-        )
-
-        logger.info(
-            f"[SubscriptionsClient] Busca realizada com sucesso! Retornados {len(response.results)} itens de um total de {response.paging.total}."
-        )
-
-        return response
 
     async def get_subscription_by_id(
         self,
         preapproval_id: str,
         **kwargs: Any,
     ) -> MercadoPagoPreapprovalItemResponse:
-        logger.info(f"[SubscriptionsClient] Obtendo assinatura no Mercado Pago pelo ID: '{preapproval_id}'")
-
-        response = await self.get(
-            path=f"/preapproval/{preapproval_id}",
-            response_model=MercadoPagoPreapprovalItemResponse,
-            **kwargs,
+        logger.warning(f"[SubscriptionsClient] Busca por assinatura '{preapproval_id}' em módulo desativado.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O sistema de assinaturas recorrentes foi desativado.",
         )
-
-        logger.info(
-            f"[SubscriptionsClient] Assinatura '{preapproval_id}' recuperada com sucesso! Status: '{response.status}'"
-        )
-
-        return response
 
     async def update_subscription(
         self,
@@ -91,19 +61,8 @@ class SubscriptionsClient(MercadoPagoClient):
         data: MercadoPagoUpdatePreapprovalRequest,
         **kwargs: Any,
     ) -> MercadoPagoPreapprovalItemResponse:
-        logger.info(f"[SubscriptionsClient] Atualizando assinatura no Mercado Pago ID: '{preapproval_id}'")
-
-        payload: Dict[str, Any] = data.model_dump(exclude_none=True, mode="json")
-
-        response = await self.put(
-            path=f"/preapproval/{preapproval_id}",
-            json_data=payload,
-            response_model=MercadoPagoPreapprovalItemResponse,
-            **kwargs,
+        logger.warning(f"[SubscriptionsClient] Atualização de assinatura '{preapproval_id}' em módulo desativado.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O sistema de assinaturas recorrentes foi desativado.",
         )
-
-        logger.info(
-            f"[SubscriptionsClient] Assinatura '{preapproval_id}' atualizada com sucesso! Novo status: '{response.status}'"
-        )
-
-        return response

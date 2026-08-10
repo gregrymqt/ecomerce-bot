@@ -357,10 +357,57 @@ class CheckoutService:
         await self.order_repo.update(local_order)
         await self.session.commit()
 
+        # 5. Se o pedido foi aprovado/processado, credita os créditos na carteira do tenant se for recarga
+        if new_status == OrderStatus.PROCESSED:
+            await self._fulfill_wallet_recharge_if_needed(local_order)
+
         logger.info(
             f"[CheckoutService] Order {local_order.id} sincronizada com sucesso. Status='{local_order.status}'"
         )
         return local_order
+
+    async def _fulfill_wallet_recharge_if_needed(self, order: OrderModel) -> None:
+        """
+        Verifica se a order aprovada é uma recarga de créditos da carteira pré-paga
+        e credita os pontos no saldo do tenant.
+        """
+        try:
+            credits_to_add = 0
+            if order.external_reference and order.external_reference.startswith("{"):
+                try:
+                    import json
+                    ref_data = json.loads(order.external_reference)
+                    if isinstance(ref_data, dict) and "credits" in ref_data:
+                        credits_to_add = int(ref_data["credits"])
+                except Exception:
+                    pass
+
+            if credits_to_add == 0 and order.items:
+                for item in order.items:
+                    if item.external_code and item.external_code.startswith("pkg_"):
+                        try:
+                            credits_to_add += int(item.external_code.replace("pkg_", ""))
+                        except Exception:
+                            pass
+
+            if credits_to_add > 0:
+                logger.info(
+                    f"[CheckoutService] Creditando {credits_to_add} créditos para tenant '{order.tenant_id}' (Order: '{order.id}', MP: '{order.mp_order_id}')"
+                )
+                from app.features.wallet.repositories import WalletRepository
+                from app.features.wallet.services import CreditService
+
+                credit_service = CreditService(WalletRepository(self.session))
+                await credit_service.add_credits(
+                    tenant_id=order.tenant_id,
+                    amount=credits_to_add,
+                    description=f"Recarga via Mercado Pago Order #{order.mp_order_id or order.id}",
+                    external_payment_id=order.mp_order_id or order.id,
+                )
+        except Exception as err:
+            logger.error(
+                f"[CheckoutService] Erro ao creditar carteira para order '{order.id}': {err}"
+            )
 
     # ==========================================
     # CASO DE USO 4: CANCELAR E REEMBOLSAR ORDER

@@ -13,7 +13,11 @@ from app.features.wallet.schemas import (
     WalletResponse,
     WalletStatementResponse,
 )
-from app.features.wallet.services import CreditService
+from app.features.wallet.services import (
+    CREDIT_PACKAGES,
+    CreditService,
+    RechargeService,
+)
 
 __all__ = [
     # Domain Models
@@ -26,6 +30,8 @@ __all__ = [
     "WalletRepository",
     # Services
     "CreditService",
+    "RechargeService",
+    "CREDIT_PACKAGES",
     # Schemas DTOs
     "CreditTransactionResponse",
     "WalletResponse",
