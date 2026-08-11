@@ -208,11 +208,10 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
               />
             ) : (
               <CreditCardRechargeTab
+                packageId={activePackage.id}
                 amountBrl={activePackage.price_brl}
                 loading={loading}
-                onSubmitCard={async (cardData) => {
-                  await handleCreateRecharge('credit_card', cardData.cardNumber);
-                }}
+                onSuccessPayment={onSuccessPayment}
               />
             )}
           </div>

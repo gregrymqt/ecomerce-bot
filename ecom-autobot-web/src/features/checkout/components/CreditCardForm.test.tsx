@@ -63,16 +63,19 @@ describe('CreditCardPaymentTab / CreditCardForm Component', () => {
     await user.click(submitBtn);
 
     expect(mockOnSubmit).toHaveBeenCalledTimes(1);
-    expect(mockOnSubmit).toHaveBeenCalledWith({
-      plan_id: 'pro_annual',
-      card_number: '4111222233334444',
-      cardholder_name: 'MARIA SILVA',
-      expiration_month: '11',
-      expiration_year: '2028',
-      security_code: '888',
-      installments: 1,
-      doc_number: '12345678901',
-    });
+    expect(mockOnSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plan_id: 'pro_annual',
+        card_number: '4111222233334444',
+        cardholder_name: 'MARIA SILVA',
+        expiration_month: '11',
+        expiration_year: '2028',
+        security_code: '888',
+        installments: 1,
+        doc_number: '12345678901',
+        payment_method_id: 'visa',
+      })
+    );
   });
 
   it('should display error message on validation failure', async () => {

@@ -11,6 +11,7 @@ import type {
   StatementFilters,
   WalletStatementResponse,
   RechargeRequest,
+  CreditCardRechargePayload,
   RechargeResponse,
 } from '../types/wallet.type';
 
@@ -46,6 +47,17 @@ export const walletService = {
   createRecharge: async (payload: RechargeRequest): Promise<RechargeResponse> => {
     const response = await apiClient.post<RechargeResponse>('/api/v1/wallet/recharge', payload);
     return response.data;
+  },
+
+  /**
+   * Processa a cobrança de recarga de carteira via Cartão de Crédito com tokenização MP.
+   * Endpoint: POST /api/v1/wallet/recharge
+   *
+   * @param payload Payload contendo package_id, card_token, installments e dados do pagador
+   */
+  processCreditCardRecharge: async (payload: CreditCardRechargePayload): Promise<RechargeResponse> => {
+    const { data } = await apiClient.post<RechargeResponse>('/api/v1/wallet/recharge', payload);
+    return data;
   },
 };
 

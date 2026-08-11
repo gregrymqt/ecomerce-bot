@@ -44,6 +44,25 @@ export interface RechargeRequest {
   payer_email: string;
 }
 
+export interface CardPaymentPayer {
+  email: string;
+  identification: {
+    type: 'CPF' | 'CNPJ';
+    number: string;
+  };
+}
+
+export interface CreditCardRechargePayload {
+  package_id: string;
+  amount: number;
+  payment_method: 'credit_card';
+  card_token: string;
+  payment_method_id: string; // ex: 'visa', 'master'
+  issuer_id?: string;
+  installments: number;
+  payer: CardPaymentPayer;
+}
+
 export interface RechargeResponse {
   payment_id: string;
   status: string;

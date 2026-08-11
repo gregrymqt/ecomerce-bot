@@ -61,6 +61,10 @@ export interface CreditCardPaymentPayload {
   installments: number;
   /** Número de documento do titular do cartão (CPF/CNPJ) */
   doc_number: string;
+  /** Token gerado via SDK do Mercado Pago (PCI-DSS) */
+  card_token?: string;
+  /** Identificador da bandeira (ex: 'visa', 'master', 'elo') */
+  payment_method_id?: string;
 }
 
 /**
