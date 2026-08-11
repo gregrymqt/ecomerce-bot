@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from typing import Any, Dict, Optional
 import httpx
 
@@ -7,22 +8,25 @@ from app.core.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
+# Pattern RFC 5322 simplificado para validação prévia de e-mails
+EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+
 
 class EmailService:
     """
     Serviço de Lógica de Negócio para Envio de E-mails Transacionais (DDD Domain/Application Service).
     Responsável por renderizar templates HTML via Jinja2 e realizar requisições HTTP para a API do Resend,
-    com fallback seguro em log caso a API Key não esteja configurada.
+    com resiliência total, suporte a modo simulação e fallback seguro sem interromper a aplicação.
     """
 
     def __init__(self) -> None:
-        self.api_key = settings.RESEND_API_KEY
-        self.from_email = settings.EMAIL_FROM
+        self.api_key = getattr(settings, "RESEND_API_KEY", None)
+        self.from_email = getattr(settings, "EMAIL_FROM", "ECom AutoBot <notificacoes@ecommercebot.com>")
 
     def _render_template(self, template_name: str, context: Dict[str, Any]) -> str:
         """
         Renderiza o template HTML localizado na pasta app/features/emails/templates via Jinja2.
-        Em caso de ausência do arquivo, gera um layout HTML responsivo de fallback.
+        Em caso de ausência do arquivo ou biblioteca, gera um layout HTML responsivo de fallback.
         """
         base_dir = os.path.dirname(os.path.dirname(__file__))
         template_dir = os.path.join(base_dir, "templates")
@@ -34,8 +38,11 @@ class EmailService:
                 env = Environment(loader=FileSystemLoader(template_dir))
                 tmpl = env.get_template(template_name)
                 return tmpl.render(**context)
+            except ImportError:
+                # Jinja2 não instalado no ambiente — utiliza fallback silencioso
+                pass
             except Exception as err:
-                logger.warning(f"[EmailService] Erro ao renderizar template Jinja2 '{template_name}': {err}")
+                logger.warning(f"[EmailService] Falha ao renderizar template Jinja2 '{template_name}': {err}. Utilizando fallback HTML.")
 
         # Fallback de HTML responsivo padrão
         user_name = context.get("user_name", "Cliente")
@@ -85,14 +92,29 @@ class EmailService:
         context: Dict[str, Any],
     ) -> bool:
         """
-        Envia um e-mail transacional para o destinatário usando Resend API ou fallback em log.
+        Envia um e-mail transacional para o destinatário usando a Resend API ou fallback seguro em log.
+        Garante que nenhuma exceção seja propagada para o fluxo principal da aplicação.
         """
-        if not to_email:
-            logger.warning("[EmailService] Endereço de e-mail de destino inválido.")
+        clean_email = (to_email or "").strip().lower()
+
+        # 1. Validação de Sintaxe de E-mail
+        if not clean_email or not EMAIL_REGEX.match(clean_email):
+            logger.warning(f"⚠️ [EmailService] Endereço de e-mail de destino inválido ou malformatado ('{to_email}'). Envio cancelado com segurança.")
             return False
+
+        # 2. Verificação de Feature Flags (Modo Desativado / Modo Simulação)
+        enable_sending = getattr(settings, "ENABLE_EMAIL_SENDING", True)
+        enable_simulation = getattr(settings, "ENABLE_EMAIL_SIMULATION", False)
+
+        if not enable_sending or enable_simulation:
+            logger.info(
+                f"📧 [EmailService - Modo Simulação] Disparo de e-mail simulado para '{clean_email}' | Assunto: '{subject}' | Template: '{template_name}'"
+            )
+            return True
 
         html_content = self._render_template(template_name, context)
 
+        # 3. Disparo via Resend API
         if self.api_key:
             try:
                 async with httpx.AsyncClient(timeout=10.0) as client:
@@ -104,24 +126,33 @@ class EmailService:
                         },
                         json={
                             "from": self.from_email,
-                            "to": [to_email],
+                            "to": [clean_email],
                             "subject": subject,
                             "html": html_content,
                         },
                     )
 
                 if resp.status_code in (200, 201):
-                    logger.info(f"✉️ [EmailService] E-mail enviado com sucesso via Resend para '{to_email}' | Assunto: '{subject}'")
+                    logger.info(f"✉️ [EmailService] E-mail enviado com sucesso via Resend para '{clean_email}' | Assunto: '{subject}'")
                     return True
-                else:
-                    logger.error(f"❌ [EmailService] Erro na API do Resend ({resp.status_code}): {resp.text}")
+
+                # Tratamento Suave para Erros 422 (Validation Error / Unverified Domain / Sandbox) ou 403
+                if resp.status_code in (422, 403):
+                    logger.warning(
+                        f"⚠️ [EmailService] Resend API (Status {resp.status_code}): O e-mail para '{clean_email}' não pôde ser entregue "
+                        f"devido a restrições de domínio não verificado ou chave em sandbox. O fluxo do sistema prosseguiu normalmente. Detalhes: {resp.text}"
+                    )
                     return False
+                else:
+                    logger.warning(f"⚠️ [EmailService] Resend API retornou HTTP {resp.status_code}: {resp.text}")
+                    return False
+
             except Exception as err:
-                logger.error(f"💥 [EmailService] Falha na comunicação HTTP com Resend: {err}")
+                logger.warning(f"⚠️ [EmailService] Falha de comunicação HTTP com a API do Resend ao enviar para '{clean_email}': {err}")
                 return False
 
         logger.info(
-            f"📧 [EmailService - Modo Simulação/Dev] E-mail enviado ficticiamente para '{to_email}' | Assunto: '{subject}' | Template: '{template_name}'"
+            f"📧 [EmailService - Modo Dev/Sem Chave] E-mail fictício registrado em log para '{clean_email}' | Assunto: '{subject}' | Template: '{template_name}'"
         )
         return True
 

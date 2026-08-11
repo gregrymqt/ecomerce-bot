@@ -108,6 +108,14 @@ class Settings(BaseSettings):
         default="ECom AutoBot <notificacoes@ecommercebot.com>",
         validation_alias=AliasChoices("EMAIL_FROM", "DEFAULT_FROM_EMAIL")
     )
+    ENABLE_EMAIL_SENDING: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("ENABLE_EMAIL_SENDING", "EMAIL_ENABLED")
+    )
+    ENABLE_EMAIL_SIMULATION: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("ENABLE_EMAIL_SIMULATION", "EMAIL_SIMULATION", "EMAIL_DRY_RUN")
+    )
 
 
     def get_admin_emails_list(self) -> List[str]:
