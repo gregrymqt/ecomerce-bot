@@ -251,8 +251,13 @@ class ExporterWorker:
                 await session.close()
 
 if __name__ == "__main__":
+    import asyncio
+
     async def main():
         exporter = ExporterWorker(tenant_id="default_tenant", platform="shopify")
         await exporter.export()
 
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("🛑 Worker interrompido manualmente.")

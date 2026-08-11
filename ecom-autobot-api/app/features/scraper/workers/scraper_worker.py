@@ -155,7 +155,7 @@ class ScraperWorker:
                 logging.error(f"Erro na navegação do catálogo: {e}")
                 break
 
-    async def start_consuming(self, queue_name: str = "ecommerce", channel: aio_pika.abc.AbstractChannel = None):
+    async def start_consuming(self, queue_name: str = "ecommerce", channel: aio_pika.abc.AbstractChannel | None = None) -> None:
         """
         Inicia o consumo das mensagens na fila especificada.
         Recebe o `channel` opcionalmente para reutilizar a conexão da API.
@@ -172,8 +172,9 @@ class ScraperWorker:
             
             async with queue.iterator() as queue_iter:
                 async for message in queue_iter:
-                    async with message.process(requeue=False, ignore_processed=True):
-                        try:
+                    url_to_scrape = None
+                    try:
+                        async with message.process(requeue=False, ignore_processed=True):
                             start_time = time.time()
                             payload = message.body.decode()
                             logging.info(f"Mensagem recebida em {queue_name}: {payload}")
@@ -205,7 +206,7 @@ class ScraperWorker:
                                     # 2. Salva no Banco de Dados com status RAW
                                     await self.repository.upsert_product(product)
 
-                                    # Regista atividade do robô para telemetria
+                                    # Registra atividade do robô para telemetria
                                     try:
                                         telemetry_repo = TelemetryRepository(session=self.session)
                                         await telemetry_repo.log_activity(
@@ -219,9 +220,8 @@ class ScraperWorker:
                                         logging.warning(f"Erro ao registrar telemetria do ScraperWorker: {telemetry_err}")
                                     
                                     # ---------------------------------------------------------
-                                    # 3. NOVO: Dispara evento para o ProcessorWorker (LLM)
+                                    # 3. Dispara evento para o ProcessorWorker (LLM)
                                     # ---------------------------------------------------------
-                                    # Define o destino com base na fila de origem
                                     llm_routing_key = "demo_llm" if queue_name == "demo_ecommerce" else "llm"
                                     
                                     llm_payload = json.dumps({
@@ -239,8 +239,6 @@ class ScraperWorker:
                                     )
                                     
                                     logging.info(f"Tarefa de IA enfileirada na '{llm_routing_key}' para SKU: {product.sku}")
-                                    # ---------------------------------------------------------
-                                    
                                 else:
                                     try:
                                         telemetry_repo = TelemetryRepository(session=self.session)
@@ -256,12 +254,38 @@ class ScraperWorker:
 
                                     if queue_name == "demo_ecommerce":
                                         await publish_demo_progress(url_to_scrape, "failed", 100, error="Falha ao extrair dados do produto.")
-                                        
-                        except Exception as process_err:
-                            logging.error(f"Erro ao processar mensagem do RabbitMQ: {process_err}")
-                            if queue_name == "demo_ecommerce" and url_to_scrape:
-                                await publish_demo_progress(url_to_scrape, "failed", 100, error=str(process_err))
-                            raise
 
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as process_err:
+                        logging.error(f"Erro ao processar mensagem do RabbitMQ no ScraperWorker: {process_err}", exc_info=True)
+                        if queue_name == "demo_ecommerce" and url_to_scrape:
+                            try:
+                                await publish_demo_progress(url_to_scrape, "failed", 100, error=str(process_err))
+                            except Exception:
+                                pass
+                        try:
+                            await message.nack(requeue=False)
+                        except Exception:
+                            pass
+
+        except asyncio.CancelledError:
+            logging.info("🛑 [ScraperWorker] Task do worker encerrada graciosamente.")
+            raise
         except Exception as e:
             logging.error(f"Erro assíncrono na conexão/consumo do RabbitMQ no ScraperWorker: {e}")
+
+
+if __name__ == "__main__":
+    import asyncio
+    from app.features.products.repositories import ProductRepository
+
+    async def main():
+        repository = ProductRepository()
+        worker = ScraperWorker(repository)
+        await worker.start_consuming()
+
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logging.info("🛑 Worker interrompido manualmente.")

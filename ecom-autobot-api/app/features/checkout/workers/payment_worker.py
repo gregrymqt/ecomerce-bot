@@ -18,7 +18,7 @@ class PaymentWorker:
         # Instancia o serviço que fará o Zero Trust (busca na API do MP e atualiza o DB/Cache)
         self.notification_service = CheckoutNotificationService()
 
-    async def start_consuming(self, queue_name: str = "payments", channel: aio_pika.abc.AbstractChannel = None):
+    async def start_consuming(self, queue_name: str = "payments", channel: aio_pika.abc.AbstractChannel | None = None) -> None:
         try:
             if channel is None:
                 connection = await get_rabbitmq_connection()
@@ -32,9 +32,9 @@ class PaymentWorker:
 
             async with queue.iterator() as queue_iter:
                 async for message in queue_iter:
-                    # requeue=False: falhas enviam a mensagem direto para a Dead Letter Queue (dlq_mercado_pago)
-                    async with message.process(requeue=False, ignore_processed=True):
-                        try:
+                    try:
+                        # requeue=False: falhas enviam a mensagem direto para a Dead Letter Queue (dlq_mercado_pago)
+                        async with message.process(requeue=False, ignore_processed=True):
                             # 1. Decodifica o evento roteado
                             raw_json = json.loads(message.body.decode("utf-8"))
                             event_payload = WebhookEventPayload.model_validate(raw_json)
@@ -49,11 +49,30 @@ class PaymentWorker:
                             await self.notification_service.handle(notification)
                             
                             logger.info(f"✅ [PaymentWorker] Order '{notification.effective_resource_id}' sincronizada com sucesso.")
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as process_err:
+                        logger.error(f"❌ [PaymentWorker] Falha grave ao processar pagamento: {process_err}", exc_info=True)
+                        try:
+                            await message.nack(requeue=False)
+                        except Exception:
+                            pass
 
-                        except Exception as process_err:
-                            logger.error(f"❌ [PaymentWorker] Falha grave ao processar pagamento: {process_err}")
-                            # Lança o erro para o RabbitMQ direcionar para a DLX
-                            raise 
-
+        except asyncio.CancelledError:
+            logger.info("🛑 [PaymentWorker] Task do worker encerrada graciosamente.")
+            raise
         except Exception as e:
             logger.error(f"Erro assíncrono na conexão/consumo do RabbitMQ no PaymentWorker: {e}")
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    async def main():
+        worker = PaymentWorker()
+        await worker.start_consuming()
+
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("🛑 Worker interrompido manualmente.")

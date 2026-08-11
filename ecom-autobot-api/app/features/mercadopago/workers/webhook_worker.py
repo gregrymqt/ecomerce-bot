@@ -37,7 +37,7 @@ class WebhookDispatcherWorker:
         "payment.updated"
     }
 
-    async def start_consuming(self, queue_name: str = "webhook", channel: aio_pika.abc.AbstractChannel = None):
+    async def start_consuming(self, queue_name: str = "webhook", channel: aio_pika.abc.AbstractChannel | None = None) -> None:
         try:
             if channel is None:
                 connection = await get_rabbitmq_connection()
@@ -51,8 +51,8 @@ class WebhookDispatcherWorker:
 
             async with queue.iterator() as queue_iter:
                 async for message in queue_iter:
-                    async with message.process(requeue=False, ignore_processed=True):
-                        try:
+                    try:
+                        async with message.process(requeue=False, ignore_processed=True):
                             raw_json = json.loads(message.body.decode("utf-8"))
                             event_payload = WebhookEventPayload.model_validate(raw_json)
                             event_type = event_payload.payload.effective_action
@@ -77,10 +77,30 @@ class WebhookDispatcherWorker:
                                 logger.info(f"✅ [Dispatcher] Evento roteado para a fila de negócio: '{target_queue}'")
                             else:
                                 logger.warning(f"⚠️ [Dispatcher] Evento '{event_type}' não mapeado. Descartando mensagem.")
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as e:
+                        logger.error(f"💥 [Dispatcher] Erro de roteamento no evento: {e}", exc_info=True)
+                        try:
+                            await message.nack(requeue=False)
+                        except Exception:
+                            pass
 
-                        except Exception as e:
-                            logger.error(f"💥 [Dispatcher] Erro de roteamento: {e}", exc_info=True)
-                            raise # Envia a mensagem com defeito para a dql_mercado_pago
-
+        except asyncio.CancelledError:
+            logger.info("🛑 [WebhookDispatcherWorker] Task do worker encerrada graciosamente.")
+            raise
         except Exception as e:
             logger.error(f"Erro assíncrono na conexão/consumo do RabbitMQ no Dispatcher: {e}")
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    async def main():
+        worker = WebhookDispatcherWorker()
+        await worker.start_consuming()
+
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("🛑 Worker interrompido manualmente.")

@@ -87,7 +87,7 @@ class ProcessorWorker:
         llm_to_use = current_llm or self.llm
         return await llm_to_use.enrich_product(product)
 
-    async def start_consuming(self, queue_name: str, channel: aio_pika.abc.AbstractChannel = None):
+    async def start_consuming(self, queue_name: str = "llm", channel: aio_pika.abc.AbstractChannel | None = None) -> None:
         """
         Substitui o antigo loop de polling no banco de dados. 
         Agora o worker é acionado 100% por mensageria via RabbitMQ.
@@ -106,8 +106,8 @@ class ProcessorWorker:
 
             async with queue.iterator() as queue_iter:
                 async for message in queue_iter:
-                    async with message.process(requeue=False, ignore_processed=True):
-                        try:
+                    try:
+                        async with message.process(requeue=False, ignore_processed=True):
                             payload = json.loads(message.body.decode())
                             tenant_id = payload.get("tenant_id")
                             sku = payload.get("sku")
@@ -117,11 +117,18 @@ class ProcessorWorker:
 
                             await self._process_llm_task(tenant_id, sku, queue_name)
 
-                        except Exception as process_err:
-                            logger.error(f"Erro ao processar LLM na fila {queue_name}: {process_err}")
-                            # Joga a mensagem para a DLQ (Dead Letter Queue) do ecommerce
-                            raise
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as process_err:
+                        logger.error(f"Erro ao processar LLM na fila {queue_name}: {process_err}", exc_info=True)
+                        try:
+                            await message.nack(requeue=False)
+                        except Exception:
+                            pass
 
+        except asyncio.CancelledError:
+            logger.info("🛑 [ProcessorWorker] Task do worker encerrada graciosamente.")
+            raise
         except Exception as e:
             logger.error(f"Erro assíncrono na conexão/consumo do RabbitMQ no ProcessorWorker: {e}")
 
@@ -404,3 +411,18 @@ class ProcessorWorker:
             original=original_data,
             enhanced=enhanced_data
         )
+
+
+if __name__ == "__main__":
+    import asyncio
+    from app.features.products.repositories import ProductRepository
+
+    async def main():
+        repository = ProductRepository()
+        worker = ProcessorWorker(repository, llm=None)
+        await worker.start_consuming()
+
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("🛑 Worker interrompido manualmente.")
