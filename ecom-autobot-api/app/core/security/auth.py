@@ -116,7 +116,7 @@ async def get_current_tenant_user(
             detail="Token inválido."
         )
 
-    allowed_tenants = payload.get("tenants", [])
+    allowed_tenants = payload.get("tenants") or []
     if isinstance(allowed_tenants, str):
         allowed_tenants = [allowed_tenants]
 
@@ -186,7 +186,7 @@ async def get_current_user_admin(
             detail="Acesso negado. Apenas administradores do sistema possuem permissão para esta operação."
         )
 
-    allowed_tenants = payload.get("tenants", [])
+    allowed_tenants = payload.get("tenants") or []
     if isinstance(allowed_tenants, str):
         allowed_tenants = [allowed_tenants]
 

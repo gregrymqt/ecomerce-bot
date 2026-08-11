@@ -92,21 +92,15 @@ class ProductRepository:
     async def upsert_product(self, product: Product) -> bool:
         session, owned = await self._get_session()
         try:
-            try:
-                existing = await session.get(
-                    ProductModel,
-                    product.id or "",
-                )
-            except Exception:
-                existing = None
-
-            if existing is None:
-                stmt = select(ProductModel).where(
-                    ProductModel.tenant_id == product.tenant_id,
+            stmt = select(ProductModel).where(
+                ProductModel.tenant_id == product.tenant_id,
+                or_(
                     ProductModel.sku == product.sku,
+                    ProductModel.id == (product.id or "")
                 )
-                result = await session.execute(stmt)
-                existing = result.scalar_one_or_none()
+            )
+            result = await session.execute(stmt)
+            existing = result.scalars().first()
 
             model = self._to_model(product)
 
