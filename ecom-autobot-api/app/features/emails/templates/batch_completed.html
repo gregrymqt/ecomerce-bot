@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Lote de Produtos Processado</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #0f172a; color: #f8fafc; padding: 20px;">
+    <div style="max-width: 600px; margin: 0 auto; background: #1e293b; padding: 24px; border-radius: 8px; border: 1px solid #334155;">
+        <h2 style="color: #38bdf8;">Lote de Produtos Processado! 🚀</h2>
+        <p style="color: #cbd5e1;">Seu lote de produtos para a plataforma <strong>{{ platform|upper }}</strong> foi finalizado.</p>
+        <ul style="color: #cbd5e1; line-height: 1.8;">
+            <li><strong>Total de Itens:</strong> {{ total_items }}</li>
+            <li><strong>Processados:</strong> {{ processed_items }}</li>
+            <li><strong>Sucesso:</strong> {{ success_count }}</li>
+        </ul>
+        <div style="margin-top: 24px; text-align: center;">
+            <a href="https://app.ecommercebot.com/catalog" style="background-color: #0284c7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Ver Produtos no Catálogo</a>
+        </div>
+    </div>
+</body>
+</html>

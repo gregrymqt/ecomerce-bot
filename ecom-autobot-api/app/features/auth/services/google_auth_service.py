@@ -233,6 +233,16 @@ class GoogleAuthService:
             user_id = created_user.id
             user_name = created_user.name
             user_tenants = created_user.tenants
+
+            # Disparo assíncrono do e-mail de boas-vindas para primeiro acesso Google
+            from app.features.emails.services.email_dispatcher import email_dispatcher
+            await email_dispatcher.publish_email_event(
+                event_name="USER_WELCOME",
+                recipient_email=created_user.email,
+                recipient_name=created_user.name,
+                tenant_id=tenant_id,
+                data={"user_id": created_user.id, "auth_provider": "google"},
+            )
         except Exception as db_err:
             logger.warning(f"Falha ao cadastrar novo usuário Google no banco de dados ({db_err}). Executando em memória.")
             user_id = f"usr_g_{hash(clean_email) & 0xffffffff}"

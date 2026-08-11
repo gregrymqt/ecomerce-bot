@@ -172,7 +172,20 @@ async def configure_rabbitmq_topology(
             }
         )
 
-        logger.info("Topologia RabbitMQ (7 filas principais, 3 DLXs e 3 DLQs) configurada com sucesso.")
+        # ------------------------------------------------------------------
+        # 6. FILAS DE NOTIFICAÇÕES (E-MAIL TRANSACIONAL)
+        # ------------------------------------------------------------------
+        email_notifications = await channel.declare_queue(
+            "email_notifications",
+            durable=True,
+            arguments={
+                "x-dead-letter-exchange": "ecommerce_dlx",
+                "x-dead-letter-routing-key": "email_failed",
+                "x-max-length": 50000
+            }
+        )
+
+        logger.info("Topologia RabbitMQ (8 filas principais, 3 DLXs e 3 DLQs) configurada com sucesso.")
 
         return {
             "demo_ecommerce": demo_ecommerce,
@@ -182,6 +195,7 @@ async def configure_rabbitmq_topology(
             "subscription": subscription,
             "demo_llm": demo_llm,
             "llm": llm,
+            "email_notifications": email_notifications,
             "dlq_ecommerce": dlq_ecommerce,
             "dlq_mercado_pago": dlq_mercado_pago,
             "dlq_llm": dlq_llm,

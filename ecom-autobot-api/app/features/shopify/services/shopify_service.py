@@ -35,6 +35,16 @@ class ShopifyService:
             return self.client
         creds = await self.shopify_repo.get_credentials(self.tenant_id)
         if not creds:
+            from app.features.emails.services.email_dispatcher import email_dispatcher
+            await email_dispatcher.publish_email_event(
+                event_name="EXTERNAL_CREDENTIAL_ERROR",
+                recipient_email=f"admin@{self.tenant_id}.com",
+                tenant_id=self.tenant_id,
+                data={
+                    "platform": "Shopify",
+                    "error_detail": f"Credenciais do Shopify não configuradas para o Tenant '{self.tenant_id}'.",
+                },
+            )
             raise HTTPException(
                 status_code=status.HTTP_412_PRECONDITION_FAILED,
                 detail=f"Credenciais do Shopify não configuradas para o Tenant '{self.tenant_id}'.",

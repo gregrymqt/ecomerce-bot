@@ -398,11 +398,27 @@ class CheckoutService:
                 from app.features.wallet.services import CreditService
 
                 credit_service = CreditService(WalletRepository(self.session))
-                await credit_service.add_credits(
+                updated_wallet = await credit_service.add_credits(
                     tenant_id=order.tenant_id,
                     amount=credits_to_add,
                     description=f"Recarga via Mercado Pago Order #{order.mp_order_id or order.id}",
                     external_payment_id=order.mp_order_id or order.id,
+                )
+
+                # Disparo assíncrono de e-mail de confirmação de recarga
+                from app.features.emails.services.email_dispatcher import email_dispatcher
+                await email_dispatcher.publish_email_event(
+                    event_name="RECHARGE_CONFIRMED",
+                    recipient_email=order.payer_email,
+                    tenant_id=order.tenant_id,
+                    data={
+                        "order_id": order.id,
+                        "mp_order_id": order.mp_order_id,
+                        "credits_added": credits_to_add,
+                        "amount_paid_brl": float(order.total_amount) if order.total_amount else 0.0,
+                        "payment_method": order.payment_method_type.value if hasattr(order.payment_method_type, "value") else str(order.payment_method_type),
+                        "new_balance": updated_wallet.balance_credits if updated_wallet else 0,
+                    },
                 )
         except Exception as err:
             logger.error(

@@ -100,6 +100,14 @@ class Settings(BaseSettings):
         default="http://localhost:5173/auth/google/callback",
         validation_alias=AliasChoices("GOOGLE_REDIRECT_URI", "Google_Redirect_Uri")
     )
+    RESEND_API_KEY: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("RESEND_API_KEY", "Resend_Api_Key", "RESEND_KEY")
+    )
+    EMAIL_FROM: str = Field(
+        default="ECom AutoBot <notificacoes@ecommercebot.com>",
+        validation_alias=AliasChoices("EMAIL_FROM", "DEFAULT_FROM_EMAIL")
+    )
 
 
     def get_admin_emails_list(self) -> List[str]:

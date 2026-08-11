@@ -63,6 +63,18 @@ class AuthService:
 
         try:
             created = await self.user_repo.create_user(new_user)
+            
+            # Disparo assíncrono do e-mail de boas-vindas (não-bloqueante)
+            from app.features.emails.services.email_dispatcher import email_dispatcher
+            active_tenant = created.tenants[0] if created.tenants else "ecommerce_prod"
+            await email_dispatcher.publish_email_event(
+                event_name="USER_WELCOME",
+                recipient_email=created.email,
+                recipient_name=created.name,
+                tenant_id=active_tenant,
+                data={"user_id": created.id, "role": created.role},
+            )
+
             return UserResponse(
                 id=created.id,
                 email=created.email,

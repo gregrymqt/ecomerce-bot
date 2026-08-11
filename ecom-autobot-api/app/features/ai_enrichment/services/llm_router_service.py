@@ -40,10 +40,36 @@ class LLMEngineRouter:
 
         if not global_key:
             logger.error("[LLMEngineRouter] OPENROUTER_API_KEY mestre do sistema não está configurada.")
+            from app.features.emails.services.email_dispatcher import email_dispatcher
+            await email_dispatcher.publish_email_event(
+                event_name="BYOK_KEY_INVALID",
+                recipient_email=f"admin@{tenant_id}.com",
+                tenant_id=tenant_id,
+                data={
+                    "provider": "OpenRouter",
+                    "status_code": 401,
+                    "error_message": "Chave de API global do OpenRouter não configurada no sistema.",
+                },
+            )
             raise OpenRouterAPIError("Chave de API global do OpenRouter não configurada no sistema.", status_code=401)
 
         logger.info(f"[LLMEngineRouter] Executando chamada via chave mestre global do sistema para tenant '{tenant_id}'.")
-        return await self.provider.generate_completion(
-            request=prompt_data,
-            api_key=global_key,
-        )
+        try:
+            return await self.provider.generate_completion(
+                request=prompt_data,
+                api_key=global_key,
+            )
+        except OpenRouterAPIError as err:
+            if getattr(err, "status_code", None) in (401, 402, 403):
+                from app.features.emails.services.email_dispatcher import email_dispatcher
+                await email_dispatcher.publish_email_event(
+                    event_name="BYOK_KEY_INVALID",
+                    recipient_email=f"admin@{tenant_id}.com",
+                    tenant_id=tenant_id,
+                    data={
+                        "provider": "OpenRouter",
+                        "status_code": getattr(err, "status_code", 401),
+                        "error_message": str(err),
+                    },
+                )
+            raise err

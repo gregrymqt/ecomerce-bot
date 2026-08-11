@@ -32,6 +32,16 @@ class NuvemshopService:
             return self.client
         creds = await self.nuvemshop_repo.get_credentials(self.tenant_id)
         if not creds:
+            from app.features.emails.services.email_dispatcher import email_dispatcher
+            await email_dispatcher.publish_email_event(
+                event_name="EXTERNAL_CREDENTIAL_ERROR",
+                recipient_email=f"admin@{self.tenant_id}.com",
+                tenant_id=self.tenant_id,
+                data={
+                    "platform": "Nuvemshop",
+                    "error_detail": f"Credenciais da Nuvemshop não configuradas para o Tenant '{self.tenant_id}'.",
+                },
+            )
             raise HTTPException(
                 status_code=status.HTTP_412_PRECONDITION_FAILED,
                 detail=f"Credenciais da Nuvemshop não configuradas ou ausentes para o Tenant '{self.tenant_id}'.",
@@ -40,6 +50,16 @@ class NuvemshopService:
 
         is_valid_scope = await client.validate_scopes()
         if not is_valid_scope:
+            from app.features.emails.services.email_dispatcher import email_dispatcher
+            await email_dispatcher.publish_email_event(
+                event_name="EXTERNAL_CREDENTIAL_ERROR",
+                recipient_email=f"admin@{self.tenant_id}.com",
+                tenant_id=self.tenant_id,
+                data={
+                    "platform": "Nuvemshop",
+                    "error_detail": "O token fornecido não possui permissões de escrita (write_products) na Nuvemshop.",
+                },
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="O token fornecido não possui permissões de escrita (write_products) na Nuvemshop.",

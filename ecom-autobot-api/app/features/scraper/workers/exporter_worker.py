@@ -173,6 +173,22 @@ class ExporterWorker:
                 status="COMPLETED"
             )
 
+            # Disparo assíncrono de e-mail notificando a conclusão do lote de exportação
+            from app.features.emails.services.email_dispatcher import email_dispatcher
+            await email_dispatcher.publish_email_event(
+                event_name="BATCH_PROCESSING_COMPLETED",
+                recipient_email=f"admin@{self.tenant_id}.com",
+                tenant_id=self.tenant_id,
+                data={
+                    "platform": self.platform,
+                    "total_items": total_items,
+                    "processed_items": processed_items,
+                    "success_count": processed_items,
+                    "error_count": 0,
+                    "download_url": f"/api/v1/export?platform={self.platform}",
+                },
+            )
+
         except Exception as exc:
             logger.error(f"Erro crítico na exportação em streaming para Tenant '{self.tenant_id}': {exc}")
             await publish_export_progress(

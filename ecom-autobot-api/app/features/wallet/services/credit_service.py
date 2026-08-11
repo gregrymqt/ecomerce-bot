@@ -87,6 +87,8 @@ class CreditService:
 
         return updated_wallet
 
+    LOW_BALANCE_THRESHOLD = 10
+
     async def consume_credits(
         self,
         tenant_id: str,
@@ -117,9 +119,37 @@ class CreditService:
 
             key = self._cache_key(tenant_id)
             await self.redis_cache.set(key, updated_wallet.balance_credits, expire_seconds=self.CACHE_TTL_SECONDS)
+
+            # Dispara alerta de saldo baixo se o saldo pós-consumo for inferior ao limiar
+            if updated_wallet.balance_credits < self.LOW_BALANCE_THRESHOLD:
+                from app.features.emails.services.email_dispatcher import email_dispatcher
+                await email_dispatcher.publish_email_event(
+                    event_name="LOW_BALANCE_ALERT",
+                    recipient_email=f"admin@{tenant_id}.com",
+                    tenant_id=tenant_id,
+                    data={
+                        "current_balance": updated_wallet.balance_credits,
+                        "threshold": self.LOW_BALANCE_THRESHOLD,
+                        "last_consumed": amount,
+                    },
+                )
+
             return True
         except InsufficientBalanceException as err:
             logger.warning(f"[CreditService] Saldo insuficiente para consumo no tenant '{tenant_id}': {err}")
+
+            # Dispara evento de tentativa de uso com saldo bloqueado/zerado
+            from app.features.emails.services.email_dispatcher import email_dispatcher
+            await email_dispatcher.publish_email_event(
+                event_name="ZERO_BALANCE_BLOCK",
+                recipient_email=f"admin@{tenant_id}.com",
+                tenant_id=tenant_id,
+                data={
+                    "attempted_amount": amount,
+                    "service_attempted": description,
+                },
+            )
+
             raise HTTPException(
                 status_code=status.HTTP_402_PAYMENT_REQUIRED,
                 detail="Saldo de créditos insuficiente. Por favor, recarregue sua carteira.",
