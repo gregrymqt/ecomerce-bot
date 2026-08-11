@@ -44,6 +44,9 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN}
       - MERCADOPAGO_WEBHOOK_SECRET=${MERCADOPAGO_WEBHOOK_SECRET}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
+      - LOW_BALANCE_THRESHOLD=${LOW_BALANCE_THRESHOLD:-10}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
     deploy:
       resources:
@@ -88,6 +91,29 @@ services:
       - certbot-var:/var/lib/letsencrypt
       - certbot-www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while true; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+  # -----------------------------------------------------------------
+  # 🚀 Opcional: Escalonamento Standalone de Workers em Containers Separados
+  # Descomente abaixo para desacoplar a execução do worker de e-mails da API principal:
+  # -----------------------------------------------------------------
+  # worker-email:
+  #   build:
+  #     context: ../../ecom-autobot-api
+  #     dockerfile: Dockerfile
+  #   container_name: prod-worker-email-bot
+  #   restart: unless-stopped
+  #   command: python -m app.features.emails.workers.email_worker
+  #   env_file:
+  #     - .env.prod
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.5'
+  #         memory: 512M
+  #   depends_on:
+  #     - redis
+  #   networks:
+  #     - internal-net
 
 networks:
   internal-net:
