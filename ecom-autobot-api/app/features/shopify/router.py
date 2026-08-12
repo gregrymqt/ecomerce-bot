@@ -14,6 +14,7 @@ from app.features.shopify.schemas import (
     ShopifySyncRequest,
     ShopifyInventoryUpdateInput,
     ShopifyStatusUpdateInput,
+    ShopifyBulkSyncRequest,
 )
 
 
@@ -21,6 +22,7 @@ router = APIRouter(
     prefix="/shopify",
     tags=["Shopify GraphQL Integration"],
 )
+
 
 
 def get_shopify_webhook_service() -> ShopifyWebhookService:
@@ -181,4 +183,18 @@ async def list_shopify_products(
     service: ShopifyService = Depends(get_shopify_service)
 ):
     return await service.list_products(first=first, after=after)
+
+
+@router.post(
+    "/products/bulk-sync",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Sincronização em Massa de Produtos via Bulk API GraphQL",
+    description="Dispara mutações em lote usando a Bulk API do Shopify (JSONL + Staged Uploads). Retorna 202 Accepted.",
+)
+async def bulk_sync_shopify_products(
+    request_data: ShopifyBulkSyncRequest,
+    service: ShopifyService = Depends(get_shopify_service),
+):
+    return await service.sync_bulk_catalog(skus=request_data.skus)
+
 

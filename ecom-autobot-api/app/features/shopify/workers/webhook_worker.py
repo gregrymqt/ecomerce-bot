@@ -93,6 +93,14 @@ class ShopifyWebhookWorker:
             await self.shopify_repo.deactivate_integration(shop_domain)
             logger.info(f"🛑 [Shopify Worker] Aplicativo desinstalado da loja '{shop_domain}'. Integração inativada.")
 
+        # 5. Tópico de encerramento de operação em lote (Bulk Operation)
+        elif clean_topic in ("bulk_operations/finish", "bulk_operations_finish"):
+            from app.features.shopify.services.shopify_service import ShopifyService
+            shopify_service = ShopifyService(tenant_id=tenant_id, shopify_repo=self.shopify_repo, product_repo=self.product_repo)
+            await shopify_service.process_bulk_operation_finish(payload=payload)
+            logger.info(f"🔄 [Shopify Worker] Concluído o processamento de Bulk Operation para a loja '{shop_domain}'.")
+
+
     async def start_consuming(
         self,
         queue_name: str = "shopify_webhook",

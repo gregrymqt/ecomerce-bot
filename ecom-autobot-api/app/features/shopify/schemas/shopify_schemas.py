@@ -284,3 +284,34 @@ class ShopifyStatusUpdateInput(BaseModel):
 
     status: str = Field(..., description="Status do produto: 'ACTIVE', 'DRAFT' ou 'ARCHIVED'.")
 
+
+class ShopifyStagedUploadInput(BaseModel):
+    """DTO para solicitação de URL pré-assinada de upload de arquivos (Staged Uploads)."""
+
+    filename: str = Field(..., description="Nome do arquivo.")
+    mime_type: str = Field("text/jsonl", alias="mimeType", description="MIME type do arquivo.")
+    resource: str = Field("BULK_MUTATION_VARIABLES", description="Tipo do recurso Shopify (BULK_MUTATION_VARIABLES ou IMAGE).")
+    http_method: str = Field("POST", alias="httpMethod", description="Método HTTP a ser utilizado no upload.")
+
+
+class ShopifyStagedUploadTargetParameter(BaseModel):
+    name: str
+    value: str
+
+
+class ShopifyStagedUploadTarget(BaseModel):
+    url: str
+    resource_url: Optional[str] = Field(None, alias="resourceUrl")
+    parameters: List[ShopifyStagedUploadTargetParameter] = []
+
+
+class ShopifyBulkOperationResponse(BaseModel):
+    id: Optional[str] = None
+    status: str
+    url: Optional[str] = None
+
+
+class ShopifyBulkSyncRequest(BaseModel):
+    skus: List[str] = Field(..., min_length=1, description="Lista de SKUs a sincronizar em lote na Shopify.")
+
+

@@ -24,6 +24,11 @@ from app.features.shopify.schemas.shopify_schemas import (
     ShopifyVariantInput,
     ShopifyInventoryUpdateInput,
     ShopifyStatusUpdateInput,
+    ShopifyStagedUploadInput,
+    ShopifyStagedUploadTargetParameter,
+    ShopifyStagedUploadTarget,
+    ShopifyBulkOperationResponse,
+    ShopifyBulkSyncRequest,
 )
 
 __all__ = [
@@ -52,5 +57,11 @@ __all__ = [
     "ShopifyProductResponse",
     "ShopifyInventoryUpdateInput",
     "ShopifyStatusUpdateInput",
+    "ShopifyStagedUploadInput",
+    "ShopifyStagedUploadTargetParameter",
+    "ShopifyStagedUploadTarget",
+    "ShopifyBulkOperationResponse",
+    "ShopifyBulkSyncRequest",
 ]
+
 

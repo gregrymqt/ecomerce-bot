@@ -172,6 +172,23 @@ class ProductRepository:
 
         return None
 
+    async def get_by_tenant_and_skus(self, tenant_id: str, skus: List[str]) -> List[ProductModel]:
+        """
+        Busca a lista de produtos associados ao tenant_id e à lista de SKUs fornecida.
+        """
+        session, owned = await self._get_session()
+        try:
+            stmt = select(ProductModel).where(
+                ProductModel.tenant_id == tenant_id,
+                ProductModel.sku.in_(skus)
+            )
+            result = await session.execute(stmt)
+            return list(result.scalars().all())
+        finally:
+            if owned:
+                await session.close()
+
+
     async def set_status(self, tenant_id: str, sku: str, status: str) -> None:
         session, owned = await self._get_session()
         try:
