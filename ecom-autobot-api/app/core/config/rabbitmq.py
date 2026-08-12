@@ -64,6 +64,12 @@ async def configure_rabbitmq_topology(
             durable=True
         )
 
+        shopify_dlx = await channel.declare_exchange(
+            "shopify_dlx",
+            ExchangeType.DIRECT,
+            durable=True
+        )
+
         # ------------------------------------------------------------------
         # 2. DEAD LETTER QUEUES (DLQs - Com TTL de expiração para limpeza)
         # ------------------------------------------------------------------
@@ -90,6 +96,13 @@ async def configure_rabbitmq_topology(
             arguments=dlq_args
         )
         await dlq_llm.bind(llm_dlx, routing_key="llm_failed")
+
+        dlq_shopify = await channel.declare_queue(
+            "dlq_shopify",
+            durable=True,
+            arguments=dlq_args
+        )
+        await dlq_shopify.bind(shopify_dlx, routing_key="shopify_failed")
 
         # ------------------------------------------------------------------
         # 3. FILAS DE E-COMMERCE & DEMO (SCRAPING)
@@ -185,7 +198,20 @@ async def configure_rabbitmq_topology(
             }
         )
 
-        logger.info("Topologia RabbitMQ (8 filas principais, 3 DLXs e 3 DLQs) configurada com sucesso.")
+        # ------------------------------------------------------------------
+        # 7. FILAS DE INTEGRAÇÕES (SHOPIFY E NUVEMSHOP)
+        # ------------------------------------------------------------------
+        shopify_webhook = await channel.declare_queue(
+            "shopify_webhook",
+            durable=True,
+            arguments={
+                "x-dead-letter-exchange": "shopify_dlx",
+                "x-dead-letter-routing-key": "shopify_failed",
+                "x-max-length": 10000
+            }
+        )
+
+        logger.info("Topologia RabbitMQ (9 filas principais, 4 DLXs e 4 DLQs) configurada com sucesso.")
 
         return {
             "demo_ecommerce": demo_ecommerce,
@@ -196,10 +222,13 @@ async def configure_rabbitmq_topology(
             "demo_llm": demo_llm,
             "llm": llm,
             "email_notifications": email_notifications,
+            "shopify_webhook": shopify_webhook,
             "dlq_ecommerce": dlq_ecommerce,
             "dlq_mercado_pago": dlq_mercado_pago,
             "dlq_llm": dlq_llm,
+            "dlq_shopify": dlq_shopify,
         }
+
 
     except Exception as e:
         logger.error(f"Erro ao configurar topologia do RabbitMQ: {e}")

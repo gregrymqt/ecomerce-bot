@@ -1,3 +1,4 @@
+from app.features.shopify.workers import ShopifyWebhookWorker
 import asyncio
 import logging
 from contextlib import asynccontextmanager
@@ -48,6 +49,7 @@ async def lifespan(app: FastAPI):
     webhook_worker = WebhookDispatcherWorker()
     payment_worker = PaymentWorker()
     email_worker = EmailWorker()
+    shopify_webhook_worker = ShopifyWebhookWorker()
 
     worker_tasks = [
         asyncio.create_task(scraper_worker.start_consuming("ecommerce", channel=channel), name="worker_scraper_prod"),
@@ -57,6 +59,7 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(webhook_worker.start_consuming("webhook", channel=channel), name="worker_webhook"),
         asyncio.create_task(payment_worker.start_consuming("payments", channel=channel), name="worker_payments"),
         asyncio.create_task(email_worker.start_consuming("email_notifications", channel=channel), name="worker_email"),
+        asyncio.create_task(shopify_webhook_worker.start_consuming("shopify_webhook", channel=channel), name="worker_shopify_webhook"),
     ]
 
     app.state.worker_tasks = worker_tasks

@@ -50,7 +50,7 @@ class ShopifyWebhookWorker:
             shopify_id = str(payload.get("id")) if payload.get("id") else None
             logger.info(f"🗑️ [Shopify Worker] Evento de exclusão para o produto ID Shopify '{shopify_id}'")
 
-    async def start_consuming(self, queue_name: str = "webhook", channel: aio_pika.abc.AbstractChannel | None = None) -> None:
+    async def start_consuming(self, queue_name: str = "shopify_webhook", channel: aio_pika.abc.AbstractChannel | None = None) -> None:
         """
         Inicia o loop assíncrono de consumo de eventos de webhook na fila RabbitMQ.
         """

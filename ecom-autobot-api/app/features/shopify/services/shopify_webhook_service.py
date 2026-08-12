@@ -72,9 +72,9 @@ class ShopifyWebhookService:
                         content_type="application/json",
                         delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
                     ),
-                    routing_key="webhook",
+                    routing_key="shopify_webhook",
                 )
-                logger.info(f"[Shopify Webhook Service] Evento '{topic}' do lojista '{shop_domain}' enfileirado no RabbitMQ.")
+                logger.info(f"[Shopify Webhook Service] Evento '{topic}' do lojista '{shop_domain}' enfileirado na fila 'shopify_webhook'.")
         except Exception as err:
             logger.error(f"[Shopify Webhook Service] Falha ao publicar evento no RabbitMQ: {err}")
 
