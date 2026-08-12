@@ -70,3 +70,31 @@ class ShopifyRepository:
             if owned:
                 await session.close()
 
+    async def get_tenant_by_shop_domain(self, shop_domain: str) -> Optional[str]:
+        """
+        Retorna o tenant_id ativo associado ao domínio da loja Shopify (X-Shopify-Shop-Domain).
+        """
+        result = await self.get_by_shop_domain(shop_domain)
+        if result:
+            return result[0]
+        return None
+
+    async def deactivate_integration(self, shop_domain: str) -> bool:
+        """
+        Inativa a integração da Shopify para o domínio especificado (evento app/uninstalled).
+        """
+        result = await self.get_by_shop_domain(shop_domain)
+        if not result:
+            logger.warning(f"[ShopifyRepository] Tentativa de inativação para loja não encontrada: '{shop_domain}'.")
+            return False
+        tenant_id, _ = result
+        config = await self.tenant_repo.get(tenant_id)
+        current_keys = dict(config.encrypted_keys) if config and config.encrypted_keys else {}
+        current_keys["shopify_is_active"] = False
+        current_keys.pop("shopify_access_token", None)
+
+        await self.tenant_repo.upsert(tenant_id=tenant_id, encrypted_keys=current_keys)
+        logger.info(f"[ShopifyRepository] Integração inativada com sucesso para a loja '{shop_domain}' (Tenant: '{tenant_id}').")
+        return True
+
+

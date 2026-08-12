@@ -348,3 +348,38 @@ class ProductRepository:
         finally:
             if owned:
                 await session.close()
+
+    async def unlink_shopify_product(
+        self,
+        tenant_id: str,
+        shopify_product_id: str,
+    ) -> bool:
+        """
+        Desvincula (define shopify_product_id como None) os produtos associados ao ID da Shopify.
+        """
+        session, owned = await self._get_session()
+        try:
+            stmt = select(ProductModel).where(
+                ProductModel.tenant_id == tenant_id,
+                ProductModel.shopify_product_id == str(shopify_product_id)
+            )
+            result = await session.execute(stmt)
+            products = result.scalars().all()
+            if not products:
+                return False
+
+            for p in products:
+                p.shopify_product_id = None
+                p.updated_at = datetime.now(timezone.utc)
+                await self._invalidate_product_cache(tenant_id, p.sku)
+
+            await session.commit()
+            logger.info(f"[ProductRepository] Produto(s) ID Shopify '{shopify_product_id}' desvinculado(s) para tenant '{tenant_id}'.")
+            return True
+        except Exception:
+            if owned:
+                await session.rollback()
+            raise
+        finally:
+            if owned:
+                await session.close()
