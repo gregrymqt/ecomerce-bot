@@ -24,7 +24,8 @@ from app.features.shopify.schemas import (
     ShopifySEOInput,
     ShopifyVariantInput,
 )
-from app.features.shopify.services import ShopifyService
+from app.features.shopify.services import ShopifyService, ShopifyWebhookService
+from app.features.shopify.workers import ShopifyWebhookWorker
 
 __all__ = [
     # Domain
@@ -57,5 +58,9 @@ __all__ = [
     "ShopifyCreateMediaRequest",
     # Services
     "ShopifyService",
+    "ShopifyWebhookService",
+    # Workers
+    "ShopifyWebhookWorker",
 ]
+
 

@@ -72,6 +72,10 @@ class Settings(BaseSettings):
         default="2026-07",
         validation_alias=AliasChoices("SHOPIFY_API_VERSION", "SHOPIFY_VERSION")
     )
+    SHOPIFY_WEBHOOK_SECRET: str = Field(
+        default="",
+        validation_alias=AliasChoices("SHOPIFY_WEBHOOK_SECRET", "SHOPIFY_CLIENT_SECRET", "SHOPIFY_SECRET")
+    )
     DEFAULT_PRIMARY_MODEL: str = Field(
         default="deepseek/deepseek-chat",
         validation_alias=AliasChoices("DEFAULT_PRIMARY_MODEL", "Primary_Model")
