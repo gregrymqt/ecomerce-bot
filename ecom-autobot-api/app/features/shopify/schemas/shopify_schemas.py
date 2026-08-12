@@ -269,3 +269,18 @@ class ShopifyProductResponse(BaseModel):
     errors: List[str] = Field(default=[], description="Lista de erros reportáveis pelo Shopify GraphQL.")
 
     model_config = {"from_attributes": True}
+
+
+class ShopifyInventoryUpdateInput(BaseModel):
+    """DTO para atualização rápida de estoque por SKU na Shopify."""
+
+    available_quantity: int = Field(..., ge=0, description="Saldo em estoque disponível.")
+    inventory_item_id: Optional[str] = Field(None, description="GID do item de estoque (opcional se puder ser resolvido).")
+    location_id: Optional[str] = Field(None, description="GID do local de estoque (opcional se puder ser resolvido).")
+
+
+class ShopifyStatusUpdateInput(BaseModel):
+    """DTO para atualização do status do produto na Shopify (ACTIVE, DRAFT, ARCHIVED)."""
+
+    status: str = Field(..., description="Status do produto: 'ACTIVE', 'DRAFT' ou 'ARCHIVED'.")
+

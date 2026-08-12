@@ -12,7 +12,10 @@ from app.features.shopify.schemas import (
     ShopifyProductResponse,
     ShopifyProductUpdateInput,
     ShopifySyncRequest,
+    ShopifyInventoryUpdateInput,
+    ShopifyStatusUpdateInput,
 )
+
 
 router = APIRouter(
     prefix="/shopify",
@@ -137,12 +140,39 @@ async def update_shopify_product(
 ):
     return await service.update_product(product_id, update_payload.model_dump(exclude_none=True))
 
-@router.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_shopify_product(
-    product_id: str,
-    service: ShopifyService = Depends(get_shopify_service)
+@router.patch("/products/{sku}/inventory", summary="Atualização Rápida de Estoque por SKU")
+async def update_shopify_inventory(
+    sku: str,
+    inventory_payload: ShopifyInventoryUpdateInput,
+    service: ShopifyService = Depends(get_shopify_service),
 ):
-    return await service.delete_product(product_id)
+    return await service.update_inventory_by_sku(
+        sku=sku,
+        quantity=inventory_payload.available_quantity,
+        inventory_item_id=inventory_payload.inventory_item_id,
+        location_id=inventory_payload.location_id,
+    )
+
+
+@router.patch("/products/{sku}/status", summary="Alteração de Status do Produto na Shopify")
+async def update_shopify_status(
+    sku: str,
+    status_payload: ShopifyStatusUpdateInput,
+    service: ShopifyService = Depends(get_shopify_service),
+):
+    return await service.change_product_status_by_sku(
+        sku=sku,
+        status_value=status_payload.status,
+    )
+
+
+@router.delete("/products/{sku}", status_code=status.HTTP_200_OK, summary="Exclusão Remota do Produto na Shopify")
+async def delete_shopify_product_by_sku(
+    sku: str,
+    service: ShopifyService = Depends(get_shopify_service),
+):
+    return await service.delete_remote_product_by_sku(sku=sku)
+
 
 @router.get("/products", response_model=ShopifyProductResponse)
 async def list_shopify_products(
@@ -151,3 +181,4 @@ async def list_shopify_products(
     service: ShopifyService = Depends(get_shopify_service)
 ):
     return await service.list_products(first=first, after=after)
+

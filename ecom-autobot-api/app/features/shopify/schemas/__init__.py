@@ -22,6 +22,8 @@ from app.features.shopify.schemas.shopify_schemas import (
     ShopifySEOInput,
     ShopifySyncRequest,
     ShopifyVariantInput,
+    ShopifyInventoryUpdateInput,
+    ShopifyStatusUpdateInput,
 )
 
 __all__ = [
@@ -48,4 +50,7 @@ __all__ = [
     "ShopifyCreateMediaRequest",
     "ShopifySyncRequest",
     "ShopifyProductResponse",
+    "ShopifyInventoryUpdateInput",
+    "ShopifyStatusUpdateInput",
 ]
+

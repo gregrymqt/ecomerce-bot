@@ -279,3 +279,157 @@ class ShopifyClient:
                 if e.response.status_code == 429:
                     logger.warning("Limite do algoritmo Leaky Bucket atingido no Shopify (429) ao listar. Acionando backoff...")
                 raise e
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception(is_rate_limit_error),
+        reraise=True,
+    )
+    async def set_inventory_quantity(self, inventory_item_id: str, location_id: str, quantity: int) -> dict:
+        """
+        Executa a mutação inventorySetQuantities para atualização rápida de estoque sem carregar o produto inteiro.
+        """
+        query = """
+        mutation inventorySetQuantities($input: InventorySetQuantitiesInput!) {
+          inventorySetQuantities(input: $input) {
+            inventoryAdjustmentGroup {
+              reason
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """
+        payload = {
+            "query": query,
+            "variables": {
+                "input": {
+                    "name": "available",
+                    "reason": "correction",
+                    "quantities": [
+                        {
+                            "inventoryItemId": inventory_item_id,
+                            "locationId": location_id,
+                            "quantity": quantity
+                        }
+                    ]
+                }
+            }
+        }
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(self.base_url, headers=self.headers, json=payload)
+                response.raise_for_status()
+                response_json = response.json()
+
+                self._check_graphql_errors(response_json)
+
+                result = response_json.get("data", {}).get("inventorySetQuantities", {})
+                user_errors = result.get("userErrors", [])
+                if user_errors:
+                    logger.error(f"Erro de negócio no ajuste de estoque no Shopify: {user_errors}")
+                    raise ValueError(f"Shopify Inventory Update Failed: {user_errors[0].get('message')}")
+
+                logger.info(f"Estoque atualizado com sucesso no Shopify. Item: {inventory_item_id} -> {quantity}")
+                return result
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    logger.warning("Rate limit no ajuste de estoque (429). Acionando backoff...")
+                raise e
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception(is_rate_limit_error),
+        reraise=True,
+    )
+    async def update_product_status(self, product_id: str, status: str) -> dict:
+        """
+        Executa a mutação productUpdate para alterar apenas o status (ACTIVE, DRAFT, ARCHIVED).
+        """
+        query = """
+        mutation updateProductStatus($input: ProductInput!) {
+          productUpdate(input: $input) {
+            product {
+              id
+              status
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """
+        payload = {
+            "query": query,
+            "variables": {
+                "input": {
+                    "id": product_id,
+                    "status": status.upper()
+                }
+            }
+        }
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(self.base_url, headers=self.headers, json=payload)
+                response.raise_for_status()
+                response_json = response.json()
+
+                self._check_graphql_errors(response_json)
+
+                result = response_json.get("data", {}).get("productUpdate", {})
+                user_errors = result.get("userErrors", [])
+                if user_errors:
+                    logger.error(f"Erro de negócio na alteração de status no Shopify: {user_errors}")
+                    raise ValueError(f"Shopify Status Update Failed: {user_errors[0].get('message')}")
+
+                logger.info(f"Status do produto {product_id} alterado com sucesso para '{status}'.")
+                return result
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    logger.warning("Rate limit na alteração de status (429). Acionando backoff...")
+                raise e
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception(is_rate_limit_error),
+        reraise=True,
+    )
+    async def get_primary_location_id(self) -> Optional[str]:
+        """
+        Busca o GID da localização primária cadastrada na loja do Shopify.
+        """
+        query = """
+        query getLocations {
+          locations(first: 1) {
+            nodes {
+              id
+            }
+          }
+        }
+        """
+        payload = {"query": query, "variables": {}}
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(self.base_url, headers=self.headers, json=payload)
+                response.raise_for_status()
+                response_json = response.json()
+
+                self._check_graphql_errors(response_json)
+
+                nodes = response_json.get("data", {}).get("locations", {}).get("nodes", [])
+                if nodes:
+                    return nodes[0].get("id")
+                return None
+            except Exception as err:
+                logger.warning(f"Não foi possível obter location_id primário: {err}")
+                return None
+

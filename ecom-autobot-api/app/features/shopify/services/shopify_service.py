@@ -239,3 +239,106 @@ class ShopifyService:
 
         return results
 
+    async def update_inventory_by_sku(
+        self,
+        sku: str,
+        quantity: int,
+        inventory_item_id: Optional[str] = None,
+        location_id: Optional[str] = None,
+    ) -> dict:
+        """
+        Localiza o produto no PostgreSQL por (tenant_id, sku), resolve os GIDs de inventário/localização e
+        executa a mutação otimizada set_inventory_quantity.
+        """
+        client = await self._ensure_client()
+        product = await self.product_repo.get_by_tenant_and_sku(self.tenant_id, sku)
+        if not product:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Produto SKU '{sku}' não encontrado para o tenant '{self.tenant_id}'.",
+            )
+
+        # Resolvendo inventory_item_id do payload bruto se não fornecido
+        if not inventory_item_id and product.raw_payload:
+            variants = product.raw_payload.get("variants", [])
+            if variants:
+                inventory_item_id = variants[0].get("inventory_item_id") or variants[0].get("inventoryItem", {}).get("id")
+
+        if not inventory_item_id:
+            inventory_item_id = f"gid://shopify/InventoryItem/{sku}"
+
+        # Resolvendo location_id da loja se não fornecido
+        if not location_id:
+            location_id = await client.get_primary_location_id()
+
+        if not location_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Não foi possível identificar o location_id da loja Shopify para atualização de estoque.",
+            )
+
+        result = await client.set_inventory_quantity(
+            inventory_item_id=str(inventory_item_id),
+            location_id=str(location_id),
+            quantity=quantity,
+        )
+
+        # Atualizando timestamp de sincronização no banco local
+        if product.shopify_product_id:
+            await self.product_repo.update_external_ids(
+                tenant_id=self.tenant_id,
+                sku=sku,
+                shopify_product_id=product.shopify_product_id,
+            )
+
+        return result
+
+    async def delete_remote_product_by_sku(self, sku: str) -> dict:
+        """
+        Localiza o produto no PostgreSQL por (tenant_id, sku), executa productDelete na Shopify e desvincula o shopify_product_id.
+        """
+        client = await self._ensure_client()
+        product = await self.product_repo.get_by_tenant_and_sku(self.tenant_id, sku)
+        if not product or not product.shopify_product_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Produto SKU '{sku}' com vínculo Shopify não encontrado para o tenant '{self.tenant_id}'.",
+            )
+
+        deleted_id = await client.delete_product(product_id=product.shopify_product_id)
+
+        # Desvinculando shopify_product_id no banco de dados local
+        await self.product_repo.unlink_shopify_product(
+            tenant_id=self.tenant_id,
+            shopify_product_id=product.shopify_product_id,
+        )
+
+        return {"status": "success", "deleted_product_id": deleted_id or product.shopify_product_id, "sku": sku}
+
+    async def change_product_status_by_sku(self, sku: str, status_value: str) -> dict:
+        """
+        Executa update_product_status na Shopify e reflete a alteração na base de dados local.
+        """
+        client = await self._ensure_client()
+        product = await self.product_repo.get_by_tenant_and_sku(self.tenant_id, sku)
+        if not product or not product.shopify_product_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Produto SKU '{sku}' com vínculo Shopify não encontrado para o tenant '{self.tenant_id}'.",
+            )
+
+        result = await client.update_product_status(
+            product_id=product.shopify_product_id,
+            status=status_value,
+        )
+
+        # Atualizando no banco local
+        await self.product_repo.update_external_ids(
+            tenant_id=self.tenant_id,
+            sku=sku,
+            shopify_product_id=product.shopify_product_id,
+        )
+
+        return result
+
+
