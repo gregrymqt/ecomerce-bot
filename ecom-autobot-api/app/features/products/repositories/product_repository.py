@@ -54,6 +54,9 @@ class ProductRepository:
             "status": model.status,
             "raw_payload": model.raw_payload,
             "ai_enriched_data": model.ai_enriched_data,
+            "shopify_product_id": model.shopify_product_id,
+            "nuvemshop_product_id": model.nuvemshop_product_id,
+            "last_synced_at": model.last_synced_at.isoformat() if hasattr(model, "last_synced_at") and model.last_synced_at else None,
             "created_at": model.created_at.isoformat() if hasattr(model, "created_at") and model.created_at else None,
             "updated_at": model.updated_at.isoformat() if hasattr(model, "updated_at") and model.updated_at else None,
         }
@@ -68,6 +71,13 @@ class ProductRepository:
             status=data.get("status", "RAW"),
             raw_payload=data.get("raw_payload", {}),
             ai_enriched_data=data.get("ai_enriched_data"),
+            shopify_product_id=data.get("shopify_product_id"),
+            nuvemshop_product_id=data.get("nuvemshop_product_id"),
+            last_synced_at=(
+                datetime.fromisoformat(data["last_synced_at"])
+                if data.get("last_synced_at")
+                else None
+            ),
             created_at=(
                 datetime.fromisoformat(data["created_at"])
                 if data.get("created_at")
@@ -288,6 +298,49 @@ class ProductRepository:
                 await self._invalidate_product_cache(tenant_id, sku)
                 return True
             return False
+        except Exception:
+            if owned:
+                await session.rollback()
+            raise
+        finally:
+            if owned:
+                await session.close()
+
+    async def update_external_ids(
+        self,
+        tenant_id: str,
+        sku: str,
+        shopify_product_id: Optional[str] = None,
+        nuvemshop_product_id: Optional[str] = None,
+    ) -> Optional[ProductModel]:
+        """
+        Atualiza as chaves de integração externa (shopify_product_id, nuvemshop_product_id)
+        e a data da última sincronização para o par (tenant_id, sku).
+        """
+        session, owned = await self._get_session()
+        try:
+            stmt = select(ProductModel).where(
+                ProductModel.tenant_id == tenant_id,
+                ProductModel.sku == sku
+            )
+            result = await session.execute(stmt)
+            model = result.scalar_one_or_none()
+
+            if not model:
+                return None
+
+            if shopify_product_id is not None:
+                model.shopify_product_id = shopify_product_id
+            if nuvemshop_product_id is not None:
+                model.nuvemshop_product_id = str(nuvemshop_product_id)
+
+            model.last_synced_at = datetime.now(timezone.utc)
+            model.status = "Exported"
+            model.updated_at = datetime.now(timezone.utc)
+
+            await session.commit()
+            await self._invalidate_product_cache(tenant_id, sku)
+            return model
         except Exception:
             if owned:
                 await session.rollback()

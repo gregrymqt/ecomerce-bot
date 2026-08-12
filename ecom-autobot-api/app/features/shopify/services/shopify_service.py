@@ -3,9 +3,11 @@ from typing import Optional
 from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
 
+from app.core.config.settings import settings
 from app.core.shared.csv_exporter import CsvExportService
 from app.features.shopify.infrastructure.client import ShopifyClient
 from app.features.shopify.repositories import ShopifyRepository
+from app.features.products.repositories.product_repository import ProductRepository
 from app.features.shopify.schemas import (
     ShopifyMediaAddRequest,
     ShopifyProductSetInput,
@@ -24,10 +26,12 @@ class ShopifyService:
         self,
         tenant_id: str,
         shopify_repo: Optional[ShopifyRepository] = None,
+        product_repo: Optional[ProductRepository] = None,
         client: Optional[ShopifyClient] = None,
     ):
         self.tenant_id = tenant_id
         self.shopify_repo = shopify_repo or ShopifyRepository()
+        self.product_repo = product_repo or ProductRepository()
         self.client = client
 
     async def _ensure_client(self) -> ShopifyClient:
@@ -49,13 +53,43 @@ class ShopifyService:
                 status_code=status.HTTP_412_PRECONDITION_FAILED,
                 detail=f"Credenciais do Shopify não configuradas para o Tenant '{self.tenant_id}'.",
             )
-        self.client = ShopifyClient(shop_domain=creds.shop_domain, access_token=creds.access_token)
+        self.client = ShopifyClient(
+            shop_domain=creds.shop_domain,
+            access_token=creds.access_token,
+            api_version=settings.SHOPIFY_API_VERSION,
+        )
         return self.client
 
     async def sync_product(self, product_data: dict) -> dict:
         client = await self._ensure_client()
+        sku = product_data.get("sku", "")
+
         try:
-            return await client.sync_product(product_data)
+            # Verifica se já existe produto no banco de dados com shopify_product_id para este SKU
+            existing_product = await self.product_repo.get_by_tenant_and_sku(self.tenant_id, sku) if sku else None
+            
+            if existing_product and existing_product.shopify_product_id:
+                # Atualização se o produto já existir no Shopify
+                result = await client.update_product(
+                    product_id=existing_product.shopify_product_id,
+                    update_fields=product_data,
+                )
+                shopify_id = existing_product.shopify_product_id
+            else:
+                # Criação nova no Shopify via GraphQL
+                result = await client.sync_product(product_data)
+                shopify_id = result.get("product", {}).get("id")
+
+            # Mapeamento explícito de chave estrangeira no banco de dados
+            if sku and shopify_id:
+                await self.product_repo.update_external_ids(
+                    tenant_id=self.tenant_id,
+                    sku=sku,
+                    shopify_product_id=shopify_id,
+                )
+
+            return result
+
         except ValueError as val_err:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -63,6 +97,7 @@ class ShopifyService:
             )
         except Exception as e:
             try:
+                error_msg = str(e)
                 input_data = ShopifyProductSetInput.from_internal_data(product_data)
                 CsvExportService.generate_shopify_csv([input_data])
                 download_url = "/api/v1/export?platform=shopify"
@@ -71,7 +106,9 @@ class ShopifyService:
                     status_code=status.HTTP_202_ACCEPTED,
                     content={
                         "status": "fallback_csv",
-                        "message": "A sincronização direta falhou temporariamente. O download do CSV com copywriting IA foi gerado como alternativa.",
+                        "message": "A sincronização direta falhou. O download do CSV com copywriting IA foi gerado como alternativa.",
+                        "reason": error_msg,
+                        "error_detail": f"Falha de sincronização GraphQL Shopify: {error_msg}",
                         "download_url": download_url,
                     },
                 )

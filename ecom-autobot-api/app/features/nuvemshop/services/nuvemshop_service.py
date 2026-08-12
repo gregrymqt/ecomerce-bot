@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from app.core.shared.csv_exporter import CsvExportService
 from app.features.nuvemshop.infrastructure.client import NuvemshopClient
 from app.features.nuvemshop.repositories import NuvemshopRepository
+from app.features.products.repositories.product_repository import ProductRepository
 from app.features.nuvemshop.schemas import NuvemshopProductRequest
 
 logger = logging.getLogger(__name__)
@@ -21,10 +22,12 @@ class NuvemshopService:
         self,
         tenant_id: str,
         nuvemshop_repo: Optional[NuvemshopRepository] = None,
+        product_repo: Optional[ProductRepository] = None,
         client: Optional[NuvemshopClient] = None,
     ):
         self.tenant_id = tenant_id
         self.nuvemshop_repo = nuvemshop_repo or NuvemshopRepository()
+        self.product_repo = product_repo or ProductRepository()
         self.client = client
 
     async def _ensure_client(self) -> NuvemshopClient:
@@ -70,10 +73,35 @@ class NuvemshopService:
 
     async def create_product(self, product: NuvemshopProductRequest) -> dict:
         client = await self._ensure_client()
+        sku = product.variants[0].sku if product.variants and len(product.variants) > 0 else None
+
         try:
-            return await client.create_product(product)
+            # Verifica se já existe mapeamento no banco de dados para este SKU
+            existing_product = await self.product_repo.get_by_tenant_and_sku(self.tenant_id, sku) if sku else None
+
+            if existing_product and existing_product.nuvemshop_product_id:
+                # Atualiza metadados do produto existente na Nuvemshop
+                product_id_int = int(existing_product.nuvemshop_product_id)
+                update_payload = product.model_dump(by_alias=True, exclude_none=True)
+                result = await client.update_product_metadata(product_id_int, update_payload)
+                nuvemshop_id = existing_product.nuvemshop_product_id
+            else:
+                # Cria produto novo na Nuvemshop via REST API
+                result = await client.create_product(product)
+                nuvemshop_id = result.get("id")
+
+            # Mapeamento explícito de chave estrangeira no banco de dados
+            if sku and nuvemshop_id:
+                await self.product_repo.update_external_ids(
+                    tenant_id=self.tenant_id,
+                    sku=sku,
+                    nuvemshop_product_id=str(nuvemshop_id),
+                )
+
+            return result
         except Exception as e:
             try:
+                error_msg = str(e)
                 CsvExportService.generate_nuvemshop_csv([product])
                 download_url = "/api/v1/export?platform=nuvemshop"
 
@@ -81,7 +109,9 @@ class NuvemshopService:
                     status_code=status.HTTP_202_ACCEPTED,
                     content={
                         "status": "fallback_csv",
-                        "message": "A sincronização direta falhou temporariamente. O download do CSV com copywriting IA foi gerado como alternativa.",
+                        "message": "A sincronização direta falhou. O download do CSV com copywriting IA foi gerado como alternativa.",
+                        "reason": error_msg,
+                        "error_detail": f"Falha de comunicação Nuvemshop: {error_msg}",
                         "download_url": download_url,
                     },
                 )

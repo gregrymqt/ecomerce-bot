@@ -19,6 +19,11 @@ class ProductModel(Base):
     raw_payload = Column(JSONB, nullable=True)
     ai_enriched_data = Column(JSONB, nullable=True)  # Dados refinados pela LLM
 
+    # Mapeamento explícito de chaves externas para evitar duplicidade em sincronizações
+    shopify_product_id = Column(String(255), nullable=True, index=True)
+    nuvemshop_product_id = Column(String(255), nullable=True, index=True)
+    last_synced_at = Column(DateTime(timezone=True), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

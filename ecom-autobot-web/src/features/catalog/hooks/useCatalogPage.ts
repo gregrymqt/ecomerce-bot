@@ -166,10 +166,23 @@ export function useCatalogPage() {
         images: product.thumbnailUrl ? [product.thumbnailUrl] : [],
       };
 
-      if (product.platform === 'Nuvemshop') {
-        await productService.syncToNuvemshop(payload);
+      const res = product.platform === 'Nuvemshop'
+        ? await productService.syncToNuvemshop(payload)
+        : await productService.syncToShopify(payload);
+
+      if (res.status === 'fallback_csv') {
+        const reasonText = res.reason || res.error_detail || res.message || 'Falha de comunicação com a plataforma externa.';
+        setAlertInfo({
+          variant: 'warning',
+          title: 'Fallback para CSV Acionado',
+          message: `A API da ${product.platform} retornou uma falha (${reasonText}). O arquivo CSV com a copywriting de IA foi gerado como alternativa. Acesse ${res.download_url || '/api/v1/export'} para baixar.`,
+        });
       } else {
-        await productService.syncToShopify(payload);
+        setAlertInfo({
+          variant: 'success',
+          title: 'Sincronizado!',
+          message: `O produto SKU ${product.sku} foi sincronizado com sucesso na ${product.platform}.`,
+        });
       }
 
       setLocalCatalogProducts((prev) =>
@@ -180,11 +193,12 @@ export function useCatalogPage() {
           return p;
         })
       );
-    } catch {
+    } catch (err: any) {
+      const errorDetail = err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Erro desconhecido de sincronização.';
       setAlertInfo({
         variant: 'error',
         title: 'Erro de Sincronização',
-        message: `Falha ao sincronizar o produto SKU ${product.sku} com a plataforma.`,
+        message: `Falha ao sincronizar o produto SKU ${product.sku}: ${errorDetail}`,
       });
     } finally {
       setSyncingSku(null);

@@ -21,6 +21,8 @@ from app.features.shopify.schemas import (
     ShopifySEOInput,
 )
 
+from app.core.config.settings import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -41,11 +43,12 @@ class ShopifyClient:
     Encapsula unicamente as chamadas externas de transporte e tratamento de userErrors.
     """
 
-    def __init__(self, shop_domain: str, access_token: str, api_version: str = "2024-04"):
+    def __init__(self, shop_domain: str, access_token: str, api_version: str | None = None):
         self.shop_domain = shop_domain
         self.access_token = access_token
+        self.api_version = api_version or settings.SHOPIFY_API_VERSION
         clean_domain = shop_domain.replace("https://", "").replace("http://", "").split("/")[0]
-        self.base_url = f"https://{clean_domain}/admin/api/{api_version}/graphql.json"
+        self.base_url = f"https://{clean_domain}/admin/api/{self.api_version}/graphql.json"
 
         self.headers = {
             "X-Shopify-Access-Token": self.access_token,

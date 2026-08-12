@@ -68,6 +68,10 @@ class Settings(BaseSettings):
         default="https://openrouter.ai/api/v1",
         validation_alias=AliasChoices("OPENROUTER_BASE_URL", "OpenRouter_Base_Url")
     )
+    SHOPIFY_API_VERSION: str = Field(
+        default="2026-07",
+        validation_alias=AliasChoices("SHOPIFY_API_VERSION", "SHOPIFY_VERSION")
+    )
     DEFAULT_PRIMARY_MODEL: str = Field(
         default="deepseek/deepseek-chat",
         validation_alias=AliasChoices("DEFAULT_PRIMARY_MODEL", "Primary_Model")

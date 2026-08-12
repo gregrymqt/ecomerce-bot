@@ -61,6 +61,18 @@ export interface ProductFilterParams {
 }
 
 /**
+ * Resposta da sincronização com plataforma externa (Shopify / Nuvemshop).
+ */
+export interface SyncProductResponse {
+  status?: string;
+  message?: string;
+  reason?: string;
+  error_detail?: string;
+  download_url?: string;
+  [key: string]: unknown;
+}
+
+/**
  * Resposta paginada retornada pelo endpoint GET /api/v1/products.
  */
 export interface PaginatedProductsResponse {
@@ -70,3 +82,4 @@ export interface PaginatedProductsResponse {
   limit: number;
   pages: number;
 }
+
