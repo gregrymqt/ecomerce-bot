@@ -1,7 +1,10 @@
 import logging
-from typing import Optional
+from typing import Optional, Tuple
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security.crypto import encrypt_api_key
+from app.features.products.domain.models import TenantConfigModel
 from app.features.products.repositories.tenant_config_repository import TenantConfigRepository
 from app.features.shopify.domain.entities import ShopifyCredentials
 
@@ -27,3 +30,43 @@ class ShopifyRepository:
             return None
         shop_domain, access_token = creds
         return ShopifyCredentials(shop_domain=shop_domain, access_token=access_token)
+
+    async def save_integration(self, tenant_id: str, shop_domain: str, access_token: str) -> None:
+        """
+        Criptografa o access_token com AES-256 GCM e persiste a integração do Shopify para o tenant.
+        """
+        encrypted_token = encrypt_api_key(access_token)
+        clean_domain = shop_domain.replace("https://", "").replace("http://", "").split("/")[0].strip().lower()
+
+        config = await self.tenant_repo.get(tenant_id)
+        current_keys = dict(config.encrypted_keys) if config and config.encrypted_keys else {}
+        current_keys["shopify_shop_domain"] = clean_domain
+        current_keys["shopify_access_token"] = encrypted_token
+
+        await self.tenant_repo.upsert(tenant_id=tenant_id, encrypted_keys=current_keys)
+        logger.info(f"[ShopifyRepository] Integração salva com sucesso para o Tenant '{tenant_id}' (Loja: {clean_domain}).")
+
+    async def get_by_shop_domain(self, shop_domain: str) -> Optional[Tuple[str, ShopifyCredentials]]:
+        """
+        Busca a integração ativa pelo domínio do lojista (ex: 'loja.myshopify.com')
+        e retorna uma tupla (tenant_id, ShopifyCredentials).
+        """
+        clean_domain = shop_domain.replace("https://", "").replace("http://", "").split("/")[0].strip().lower()
+        session, owned = await self.tenant_repo._get_session()
+        try:
+            stmt = select(TenantConfigModel)
+            result = await session.execute(stmt)
+            configs = result.scalars().all()
+
+            for cfg in configs:
+                keys = cfg.encrypted_keys or {}
+                domain = str(keys.get("shopify_shop_domain", "")).replace("https://", "").replace("http://", "").split("/")[0].strip().lower()
+                if domain and domain == clean_domain:
+                    creds = await self.get_credentials(cfg.tenant_id)
+                    if creds:
+                        return cfg.tenant_id, creds
+            return None
+        finally:
+            if owned:
+                await session.close()
+

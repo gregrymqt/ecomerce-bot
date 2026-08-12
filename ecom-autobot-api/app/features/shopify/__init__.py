@@ -24,7 +24,11 @@ from app.features.shopify.schemas import (
     ShopifySEOInput,
     ShopifyVariantInput,
 )
-from app.features.shopify.services import ShopifyService, ShopifyWebhookService
+from app.features.shopify.services import (
+    ShopifyService,
+    ShopifyWebhookService,
+    ShopifyAuthService,
+)
 from app.features.shopify.workers import ShopifyWebhookWorker
 
 __all__ = [
@@ -59,6 +63,7 @@ __all__ = [
     # Services
     "ShopifyService",
     "ShopifyWebhookService",
+    "ShopifyAuthService",
     # Workers
     "ShopifyWebhookWorker",
 ]

@@ -162,3 +162,80 @@ class ShopifyService:
             return await client.list_products(first=first, after=after)
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Erro listagem Shopify: {str(e)}")
+
+    async def register_app_webhooks(self, shop_domain: str, access_token: str) -> dict:
+        """
+        Cadastra automaticamente as inscrições de Webhooks GraphQL no Shopify para a loja recém-autenticada.
+        """
+        import httpx
+
+        client = ShopifyClient(
+            shop_domain=shop_domain,
+            access_token=access_token,
+            api_version=settings.SHOPIFY_API_VERSION,
+        )
+
+        topics = [
+            "PRODUCTS_CREATE",
+            "PRODUCTS_UPDATE",
+            "PRODUCTS_DELETE",
+            "INVENTORY_LEVELS_UPDATE",
+            "BULK_OPERATIONS_FINISH",
+            "APP_UNINSTALLED",
+        ]
+
+        redirect_uri = getattr(settings, "SHOPIFY_REDIRECT_URI", "")
+        if redirect_uri and "/shopify/" in redirect_uri:
+            base_api_url = redirect_uri.rsplit("/shopify/", 1)[0]
+            webhook_uri = f"{base_api_url}/shopify/webhooks"
+        elif redirect_uri:
+            webhook_uri = redirect_uri.replace("/auth/callback", "/webhooks")
+        else:
+            webhook_uri = "https://api.ecommercebot.com/api/v1/shopify/webhooks"
+
+        mutation_query = """
+        mutation RegisterWebhook($topic: WebhookSubscriptionTopic!, $webhookSubscription: WebhookSubscriptionInput!) {
+          webhookSubscriptionCreate(topic: $topic, webhookSubscription: $webhookSubscription) {
+            webhookSubscription {
+              id
+              topic
+              uri
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """
+
+        results = {}
+        for topic in topics:
+            payload = {
+                "query": mutation_query,
+                "variables": {
+                    "topic": topic,
+                    "webhookSubscription": {
+                        "format": "JSON",
+                        "uri": webhook_uri,
+                    },
+                },
+            }
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as http_client:
+                    res = await http_client.post(client.base_url, headers=client.headers, json=payload)
+                    res.raise_for_status()
+                    res_json = res.json()
+
+                    user_errors = res_json.get("data", {}).get("webhookSubscriptionCreate", {}).get("userErrors", [])
+                    if user_errors:
+                        logger.warning(f"[Shopify Webhook Registration] UserErrors no tópico '{topic}': {user_errors}")
+                    else:
+                        logger.info(f"[Shopify Webhook Registration] Tópico '{topic}' cadastrado com sucesso para '{shop_domain}'.")
+                    results[topic] = res_json
+            except Exception as err:
+                logger.error(f"[Shopify Webhook Registration] Falha ao registrar webhook para tópico '{topic}': {err}")
+                results[topic] = {"error": str(err)}
+
+        return results
+

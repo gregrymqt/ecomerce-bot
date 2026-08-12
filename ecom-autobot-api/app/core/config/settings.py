@@ -72,9 +72,29 @@ class Settings(BaseSettings):
         default="2026-07",
         validation_alias=AliasChoices("SHOPIFY_API_VERSION", "SHOPIFY_VERSION")
     )
+    SHOPIFY_CLIENT_ID: str = Field(
+        default="",
+        validation_alias=AliasChoices("SHOPIFY_CLIENT_ID", "SHOPIFY_API_KEY")
+    )
+    SHOPIFY_CLIENT_SECRET: str = Field(
+        default="",
+        validation_alias=AliasChoices("SHOPIFY_CLIENT_SECRET", "SHOPIFY_SECRET")
+    )
     SHOPIFY_WEBHOOK_SECRET: str = Field(
         default="",
         validation_alias=AliasChoices("SHOPIFY_WEBHOOK_SECRET", "SHOPIFY_CLIENT_SECRET", "SHOPIFY_SECRET")
+    )
+    SHOPIFY_SCOPES: str = Field(
+        default="read_products,write_products,read_inventory,write_inventory",
+        validation_alias=AliasChoices("SHOPIFY_SCOPES", "SHOPIFY_SCOPE")
+    )
+    SHOPIFY_REDIRECT_URI: str = Field(
+        default="",
+        validation_alias=AliasChoices("SHOPIFY_REDIRECT_URI", "SHOPIFY_OAUTH_REDIRECT_URI")
+    )
+    FRONTEND_URL: str = Field(
+        default="http://localhost:5173",
+        validation_alias=AliasChoices("FRONTEND_URL", "WEB_URL")
     )
     DEFAULT_PRIMARY_MODEL: str = Field(
         default="deepseek/deepseek-chat",
