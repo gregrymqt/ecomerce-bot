@@ -10,8 +10,12 @@ from app.features.nuvemshop.schemas.nuvemshop_schemas import (
 )
 from app.features.nuvemshop.schemas.stock_schemas import (
     InventoryLevelSchema,
+    NuvemshopInventoryLevelItem,
+    NuvemshopInventoryLevelListResponse,
     NuvemshopLocationAddress,
     NuvemshopLocationResponse,
+    NuvemshopStockUpdateBatchRequest,
+    NuvemshopStockUpdateItem,
 )
 
 __all__ = [
@@ -26,5 +30,10 @@ __all__ = [
     "NuvemshopLocationAddress",
     "NuvemshopLocationResponse",
     "InventoryLevelSchema",
+    "NuvemshopInventoryLevelItem",
+    "NuvemshopInventoryLevelListResponse",
+    "NuvemshopStockUpdateItem",
+    "NuvemshopStockUpdateBatchRequest",
 ]
+
 

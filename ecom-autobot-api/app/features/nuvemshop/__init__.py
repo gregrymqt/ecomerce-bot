@@ -5,11 +5,15 @@ from app.features.nuvemshop.schemas import (
     InventoryLevelSchema,
     NuvemshopBatchStockPriceItem,
     NuvemshopImageRequest,
+    NuvemshopInventoryLevelItem,
+    NuvemshopInventoryLevelListResponse,
     NuvemshopLocalizedString,
     NuvemshopLocationAddress,
     NuvemshopLocationResponse,
     NuvemshopProductRequest,
     NuvemshopProductUpdatePayload,
+    NuvemshopStockUpdateBatchRequest,
+    NuvemshopStockUpdateItem,
     NuvemshopVariantRequest,
 )
 from app.features.nuvemshop.services import NuvemshopService, NuvemshopStockService
@@ -31,9 +35,14 @@ __all__ = [
     "NuvemshopLocationAddress",
     "NuvemshopLocationResponse",
     "InventoryLevelSchema",
+    "NuvemshopInventoryLevelItem",
+    "NuvemshopInventoryLevelListResponse",
+    "NuvemshopStockUpdateItem",
+    "NuvemshopStockUpdateBatchRequest",
     # Services
     "NuvemshopService",
     "NuvemshopStockService",
 ]
+
 
 

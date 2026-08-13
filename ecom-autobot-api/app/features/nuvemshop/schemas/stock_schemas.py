@@ -44,3 +44,46 @@ class InventoryLevelSchema(BaseModel):
         if v is None:
             return ""
         return str(v)
+
+
+class NuvemshopInventoryLevelItem(BaseModel):
+    """Item detalhado do nível de estoque da variante em determinado depósito."""
+    id: str = Field(..., description="ID único do nível de estoque")
+    variant_id: str = Field(..., description="ID da variante na Nuvemshop")
+    location_id: str = Field(..., description="ID da localização/depósito")
+    stock: int = Field(0, description="Quantidade em estoque")
+    created_at: Optional[str] = Field(None, description="Data de criação do registro")
+    updated_at: Optional[str] = Field(None, description="Data da última atualização")
+
+    @field_validator("id", "variant_id", "location_id", mode="before")
+    @classmethod
+    def coerce_to_string(cls, v: Any) -> str:
+        if v is None:
+            return ""
+        return str(v)
+
+
+class NuvemshopInventoryLevelListResponse(BaseModel):
+    """Resposta paginada da consulta de níveis de estoque por depósito."""
+    total: int = Field(0, description="Total de registros encontrados")
+    page: int = Field(1, description="Página atual")
+    per_page: int = Field(10, description="Registros por página")
+    results: List[NuvemshopInventoryLevelItem] = Field(default_factory=list, description="Lista de saldos de estoque por localização")
+
+
+class NuvemshopStockUpdateItem(BaseModel):
+    """Item de atualização de estoque para variante em depósito."""
+    variant_id: str = Field(..., description="ID da variante de produto na Nuvemshop")
+    stock: int = Field(..., description="Nova quantidade de estoque para a variante")
+
+    @field_validator("variant_id", mode="before")
+    @classmethod
+    def coerce_to_string(cls, v: Any) -> str:
+        if v is None:
+            return ""
+        return str(v)
+
+
+class NuvemshopStockUpdateBatchRequest(BaseModel):
+    """Payload para atualização em lote de saldos de estoque por depósito."""
+    items: List[NuvemshopStockUpdateItem] = Field(..., description="Lista de atualizações de estoque por variante")
