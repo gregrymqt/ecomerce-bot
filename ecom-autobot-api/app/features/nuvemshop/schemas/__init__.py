@@ -8,6 +8,11 @@ from app.features.nuvemshop.schemas.nuvemshop_schemas import (
     NuvemshopProductUpdatePayload,
     NuvemshopVariantRequest,
 )
+from app.features.nuvemshop.schemas.stock_schemas import (
+    InventoryLevelSchema,
+    NuvemshopLocationAddress,
+    NuvemshopLocationResponse,
+)
 
 __all__ = [
     "NuvemshopLocalizedString",
@@ -18,4 +23,8 @@ __all__ = [
     "NuvemshopProductUpdatePayload",
     "NuvemshopProductResponse",
     "NuvemshopBatchStockPriceResponse",
+    "NuvemshopLocationAddress",
+    "NuvemshopLocationResponse",
+    "InventoryLevelSchema",
 ]
+

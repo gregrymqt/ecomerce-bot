@@ -3,7 +3,7 @@ from typing import List, Optional
 import httpx
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
-from app.features.nuvemshop.schemas import NuvemshopProductRequest
+from app.features.nuvemshop.schemas import NuvemshopProductRequest, NuvemshopLocationResponse
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class NuvemshopClient:
             "User-Agent": f"EcommerceBotGreg ({app_email})",
         }
 
-    async def validate_scopes(self) -> bool:
+    async def validate_scopes(self, required_scope: str = "write_products") -> bool:
         url = f"{self.base_url}/store"
         async with httpx.AsyncClient() as client:
             try:
@@ -42,13 +42,55 @@ class NuvemshopClient:
                     logger.warning(f"Headers de escopo não encontrados na resposta para a loja {self.store_id}.")
                     return False
 
-                return "write_products" in scopes_header
+                return required_scope in scopes_header
             except httpx.HTTPStatusError as e:
                 logger.error(f"Erro ao tentar validar escopos na Nuvemshop [Status {e.response.status_code}]: {e.response.text}")
                 return False
             except Exception as e:
                 logger.error(f"Falha de conexão ao validar escopos na Nuvemshop: {str(e)}")
                 return False
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception(is_rate_limit_error),
+        reraise=True,
+    )
+    async def get_locations(self) -> List[NuvemshopLocationResponse]:
+        """
+        Recupera a lista de depósitos / localizações de estoque da loja na Nuvemshop.
+        Realiza GET /v1/{store_id}/locations com retry automático em caso de rate limit (429).
+        """
+        url = f"{self.base_url}/locations"
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(url, headers=self.headers)
+                response.raise_for_status()
+                locations_raw = response.json()
+                if isinstance(locations_raw, list):
+                    return [NuvemshopLocationResponse.model_validate(loc) for loc in locations_raw]
+                elif isinstance(locations_raw, dict):
+                    return [NuvemshopLocationResponse.model_validate(locations_raw)]
+                return []
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    logger.warning("Rate limit (429) atingido na Nuvemshop ao buscar locations. Acionando retry...")
+                else:
+                    logger.error(f"Erro ao buscar depósitos na Nuvemshop [Status {e.response.status_code}]: {e.response.text}")
+                raise e
+            except Exception as e:
+                logger.error(f"Falha de conexão ao buscar depósitos na Nuvemshop: {str(e)}")
+                raise e
+
+    async def get_default_location(self) -> Optional[NuvemshopLocationResponse]:
+        """
+        Retorna a localização/depósito configurado como padrão (is_default == True).
+        """
+        locations = await self.get_locations()
+        for loc in locations:
+            if loc.is_default:
+                return loc
+        return locations[0] if locations else None
 
     @retry(
         stop=stop_after_attempt(3),

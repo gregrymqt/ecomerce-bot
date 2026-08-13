@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from typing import List
 
-from app.features.nuvemshop.services import NuvemshopService
+from app.features.nuvemshop.services import NuvemshopService, NuvemshopStockService
 from app.features.nuvemshop.schemas import (
     NuvemshopBatchStockPriceItem,
     NuvemshopBatchStockPriceResponse,
+    NuvemshopLocationResponse,
     NuvemshopProductRequest,
     NuvemshopProductResponse,
     NuvemshopProductUpdatePayload,
@@ -33,6 +34,34 @@ def get_nuvemshop_service(
             detail="Acesso negado ao tenant especificado.",
         )
     return NuvemshopService(tenant_id=clean_tenant)
+
+
+def get_nuvemshop_stock_service(
+    x_tenant_id: str = Header(..., alias="X-Tenant-ID"),
+    current_user: AuthenticatedUser = Depends(get_current_tenant_user),
+) -> NuvemshopStockService:
+    """
+    Fábrica de serviço de estoque que valida se o X-Tenant-ID do header está
+    explicitamente autorizado nas claims do token JWT do usuário.
+    """
+    clean_tenant = sanitize_tenant_id(x_tenant_id)
+    if clean_tenant not in current_user.tenants:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado ao tenant especificado.",
+        )
+    return NuvemshopStockService(tenant_id=clean_tenant)
+
+
+@router.get("/locations", response_model=List[NuvemshopLocationResponse])
+async def get_locations(
+    service: NuvemshopStockService = Depends(get_nuvemshop_stock_service),
+):
+    """
+    Retorna a lista de depósitos / localizações de estoque cadastrados na Nuvemshop para o tenant.
+    """
+    return await service.get_tenant_locations()
+
 
 @router.post("/products", status_code=status.HTTP_201_CREATED, response_model=NuvemshopProductResponse)
 async def create_product(
@@ -76,3 +105,4 @@ async def delete_product(
     service: NuvemshopService = Depends(get_nuvemshop_service)
 ):
     return await service.delete_product(product_id)
+
