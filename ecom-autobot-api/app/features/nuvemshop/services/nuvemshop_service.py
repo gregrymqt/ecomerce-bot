@@ -235,6 +235,7 @@ class NuvemshopService:
         product: ProductModel,
         visibility: str = "visible",
         is_update: bool = False,
+        category_ids: Optional[List[int]] = None,
     ) -> Dict[str, Any]:
         """
         Mapeia os dados internos do ProductModel para a estrutura oficial da REST API da Nuvemshop.
@@ -331,11 +332,14 @@ class NuvemshopService:
             payload["seo_description"] = {"pt": str(seo_desc)}
 
         # 5. Atualização Parcial de Categorias (PUT): Omitir chave se for update sem alteração
-        categories = raw_data.get("categories")
-        if categories and isinstance(categories, list):
-            payload["categories"] = [int(c) for c in categories if isinstance(c, (int, str)) and str(c).isdigit()]
-        elif not is_update and categories is not None:
-            payload["categories"] = []
+        if category_ids is not None and len(category_ids) > 0:
+            payload["categories"] = category_ids
+        else:
+            categories = raw_data.get("categories")
+            if categories and isinstance(categories, list):
+                payload["categories"] = [int(c) for c in categories if isinstance(c, (int, str)) and str(c).isdigit()]
+            elif not is_update and categories is not None:
+                payload["categories"] = []
 
         return payload
 
@@ -355,12 +359,31 @@ class NuvemshopService:
         if not product:
             raise ValueError(f"Produto com SKU '{sku}' não foi encontrado no banco de dados para tenant '{self.tenant_id}'.")
 
+        # 0. Resolução/Mapeamento De-Para ou Criação On-Demand de Categoria
+        resolved_category_id: Optional[int] = None
+        try:
+            ai_data = getattr(product, "ai_enriched_data", {}) or {}
+            raw_data = getattr(product, "raw_payload", {}) or {}
+            raw_cat_name = ai_data.get("category") or raw_data.get("category") or getattr(product, "category", None)
+            if raw_cat_name:
+                from app.features.nuvemshop.services.nuvemshop_category_service import NuvemshopCategoryService
+                cat_service = NuvemshopCategoryService(
+                    tenant_id=self.tenant_id,
+                    nuvemshop_repo=self.nuvemshop_repo,
+                    client=client,
+                )
+                resolved_category_id = await cat_service.resolve_or_create_category(str(raw_cat_name))
+        except Exception as cat_err:
+            logger.warning(f"⚠️ [NuvemshopService] Falha ao resolver categoria para SKU '{sku}': {cat_err}")
+
+        cat_ids_list = [resolved_category_id] if resolved_category_id else None
+
         existing_nuvemshop_id = product.nuvemshop_product_id
 
         if existing_nuvemshop_id:
             # 1. Produto já possui ID da Nuvemshop mapeado no DB -> PUT
             product_id_int = int(existing_nuvemshop_id)
-            update_payload = self.build_nuvemshop_payload(product, visibility=visibility, is_update=True)
+            update_payload = self.build_nuvemshop_payload(product, visibility=visibility, is_update=True, category_ids=cat_ids_list)
             res = await client.update_product_metadata(product_id_int, update_payload)
             nuvemshop_id = existing_nuvemshop_id
             logger.info(f"🔄 [NuvemshopService] Produto SKU '{sku}' atualizado via PUT na Nuvemshop (ID: {nuvemshop_id}).")
@@ -370,13 +393,13 @@ class NuvemshopService:
 
             if ns_product and "id" in ns_product:
                 product_id_int = int(ns_product["id"])
-                update_payload = self.build_nuvemshop_payload(product, visibility=visibility, is_update=True)
+                update_payload = self.build_nuvemshop_payload(product, visibility=visibility, is_update=True, category_ids=cat_ids_list)
                 res = await client.update_product_metadata(product_id_int, update_payload)
                 nuvemshop_id = str(product_id_int)
                 logger.info(f"🔗 [NuvemshopService] SKU '{sku}' já existia na Nuvemshop (ID: {nuvemshop_id}). Atualizado via PUT.")
             else:
                 # 3. Criação de novo produto na Nuvemshop via POST
-                create_payload = self.build_nuvemshop_payload(product, visibility=visibility, is_update=False)
+                create_payload = self.build_nuvemshop_payload(product, visibility=visibility, is_update=False, category_ids=cat_ids_list)
                 res = await client.create_product(create_payload)
                 nuvemshop_id = str(res.get("id"))
                 logger.info(f"✨ [NuvemshopService] Produto SKU '{sku}' criado via POST na Nuvemshop (ID: {nuvemshop_id}).")

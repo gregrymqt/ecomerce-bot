@@ -1,3 +1,7 @@
+from app.features.nuvemshop.schemas.nuvemshop_category_schemas import (
+    NuvemshopCategoryCreatePayload,
+    NuvemshopCategoryResponse,
+)
 from app.features.nuvemshop.schemas.nuvemshop_schemas import (
     NuvemshopBatchStockPriceItem,
     NuvemshopBatchStockPriceResponse,
@@ -43,6 +47,8 @@ __all__ = [
     "NuvemshopImageUploadPayload",
     "NuvemshopImageUpdatePayload",
     "NuvemshopImageResponse",
+    "NuvemshopCategoryCreatePayload",
+    "NuvemshopCategoryResponse",
     "NuvemshopProductCreatePayload",
     "NuvemshopProductResponse",
     "NuvemshopBatchStockPriceResponse",
