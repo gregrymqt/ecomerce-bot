@@ -6,7 +6,7 @@ from app.core.config.database import get_db
 from app.core.security.auth import get_current_tenant_user, sanitize_tenant_id
 from app.features.auth.schemas import AuthenticatedUser
 from app.features.wallet.repositories import WalletRepository
-from app.features.wallet.services import CreditService
+from app.features.wallet.services import CreditService, RechargeService
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,13 @@ def get_credit_service(db: AsyncSession = Depends(get_db)) -> CreditService:
     """
     repository = WalletRepository(session=db)
     return CreditService(repository=repository)
+
+
+def get_recharge_service(db: AsyncSession = Depends(get_db)) -> RechargeService:
+    """
+    Injetor de dependência FastAPI para instanciação do RechargeService.
+    """
+    return RechargeService(session=db)
 
 
 def require_wallet_balance(min_credits: int = 1):
