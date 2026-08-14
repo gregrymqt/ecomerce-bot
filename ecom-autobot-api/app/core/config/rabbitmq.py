@@ -124,6 +124,13 @@ async def configure_rabbitmq_topology(
         )
         await dlq_nuvemshop_bulk_sync.bind(nuvemshop_dlx, routing_key="dlq_nuvemshop_bulk_sync")
 
+        dlq_nuvemshop_webhooks = await channel.declare_queue(
+            "dlq_nuvemshop_webhooks",
+            durable=True,
+            arguments=dlq_args
+        )
+        await dlq_nuvemshop_webhooks.bind(nuvemshop_dlx, routing_key="dlq_nuvemshop_webhooks")
+
         # ------------------------------------------------------------------
         # 3. FILAS DE E-COMMERCE & DEMO (SCRAPING)
         # ------------------------------------------------------------------
@@ -236,7 +243,7 @@ async def configure_rabbitmq_topology(
             durable=True,
             arguments={
                 "x-dead-letter-exchange": "nuvemshop_dlx",
-                "x-dead-letter-routing-key": "nuvemshop_failed",
+                "x-dead-letter-routing-key": "dlq_nuvemshop_webhooks",
                 "x-max-length": 10000
             }
         )

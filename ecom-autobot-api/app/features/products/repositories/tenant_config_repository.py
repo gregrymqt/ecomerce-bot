@@ -191,3 +191,59 @@ class TenantConfigRepository:
             if owned:
                 await session.close()
 
+    async def get_tenant_id_by_nuvemshop_store_id(self, store_id: str) -> Optional[str]:
+        """
+        Busca o tenant_id proprietário do nuvemshop_store_id especificado.
+        """
+        cache_key = f"nuvemshop_store_tenant:{store_id}"
+        try:
+            cached_tenant = await redis_cache.get(cache_key)
+            if cached_tenant:
+                return str(cached_tenant)
+        except Exception:
+            pass
+
+        session, owned = await self._get_session()
+        try:
+            stmt = select(TenantConfigModel)
+            result = await session.execute(stmt)
+            models = result.scalars().all()
+            for model in models:
+                keys = model.encrypted_keys or {}
+                ns_store = str(keys.get("nuvemshop_store_id", ""))
+                if ns_store == str(store_id):
+                    try:
+                        await redis_cache.set(cache_key, model.tenant_id, expire_seconds=self.CACHE_TTL)
+                    except Exception:
+                        pass
+                    return model.tenant_id
+            return None
+        finally:
+            if owned:
+                await session.close()
+
+    async def deactivate_nuvemshop_integration(self, tenant_id: str) -> bool:
+        """
+        Desativa as credenciais da Nuvemshop para o tenant (ex: em evento de app/uninstalled).
+        """
+        session, owned = await self._get_session()
+        try:
+            existing = await session.get(TenantConfigModel, tenant_id)
+            if existing and existing.encrypted_keys:
+                keys = dict(existing.encrypted_keys)
+                keys.pop("nuvemshop_access_token", None)
+                keys["is_active"] = False
+                existing.encrypted_keys = keys
+                await session.commit()
+                await self._invalidate_tenant_config_cache(tenant_id)
+                return True
+            return False
+        except Exception:
+            if owned:
+                await session.rollback()
+            raise
+        finally:
+            if owned:
+                await session.close()
+
+

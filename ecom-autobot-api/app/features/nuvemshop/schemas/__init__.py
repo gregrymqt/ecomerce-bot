@@ -19,6 +19,10 @@ from app.features.nuvemshop.schemas.nuvemshop_schemas import (
     NuvemshopProductVariantPayload,
     NuvemshopVariantRequest,
 )
+from app.features.nuvemshop.schemas.nuvemshop_webhook_schemas import (
+    NuvemshopWebhookPayload,
+    NuvemshopWebhookQueueMessage,
+)
 from app.features.nuvemshop.schemas.product_sync import (
     NuvemshopBulkSyncMessage,
     NuvemshopBulkSyncRequest,
@@ -49,6 +53,8 @@ __all__ = [
     "NuvemshopImageResponse",
     "NuvemshopCategoryCreatePayload",
     "NuvemshopCategoryResponse",
+    "NuvemshopWebhookPayload",
+    "NuvemshopWebhookQueueMessage",
     "NuvemshopProductCreatePayload",
     "NuvemshopProductResponse",
     "NuvemshopBatchStockPriceResponse",

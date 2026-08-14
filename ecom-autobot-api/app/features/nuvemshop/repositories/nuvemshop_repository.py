@@ -27,3 +27,12 @@ class NuvemshopRepository:
             return None
         store_id, access_token, app_email = creds
         return NuvemshopCredentials(store_id=store_id, access_token=access_token, app_email=app_email)
+
+    async def get_tenant_id_by_store_id(self, store_id: str) -> Optional[str]:
+        """Recupera o tenant_id proprietário do store_id da Nuvemshop."""
+        return await self.tenant_repo.get_tenant_id_by_nuvemshop_store_id(store_id)
+
+    async def deactivate_credentials(self, tenant_id: str) -> bool:
+        """Inativa as credenciais da Nuvemshop para o tenant especificado."""
+        return await self.tenant_repo.deactivate_nuvemshop_integration(tenant_id)
+
