@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.security import HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,6 +7,12 @@ from app.core.config.database import get_db
 from app.core.config.settings import settings
 from app.core.security.auth import get_current_tenant_user
 from app.core.security.rate_limiter import rate_limit_dependency
+from app.features.auth.domain.exceptions import (
+    EnterpriseLeadError,
+    GoogleAuthError,
+    InvalidCredentialsError,
+    UserAlreadyExistsError,
+)
 from app.features.auth.schemas import (
     AuthenticatedUser,
     AuthTokenResponse,
@@ -43,7 +49,13 @@ async def register(
     """
     Cadastra um novo usuário no banco de dados.
     """
-    return await service.register_user(payload)
+    try:
+        return await service.register_user(payload)
+    except UserAlreadyExistsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=exc.message,
+        )
 
 
 @router.post("/login", response_model=UserResponse, dependencies=[Depends(rate_limit_dependency(times=5, seconds=60))])
@@ -52,7 +64,27 @@ async def login(
     response: Response,
     service: AuthService = Depends(get_auth_service)
 ) -> UserResponse:
-    return await service.authenticate_user(credentials, response)
+    """
+    Autentica o usuário com e-mail e senha e seta o cookie HttpOnly de acesso.
+    """
+    try:
+        user_response, access_token = await service.authenticate_user(credentials)
+        
+        expires_in_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            max_age=expires_in_seconds,
+        )
+        return user_response
+    except InvalidCredentialsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=exc.message,
+        )
 
 
 @router.post("/logout", response_model=LogoutResponse)
@@ -64,13 +96,10 @@ async def logout(
     """
     Revoga o Token JWT do cookie no Redis e limpa o cookie no navegador.
     """
-    # Extrai o token diretamente do Cookie HttpOnly
     token = request.cookies.get("access_token")
-    
     if token:
         await service.revoke_token(token)
     
-    # Exclui o cookie do navegador zerando seu tempo de vida
     response.delete_cookie(
         key="access_token",
         httponly=True,
@@ -139,25 +168,30 @@ async def google_callback(
     - Autentica usuário existente ou realiza cadastro do novo usuário com o tenant_name fornecido.
     - Seta o cookie HttpOnly de acesso e retorna o JWT com a lista de tenants autorizados.
     """
-    google_user = await service.exchange_code_for_user_info(payload.code)
-    token_response = await service.authenticate_google_user(
-        db=db,
-        google_user=google_user,
-        tenant_name=payload.tenant_name
-    )
+    try:
+        google_user = await service.exchange_code_for_user_info(payload.code)
+        token_response = await service.authenticate_google_user(
+            db=db,
+            google_user=google_user,
+            tenant_name=payload.tenant_name
+        )
 
-    # Seta o cookie HttpOnly idêntico ao fluxo de login tradicional
-    expires_in_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
-    response.set_cookie(
-        key="access_token",
-        value=token_response.access_token,
-        httponly=True,
-        secure=True,
-        samesite="none",
-        max_age=expires_in_seconds,
-    )
+        expires_in_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        response.set_cookie(
+            key="access_token",
+            value=token_response.access_token,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            max_age=expires_in_seconds,
+        )
 
-    return token_response
+        return token_response
+    except GoogleAuthError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.message,
+        )
 
 
 # -------------------------------------------------------------------
@@ -184,7 +218,11 @@ async def create_enterprise_lead(
     Captura leads corporativos interessados no SSO Enterprise (Fake Door Test),
     persistindo no PostgreSQL, emitindo telemetria e notificando a equipe comercial.
     """
-    client_ip = request.client.host if request.client else None
-    return await service.register_lead(db=db, payload=payload, ip_address=client_ip)
-
-
+    try:
+        client_ip = request.client.host if request.client else None
+        return await service.register_lead(db=db, payload=payload, ip_address=client_ip)
+    except EnterpriseLeadError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=exc.message,
+        )

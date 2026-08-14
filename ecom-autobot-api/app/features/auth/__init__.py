@@ -1,5 +1,16 @@
-from app.features.auth.domain import RoleModel, UserModel, hash_password, verify_password
-from app.features.auth.infrastructure import seed_initial_roles, seed_admin_users
+from app.features.auth.domain import (
+    AuthDomainError,
+    EnterpriseLeadError,
+    EnterpriseLeadModel,
+    GoogleAuthError,
+    InvalidCredentialsError,
+    RoleModel,
+    UserAlreadyExistsError,
+    UserModel,
+    hash_password,
+    verify_password,
+)
+from app.features.auth.infrastructure import seed_admin_users, seed_initial_roles
 from app.features.auth.repositories import UserRepository
 from app.features.auth.schemas import (
     AuthenticatedUser,
@@ -11,14 +22,20 @@ from app.features.auth.schemas import (
     UserInfo,
     UserResponse,
 )
-from app.features.auth.services import AuthService
+from app.features.auth.services import AuthService, EnterpriseLeadService, GoogleAuthService
 
 __all__ = [
     # Domain
     "RoleModel",
     "UserModel",
+    "EnterpriseLeadModel",
     "hash_password",
     "verify_password",
+    "AuthDomainError",
+    "UserAlreadyExistsError",
+    "InvalidCredentialsError",
+    "GoogleAuthError",
+    "EnterpriseLeadError",
     # Repositories
     "UserRepository",
     # Schemas
@@ -32,6 +49,8 @@ __all__ = [
     "UserResponse",
     # Services
     "AuthService",
+    "GoogleAuthService",
+    "EnterpriseLeadService",
     # Infrastructure
     "seed_initial_roles",
     "seed_admin_users",

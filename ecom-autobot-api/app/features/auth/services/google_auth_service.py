@@ -4,17 +4,16 @@ import urllib.parse
 from typing import Optional
 
 import httpx
-from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.settings import settings
+from app.features.auth.domain.exceptions import GoogleAuthError
 from app.features.auth.domain.models import UserModel
 from app.features.auth.repositories.user_repository import UserRepository
 from app.features.auth.schemas import (
     AuthTokenResponse,
     GoogleUserPayload,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +23,7 @@ class GoogleAuthService:
     Serviço de Aplicação para autenticação social via Google OAuth 2.0.
     Responsável por montar a URL de consentimento, trocar códigos de autorização
     por dados de perfil via HTTP assíncrono (httpx) e autenticar/vincular usuários e tenants.
+    Totalmente desacoplado de frameworks Web (sem acoplamento direto com FastAPI).
     """
 
     def __init__(self, user_repo: Optional[UserRepository] = None):
@@ -69,24 +69,24 @@ class GoogleAuthService:
                 token_resp = await client.post(token_url, data=data)
             except Exception as req_err:
                 logger.error(f"Erro de conexão ao acessar a API do Google Token: {req_err}")
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="Falha ao conectar com o serviço de autenticação do Google.",
+                raise GoogleAuthError(
+                    message="Falha ao conectar com o serviço de autenticação do Google.",
+                    status_code=503,
                 )
 
             if token_resp.status_code != 200:
                 logger.error(f"Erro na troca do código Google por token: {token_resp.text}")
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Código de autorização do Google inválido ou expirado.",
+                raise GoogleAuthError(
+                    message="Código de autorização do Google inválido ou expirado.",
+                    status_code=400,
                 )
 
             token_data = token_resp.json()
             access_token = token_data.get("access_token")
             if not access_token:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Access token não retornado pelo Google.",
+                raise GoogleAuthError(
+                    message="Access token não retornado pelo Google.",
+                    status_code=400,
                 )
 
             # 2. Busca do perfil do usuário com o access token
@@ -97,16 +97,16 @@ class GoogleAuthService:
                 userinfo_resp = await client.get(userinfo_url, headers=headers)
             except Exception as req_err:
                 logger.error(f"Erro de conexão ao buscar perfil do usuário no Google: {req_err}")
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="Falha ao buscar dados de perfil do Google.",
+                raise GoogleAuthError(
+                    message="Falha ao buscar dados de perfil do Google.",
+                    status_code=503,
                 )
 
             if userinfo_resp.status_code != 200:
                 logger.error(f"Erro ao buscar dados do usuário Google: {userinfo_resp.text}")
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Falha ao recuperar informações de perfil do Google.",
+                raise GoogleAuthError(
+                    message="Falha ao recuperar informações de perfil do Google.",
+                    status_code=400,
                 )
 
             user_data = userinfo_resp.json()
@@ -118,9 +118,9 @@ class GoogleAuthService:
             email_verified = user_data.get("email_verified", user_data.get("verified_email", False))
 
             if not email or not sub:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Dados incompletos retornados pelo Google OAuth.",
+                raise GoogleAuthError(
+                    message="Dados incompletos retornados pelo Google OAuth.",
+                    status_code=400,
                 )
 
             return GoogleUserPayload(
@@ -142,16 +142,15 @@ class GoogleAuthService:
         e emite o token JWT de acesso da aplicação.
         """
         if google_user is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Dados do usuário Google não fornecidos.",
+            raise GoogleAuthError(
+                message="Dados do usuário Google não fornecidos.",
+                status_code=400,
             )
 
         from app.core.security.auth import create_access_token
 
         user_repo = UserRepository(session=db) if db is not None else (self.user_repo or UserRepository())
         clean_email = google_user.email.lower()
-
 
         existing_user = await user_repo.get_by_email(clean_email)
 
@@ -210,9 +209,9 @@ class GoogleAuthService:
         # CASO 2: Usuário Novo (Primeiro Acesso)
         # -------------------------------------------------------------
         if not tenant_name or not tenant_name.strip():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="O nome da organização/empresa (tenant_name) é obrigatório para o primeiro acesso via Google.",
+            raise GoogleAuthError(
+                message="O nome da organização/empresa (tenant_name) é obrigatório para o primeiro acesso via Google.",
+                status_code=400,
             )
 
         tenant_id = self._generate_tenant_id(tenant_name)
@@ -235,14 +234,17 @@ class GoogleAuthService:
             user_tenants = created_user.tenants
 
             # Disparo assíncrono do e-mail de boas-vindas para primeiro acesso Google
-            from app.features.emails.services.email_dispatcher import email_dispatcher
-            await email_dispatcher.publish_email_event(
-                event_name="USER_WELCOME",
-                recipient_email=created_user.email,
-                recipient_name=created_user.name,
-                tenant_id=tenant_id,
-                data={"user_id": created_user.id, "auth_provider": "google"},
-            )
+            try:
+                from app.features.emails.services.email_dispatcher import email_dispatcher
+                await email_dispatcher.publish_email_event(
+                    event_name="USER_WELCOME",
+                    recipient_email=created_user.email,
+                    recipient_name=created_user.name,
+                    tenant_id=tenant_id,
+                    data={"user_id": created_user.id, "auth_provider": "google"},
+                )
+            except Exception as email_err:
+                logger.warning(f"Falha ao publicar e-mail de boas-vindas para usuário Google: {email_err}")
         except Exception as db_err:
             logger.warning(f"Falha ao cadastrar novo usuário Google no banco de dados ({db_err}). Executando em memória.")
             user_id = f"usr_g_{hash(clean_email) & 0xffffffff}"

@@ -175,9 +175,10 @@ async def test_google_callback_invalid_code():
     with patch.object(
         GoogleAuthService, "exchange_code_for_user_info", new_callable=AsyncMock
     ) as mock_exchange:
-        mock_exchange.side_effect = HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Código de autorização do Google inválido ou expirado.",
+        from app.features.auth.domain.exceptions import GoogleAuthError
+        mock_exchange.side_effect = GoogleAuthError(
+            message="Código de autorização do Google inválido ou expirado.",
+            status_code=400,
         )
 
         payload = {"code": "invalid_expired_google_code"}
@@ -196,6 +197,7 @@ async def test_google_service_exchange_code_http_error():
     """
     Testa diretamente no GoogleAuthService a captura de resposta de erro HTTP (ex: 400) do Google.
     """
+    from app.features.auth.domain.exceptions import GoogleAuthError
     service = GoogleAuthService()
     mock_token_resp = MagicMock()
     mock_token_resp.status_code = 400
@@ -206,7 +208,7 @@ async def test_google_service_exchange_code_http_error():
         new_callable=AsyncMock,
     ) as mock_post:
         mock_post.return_value = mock_token_resp
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(GoogleAuthError) as exc_info:
             await service.exchange_code_for_user_info("bad_code_123")
         assert exc_info.value.status_code == 400
-        assert "código" in exc_info.value.detail.lower() or "inválido" in exc_info.value.detail.lower()
+        assert "código" in exc_info.value.message.lower() or "inválido" in exc_info.value.message.lower()

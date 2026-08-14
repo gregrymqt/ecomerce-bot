@@ -51,6 +51,7 @@ async def test_exchange_code_for_user_info_success():
 
 @pytest.mark.asyncio
 async def test_exchange_code_for_user_info_invalid_code():
+    from app.features.auth.domain.exceptions import GoogleAuthError
     service = GoogleAuthService()
 
     mock_token_resp = MagicMock()
@@ -59,7 +60,7 @@ async def test_exchange_code_for_user_info_invalid_code():
 
     with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_token_resp
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(GoogleAuthError) as exc_info:
             await service.exchange_code_for_user_info("bad_code")
         assert exc_info.value.status_code == 400
 
@@ -93,6 +94,7 @@ async def test_authenticate_google_user_existing_user():
 
 @pytest.mark.asyncio
 async def test_authenticate_google_user_new_user_requires_tenant_name():
+    from app.features.auth.domain.exceptions import GoogleAuthError
     mock_user_repo = AsyncMock()
     mock_user_repo.get_by_email.return_value = None
 
@@ -103,11 +105,11 @@ async def test_authenticate_google_user_new_user_requires_tenant_name():
         name="Novo Usuário",
     )
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(GoogleAuthError) as exc_info:
         await service.authenticate_google_user(db=None, google_user=google_user, tenant_name=None)
 
     assert exc_info.value.status_code == 400
-    assert "tenant_name" in exc_info.value.detail.lower() or "organização" in exc_info.value.detail.lower()
+    assert "tenant_name" in exc_info.value.message.lower() or "organização" in exc_info.value.message.lower()
 
 
 @pytest.mark.asyncio

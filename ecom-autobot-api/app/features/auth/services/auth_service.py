@@ -1,9 +1,12 @@
 import logging
-from typing import Optional
+from typing import Any, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException, Response, status
 
 from app.core.config.settings import settings
+from app.features.auth.domain.exceptions import (
+    InvalidCredentialsError,
+    UserAlreadyExistsError,
+)
 from app.features.auth.domain import UserModel, hash_password, verify_password
 from app.features.auth.repositories import UserRepository
 from app.features.auth.schemas import (
@@ -20,7 +23,8 @@ logger = logging.getLogger(__name__)
 class AuthService:
     """
     Serviço de Aplicação para casos de uso de Autenticação, Registro,
-    Gestão de Perfil de Usuário e Revogação de JWT (Blacklist via Redis).
+    Gestão de Perfil de Usuário e Revogação de JWT.
+    Totalmente agnóstico em relação a frameworks Web (sem acoplamento com FastAPI).
     """
 
     def __init__(
@@ -35,11 +39,8 @@ class AuthService:
         try:
             existing = await self.user_repo.get_by_email(request.email)
             if existing:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=f"O e-mail '{request.email}' já está cadastrado no sistema.",
-                )
-        except HTTPException:
+                raise UserAlreadyExistsError(email=request.email)
+        except UserAlreadyExistsError:
             raise
         except Exception as db_err:
             logger.warning(f"Banco de dados offline/indisponível na verificação de e-mail: {db_err}")
@@ -65,15 +66,18 @@ class AuthService:
             created = await self.user_repo.create_user(new_user)
             
             # Disparo assíncrono do e-mail de boas-vindas (não-bloqueante)
-            from app.features.emails.services.email_dispatcher import email_dispatcher
-            active_tenant = created.tenants[0] if created.tenants else "ecommerce_prod"
-            await email_dispatcher.publish_email_event(
-                event_name="USER_WELCOME",
-                recipient_email=created.email,
-                recipient_name=created.name,
-                tenant_id=active_tenant,
-                data={"user_id": created.id, "role": created.role},
-            )
+            try:
+                from app.features.emails.services.email_dispatcher import email_dispatcher
+                active_tenant = created.tenants[0] if created.tenants else "ecommerce_prod"
+                await email_dispatcher.publish_email_event(
+                    event_name="USER_WELCOME",
+                    recipient_email=created.email,
+                    recipient_name=created.name,
+                    tenant_id=active_tenant,
+                    data={"user_id": created.id, "role": created.role},
+                )
+            except Exception as email_err:
+                logger.warning(f"Falha ao publicar e-mail de boas-vindas: {email_err}")
 
             return UserResponse(
                 id=created.id,
@@ -93,12 +97,15 @@ class AuthService:
                 tenants=tenants,
             )
 
-    async def authenticate_user(self, credentials: LoginRequest, response: Response) -> UserResponse:
+    async def authenticate_user(
+        self, credentials: LoginRequest, response: Optional[Any] = None
+    ) -> Tuple[UserResponse, str]:
+        """
+        Autentica o usuário e retorna o tuple `(UserResponse, access_token)`.
+        Mapeia erros de validação/credenciais para exceções puras de domínio.
+        """
         if not credentials.email or not credentials.password:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="E-mail e senha são obrigatórios.",
-            )
+            raise InvalidCredentialsError("E-mail e senha são obrigatórios.")
 
         user = None
         try:
@@ -108,11 +115,8 @@ class AuthService:
                 f"Banco de dados indisponível durante autenticação: {db_err}. Prosseguindo com autenticação de fallback."
             )
 
-        if user and not verify_password(credentials.password, user.password_hash):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Credenciais inválidas. Verifique o e-mail e a senha.",
-            )
+        if not user or not verify_password(credentials.password, user.password_hash):
+            raise InvalidCredentialsError("Credenciais inválidas. Verifique o e-mail e a senha.")
 
         admin_emails = settings.get_admin_emails_list()
         clean_email = credentials.email.lower()
@@ -147,26 +151,30 @@ class AuthService:
             "tenants": user_tenants,
         }
 
-        expires_in_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
         from app.core.security.auth import create_access_token
         access_token = create_access_token(data=token_data)
 
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,
-            secure=True,
-            samesite="none",
-            max_age=expires_in_seconds,
-        )
+        # Suporte legado caso algum chamador forneça a Response do FastAPI
+        if response is not None and hasattr(response, "set_cookie"):
+            expires_in_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            response.set_cookie(
+                key="access_token",
+                value=access_token,
+                httponly=True,
+                secure=True,
+                samesite="none",
+                max_age=expires_in_seconds,
+            )
 
-        return UserResponse(
+        user_response = UserResponse(
             id=user_id,
             email=credentials.email,
             name=user_name,
             role=user_role,
             tenants=user_tenants,
         )
+
+        return user_response, access_token
 
     async def update_profile(self, user_id: str, request: UpdateUserRequest) -> UserResponse:
         update_fields = {}
@@ -220,4 +228,3 @@ class AuthService:
 
         current_user.plan = current_user.plan or "free"
         return current_user
-
