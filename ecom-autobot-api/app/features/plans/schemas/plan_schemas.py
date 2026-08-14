@@ -32,7 +32,7 @@ class CreatePlanRequest(BaseModel):
     auto_recurring: AutoRecurringCreateDTO
     payment_methods_allowed: Optional[PaymentMethodsAllowedDTO] = None
     back_url: Optional[str] = None
-    external_id: Optional[str] = Field(None, description="ID ou referência externa do Mercado Pago")
+    external_id: Optional[str] = Field(None, description="ID ou referência externa do plano")
 
 
 class AutoRecurringUpdateDTO(BaseModel):
@@ -52,12 +52,12 @@ class UpdatePlanRequest(BaseModel):
     payment_methods_allowed: Optional[PaymentMethodsAllowedDTO] = None
     back_url: Optional[str] = None
     status: Optional[Literal["active", "canceled"]] = None
-    external_id: Optional[str] = Field(None, description="ID ou referência externa do Mercado Pago")
+    external_id: Optional[str] = Field(None, description="ID ou referência externa do plano")
 
 
 class PlanResponse(BaseModel):
     id: str
-    external_id: Optional[str] = Field(None, description="ID de referência externa do Mercado Pago (usado nos Webhooks)")
+    external_id: Optional[str] = Field(None, description="ID ou referência externa do plano")
     application_id: Optional[Union[int, str]] = None
     collector_id: Optional[Union[int, str]] = None
     reason: str

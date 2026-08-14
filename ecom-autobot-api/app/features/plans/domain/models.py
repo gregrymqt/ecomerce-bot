@@ -9,12 +9,12 @@ from app.core.config.database import Base
 
 class PlanModel(Base):
     """
-    Representação da tabela de planos sincronizados com o Mercado Pago.
+    Representação da tabela de planos de assinatura geridos no banco de dados local.
     """
     __tablename__ = "plans"
 
-    id: Mapped[str] = mapped_column(String(64), primary_key=True)  # ID interno ou do Mercado Pago
-    external_id: Mapped[Optional[str]] = mapped_column(String(64), unique=True, index=True, nullable=True)  # ID / Referência externa do Mercado Pago
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)  # ID interno único do plano
+    external_id: Mapped[Optional[str]] = mapped_column(String(64), unique=True, index=True, nullable=True)  # ID / Referência externa do plano
     reason: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(32), default="active", nullable=False)
     auto_recurring: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
@@ -63,4 +63,3 @@ class PlanModel(Base):
         if isinstance(self.auto_recurring, dict):
             return self.auto_recurring.get("features", [])
         return []
-

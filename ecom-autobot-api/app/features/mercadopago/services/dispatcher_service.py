@@ -1,12 +1,10 @@
 import logging
 from typing import Dict
 
-from app.features.checkout.services.checkout_notification_service import CheckoutNotificationService
 from app.features.mercadopago.schemas import (
     BaseNotificationHandler,
     MercadoPagoNotificationPayload,
 )
-from app.features.plans.services.plan_notification_service import PlanNotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +29,9 @@ class NotificationDispatcher:
         self._handlers[event_type] = handler
 
     def _register_default_handlers(self):
+        from app.features.checkout.services.checkout_notification_service import CheckoutNotificationService
+        from app.features.plans.services.plan_notification_service import PlanNotificationService
+
         plan_service = PlanNotificationService()
         checkout_service = CheckoutNotificationService()
 

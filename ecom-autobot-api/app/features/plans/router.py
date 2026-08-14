@@ -22,7 +22,7 @@ router = APIRouter(prefix="/plans", tags=["Plans"])
     response_model=PlanResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Criar novo plano de assinatura (Somente Admin)",
-    description="Cria um plano de assinatura no Mercado Pago e o sincroniza na base local e no Redis. Exige privilégios de Admin.",
+    description="Cria um plano de assinatura no banco de dados relacional (PostgreSQL) com aceleração via Redis. Exige privilégios de Admin.",
 )
 async def create_plan(
     payload: CreatePlanRequest,
@@ -37,12 +37,12 @@ async def create_plan(
     "/",
     response_model=PlanSearchResponse,
     status_code=status.HTTP_200_OK,
-    summary="Buscar e filtrar planos no Mercado Pago (Somente Admin)",
-    description="Consulta o catálogo de planos diretamente da API REST do Mercado Pago com paginação e filtros. Exige privilégios de Admin.",
+    summary="Buscar e filtrar planos locais (Somente Admin)",
+    description="Consulta o catálogo de planos cadastrados no banco de dados local com paginação e filtros. Exige privilégios de Admin.",
 )
 async def search_plans(
-    status_filter: Optional[str] = Query(None, alias="status", description="Status do plano (ex: active, cancelled)"),
-    q: Optional[str] = Query(None, description="Termo de busca na razão social/descrição"),
+    status_filter: Optional[str] = Query(None, alias="status", description="Status do plano (ex: active, canceled)"),
+    q: Optional[str] = Query(None, description="Termo de busca na razão/nome do plano"),
     sort: Optional[str] = Query(None, description="Campo para ordenação"),
     criteria: Optional[str] = Query(None, description="Critério de ordenação (asc/desc)"),
     offset: int = Query(0, ge=0, description="Deslocamento para paginação"),
@@ -67,7 +67,7 @@ async def search_plans(
     response_model=List[PlanResponse],
     status_code=status.HTTP_200_OK,
     summary="Listar planos locais (Cache / Banco) (Somente Admin)",
-    description="Retorna os planos sincronizados localmente na base PostgreSQL com aceleração via Redis. Exige privilégios de Admin.",
+    description="Retorna os planos cadastrados na base PostgreSQL com aceleração via Redis Cache-Aside. Exige privilégios de Admin.",
 )
 async def list_local_plans(
     limit: int = Query(50, ge=1, le=100),
@@ -95,13 +95,12 @@ async def list_public_plans(
     return await service.list_local_plans(limit=limit, offset=offset)
 
 
-
 @router.get(
     "/external/{external_id}",
     response_model=PlanResponse,
     status_code=status.HTTP_200_OK,
     summary="Obter detalhes de um plano pelo external_id (Somente Admin)",
-    description="Busca os detalhes de um plano pelo seu ID do Mercado Pago (external_id). Exige privilégios de Admin.",
+    description="Busca os detalhes de um plano pela sua referência ou ID externo (external_id) na base local. Exige privilégios de Admin.",
 )
 async def get_plan_by_external_id(
     external_id: str,
@@ -117,7 +116,7 @@ async def get_plan_by_external_id(
     response_model=PlanResponse,
     status_code=status.HTTP_200_OK,
     summary="Obter detalhes de um plano por ID (Somente Admin)",
-    description="Busca os detalhes de um plano pelo ID na API do Mercado Pago ou com fallback local. Exige privilégios de Admin.",
+    description="Busca os detalhes de um plano pelo ID na base local (PostgreSQL / Cache Redis). Exige privilégios de Admin.",
 )
 async def get_plan_by_id(
     plan_id: str,
@@ -133,7 +132,7 @@ async def get_plan_by_id(
     response_model=PlanResponse,
     status_code=status.HTTP_200_OK,
     summary="Atualizar ou desativar plano (Somente Admin)",
-    description="Atualiza valores, nome ou status de um plano de assinatura no Mercado Pago e limpa o cache local. Exige privilégios de Admin.",
+    description="Atualiza valores, nome ou status de um plano na base local PostgreSQL e invalida o cache Redis. Exige privilégios de Admin.",
 )
 async def update_plan(
     plan_id: str,
