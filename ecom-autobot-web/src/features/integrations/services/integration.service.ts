@@ -2,7 +2,7 @@
  * src/features/integrations/services/integration.service.ts
  *
  * Camada de serviços HTTP para consumo dos endpoints de Integrações com plataformas de e-commerce.
- * Integrado com o apiClient do projeto e tipado com os DTOs de integração.
+ * Integrado com o apiClient do projeto e tipado com os DTOs de integração (Shopify e Nuvemshop).
  */
 
 import { apiClient } from '@/lib/apiClient';
@@ -11,7 +11,13 @@ import type {
   HealthCheckResponse,
   IntegrationSummary,
   ShopifyCredentialsPayload,
+  ShopifyInventoryUpdateInput,
+  ShopifyProductStatus,
+  ShopifyProductResponse,
   StoreIntegration,
+  NuvemshopBatchStockPriceItem,
+  NuvemshopBatchStockPriceResponse,
+  NuvemshopCategory,
 } from '@/features/integrations';
 
 export const integrationService = {
@@ -72,6 +78,90 @@ export const integrationService = {
   },
 
   /**
+   * Inicia o fluxo de autorização OAuth 2.0 com a Shopify.
+   * Endpoint: GET /api/v1/shopify/auth?shop={shopDomain}
+   */
+  initiateShopifyOAuth: async (shopDomain: string): Promise<{ authorize_url: string }> => {
+    try {
+      const response = await apiClient.get<{ authorize_url: string }>(
+        `/api/v1/shopify/auth?shop=${encodeURIComponent(shopDomain)}`
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const message = getErrorMessage(
+        error,
+        'Falha ao iniciar autorização OAuth com a Shopify.'
+      );
+      throw new Error(message);
+    }
+  },
+
+  /**
+   * Atualização rápida de saldo em estoque de produto na Shopify por SKU.
+   * Endpoint: PATCH /api/v1/shopify/products/{sku}/inventory
+   */
+  updateShopifyInventory: async (
+    sku: string,
+    payload: ShopifyInventoryUpdateInput
+  ): Promise<ShopifyProductResponse> => {
+    try {
+      const response = await apiClient.patch<ShopifyProductResponse>(
+        `/api/v1/shopify/products/${encodeURIComponent(sku)}/inventory`,
+        payload
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const message = getErrorMessage(
+        error,
+        'Erro ao atualizar estoque na Shopify.'
+      );
+      throw new Error(message);
+    }
+  },
+
+  /**
+   * Alteração de status do produto na Shopify (ACTIVE, DRAFT, ARCHIVED).
+   * Endpoint: PATCH /api/v1/shopify/products/{sku}/status
+   */
+  updateShopifyStatus: async (
+    sku: string,
+    status: ShopifyProductStatus
+  ): Promise<ShopifyProductResponse> => {
+    try {
+      const response = await apiClient.patch<ShopifyProductResponse>(
+        `/api/v1/shopify/products/${encodeURIComponent(sku)}/status`,
+        { status }
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const message = getErrorMessage(
+        error,
+        'Erro ao atualizar status do produto na Shopify.'
+      );
+      throw new Error(message);
+    }
+  },
+
+  /**
+   * Remoção remota de um produto na Shopify pelo SKU.
+   * Endpoint: DELETE /api/v1/shopify/products/{sku}
+   */
+  deleteShopifyRemoteProduct: async (sku: string): Promise<ShopifyProductResponse> => {
+    try {
+      const response = await apiClient.delete<ShopifyProductResponse>(
+        `/api/v1/shopify/products/${encodeURIComponent(sku)}`
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const message = getErrorMessage(
+        error,
+        'Erro ao remover produto remoto na Shopify.'
+      );
+      throw new Error(message);
+    }
+  },
+
+  /**
    * Executa um teste de conexão e mede a latência com a API da loja.
    * Endpoint: POST /api/v1/integrations/{integrationId}/health-check
    */
@@ -120,6 +210,47 @@ export const integrationService = {
       const message = getErrorMessage(
         error,
         'Erro ao gerar URL de autorização OAuth da Nuvemshop.'
+      );
+      throw new Error(message);
+    }
+  },
+
+  /**
+   * Lista todas as categorias cadastradas na loja da Nuvemshop.
+   * Endpoint: GET /api/v1/nuvemshop/categories
+   */
+  getNuvemshopCategories: async (): Promise<NuvemshopCategory[]> => {
+    try {
+      const response = await apiClient.get<NuvemshopCategory[]>(
+        '/api/v1/nuvemshop/categories'
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const message = getErrorMessage(
+        error,
+        'Erro ao buscar categorias na Nuvemshop.'
+      );
+      throw new Error(message);
+    }
+  },
+
+  /**
+   * Atualização rápida em lote de saldo em estoque e preços na Nuvemshop.
+   * Endpoint: PATCH /api/v1/nuvemshop/products/stock-price
+   */
+  updateNuvemshopStockPriceBatch: async (
+    items: NuvemshopBatchStockPriceItem[]
+  ): Promise<NuvemshopBatchStockPriceResponse> => {
+    try {
+      const response = await apiClient.patch<NuvemshopBatchStockPriceResponse>(
+        '/api/v1/nuvemshop/products/stock-price',
+        items
+      );
+      return response.data;
+    } catch (error: unknown) {
+      const message = getErrorMessage(
+        error,
+        'Erro ao atualizar lote de preços/estoque na Nuvemshop.'
       );
       throw new Error(message);
     }

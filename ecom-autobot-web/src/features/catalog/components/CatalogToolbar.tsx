@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Plus, Download, Package } from 'lucide-react';
+import { Search, Plus, Download, Package, RefreshCw } from 'lucide-react';
 import { Button, Input, Badge } from '@/components/ui';
 import { cn } from '@/utils/cn';
 import type { FilterStatus } from '@/features/catalog';
@@ -11,6 +11,8 @@ export interface CatalogToolbarProps {
   onStatusFilterChange: (status: FilterStatus) => void;
   onNewIngestionClick?: () => void;
   onExportBatchClick?: () => void;
+  onBulkSyncClick?: () => void;
+  selectedCount?: number;
   totalCount?: number;
 }
 
@@ -29,6 +31,8 @@ export const CatalogToolbar: React.FC<CatalogToolbarProps> = ({
   onStatusFilterChange,
   onNewIngestionClick,
   onExportBatchClick,
+  onBulkSyncClick,
+  selectedCount = 0,
   totalCount,
 }) => {
   const filterOptions: FilterOption[] = [
@@ -84,6 +88,18 @@ export const CatalogToolbar: React.FC<CatalogToolbarProps> = ({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-3 flex-wrap">
+          {onBulkSyncClick && (
+            <Button
+              variant="secondary"
+              onClick={onBulkSyncClick}
+              disabled={selectedCount === 0}
+              iconLeft={<RefreshCw className="w-4 h-4 text-violet-400" />}
+              className={selectedCount > 0 ? 'border-violet-500/50 text-violet-300 bg-violet-600/10' : ''}
+            >
+              Sincronizar em Lote {selectedCount > 0 ? `(${selectedCount})` : ''}
+            </Button>
+          )}
+
           {onExportBatchClick && (
             <Button
               variant="secondary"

@@ -35,6 +35,11 @@ export interface Product {
   raw_payload?: Record<string, unknown> | null;
   attributes?: Record<string, unknown> | null;
   metadata?: ScraperMetadata | null;
+  shopify_id?: string | null;
+  shopify_status?: string | null;
+  nuvemshop_id?: number | string | null;
+  nuvemshop_status?: string | null;
+  last_synced_at?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 }

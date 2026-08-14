@@ -73,6 +73,7 @@ export function useCatalogPage() {
   // Estados de Modais & Drawers
   const [editingProduct, setEditingProduct] = useState<CatalogProduct | null>(null);
   const [isIngestionModalOpen, setIsIngestionModalOpen] = useState(false);
+  const [isBulkSyncModalOpen, setIsBulkSyncModalOpen] = useState(false);
 
   // Estados de Loading por ação de linha
   const [regeneratingSku, setRegeneratingSku] = useState<string | null>(null);
@@ -170,12 +171,13 @@ export function useCatalogPage() {
         ? await productService.syncToNuvemshop(payload)
         : await productService.syncToShopify(payload);
 
-      if (res.status === 'fallback_csv') {
-        const reasonText = res.reason || res.error_detail || res.message || 'Falha de comunicação com a plataforma externa.';
+      const syncRes = res as Record<string, any>;
+      if (syncRes.status === 'fallback_csv') {
+        const reasonText = syncRes.reason || syncRes.error_detail || syncRes.message || 'Falha de comunicação com a plataforma externa.';
         setAlertInfo({
           variant: 'warning',
           title: 'Fallback para CSV Acionado',
-          message: `A API da ${product.platform} retornou uma falha (${reasonText}). O arquivo CSV com a copywriting de IA foi gerado como alternativa. Acesse ${res.download_url || '/api/v1/export'} para baixar.`,
+          message: `A API da ${product.platform} retornou uma falha (${reasonText}). O arquivo CSV com a copywriting de IA foi gerado como alternativa. Acesse ${syncRes.download_url || '/api/v1/export'} para baixar.`,
         });
       } else {
         setAlertInfo({
@@ -310,6 +312,9 @@ export function useCatalogPage() {
     isIngestionModalOpen,
     openIngestionModal: () => setIsIngestionModalOpen(true),
     closeIngestionModal: () => setIsIngestionModalOpen(false),
+    isBulkSyncModalOpen,
+    openBulkSyncModal: () => setIsBulkSyncModalOpen(true),
+    closeBulkSyncModal: () => setIsBulkSyncModalOpen(false),
     regeneratingSku,
     syncingSku,
     deletingSku,

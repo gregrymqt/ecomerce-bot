@@ -1,10 +1,7 @@
 import React from 'react';
-import { CatalogToolbar } from '@/features/catalog';
-import { ProductCatalogTable } from '@/features/catalog';
-import { EditCopyDrawer } from '@/features/catalog';
+import { CatalogToolbar, ProductCatalogTable, EditCopyDrawer, BulkSyncModal, useCatalogPage } from '@/features/catalog';
 import { ScraperForm } from '@/features/scraper';
 import { X, Sparkles } from 'lucide-react';
-import { useCatalogPage } from '@/features/catalog';
 import { Alert } from '@/components/ui/feedback/Alert';
 import { SEO } from '@/components/common/SEO';
 
@@ -24,6 +21,9 @@ export const CatalogPage: React.FC = () => {
     isIngestionModalOpen,
     openIngestionModal,
     closeIngestionModal,
+    isBulkSyncModalOpen,
+    openBulkSyncModal,
+    closeBulkSyncModal,
     regeneratingSku,
     syncingSku,
     deletingSku,
@@ -63,6 +63,8 @@ export const CatalogPage: React.FC = () => {
         onStatusFilterChange={setStatusFilter}
         onNewIngestionClick={openIngestionModal}
         onExportBatchClick={handleExportBatch}
+        onBulkSyncClick={openBulkSyncModal}
+        selectedCount={selectedSkus.length}
         totalCount={totalCount}
       />
 
@@ -91,7 +93,14 @@ export const CatalogPage: React.FC = () => {
         isLoading={isSavingDrawer}
       />
 
-      {/* 4. Modal de "Nova Ingestão" (Scraper Form) */}
+      {/* 4. Modal de Sincronização em Lote (Bulk Sync) */}
+      <BulkSyncModal
+        isOpen={isBulkSyncModalOpen}
+        onClose={closeBulkSyncModal}
+        selectedSkus={selectedSkus}
+      />
+
+      {/* 5. Modal de "Nova Ingestão" (Scraper Form) */}
       {isIngestionModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="relative w-full max-w-2xl bg-[#15121B] rounded-2xl border border-slate-800 shadow-2xl p-6 space-y-4">

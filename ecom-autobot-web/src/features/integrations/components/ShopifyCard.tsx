@@ -2,7 +2,7 @@
  * src/features/integrations/components/ShopifyCard.tsx
  *
  * Card de Integração da plataforma Shopify.
- * Exibe status de conexão, domínio, token mascarado, latência e ações de health check / edição.
+ * Exibe status de conexão, domínio, token mascarado, latência e ações utilizando componentes genéricos do Design System.
  */
 
 import React from 'react';
@@ -16,7 +16,7 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { Card, Button, Badge } from '@/components/ui';
 import type { StoreIntegration } from '@/features/integrations';
 
 interface ShopifyCardProps {
@@ -44,12 +44,7 @@ export const ShopifyCard: React.FC<ShopifyCardProps> = ({
   const healthStatus = integration?.health_check_status || 'API Operacional & Responsiva';
 
   return (
-    <div
-      className={cn(
-        'rounded-2xl bg-[#15121B] border border-[#1E293B] p-6 text-slate-100 shadow-xl space-y-6 flex flex-col justify-between',
-        className
-      )}
-    >
+    <Card className={`bg-[#15121B] border-[#1E293B] text-slate-100 space-y-6 flex flex-col justify-between ${className || ''}`}>
       <div>
         {/* Cabeçalho do Card da Shopify */}
         <div className="flex items-start justify-between pb-5 border-b border-[#1E293B]">
@@ -60,9 +55,7 @@ export const ShopifyCard: React.FC<ShopifyCardProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-xl font-extrabold text-white">Shopify Admin GraphQL</h3>
-                <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
-                  Official Client
-                </span>
+                <Badge variant="success">Official Client</Badge>
               </div>
               <p className="text-xs text-slate-400">API productSet & Ingestão Contínua</p>
             </div>
@@ -71,15 +64,15 @@ export const ShopifyCard: React.FC<ShopifyCardProps> = ({
           {/* Badge Conectado / Desconectado */}
           <div>
             {isConnected ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-400">
-                <CheckCircle className="h-3.5 w-3.5" />
+              <Badge variant="success" dot className="px-3 py-1">
+                <CheckCircle className="h-3.5 w-3.5 mr-1" />
                 Conectado
-              </span>
+              </Badge>
             ) : (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/10 border border-red-500/20 px-3 py-1 text-xs font-bold text-red-400">
-                <AlertCircle className="h-3.5 w-3.5" />
+              <Badge variant="error" dot className="px-3 py-1">
+                <AlertCircle className="h-3.5 w-3.5 mr-1" />
                 Desconectado
-              </span>
+              </Badge>
             )}
           </div>
         </div>
@@ -126,48 +119,39 @@ export const ShopifyCard: React.FC<ShopifyCardProps> = ({
 
       {/* Botões de Ação */}
       <div className="pt-4 border-t border-[#1E293B] flex flex-wrap sm:flex-nowrap gap-2">
-        <button
-          type="button"
+        <Button
+          variant="secondary"
           onClick={onTestConnection}
           disabled={loadingTest}
           aria-label="Testar conexão da Shopify"
-          className="flex-1 min-h-[44px] h-11 px-3 rounded-xl bg-[#090D16] hover:bg-[#1E293B] border border-[#1E293B] text-slate-200 text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          iconLeft={loadingTest ? <Loader2 className="h-4 w-4 animate-spin text-violet-400" /> : <Activity className="h-4 w-4 text-violet-400" />}
+          className="flex-1"
         >
-          {loadingTest ? (
-            <Loader2 className="h-4 w-4 animate-spin text-violet-400" />
-          ) : (
-            <Activity className="h-4 w-4 text-violet-400" />
-          )}
-          <span>Testar Conexão</span>
-        </button>
+          Testar Conexão
+        </Button>
 
-        <button
-          type="button"
+        <Button
+          variant="secondary"
           onClick={onEditCredentials}
           aria-label="Editar credenciais da Shopify"
-          className="flex-1 min-h-[44px] h-11 px-3 rounded-xl bg-[#090D16] hover:bg-[#1E293B] border border-[#1E293B] text-slate-200 text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer"
+          iconLeft={<Key className="h-4 w-4 text-purple-400" />}
+          className="flex-1"
         >
-          <Key className="h-4 w-4 text-purple-400" />
-          <span>Editar Credenciais</span>
-        </button>
+          Editar Credenciais
+        </Button>
 
         {isConnected && (
-          <button
-            type="button"
+          <Button
+            variant="danger"
             onClick={onDisconnect}
             disabled={loadingDisconnect}
             aria-label="Desconectar loja Shopify"
-            className="min-h-[44px] h-11 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            iconLeft={loadingDisconnect ? <Loader2 className="h-4 w-4 animate-spin text-red-400" /> : <Unlink className="h-4 w-4" />}
           >
-            {loadingDisconnect ? (
-              <Loader2 className="h-4 w-4 animate-spin text-red-400" />
-            ) : (
-              <Unlink className="h-4 w-4" />
-            )}
             <span className="hidden sm:inline">Desconectar</span>
-          </button>
+          </Button>
         )}
       </div>
-    </div>
+    </Card>
   );
 };

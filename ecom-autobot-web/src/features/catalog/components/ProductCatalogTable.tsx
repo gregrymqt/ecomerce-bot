@@ -7,7 +7,7 @@ import {
   Loader2,
   Zap,
 } from 'lucide-react';
-import { Badge, Button } from '@/components/ui';
+import { Badge, Button, Checkbox } from '@/components/ui';
 import { cn } from '@/utils/cn';
 import type { CatalogProduct, ProductStatus } from '@/features/catalog';
 import { sanitizeImageUrl } from '@/utils/security';
@@ -109,15 +109,11 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
             <tr className="border-b border-slate-800 bg-[#090D16]/80 text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">
               {/* Checkbox de Seleção Global */}
               <th className="px-4 py-4 w-12 text-center">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={isAllSelected}
-                  ref={(input) => {
-                    if (input) input.indeterminate = isSomeSelected;
-                  }}
+                  indeterminate={isSomeSelected}
                   onChange={(e) => onSelectAll(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500 focus:ring-offset-slate-900 cursor-pointer"
-                  title="Selecionar Todos"
+                  aria-label="Selecionar todos os produtos"
                 />
               </th>
               <th className="px-5 py-4 font-mono uppercase">Produto</th>
@@ -170,11 +166,10 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
                   >
                     {/* Checkbox Individual */}
                     <td className="px-4 py-4 text-center">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={isSelected}
                         onChange={(e) => onSelectSku(product.sku, e.target.checked)}
-                        className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500 focus:ring-offset-slate-900 cursor-pointer"
+                        aria-label={`Selecionar produto ${product.titleOriginal || product.sku}`}
                       />
                     </td>
 

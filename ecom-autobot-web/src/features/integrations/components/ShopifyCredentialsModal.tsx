@@ -1,12 +1,6 @@
-/**
- * src/features/integrations/components/ShopifyCredentialsModal.tsx
- *
- * Modal de diálogo para cadastro e edição de credenciais da Shopify.
- * Apresenta campos mascarados com suporte a visualização, aviso de criptografia AES-256 GCM e overlay desfocado.
- */
-
 import React, { useState } from 'react';
-import { X, Globe, Key, Eye, EyeOff, ShieldCheck, Loader2 } from 'lucide-react';
+import { Globe, Key, Eye, EyeOff, ShieldCheck, Loader2 } from 'lucide-react';
+import { Modal, Button, Input } from '@/components/ui';
 import type { ShopifyCredentialsPayload } from '@/features/integrations';
 
 interface ShopifyCredentialsModalProps {
@@ -57,130 +51,89 @@ export const ShopifyCredentialsModal: React.FC<ShopifyCredentialsModalProps> = (
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn">
-      <div
-        className="w-full max-w-lg rounded-2xl bg-[#15121B] border border-[#1E293B] p-6 text-slate-100 shadow-2xl space-y-6 relative"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="modal-title"
+  const footerActions = (
+    <div className="flex items-center justify-end gap-3 w-full">
+      <Button variant="secondary" onClick={onClose} type="button">
+        Cancelar
+      </Button>
+      <Button
+        variant="primary"
+        onClick={handleSubmit}
+        disabled={loading}
+        iconLeft={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
       >
-        {/* Botão Fechar (X) */}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Fechar modal"
-          className="absolute right-4 top-4 h-9 w-9 rounded-xl bg-[#090D16] hover:bg-[#1E293B] border border-[#1E293B] flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
-        >
-          <X className="h-5 w-5" />
-        </button>
+        {loading ? 'Salvando...' : 'Salvar e Testar Conexão'}
+      </Button>
+    </div>
+  );
 
-        {/* Cabeçalho */}
-        <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-violet-400 mb-1">
-            <Key className="h-4 w-4" />
-            <span>Credenciais de Acesso API</span>
-          </div>
-          <h2 id="modal-title" className="text-2xl font-black text-white">
-            Configurar Loja Shopify
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Insira o domínio `.myshopify.com` e o Admin Access Token gerado no app privado da sua loja.
-          </p>
-        </div>
-
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Configurar Loja Shopify"
+      description="Insira o domínio .myshopify.com e o Admin Access Token gerado no app privado da sua loja."
+      size="md"
+      footer={footerActions}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
         {formError && (
           <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-400">
             {formError}
           </div>
         )}
 
-        {/* Formulário */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Domínio da Loja */}
-          <div className="space-y-1.5">
-            <label htmlFor="modal-store-domain" className="text-xs font-semibold text-slate-300 block">
-              Domínio da Loja Shopify
-            </label>
-            <div className="relative">
-              <input
-                id="modal-store-domain"
-                type="text"
-                value={storeDomain}
-                onChange={(e) => setStoreDomain(e.target.value)}
-                placeholder="minhaloja.myshopify.com"
-                required
-                className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
-              />
-              <Globe className="absolute left-3 top-3 h-5 w-5 text-slate-400 pointer-events-none" />
-            </div>
-          </div>
+        {/* Domínio da Loja */}
+        <div className="space-y-1.5">
+          <label htmlFor="modal-store-domain" className="text-xs font-semibold text-slate-300 block">
+            Domínio da Loja Shopify
+          </label>
+          <Input
+            id="modal-store-domain"
+            type="text"
+            value={storeDomain}
+            onChange={(e) => setStoreDomain(e.target.value)}
+            placeholder="minhaloja.myshopify.com"
+            required
+            iconLeft={<Globe className="h-4 w-4 text-slate-400" />}
+          />
+        </div>
 
-          {/* Admin Access Token com Toggle Eye/EyeOff */}
-          <div className="space-y-1.5">
-            <label htmlFor="modal-access-token" className="text-xs font-semibold text-slate-300 block">
-              Admin Access Token (shpat_...)
-            </label>
-            <div className="relative">
-              <input
-                id="modal-access-token"
-                type={showToken ? 'text' : 'password'}
-                value={adminAccessToken}
-                onChange={(e) => setAdminAccessToken(e.target.value)}
-                placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxx"
-                required
-                className="w-full min-h-[44px] h-11 pl-10 pr-12 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base font-mono placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
-              />
-              <Key className="absolute left-3 top-3 h-5 w-5 text-slate-400 pointer-events-none" />
-              <button
-                type="button"
-                onClick={() => setShowToken(!showToken)}
-                aria-label={showToken ? 'Ocultar token' : 'Mostrar token'}
-                className="absolute right-3 top-3 text-slate-400 hover:text-white transition-colors cursor-pointer"
-              >
-                {showToken ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Aviso Criptografia AES-256 GCM */}
-          <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 flex items-center gap-3 text-xs text-emerald-300">
-            <ShieldCheck className="h-5 w-5 text-emerald-400 shrink-0" />
-            <span>
-              Suas credenciais são salvas com criptografia AES-256 GCM (BYOK) utilizando chave mestre isolada por tenant.
-            </span>
-          </div>
-
-          {/* Botões do Modal */}
-          <div className="pt-4 border-t border-[#1E293B] flex items-center justify-end gap-3">
+        {/* Admin Access Token com Toggle Eye/EyeOff */}
+        <div className="space-y-1.5">
+          <label htmlFor="modal-access-token" className="text-xs font-semibold text-slate-300 block">
+            Admin Access Token (shpat_...)
+          </label>
+          <div className="relative">
+            <Input
+              id="modal-access-token"
+              type={showToken ? 'text' : 'password'}
+              value={adminAccessToken}
+              onChange={(e) => setAdminAccessToken(e.target.value)}
+              placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxx"
+              required
+              iconLeft={<Key className="h-4 w-4 text-slate-400" />}
+              className="pr-12"
+            />
             <button
               type="button"
-              onClick={onClose}
-              className="min-h-[44px] h-11 px-5 rounded-xl bg-[#090D16] hover:bg-[#1E293B] border border-[#1E293B] text-slate-300 hover:text-white text-sm font-semibold transition-all cursor-pointer"
+              onClick={() => setShowToken(!showToken)}
+              aria-label={showToken ? 'Ocultar token' : 'Mostrar token'}
+              className="absolute right-3 top-3.5 text-slate-400 hover:text-white transition-colors cursor-pointer z-10"
             >
-              Cancelar
-            </button>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="min-h-[44px] h-11 px-6 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold transition-all shadow-lg shadow-violet-600/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Salvando...</span>
-                </>
-              ) : (
-                <>
-                  <ShieldCheck className="h-4 w-4" />
-                  <span>Salvar e Testar Conexão</span>
-                </>
-              )}
+              {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+        </div>
+
+        {/* Aviso Criptografia AES-256 GCM */}
+        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 flex items-center gap-3 text-xs text-emerald-300">
+          <ShieldCheck className="h-5 w-5 text-emerald-400 shrink-0" />
+          <span>
+            Suas credenciais são salvas com criptografia AES-256 GCM (BYOK) utilizando chave mestre isolada por tenant.
+          </span>
+        </div>
+      </form>
+    </Modal>
   );
 };
