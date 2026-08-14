@@ -61,7 +61,6 @@ async def test_check_tenant_credits_managed_sufficient_and_insufficient():
     with pytest.raises(InsufficientCreditsException) as exc_info:
         await service.check_tenant_credits("tenant_123", required_credits=Decimal("1.000000"), is_byok=False)
 
-    assert exc_info.value.status_code == 402
     assert "Saldo insuficiente de créditos" in exc_info.value.detail
 
 

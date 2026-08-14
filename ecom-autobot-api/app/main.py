@@ -24,6 +24,7 @@ from app.features.checkout.workers.payment_worker import PaymentWorker
 from app.features.mercadopago.workers.webhook_worker import WebhookDispatcherWorker
 from app.features.emails.workers.email_worker import EmailWorker
 from app.features.api_router import api_router as v1_router
+from app.features.ai_enrichment.domain.exceptions import InsufficientCreditsException
 from app.features.ai_enrichment.services.llm_service import LLMService
 
 logger = logging.getLogger(__name__)
@@ -107,6 +108,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(InsufficientCreditsException)
+async def insufficient_credits_handler(request: Request, exc: InsufficientCreditsException):
+    return JSONResponse(
+        status_code=status.HTTP_402_PAYMENT_REQUIRED,
+        content={"detail": exc.detail},
+    )
 
 
 @app.exception_handler(Exception)

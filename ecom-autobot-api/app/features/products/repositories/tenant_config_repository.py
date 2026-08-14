@@ -129,6 +129,26 @@ class TenantConfigRepository:
         access_token = decrypt_api_key(raw_token)
         return str(store_id), access_token, str(app_email)
 
+    async def get_openrouter_byok_key(self, tenant_id: str) -> Optional[str]:
+        """
+        Recupera e descriptografa a chave BYOK do OpenRouter para o tenant especificado (se configurada).
+        Retorna a chave em texto plano ou None se não configurada ou inválida.
+        """
+        config = await self.get(tenant_id)
+        if not config:
+            return None
+        tenant_keys = config.encrypted_keys or {}
+        raw_key = tenant_keys.get("openrouter_api_key")
+        if not raw_key:
+            return None
+        from app.core.security.crypto import decrypt_api_key
+        try:
+            decrypted_key = decrypt_api_key(raw_key)
+            return decrypted_key if decrypted_key else None
+        except Exception as err:
+            logger.warning(f"[TenantConfigRepository] Falha ao descriptografar openrouter_api_key para tenant '{tenant_id}': {err}")
+            return None
+
     async def upsert(
         self,
         tenant_id: str,

@@ -1,6 +1,3 @@
-from fastapi import HTTPException, status
-
-
 class AllProvidersExhaustedError(Exception):
     """Exceção lançada quando todos os provedores de LLM configurados falham."""
     pass
@@ -25,15 +22,11 @@ class OpenRouterRateLimitError(OpenRouterAPIError):
         super().__init__(message=message, status_code=429, response_body=response_body)
 
 
-class InsufficientCreditsException(HTTPException):
-    """Exceção lançada quando o saldo de créditos do tenant é insuficiente (HTTP 402)."""
+class InsufficientCreditsException(LLMProviderError):
+    """Exceção de domínio lançada quando o saldo de créditos do tenant é insuficiente."""
     def __init__(
         self,
         detail: str = "Saldo insuficiente de créditos para processar a requisição de IA. Ative o modo BYOK ou recarregue seu saldo."
     ):
-        super().__init__(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=detail
-        )
-
-
+        super().__init__(detail)
+        self.detail = detail
