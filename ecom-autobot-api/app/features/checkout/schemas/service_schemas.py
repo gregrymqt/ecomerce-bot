@@ -11,8 +11,8 @@ class CustomerDTO(BaseModel):
     email: EmailStr
     first_name: str
     last_name: str
-    document_type: str = Field(..., example="CPF")
-    document_number: str = Field(..., example="19119119100")
+    document_type: str = Field(..., json_schema_extra={"example": "CPF"})
+    document_number: str = Field(..., json_schema_extra={"example": "19119119100"})
 
 
 # --- INPUTS ---

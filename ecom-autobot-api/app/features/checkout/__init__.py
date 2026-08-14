@@ -1,13 +1,19 @@
 from app.features.checkout.domain import (
     CaptureMode,
+    CheckoutDomainError,
+    InvalidOrderStateError,
     LiabilityShift,
+    OrderCancellationError,
     OrderItemModel,
     OrderModel,
+    OrderNotFoundError,
+    OrderRefundError,
     OrderStatus,
     OrderStatusDetail,
     OrderType,
     PaymentMethodId,
     PaymentMethodType,
+    PaymentProcessingError,
     ProcessingMode,
     ThreeDSValidation,
 )
@@ -19,7 +25,7 @@ from app.features.checkout.services import (
 )
 
 __all__ = [
-    # Domain Enums & Models
+    # Domain Enums & Models & Exceptions
     "OrderType",
     "CaptureMode",
     "ProcessingMode",
@@ -31,6 +37,12 @@ __all__ = [
     "LiabilityShift",
     "OrderModel",
     "OrderItemModel",
+    "CheckoutDomainError",
+    "OrderNotFoundError",
+    "PaymentProcessingError",
+    "OrderCancellationError",
+    "OrderRefundError",
+    "InvalidOrderStateError",
     # Infrastructure Client
     "MercadoPagoOrderClient",
     # Repositories

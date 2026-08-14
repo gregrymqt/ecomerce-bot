@@ -23,7 +23,7 @@ class RefundItemResponseSchema(BaseModel):
     transaction_id: str = Field(..., description="ID da transação original")
     reference_id: Optional[str] = None
     amount: str = Field(..., description="Valor efetivamente reembolsado")
-    status: str = Field(..., example="processed")
+    status: str = Field(..., json_schema_extra={"example": "processed"})
     e2e_id: Optional[str] = Field(None, description="ID End-to-End da devolução PIX (se aplicável)")
 
 

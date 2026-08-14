@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field, EmailStr
 
 
 class AddressSchema(BaseModel):
-    zip_code: str = Field(..., max_length=20, example="06233-903")
+    zip_code: str = Field(..., max_length=20, json_schema_extra={"example": "06233-903"})
     street_name: str = Field(..., max_length=200)
     street_number: str = Field(..., max_length=50)
     neighborhood: str = Field(..., max_length=100)
@@ -13,18 +13,18 @@ class AddressSchema(BaseModel):
 
 
 class PayerIdentificationSchema(BaseModel):
-    type: str = Field(..., example="CPF", description="Tipo de documento (CPF/CNPJ)")
-    number: str = Field(..., example="19119119100")
+    type: str = Field(..., json_schema_extra={"example": "CPF"}, description="Tipo de documento (CPF/CNPJ)")
+    number: str = Field(..., json_schema_extra={"example": "19119119100"})
 
 
 class PayerPhoneSchema(BaseModel):
-    area_code: str = Field(..., max_length=5, example="11")
-    number: str = Field(..., max_length=20, example="987654321")
+    area_code: str = Field(..., max_length=5, json_schema_extra={"example": "11"})
+    number: str = Field(..., max_length=20, json_schema_extra={"example": "987654321"})
 
 
 class PayerInputSchema(BaseModel):
     email: EmailStr
-    entity_type: Optional[str] = Field("individual", example="individual")
+    entity_type: Optional[str] = Field("individual", json_schema_extra={"example": "individual"})
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     identification: Optional[PayerIdentificationSchema] = None

@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.database import AsyncSessionLocal
+from app.features.checkout.domain.exceptions import OrderNotFoundError
 from app.features.checkout.domain.models import OrderModel
 from app.features.checkout.repositories import OrderRepository
 from app.features.checkout.services.checkout_service import CheckoutService
@@ -88,15 +89,19 @@ class CheckoutNotificationService(BaseNotificationHandler):
 
             # 3. Executa a sincronização de estado com garantia Zero Trust
             checkout_service = CheckoutService(session)
-            updated_order = await checkout_service.sync_order_status_from_mp(
-                tenant_id=local_order.tenant_id,
-                mp_order_id=mp_order_id,
-            )
-
-            if updated_order:
-                logger.info(
-                    f"✅ [CheckoutNotification] Order local '{updated_order.id}' "
-                    f"(Tenant: '{updated_order.tenant_id}') sincronizada com sucesso | Status: '{updated_order.status}'"
+            try:
+                updated_order = await checkout_service.sync_order_status_from_mp(
+                    tenant_id=local_order.tenant_id,
+                    mp_order_id=mp_order_id,
+                )
+                if updated_order:
+                    logger.info(
+                        f"✅ [CheckoutNotification] Order local '{updated_order.id}' "
+                        f"(Tenant: '{updated_order.tenant_id}') sincronizada com sucesso | Status: '{updated_order.status}'"
+                    )
+            except OrderNotFoundError:
+                logger.warning(
+                    f"[CheckoutNotification] Order MP #{mp_order_id} não encontrada durante a sincronização."
                 )
         finally:
             if owned:

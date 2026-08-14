@@ -7,6 +7,13 @@ from app.core.config.database import get_db
 from app.core.security.auth import get_current_tenant_user
 from app.core.security.rate_limiter import rate_limit_dependency
 from app.features.auth.schemas import AuthenticatedUser
+from app.features.checkout.domain.exceptions import (
+    InvalidOrderStateError,
+    OrderCancellationError,
+    OrderNotFoundError,
+    OrderRefundError,
+    PaymentProcessingError,
+)
 from app.features.checkout.repositories.order_repository import OrderRepository
 from app.features.checkout.schemas.service_schemas import (
     CheckoutResultOutput,
@@ -39,10 +46,10 @@ async def create_pix_checkout(
     service = CheckoutService(db)
     try:
         return await service.create_pix_payment(tenant_id=x_tenant_id, input_data=payload)
-    except Exception as exc:
+    except PaymentProcessingError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Falha ao gerar cobrança PIX: {str(exc)}",
+            detail=exc.message,
         )
 
 
@@ -67,10 +74,10 @@ async def create_credit_card_checkout(
     service = CheckoutService(db)
     try:
         return await service.create_credit_card_payment(tenant_id=x_tenant_id, input_data=payload)
-    except Exception as exc:
+    except PaymentProcessingError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Falha ao processar pagamento com cartão: {str(exc)}",
+            detail=exc.message,
         )
 
 
@@ -115,13 +122,14 @@ async def sync_checkout_order(
     current_user: AuthenticatedUser = Depends(get_current_tenant_user),
 ):
     service = CheckoutService(db)
-    synced_order = await service.sync_order_status_from_mp(tenant_id=x_tenant_id, mp_order_id=mp_order_id)
-    if not synced_order:
+    try:
+        synced_order = await service.sync_order_status_from_mp(tenant_id=x_tenant_id, mp_order_id=mp_order_id)
+        return synced_order.to_dict()
+    except OrderNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Pedido do Mercado Pago não encontrado no sistema.",
+            detail=exc.message,
         )
-    return synced_order.to_dict()
 
 
 # ==========================================
@@ -140,13 +148,19 @@ async def cancel_checkout_order(
     current_user: AuthenticatedUser = Depends(get_current_tenant_user),
 ):
     service = CheckoutService(db)
-    success = await service.cancel_order(tenant_id=x_tenant_id, order_id=order_id)
-    if not success:
+    try:
+        await service.cancel_order(tenant_id=x_tenant_id, order_id=order_id)
+        return {"message": "Pedido cancelado com sucesso."}
+    except OrderNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=exc.message,
+        )
+    except (OrderCancellationError, InvalidOrderStateError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Não foi possível cancelar o pedido. Verifique o ID e o status atual.",
+            detail=exc.message,
         )
-    return {"message": "Pedido cancelado com sucesso."}
 
 
 @router.post(
@@ -162,10 +176,16 @@ async def refund_checkout_order(
     current_user: AuthenticatedUser = Depends(get_current_tenant_user),
 ):
     service = CheckoutService(db)
-    success = await service.refund_order(tenant_id=x_tenant_id, order_id=order_id, amount=amount)
-    if not success:
+    try:
+        await service.refund_order(tenant_id=x_tenant_id, order_id=order_id, amount=amount)
+        return {"message": "Solicitação de reembolso enviada com sucesso."}
+    except OrderNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=exc.message,
+        )
+    except (OrderRefundError, InvalidOrderStateError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Não foi possível processar o reembolso do pedido.",
+            detail=exc.message,
         )
-    return {"message": "Solicitação de reembolso enviada com sucesso."}

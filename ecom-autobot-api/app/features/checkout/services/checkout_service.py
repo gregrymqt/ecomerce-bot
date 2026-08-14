@@ -19,6 +19,12 @@ from app.features.checkout.domain.enums import (
     PaymentMethodType,
     ProcessingMode,
 )
+from app.features.checkout.domain.exceptions import (
+    OrderCancellationError,
+    OrderNotFoundError,
+    OrderRefundError,
+    PaymentProcessingError,
+)
 from app.features.checkout.domain.models import OrderItemModel, OrderModel
 from app.features.checkout.repositories.order_repository import OrderRepository
 from app.features.checkout.schemas import (
@@ -124,8 +130,12 @@ class CheckoutService:
         )
 
         # 2. Comunica com a API do Mercado Pago
-        async with _get_order_client() as mp_client:
-            mp_response: CreateMPOrderResponse = await mp_client.create_order(order_request=mp_request)
+        try:
+            async with _get_order_client() as mp_client:
+                mp_response: CreateMPOrderResponse = await mp_client.create_order(order_request=mp_request)
+        except Exception as exc:
+            logger.error(f"[CheckoutService] Erro ao comunicar com Mercado Pago para PIX: {exc}")
+            raise PaymentProcessingError(f"Falha ao gerar cobrança PIX: {str(exc)}")
 
         # 3. Extrai dados do PIX (QR Code, Copia e Cola)
         payment_info = mp_response.transactions.payments[0]
@@ -186,7 +196,7 @@ class CheckoutService:
                 logger.info(f"[CheckoutService] Compensação executada: Pedido MP '{mp_response.id}' cancelado com sucesso no Mercado Pago.")
             except Exception as cancel_err:
                 logger.error(f"[CheckoutService] ALERTA DE INCONSISTÊNCIA: Falha na compensação remota do pedido MP '{mp_response.id}': {cancel_err}")
-            raise db_err
+            raise PaymentProcessingError(f"Falha ao salvar pedido PIX no banco local: {str(db_err)}")
 
         return CheckoutResultOutput(
             order_id=internal_order_id,
@@ -240,8 +250,12 @@ class CheckoutService:
             items=input_data.items,
         )
 
-        async with _get_order_client() as mp_client:
-            mp_response: CreateMPOrderResponse = await mp_client.create_order(order_request=mp_request)
+        try:
+            async with _get_order_client() as mp_client:
+                mp_response: CreateMPOrderResponse = await mp_client.create_order(order_request=mp_request)
+        except Exception as exc:
+            logger.error(f"[CheckoutService] Erro ao comunicar com Mercado Pago para Cartão de Crédito: {exc}")
+            raise PaymentProcessingError(f"Falha ao processar pagamento com cartão: {str(exc)}")
 
         internal_order_id = f"ord_{uuid.uuid4().hex[:16]}"
         order_entity = OrderModel(
@@ -284,7 +298,7 @@ class CheckoutService:
                 logger.info(f"[CheckoutService] Compensação executada: Pedido MP '{mp_response.id}' cancelado com sucesso no Mercado Pago.")
             except Exception as cancel_err:
                 logger.error(f"[CheckoutService] ALERTA DE INCONSISTÊNCIA: Falha na compensação remota do pedido MP '{mp_response.id}': {cancel_err}")
-            raise db_err
+            raise PaymentProcessingError(f"Falha ao salvar pedido de cartão no banco local: {str(db_err)}")
 
         user_msg = None
         detail_str = mp_response.status_detail.value if mp_response.status_detail else None
@@ -327,7 +341,7 @@ class CheckoutService:
             logger.error(
                 f"[CheckoutService] Order MP {mp_order_id} recebida no webhook não encontrada localmente."
             )
-            return None
+            raise OrderNotFoundError(mp_order_id)
 
         # 3. Verifica transição de estado e idempotência antes de atualizar o banco
         new_status = OrderStatus(mp_order.status.value)
@@ -433,10 +447,14 @@ class CheckoutService:
         """Cancela uma order pendente localmente e no Mercado Pago."""
         local_order = await self.order_repo.get_by_id(tenant_id, order_id)
         if not local_order or not local_order.mp_order_id:
-            return False
+            raise OrderNotFoundError(order_id)
 
-        async with _get_order_client() as mp_client:
-            await mp_client.cancel_order(order_id=local_order.mp_order_id)
+        try:
+            async with _get_order_client() as mp_client:
+                await mp_client.cancel_order(order_id=local_order.mp_order_id)
+        except Exception as mp_err:
+            logger.error(f"[CheckoutService] Erro ao cancelar pedido MP '{local_order.mp_order_id}': {mp_err}")
+            raise OrderCancellationError(f"Não foi possível cancelar o pedido no Mercado Pago: {str(mp_err)}")
 
         local_order.status = OrderStatus.CANCELED
         local_order.status_detail = OrderStatusDetail.CANCELED
@@ -450,11 +468,10 @@ class CheckoutService:
         """Executa o estorno/reembolso de um pagamento aprovado."""
         local_order = await self.order_repo.get_by_id(tenant_id, order_id)
         if not local_order or not local_order.mp_order_id:
-            return False
+            raise OrderNotFoundError(order_id)
 
         refund_req = None
         if amount and local_order.raw_mp_response:
-            # Tenta resgatar o ID da transação original
             payments = local_order.raw_mp_response.get("transactions", {}).get("payments", [])
             if payments:
                 pay_id = payments[0].get("id")
@@ -462,9 +479,12 @@ class CheckoutService:
                     transactions=[RefundTransactionInputSchema(id=pay_id, amount=f"{amount:.2f}")]
                 )
 
-        async with _get_order_client() as mp_client:
-            await mp_client.refund_order(order_id=local_order.mp_order_id, refund_request=refund_req)
+        try:
+            async with _get_order_client() as mp_client:
+                await mp_client.refund_order(order_id=local_order.mp_order_id, refund_request=refund_req)
+        except Exception as mp_err:
+            logger.error(f"[CheckoutService] Erro ao reembolsar pedido MP '{local_order.mp_order_id}': {mp_err}")
+            raise OrderRefundError(f"Não foi possível processar o reembolso no Mercado Pago: {str(mp_err)}")
 
-        # Sincroniza o novo estado de reembolso
         await self.sync_order_status_from_mp(tenant_id, local_order.mp_order_id)
         return True
