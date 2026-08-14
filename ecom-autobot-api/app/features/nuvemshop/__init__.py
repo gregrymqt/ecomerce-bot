@@ -16,7 +16,12 @@ from app.features.nuvemshop.schemas import (
     NuvemshopStockUpdateItem,
     NuvemshopVariantRequest,
 )
-from app.features.nuvemshop.services import NuvemshopService, NuvemshopStockService
+from app.features.nuvemshop.services import (
+    NuvemshopService,
+    NuvemshopStockService,
+    NuvemshopWebhookService,
+)
+from app.features.nuvemshop.workers import NuvemshopLocationWorker
 
 __all__ = [
     # Domain
@@ -42,6 +47,9 @@ __all__ = [
     # Services
     "NuvemshopService",
     "NuvemshopStockService",
+    "NuvemshopWebhookService",
+    # Workers
+    "NuvemshopLocationWorker",
 ]
 
 

@@ -70,6 +70,12 @@ async def configure_rabbitmq_topology(
             durable=True
         )
 
+        nuvemshop_dlx = await channel.declare_exchange(
+            "nuvemshop_dlx",
+            ExchangeType.DIRECT,
+            durable=True
+        )
+
         # ------------------------------------------------------------------
         # 2. DEAD LETTER QUEUES (DLQs - Com TTL de expiração para limpeza)
         # ------------------------------------------------------------------
@@ -103,6 +109,13 @@ async def configure_rabbitmq_topology(
             arguments=dlq_args
         )
         await dlq_shopify.bind(shopify_dlx, routing_key="shopify_failed")
+
+        dlq_nuvemshop = await channel.declare_queue(
+            "dlq_nuvemshop",
+            durable=True,
+            arguments=dlq_args
+        )
+        await dlq_nuvemshop.bind(nuvemshop_dlx, routing_key="nuvemshop_failed")
 
         # ------------------------------------------------------------------
         # 3. FILAS DE E-COMMERCE & DEMO (SCRAPING)
@@ -211,7 +224,17 @@ async def configure_rabbitmq_topology(
             }
         )
 
-        logger.info("Topologia RabbitMQ (9 filas principais, 4 DLXs e 4 DLQs) configurada com sucesso.")
+        nuvemshop_webhook = await channel.declare_queue(
+            "nuvemshop_webhook",
+            durable=True,
+            arguments={
+                "x-dead-letter-exchange": "nuvemshop_dlx",
+                "x-dead-letter-routing-key": "nuvemshop_failed",
+                "x-max-length": 10000
+            }
+        )
+
+        logger.info("Topologia RabbitMQ (10 filas principais, 5 DLXs e 5 DLQs) configurada com sucesso.")
 
         return {
             "demo_ecommerce": demo_ecommerce,
@@ -223,10 +246,12 @@ async def configure_rabbitmq_topology(
             "llm": llm,
             "email_notifications": email_notifications,
             "shopify_webhook": shopify_webhook,
+            "nuvemshop_webhook": nuvemshop_webhook,
             "dlq_ecommerce": dlq_ecommerce,
             "dlq_mercado_pago": dlq_mercado_pago,
             "dlq_llm": dlq_llm,
             "dlq_shopify": dlq_shopify,
+            "dlq_nuvemshop": dlq_nuvemshop,
         }
 
 

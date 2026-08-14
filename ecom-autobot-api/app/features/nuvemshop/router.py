@@ -1,7 +1,11 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from typing import List, Optional
 
-from app.features.nuvemshop.services import NuvemshopService, NuvemshopStockService
+from app.features.nuvemshop.services import (
+    NuvemshopService,
+    NuvemshopStockService,
+    NuvemshopWebhookService,
+)
 from app.features.nuvemshop.schemas import (
     NuvemshopBatchStockPriceItem,
     NuvemshopBatchStockPriceResponse,
@@ -19,6 +23,33 @@ router = APIRouter(
     prefix="/nuvemshop",
     tags=["Nuvemshop Integration"],
 )
+
+
+def get_nuvemshop_webhook_service() -> NuvemshopWebhookService:
+    return NuvemshopWebhookService()
+
+
+@router.post("/webhooks", status_code=status.HTTP_200_OK)
+async def nuvemshop_webhook(
+    request: Request,
+    x_linkedstore_hmac_sha256: Optional[str] = Header(None, alias="X-Linkedstore-Hmac-Sha256"),
+    service: NuvemshopWebhookService = Depends(get_nuvemshop_webhook_service),
+):
+    """
+    Endpoint público de recepção de Webhooks da Nuvemshop.
+    Valida a assinatura HMAC, aplica idempotência no Redis e publica no RabbitMQ em < 2s.
+    """
+    raw_body = await request.body()
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    return await service.enqueue_webhook_event(
+        payload=payload,
+        raw_body=raw_body,
+        hmac_header=x_linkedstore_hmac_sha256,
+    )
 
 
 def get_nuvemshop_service(

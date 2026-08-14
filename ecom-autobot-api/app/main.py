@@ -1,4 +1,5 @@
 from app.features.shopify.workers import ShopifyWebhookWorker
+from app.features.nuvemshop.workers import NuvemshopLocationWorker
 import asyncio
 import logging
 from contextlib import asynccontextmanager
@@ -34,9 +35,10 @@ async def lifespan(app: FastAPI):
     try:
         channel = await rabbitmq_conn.channel()
         await configure_rabbitmq_topology(channel)
+        logger.info("Conexão e canais com RabbitMQ estabelecidos.")
     except Exception as err:
-        logger.error(f"Falha ao configurar topologia inicial do RabbitMQ: {err}")
-        raise err
+        logger.error(f"Falha crítica ao configurar RabbitMQ no startup: {err}")
+        channel = None
 
     await seed_initial_roles()
     await seed_admin_users()
@@ -50,6 +52,7 @@ async def lifespan(app: FastAPI):
     payment_worker = PaymentWorker()
     email_worker = EmailWorker()
     shopify_webhook_worker = ShopifyWebhookWorker()
+    nuvemshop_location_worker = NuvemshopLocationWorker()
 
     worker_tasks = [
         asyncio.create_task(scraper_worker.start_consuming("ecommerce", channel=channel), name="worker_scraper_prod"),
@@ -60,6 +63,7 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(payment_worker.start_consuming("payments", channel=channel), name="worker_payments"),
         asyncio.create_task(email_worker.start_consuming("email_notifications", channel=channel), name="worker_email"),
         asyncio.create_task(shopify_webhook_worker.start_consuming("shopify_webhook", channel=channel), name="worker_shopify_webhook"),
+        asyncio.create_task(nuvemshop_location_worker.start_consuming("nuvemshop_webhook", channel=channel), name="worker_nuvemshop_location"),
     ]
 
     app.state.worker_tasks = worker_tasks
