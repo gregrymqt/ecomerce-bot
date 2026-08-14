@@ -8,7 +8,6 @@ from app.core.config.database import AsyncSessionLocal
 from app.core.config.rabbitmq import get_rabbitmq_connection
 from app.core.config.redis_db import redis_cache
 from app.features.scraper.schemas import ImportRequestMessage
-from app.features.scraper.workers.exporter_worker import ExporterWorker
 from app.features.system.repositories.telemetry_repository import TelemetryRepository
 from app.features.system.schemas.system_schemas import (
     DashboardTelemetryResponse,
@@ -180,6 +179,8 @@ class SystemService:
 
     @staticmethod
     async def process_export(tenant_id: str, platform: str) -> None:
+        from app.features.scraper.workers.exporter_worker import ExporterWorker
+
         logger.info(f"Processando exportação para tenant: {tenant_id}, plataforma: {platform}")
         exporter = ExporterWorker(tenant_id=tenant_id, platform=platform)
         await exporter.export()

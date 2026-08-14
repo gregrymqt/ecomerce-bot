@@ -2,6 +2,9 @@ from app.features.scraper.parsers import (
     JsonLdParserService,
     MarkdownParserService,
 )
+from app.features.scraper.repositories import (
+    ScrapingMetadataRepository,
+)
 from app.features.scraper.schemas import (
     AICredentialsRequest,
     ImportCompletedMessage,
@@ -10,7 +13,11 @@ from app.features.scraper.schemas import (
     ScrapedProductResult,
     WebScraperRequest,
 )
-from app.features.scraper.services import AIScraperService
+from app.features.scraper.services import (
+    AIScraperService,
+    ProcessorService,
+    ScrapingExecutionService,
+)
 from app.features.scraper.workers import (
     ExporterWorker,
     ProcessorWorker,
@@ -25,8 +32,12 @@ __all__ = [
     "WebScraperRequest",
     "ImportRequestMessage",
     "ImportCompletedMessage",
+    # Repositories
+    "ScrapingMetadataRepository",
     # Services
     "AIScraperService",
+    "ProcessorService",
+    "ScrapingExecutionService",
     # Parsers
     "JsonLdParserService",
     "MarkdownParserService",

@@ -1,5 +1,5 @@
 from typing import List
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import logging
 from typing import Any, Dict, Optional, Tuple
 import uuid
@@ -501,6 +501,84 @@ class ProductRepository:
             if owned:
                 await session.rollback()
             raise
+        finally:
+            if owned:
+                await session.close()
+
+    async def transition_status_atomic(
+        self, tenant_id: str, sku: str, from_status: str, to_status: str
+    ) -> Optional[ProductModel]:
+        """
+        Realiza transição atômica de status (ex: RAW -> PROCESSING) no banco de dados.
+        Retorna o ProductModel atualizado se a transição for efetuada, ou None se falhar/já estiver alterado.
+        """
+        session, owned = await self._get_session()
+        try:
+            atomic_stmt = (
+                update(ProductModel)
+                .where(
+                    ProductModel.tenant_id == tenant_id,
+                    ProductModel.sku == sku,
+                    ProductModel.status == from_status,
+                )
+                .values(
+                    status=to_status,
+                    updated_at=datetime.now(timezone.utc),
+                )
+            )
+            result = await session.execute(atomic_stmt)
+            await session.commit()
+
+            if result.rowcount == 0:
+                return None
+
+            row_stmt = select(ProductModel).where(
+                ProductModel.tenant_id == tenant_id,
+                ProductModel.sku == sku,
+            )
+            row_result = await session.execute(row_stmt)
+            model = row_result.scalar_one_or_none()
+            if model:
+                await self._invalidate_product_cache(tenant_id, sku)
+            return model
+        except Exception:
+            if owned:
+                await session.rollback()
+            raise
+        finally:
+            if owned:
+                await session.close()
+
+    async def reset_stuck_processing_jobs(self, timeout_minutes: int = 10) -> int:
+        """
+        Resgata e reseta produtos travados no estado 'Processing' há mais de timeout_minutes minutos,
+        retornando-os para o estado 'Raw' para permitirem re-processamento.
+        """
+        session, owned = await self._get_session()
+        try:
+            cutoff = datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)
+            stmt = (
+                update(ProductModel)
+                .where(
+                    ProductModel.status == "Processing",
+                    ProductModel.updated_at <= cutoff,
+                )
+                .values(
+                    status="Raw",
+                    updated_at=datetime.now(timezone.utc),
+                )
+            )
+            result = await session.execute(stmt)
+            await session.commit()
+            count = result.rowcount
+            if count > 0:
+                logger.info(f"🔄 [ProductRepository] Resetados {count} produtos travados em 'Processing' de volta para 'Raw'.")
+            return count
+        except Exception as err:
+            logger.error(f"[ProductRepository] Erro ao resetar produtos travados em Processing: {err}")
+            if owned:
+                await session.rollback()
+            return 0
         finally:
             if owned:
                 await session.close()
