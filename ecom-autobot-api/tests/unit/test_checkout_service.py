@@ -18,8 +18,13 @@ from app.features.checkout.schemas.service_schemas import (
     CreatePixCheckoutInput,
     CustomerDTO,
 )
-from app.features.checkout.services.checkout_service import (
+from app.features.checkout.services import (
     CheckoutService,
+    OrderService,
+    PaymentService,
+    RefundService,
+)
+from app.features.checkout.services.payment_service import (
     get_friendly_credit_card_error_message,
 )
 
@@ -74,12 +79,12 @@ async def test_create_pix_payment_success():
         ],
     )
 
-    with patch("app.features.checkout.services.checkout_service._get_order_client") as mock_client_factory:
+    with patch("app.features.checkout.services.payment_service._get_order_client") as mock_client_factory:
         mock_client = AsyncMock()
         mock_client.create_order.return_value = mock_mp_response
         mock_client_factory.return_value.__aenter__.return_value = mock_client
 
-        service = CheckoutService(mock_session)
+        service = PaymentService(mock_session)
         service.order_repo = mock_order_repo
 
         result = await service.create_pix_payment(tenant_id="tenant_abc", input_data=input_data)
@@ -109,12 +114,12 @@ async def test_create_pix_payment_mp_failure_raises_domain_exception():
         items=[OrderItemSchema(title="Item Teste", unit_price="100.00", quantity=1)],
     )
 
-    with patch("app.features.checkout.services.checkout_service._get_order_client") as mock_client_factory:
+    with patch("app.features.checkout.services.payment_service._get_order_client") as mock_client_factory:
         mock_client = AsyncMock()
         mock_client.create_order.side_effect = Exception("Erro de Conexão com MP")
         mock_client_factory.return_value.__aenter__.return_value = mock_client
 
-        service = CheckoutService(mock_session)
+        service = PaymentService(mock_session)
 
         with pytest.raises(PaymentProcessingError) as exc_info:
             await service.create_pix_payment(tenant_id="tenant_abc", input_data=input_data)
@@ -128,7 +133,7 @@ async def test_cancel_order_not_found_raises_domain_exception():
     mock_order_repo = AsyncMock()
     mock_order_repo.get_by_id.return_value = None
 
-    service = CheckoutService(mock_session)
+    service = RefundService(mock_session)
     service.order_repo = mock_order_repo
 
     with pytest.raises(OrderNotFoundError) as exc_info:
@@ -153,12 +158,12 @@ async def test_cancel_order_mp_failure_raises_domain_exception():
     )
     mock_order_repo.get_by_id.return_value = existing_order
 
-    with patch("app.features.checkout.services.checkout_service._get_order_client") as mock_client_factory:
+    with patch("app.features.checkout.services.refund_service._get_order_client") as mock_client_factory:
         mock_client = AsyncMock()
         mock_client.cancel_order.side_effect = Exception("API MP indispónivel")
         mock_client_factory.return_value.__aenter__.return_value = mock_client
 
-        service = CheckoutService(mock_session)
+        service = RefundService(mock_session)
         service.order_repo = mock_order_repo
 
         with pytest.raises(OrderCancellationError) as exc_info:
@@ -173,7 +178,7 @@ async def test_refund_order_not_found_raises_domain_exception():
     mock_order_repo = AsyncMock()
     mock_order_repo.get_by_id.return_value = None
 
-    service = CheckoutService(mock_session)
+    service = RefundService(mock_session)
     service.order_repo = mock_order_repo
 
     with pytest.raises(OrderNotFoundError) as exc_info:
@@ -199,15 +204,28 @@ async def test_refund_order_mp_failure_raises_domain_exception():
     )
     mock_order_repo.get_by_id.return_value = existing_order
 
-    with patch("app.features.checkout.services.checkout_service._get_order_client") as mock_client_factory:
+    with patch("app.features.checkout.services.refund_service._get_order_client") as mock_client_factory:
         mock_client = AsyncMock()
         mock_client.refund_order.side_effect = Exception("Erro MP Refund")
         mock_client_factory.return_value.__aenter__.return_value = mock_client
 
-        service = CheckoutService(mock_session)
+        service = RefundService(mock_session)
         service.order_repo = mock_order_repo
 
         with pytest.raises(OrderRefundError) as exc_info:
             await service.refund_order(tenant_id="tenant_abc", order_id="ord_refund_123")
 
         assert "Não foi possível processar o reembolso no Mercado Pago" in exc_info.value.message
+
+
+@pytest.mark.asyncio
+async def test_checkout_service_facade():
+    """Valida a retrocompatibilidade da Facade CheckoutService delegando para os novos serviços."""
+    mock_session = AsyncMock()
+    service = CheckoutService(mock_session)
+
+    assert hasattr(service, "create_pix_payment")
+    assert hasattr(service, "create_credit_card_payment")
+    assert hasattr(service, "sync_order_status_from_mp")
+    assert hasattr(service, "cancel_order")
+    assert hasattr(service, "refund_order")

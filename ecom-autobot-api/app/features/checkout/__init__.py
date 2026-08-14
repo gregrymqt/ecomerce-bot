@@ -22,6 +22,9 @@ from app.features.checkout.repositories import OrderRepository
 from app.features.checkout.services import (
     CheckoutNotificationService,
     CheckoutService,
+    OrderService,
+    PaymentService,
+    RefundService,
 )
 
 __all__ = [
@@ -50,4 +53,7 @@ __all__ = [
     # Services
     "CheckoutService",
     "CheckoutNotificationService",
+    "PaymentService",
+    "OrderService",
+    "RefundService",
 ]
