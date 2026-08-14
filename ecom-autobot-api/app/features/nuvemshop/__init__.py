@@ -1,5 +1,13 @@
 from app.features.nuvemshop.domain import NuvemshopCredentials
-from app.features.nuvemshop.infrastructure import NuvemshopClient
+from app.features.nuvemshop.infrastructure import (
+    NuvemshopBaseClient,
+    NuvemshopCategoryClient,
+    NuvemshopClient,
+    NuvemshopImageClient,
+    NuvemshopProductClient,
+    NuvemshopStockClient,
+    NuvemshopWebhookClient,
+)
 from app.features.nuvemshop.repositories import NuvemshopRepository
 from app.features.nuvemshop.schemas import (
     InventoryLevelSchema,
@@ -17,6 +25,10 @@ from app.features.nuvemshop.schemas import (
     NuvemshopVariantRequest,
 )
 from app.features.nuvemshop.services import (
+    NuvemshopCategoryService,
+    NuvemshopImageService,
+    NuvemshopOAuthService,
+    NuvemshopProductService,
     NuvemshopService,
     NuvemshopStockService,
     NuvemshopWebhookService,
@@ -28,8 +40,14 @@ __all__ = [
     "NuvemshopCredentials",
     # Repositories
     "NuvemshopRepository",
-    # Infrastructure
+    # Infrastructure Clients
     "NuvemshopClient",
+    "NuvemshopBaseClient",
+    "NuvemshopStockClient",
+    "NuvemshopProductClient",
+    "NuvemshopImageClient",
+    "NuvemshopCategoryClient",
+    "NuvemshopWebhookClient",
     # Schemas
     "NuvemshopLocalizedString",
     "NuvemshopVariantRequest",
@@ -46,11 +64,12 @@ __all__ = [
     "NuvemshopStockUpdateBatchRequest",
     # Services
     "NuvemshopService",
+    "NuvemshopProductService",
     "NuvemshopStockService",
     "NuvemshopWebhookService",
+    "NuvemshopCategoryService",
+    "NuvemshopOAuthService",
+    "NuvemshopImageService",
     # Workers
     "NuvemshopLocationWorker",
 ]
-
-
-
