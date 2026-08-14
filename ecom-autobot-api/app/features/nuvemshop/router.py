@@ -6,6 +6,7 @@ from app.features.nuvemshop.services import (
     NuvemshopStockService,
     NuvemshopWebhookService,
     NuvemshopCategoryService,
+    NuvemshopOAuthService,
 )
 from app.features.nuvemshop.schemas import (
     NuvemshopBatchStockPriceItem,
@@ -19,6 +20,8 @@ from app.features.nuvemshop.schemas import (
     NuvemshopImageUploadPayload,
     NuvemshopInventoryLevelListResponse,
     NuvemshopLocationResponse,
+    NuvemshopOAuthAuthorizeResponse,
+    NuvemshopOAuthTokenResponse,
     NuvemshopProductRequest,
     NuvemshopProductResponse,
     NuvemshopProductUpdatePayload,
@@ -311,6 +314,69 @@ async def create_category(
     except Exception:
         pass
     return res
+
+
+def get_nuvemshop_oauth_service() -> NuvemshopOAuthService:
+    return NuvemshopOAuthService()
+
+
+@router.get("/oauth/authorize", response_model=NuvemshopOAuthAuthorizeResponse)
+async def oauth_authorize(
+    x_tenant_id: str = Header(..., alias="X-Tenant-ID"),
+    user: AuthenticatedUser = Depends(get_current_tenant_user),
+    service: NuvemshopOAuthService = Depends(get_nuvemshop_oauth_service),
+):
+    """
+    Inicia o handshake de autorização OAuth 2.0 em 1-Clique para a Nuvemshop.
+    Gera um token 'state' anti-CSRF temporário no Redis e retorna a URL de consentimento.
+    """
+    clean_tenant = sanitize_tenant_id(x_tenant_id)
+    return await service.generate_authorize_url(tenant_id=clean_tenant)
+
+
+@router.get("/oauth/callback")
+async def oauth_callback(
+    code: str = Query(..., description="Código de autorização gerado pela Nuvemshop"),
+    state: str = Query(..., description="Token anti-CSRF retornado pela Nuvemshop"),
+    service: NuvemshopOAuthService = Depends(get_nuvemshop_oauth_service),
+):
+    """
+    Callback público do provedor OAuth da Nuvemshop.
+    Valida o token 'state' no Redis (mitigação CSRF), troca o 'code' por 'access_token',
+    criptografa o token via AES-256 GCM e executa o auto-registro de webhooks.
+    """
+    result = await service.process_callback(code=code, state=state)
+    return result
+
+
+@router.post("/webhooks/auto-register")
+async def auto_register_webhooks(
+    x_tenant_id: str = Header(..., alias="X-Tenant-ID"),
+    user: AuthenticatedUser = Depends(get_current_tenant_user),
+    service: NuvemshopOAuthService = Depends(get_nuvemshop_oauth_service),
+):
+    """
+    Força o auto-registro resiliente de webhooks para a loja vinculada ao tenant ativo.
+    """
+    clean_tenant = sanitize_tenant_id(x_tenant_id)
+    creds = await service.nuvemshop_repo.get_credentials(clean_tenant)
+    if not creds or not creds.access_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Tenant '{clean_tenant}' não possui credenciais válidas da Nuvemshop configuradas.",
+        )
+    webhooks = await service.auto_register_webhooks(
+        tenant_id=clean_tenant,
+        store_id=int(creds.store_id),
+        access_token=creds.access_token,
+    )
+    return {
+        "status": "success",
+        "tenant_id": clean_tenant,
+        "store_id": creds.store_id,
+        "registered_webhooks": webhooks,
+    }
+
 
 
 

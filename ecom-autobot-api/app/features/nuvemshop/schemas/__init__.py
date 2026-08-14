@@ -2,6 +2,12 @@ from app.features.nuvemshop.schemas.nuvemshop_category_schemas import (
     NuvemshopCategoryCreatePayload,
     NuvemshopCategoryResponse,
 )
+from app.features.nuvemshop.schemas.nuvemshop_oauth_schemas import (
+    NuvemshopOAuthAuthorizeResponse,
+    NuvemshopOAuthTokenResponse,
+    NuvemshopWebhookRegistrationPayload,
+    NuvemshopWebhookRegistrationResponse,
+)
 from app.features.nuvemshop.schemas.nuvemshop_schemas import (
     NuvemshopBatchStockPriceItem,
     NuvemshopBatchStockPriceResponse,
@@ -53,6 +59,10 @@ __all__ = [
     "NuvemshopImageResponse",
     "NuvemshopCategoryCreatePayload",
     "NuvemshopCategoryResponse",
+    "NuvemshopOAuthAuthorizeResponse",
+    "NuvemshopOAuthTokenResponse",
+    "NuvemshopWebhookRegistrationPayload",
+    "NuvemshopWebhookRegistrationResponse",
     "NuvemshopWebhookPayload",
     "NuvemshopWebhookQueueMessage",
     "NuvemshopProductCreatePayload",

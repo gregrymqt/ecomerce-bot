@@ -92,6 +92,10 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices("SHOPIFY_REDIRECT_URI", "SHOPIFY_OAUTH_REDIRECT_URI")
     )
+    NUVEMSHOP_CLIENT_ID: str = Field(
+        default="",
+        validation_alias=AliasChoices("NUVEMSHOP_CLIENT_ID", "NUVEMSHOP_APP_ID")
+    )
     NUVEMSHOP_CLIENT_SECRET: str = Field(
         default="",
         validation_alias=AliasChoices("NUVEMSHOP_CLIENT_SECRET", "NUVEMSHOP_SECRET")
@@ -99,6 +103,18 @@ class Settings(BaseSettings):
     NUVEMSHOP_WEBHOOK_SECRET: str = Field(
         default="",
         validation_alias=AliasChoices("NUVEMSHOP_WEBHOOK_SECRET", "NUVEMSHOP_CLIENT_SECRET", "NUVEMSHOP_SECRET")
+    )
+    NUVEMSHOP_REDIRECT_URI: str = Field(
+        default="",
+        validation_alias=AliasChoices("NUVEMSHOP_REDIRECT_URI", "NUVEMSHOP_OAUTH_REDIRECT_URI")
+    )
+    NUVEMSHOP_SCOPES: str = Field(
+        default="write_products,read_products,write_orders,read_orders",
+        validation_alias=AliasChoices("NUVEMSHOP_SCOPES", "NUVEMSHOP_SCOPE")
+    )
+    PUBLIC_BASE_URL: str = Field(
+        default="http://localhost:8000",
+        validation_alias=AliasChoices("PUBLIC_BASE_URL", "API_BASE_URL")
     )
     FRONTEND_URL: str = Field(
         default="http://localhost:5173",
