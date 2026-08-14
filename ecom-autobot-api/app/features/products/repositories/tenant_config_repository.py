@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -169,3 +169,25 @@ class TenantConfigRepository:
         finally:
             if owned:
                 await session.close()
+
+    async def update_store_locations(self, tenant_id: str, locations: List[dict]) -> None:
+        """
+        Atualiza em tempo real a lista de depósitos/localizações no store_profile do TenantConfigModel no PostgreSQL.
+        """
+        session, owned = await self._get_session()
+        try:
+            existing = await session.get(TenantConfigModel, tenant_id)
+            if existing:
+                profile = dict(existing.store_profile or {})
+                profile["nuvemshop_locations"] = locations
+                existing.store_profile = profile
+                await session.commit()
+                await self._invalidate_tenant_config_cache(tenant_id)
+        except Exception:
+            if owned:
+                await session.rollback()
+            raise
+        finally:
+            if owned:
+                await session.close()
+

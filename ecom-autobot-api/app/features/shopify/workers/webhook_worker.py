@@ -65,12 +65,23 @@ class ShopifyWebhookWorker:
             for var in variants:
                 sku = var.get("sku")
                 if sku:
-                    await self.product_repo.update_external_ids(
+                    raw_update = {
+                        "title": title,
+                        "body_html": payload.get("body_html"),
+                        "vendor": payload.get("vendor"),
+                        "product_type": payload.get("product_type"),
+                        "price": var.get("price"),
+                        "inventory_item_id": var.get("inventory_item_id"),
+                        "stock": var.get("inventory_quantity", var.get("old_inventory_quantity")),
+                    }
+                    await self.product_repo.update_from_shopify_payload(
                         tenant_id=tenant_id,
                         sku=sku,
+                        title=title,
                         shopify_product_id=shopify_id,
+                        raw_payload_update=raw_update,
                     )
-                    logger.info(f"✅ [Shopify Worker] Produto SKU '{sku}' atualizado com shopify_product_id '{shopify_id}' para tenant '{tenant_id}'.")
+                    logger.info(f"✅ [Shopify Worker] Produto SKU '{sku}' atualizado e sincronizado no PostgreSQL com shopify_product_id '{shopify_id}' para tenant '{tenant_id}'.")
 
         # 2. Tópico de exclusão de produtos
         elif clean_topic == "products/delete":
@@ -84,9 +95,19 @@ class ShopifyWebhookWorker:
 
         # 3. Tópico de atualização de estoque
         elif clean_topic in ("inventory_levels/update", "inventory_levels_update"):
-            inventory_item_id = payload.get("inventory_item_id")
-            available = payload.get("available")
+            inventory_item_id = str(payload.get("inventory_item_id")) if payload.get("inventory_item_id") else None
+            available = payload.get("available", 0)
             logger.info(f"📦 [Shopify Worker] Estoque atualizado no Shopify: item '{inventory_item_id}' -> saldo disponível: {available}")
+            if inventory_item_id:
+                updated = await self.product_repo.update_inventory_level(
+                    tenant_id=tenant_id,
+                    inventory_item_id=inventory_item_id,
+                    available_stock=available,
+                )
+                if updated:
+                    logger.info(f"✅ [Shopify Worker] Saldo de estoque ({available}) gravado com sucesso no PostgreSQL para tenant '{tenant_id}'.")
+                else:
+                    logger.warning(f"⚠️ [Shopify Worker] Nenhum produto localizado para o inventory_item_id '{inventory_item_id}'.")
 
         # 4. Tópico de desinstalação do aplicativo
         elif clean_topic in ("app/uninstalled", "app_uninstalled"):

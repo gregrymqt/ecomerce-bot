@@ -400,3 +400,107 @@ class ProductRepository:
         finally:
             if owned:
                 await session.close()
+
+    async def update_from_shopify_payload(
+        self,
+        tenant_id: str,
+        sku: str,
+        title: Optional[str] = None,
+        shopify_product_id: Optional[str] = None,
+        raw_payload_update: Optional[dict] = None,
+    ) -> Optional[ProductModel]:
+        """
+        Atualiza o produto no PostgreSQL com base nos dados recebidos do webhook da Shopify.
+        Atualiza título, shopify_product_id, mescla o raw_payload e a data last_synced_at.
+        """
+        session, owned = await self._get_session()
+        try:
+            stmt = select(ProductModel).where(
+                ProductModel.tenant_id == tenant_id,
+                or_(
+                    ProductModel.sku == sku,
+                    ProductModel.shopify_product_id == str(shopify_product_id) if shopify_product_id else False
+                )
+            )
+            result = await session.execute(stmt)
+            model = result.scalars().first()
+
+            if not model:
+                return None
+
+            if title:
+                model.title = title
+            if shopify_product_id:
+                model.shopify_product_id = str(shopify_product_id)
+
+            if raw_payload_update:
+                current_payload = dict(model.raw_payload or {})
+                current_payload.update(raw_payload_update)
+                model.raw_payload = current_payload
+
+            model.last_synced_at = datetime.now(timezone.utc)
+            model.updated_at = datetime.now(timezone.utc)
+
+            await session.commit()
+            await self._invalidate_product_cache(tenant_id, model.sku)
+            logger.info(f"[ProductRepository] Produto '{model.sku}' sincronizado do webhook Shopify para tenant '{tenant_id}'.")
+            return model
+        except Exception:
+            if owned:
+                await session.rollback()
+            raise
+        finally:
+            if owned:
+                await session.close()
+
+    async def update_inventory_level(
+        self,
+        tenant_id: str,
+        inventory_item_id: Optional[str] = None,
+        sku: Optional[str] = None,
+        available_stock: int = 0,
+    ) -> bool:
+        """
+        Atualiza o saldo de estoque do produto no PostgreSQL quando notificado pelo webhook de inventário da Shopify.
+        """
+        session, owned = await self._get_session()
+        try:
+            conditions = [ProductModel.tenant_id == tenant_id]
+            if sku:
+                conditions.append(ProductModel.sku == sku)
+
+            stmt = select(ProductModel).where(*conditions)
+            result = await session.execute(stmt)
+            products = result.scalars().all()
+
+            if not products and inventory_item_id:
+                stmt_all = select(ProductModel).where(ProductModel.tenant_id == tenant_id)
+                res_all = await session.execute(stmt_all)
+                all_prods = res_all.scalars().all()
+                products = [
+                    p for p in all_prods
+                    if p.raw_payload and str(p.raw_payload.get("inventory_item_id")) == str(inventory_item_id)
+                ]
+
+            if not products:
+                return False
+
+            for model in products:
+                current_payload = dict(model.raw_payload or {})
+                current_payload["stock"] = available_stock
+                current_payload["inventory_quantity"] = available_stock
+                model.raw_payload = current_payload
+                model.last_synced_at = datetime.now(timezone.utc)
+                model.updated_at = datetime.now(timezone.utc)
+                await self._invalidate_product_cache(tenant_id, model.sku)
+
+            await session.commit()
+            logger.info(f"[ProductRepository] Saldo de estoque atualizado ({available_stock}) no PostgreSQL para tenant '{tenant_id}'.")
+            return True
+        except Exception:
+            if owned:
+                await session.rollback()
+            raise
+        finally:
+            if owned:
+                await session.close()

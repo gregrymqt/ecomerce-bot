@@ -52,7 +52,9 @@ class NuvemshopLocationWorker:
 
             try:
                 locations = await stock_service.get_tenant_locations()
-                logger.info(f"✅ [Nuvemshop Location Worker] {len(locations)} depósito(s) consultados com sucesso para tenant '{tenant_id_str}'.")
+                locations_data = [loc.model_dump(mode="json") for loc in locations]
+                await self.nuvemshop_repo.tenant_repo.update_store_locations(tenant_id_str, locations_data)
+                logger.info(f"✅ [Nuvemshop Location Worker] {len(locations)} depósito(s) sincronizado(s) e persistidos no PostgreSQL para tenant '{tenant_id_str}'.")
             except Exception as e:
                 logger.error(f"❌ [Nuvemshop Location Worker] Falha ao sincronizar depósito '{location_id}': {e}")
                 raise e
@@ -60,7 +62,15 @@ class NuvemshopLocationWorker:
         # 2. Evento de remoção/exclusão de depósito
         elif clean_event == "location/deleted":
             location_id = str(payload.get("id", payload.get("location_id", "")))
-            logger.info(f"🗑️ [Nuvemshop Location Worker] Depósito '{location_id}' removido na Nuvemshop para o tenant '{tenant_id_str}'.")
+            logger.info(f"🗑️ [Nuvemshop Location Worker] Depósito '{location_id}' removido na Nuvemshop. Atualizando PostgreSQL para tenant '{tenant_id_str}'...")
+            try:
+                locations = await stock_service.get_tenant_locations()
+                locations_data = [loc.model_dump(mode="json") for loc in locations]
+                await self.nuvemshop_repo.tenant_repo.update_store_locations(tenant_id_str, locations_data)
+                logger.info(f"✅ [Nuvemshop Location Worker] Tabela do PostgreSQL atualizada pós-exclusão para tenant '{tenant_id_str}'.")
+            except Exception as e:
+                logger.error(f"❌ [Nuvemshop Location Worker] Erro ao sincronizar remoção do depósito '{location_id}': {e}")
+                raise e
 
     async def start_consuming(
         self,
