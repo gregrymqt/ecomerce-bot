@@ -133,3 +133,32 @@ class NuvemshopBatchStockPriceResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
+class NuvemshopImageBasePayload(BaseModel):
+    position: Optional[int] = Field(None, ge=1, description="Posição na galeria (1 = capa)")
+    alt: Optional[str] = Field(None, max_length=255, description="Texto alternativo para SEO")
+
+
+class NuvemshopImageUploadPayload(NuvemshopImageBasePayload):
+    src: Optional[str] = Field(None, description="URL pública acessível da imagem")
+    attachment: Optional[str] = Field(None, description="String Base64 da imagem (fallback de buffer em memória)")
+    filename: Optional[str] = Field(None, description="Nome do arquivo obrigatório quando enviado via Base64")
+
+
+class NuvemshopImageUpdatePayload(BaseModel):
+    position: Optional[int] = Field(None, ge=1, description="Nova posição na galeria")
+    src: Optional[str] = Field(None, description="Nova URL da imagem")
+
+
+class NuvemshopImageResponse(BaseModel):
+    id: int = Field(..., description="ID da imagem na Nuvemshop")
+    product_id: int = Field(..., description="ID do produto na Nuvemshop")
+    src: str = Field(..., description="URL pública da imagem na CDN da Nuvemshop")
+    position: int = Field(..., description="Posição na galeria")
+    alt: Optional[str] = Field(None, description="Texto alternativo")
+    created_at: Optional[str] = Field(None, description="Data de criação")
+    updated_at: Optional[str] = Field(None, description="Data da última atualização")
+
+    model_config = {"from_attributes": True}
+
+

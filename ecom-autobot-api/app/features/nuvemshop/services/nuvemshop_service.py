@@ -381,7 +381,30 @@ class NuvemshopService:
                 nuvemshop_id = str(res.get("id"))
                 logger.info(f"✨ [NuvemshopService] Produto SKU '{sku}' criado via POST na Nuvemshop (ID: {nuvemshop_id}).")
 
-        # 4. Atualiza vinculação no PostgreSQL e atualiza status para 'Exported'
+        # 4. Sincronização da galeria complementar de imagens (mídias excedentes >9 ou updates)
+        if nuvemshop_id:
+            try:
+                ai_data = getattr(product, "ai_enriched_data", {}) or {}
+                raw_data = getattr(product, "raw_payload", {}) or {}
+                local_images = ai_data.get("images") or raw_data.get("images") or []
+
+                if isinstance(local_images, list) and len(local_images) > 0:
+                    from app.features.nuvemshop.services.nuvemshop_image_service import NuvemshopImageService
+                    image_service = NuvemshopImageService(
+                        tenant_id=self.tenant_id,
+                        nuvemshop_repo=self.nuvemshop_repo,
+                        client=client,
+                    )
+                    await image_service.sync_product_gallery(
+                        product_id_nuvemshop=int(nuvemshop_id),
+                        local_images=local_images,
+                    )
+            except Exception as img_err:
+                logger.warning(
+                    f"⚠️ [NuvemshopService] Falha isolada na sincronização de galeria para SKU '{sku}': {img_err}"
+                )
+
+        # 5. Atualiza vinculação no PostgreSQL e atualiza status para 'Exported'
         if nuvemshop_id:
             await self.product_repo.update_external_ids(
                 tenant_id=self.tenant_id,
@@ -390,5 +413,6 @@ class NuvemshopService:
             )
 
         return res
+
 
 

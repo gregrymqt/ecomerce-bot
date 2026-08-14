@@ -11,6 +11,9 @@ from app.features.nuvemshop.schemas import (
     NuvemshopBatchStockPriceResponse,
     NuvemshopBulkSyncRequest,
     NuvemshopBulkSyncResponse,
+    NuvemshopImageResponse,
+    NuvemshopImageUpdatePayload,
+    NuvemshopImageUploadPayload,
     NuvemshopInventoryLevelListResponse,
     NuvemshopLocationResponse,
     NuvemshopProductRequest,
@@ -196,5 +199,68 @@ async def delete_product(
     service: NuvemshopService = Depends(get_nuvemshop_service)
 ):
     return await service.delete_product(product_id)
+
+
+# =====================================================================
+# Endpoints de Gestão de Mídias / Galeria de Imagens da Nuvemshop
+# =====================================================================
+
+@router.get("/products/{product_id}/images", response_model=List[NuvemshopImageResponse])
+async def get_product_images(
+    product_id: int,
+    service: NuvemshopService = Depends(get_nuvemshop_service),
+):
+    """
+    Lista todas as imagens da galeria de um produto na Nuvemshop.
+    """
+    client = await service._ensure_client()
+    return await client.get_product_images(product_id)
+
+
+@router.post(
+    "/products/{product_id}/images",
+    status_code=status.HTTP_201_CREATED,
+    response_model=NuvemshopImageResponse,
+)
+async def upload_product_image(
+    product_id: int,
+    payload: NuvemshopImageUploadPayload,
+    service: NuvemshopService = Depends(get_nuvemshop_service),
+):
+    """
+    Upload de nova imagem para a galeria do produto na Nuvemshop.
+    Suporta URL pública (src) ou Buffer/Base64 (attachment + filename).
+    """
+    client = await service._ensure_client()
+    return await client.upload_product_image(product_id, payload)
+
+
+@router.put("/products/{product_id}/images/{image_id}", response_model=NuvemshopImageResponse)
+async def update_product_image(
+    product_id: int,
+    image_id: int,
+    payload: NuvemshopImageUpdatePayload,
+    service: NuvemshopService = Depends(get_nuvemshop_service),
+):
+    """
+    Atualiza atributos ou posição (position) de uma imagem existente na galeria.
+    """
+    client = await service._ensure_client()
+    return await client.update_product_image(product_id, image_id, payload)
+
+
+@router.delete("/products/{product_id}/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_product_image(
+    product_id: int,
+    image_id: int,
+    service: NuvemshopService = Depends(get_nuvemshop_service),
+):
+    """
+    Remove uma imagem específica da galeria do produto na Nuvemshop.
+    """
+    client = await service._ensure_client()
+    await client.delete_product_image(product_id, image_id)
+    return None
+
 
 
