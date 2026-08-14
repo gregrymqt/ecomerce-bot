@@ -117,6 +117,13 @@ async def configure_rabbitmq_topology(
         )
         await dlq_nuvemshop.bind(nuvemshop_dlx, routing_key="nuvemshop_failed")
 
+        dlq_nuvemshop_bulk_sync = await channel.declare_queue(
+            "dlq_nuvemshop_bulk_sync",
+            durable=True,
+            arguments=dlq_args
+        )
+        await dlq_nuvemshop_bulk_sync.bind(nuvemshop_dlx, routing_key="dlq_nuvemshop_bulk_sync")
+
         # ------------------------------------------------------------------
         # 3. FILAS DE E-COMMERCE & DEMO (SCRAPING)
         # ------------------------------------------------------------------
@@ -234,7 +241,17 @@ async def configure_rabbitmq_topology(
             }
         )
 
-        logger.info("Topologia RabbitMQ (10 filas principais, 5 DLXs e 5 DLQs) configurada com sucesso.")
+        nuvemshop_bulk_sync = await channel.declare_queue(
+            "nuvemshop_bulk_sync",
+            durable=True,
+            arguments={
+                "x-dead-letter-exchange": "nuvemshop_dlx",
+                "x-dead-letter-routing-key": "dlq_nuvemshop_bulk_sync",
+                "x-max-length": 50000
+            }
+        )
+
+        logger.info("Topologia RabbitMQ (11 filas principais, 5 DLXs e 6 DLQs) configurada com sucesso.")
 
         return {
             "demo_ecommerce": demo_ecommerce,
@@ -247,11 +264,13 @@ async def configure_rabbitmq_topology(
             "email_notifications": email_notifications,
             "shopify_webhook": shopify_webhook,
             "nuvemshop_webhook": nuvemshop_webhook,
+            "nuvemshop_bulk_sync": nuvemshop_bulk_sync,
             "dlq_ecommerce": dlq_ecommerce,
             "dlq_mercado_pago": dlq_mercado_pago,
             "dlq_llm": dlq_llm,
             "dlq_shopify": dlq_shopify,
             "dlq_nuvemshop": dlq_nuvemshop,
+            "dlq_nuvemshop_bulk_sync": dlq_nuvemshop_bulk_sync,
         }
 
 

@@ -2,7 +2,7 @@ import hmac
 import hashlib
 import json
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 import aio_pika
 from fastapi import HTTPException, status
 
@@ -40,7 +40,7 @@ class NuvemshopWebhookService:
 
     async def enqueue_webhook_event(
         self,
-        payload: Dict,
+        payload: Dict[str, Any],
         raw_body: bytes,
         hmac_header: Optional[str],
     ) -> Dict[str, str]:

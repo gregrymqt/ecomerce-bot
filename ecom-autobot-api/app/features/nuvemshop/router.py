@@ -9,6 +9,8 @@ from app.features.nuvemshop.services import (
 from app.features.nuvemshop.schemas import (
     NuvemshopBatchStockPriceItem,
     NuvemshopBatchStockPriceResponse,
+    NuvemshopBulkSyncRequest,
+    NuvemshopBulkSyncResponse,
     NuvemshopInventoryLevelListResponse,
     NuvemshopLocationResponse,
     NuvemshopProductRequest,
@@ -132,6 +134,26 @@ async def update_location_inventory_levels(
     }
 
 
+@router.post(
+    "/products/bulk-sync",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=NuvemshopBulkSyncResponse,
+)
+async def bulk_sync_products(
+    payload: NuvemshopBulkSyncRequest,
+    service: NuvemshopService = Depends(get_nuvemshop_service),
+):
+    """
+    Inicia a sincronização assíncrona em lote de produtos para a Nuvemshop.
+    Valida credenciais, gera job_id UUID v4 e enfileira SKUs no RabbitMQ em < 200ms.
+    """
+    return await service.enqueue_bulk_sync(
+        skus=payload.skus,
+        force_update=payload.force_update,
+        visibility=payload.visibility,
+    )
+
+
 @router.post("/products", status_code=status.HTTP_201_CREATED, response_model=NuvemshopProductResponse)
 async def create_product(
     product: NuvemshopProductRequest,
@@ -174,4 +196,5 @@ async def delete_product(
     service: NuvemshopService = Depends(get_nuvemshop_service)
 ):
     return await service.delete_product(product_id)
+
 

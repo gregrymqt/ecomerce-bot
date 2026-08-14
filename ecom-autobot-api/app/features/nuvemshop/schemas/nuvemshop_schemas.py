@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 
 
@@ -42,7 +42,7 @@ class NuvemshopProductRequest(BaseModel):
         populate_by_name = True
 
     @classmethod
-    def from_internal_data(cls, data: Dict):
+    def from_internal_data(cls, data: Dict[str, Any]):
         return cls(
             tenant_id=data.get("tenant_id", ""),
             handle={"pt": data.get("slug", "")},
@@ -72,12 +72,44 @@ class NuvemshopBatchStockPriceItem(BaseModel):
 
 
 class NuvemshopProductUpdatePayload(BaseModel):
-    name: Optional[NuvemshopLocalizedString] = None
-    description: Optional[NuvemshopLocalizedString] = None
-    handle: Optional[NuvemshopLocalizedString] = None
-    published: Optional[bool] = None
+    name: Optional[Dict[str, str]] = None
+    description: Optional[Dict[str, str]] = None
+    handle: Optional[Dict[str, str]] = None
+    visibility: Optional[str] = Field(None, description="Visibilidade ('visible', 'unlisted', 'hidden'). NUNCA enviar com published.")
     brand: Optional[str] = None
     tags: Optional[str] = None
+    seo_title: Optional[Dict[str, str]] = None
+    seo_description: Optional[Dict[str, str]] = None
+    categories: Optional[List[int]] = Field(None, description="Omitir se não houver alteração de categorias.")
+    variants: Optional[List["NuvemshopProductVariantPayload"]] = None
+    images: Optional[List["NuvemshopImagePayload"]] = None
+
+
+class NuvemshopProductVariantPayload(BaseModel):
+    price: Optional[float] = Field(None, description="Preço de venda da variante")
+    promotional_price: Optional[float] = Field(None, description="Preço promocional/antigo")
+    stock: Optional[int] = Field(None, description="Quantidade em estoque")
+    stock_management: bool = Field(True, description="Habilita gestão de estoque")
+    sku: Optional[str] = Field(None, description="SKU da variante")
+    weight: Optional[float] = Field(None, description="Peso em kg")
+    cost: Optional[float] = Field(None, description="Custo do produto")
+
+
+class NuvemshopImagePayload(BaseModel):
+    src: str = Field(..., description="URL pública da imagem")
+    position: Optional[int] = Field(None, description="Ordem de exibição na galeria (1-indexed)")
+
+
+class NuvemshopProductCreatePayload(BaseModel):
+    name: Dict[str, str] = Field(..., description="Nome em dicionário de idiomas, ex: {'pt': 'Nome'}")
+    description: Dict[str, str] = Field(..., description="Descrição HTML em dicionário, ex: {'pt': '<p>Desc</p>'}")
+    visibility: str = Field("visible", description="Visibilidade: 'visible', 'unlisted' ou 'hidden'. NÃO enviar publicado/published.")
+    tags: Optional[str] = Field(None, description="String de tags separadas por vírgula")
+    seo_title: Optional[Dict[str, str]] = Field(None, description="Título SEO multilíngue")
+    seo_description: Optional[Dict[str, str]] = Field(None, description="Descrição SEO multilíngue")
+    variants: List[NuvemshopProductVariantPayload] = Field(default_factory=list, description="Lista de variantes")
+    images: Optional[List[NuvemshopImagePayload]] = Field(None, description="Galeria inicial (limite máximo de 9 imagens)")
+    categories: Optional[List[int]] = Field(None, description="IDs das categorias")
 
 
 class NuvemshopProductResponse(BaseModel):
@@ -100,3 +132,4 @@ class NuvemshopBatchStockPriceResponse(BaseModel):
     errors: List[str] = Field(default=[], description="Lista de erros por item do lote.")
 
     model_config = {"from_attributes": True}
+

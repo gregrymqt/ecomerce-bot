@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from typing import Optional
+from typing import Optional, Dict, Any
 import aio_pika
 
 from app.core.config.rabbitmq import get_rabbitmq_connection
@@ -29,7 +29,7 @@ class NuvemshopLocationWorker:
     ):
         self.nuvemshop_repo = nuvemshop_repo or NuvemshopRepository()
 
-    async def handle_event(self, event: str, store_id: str, payload: dict) -> None:
+    async def handle_event(self, event: str, store_id: str, payload: Dict[str, Any]) -> None:
         """
         Processa eventos da família location/* da Nuvemshop.
         """

@@ -1,12 +1,20 @@
 from app.features.nuvemshop.schemas.nuvemshop_schemas import (
     NuvemshopBatchStockPriceItem,
     NuvemshopBatchStockPriceResponse,
+    NuvemshopImagePayload,
     NuvemshopImageRequest,
     NuvemshopLocalizedString,
+    NuvemshopProductCreatePayload,
     NuvemshopProductRequest,
     NuvemshopProductResponse,
     NuvemshopProductUpdatePayload,
+    NuvemshopProductVariantPayload,
     NuvemshopVariantRequest,
+)
+from app.features.nuvemshop.schemas.product_sync import (
+    NuvemshopBulkSyncMessage,
+    NuvemshopBulkSyncRequest,
+    NuvemshopBulkSyncResponse,
 )
 from app.features.nuvemshop.schemas.stock_schemas import (
     InventoryLevelSchema,
@@ -25,6 +33,9 @@ __all__ = [
     "NuvemshopProductRequest",
     "NuvemshopBatchStockPriceItem",
     "NuvemshopProductUpdatePayload",
+    "NuvemshopProductVariantPayload",
+    "NuvemshopImagePayload",
+    "NuvemshopProductCreatePayload",
     "NuvemshopProductResponse",
     "NuvemshopBatchStockPriceResponse",
     "NuvemshopLocationAddress",
@@ -34,6 +45,9 @@ __all__ = [
     "NuvemshopInventoryLevelListResponse",
     "NuvemshopStockUpdateItem",
     "NuvemshopStockUpdateBatchRequest",
+    "NuvemshopBulkSyncRequest",
+    "NuvemshopBulkSyncResponse",
+    "NuvemshopBulkSyncMessage",
 ]
 
 

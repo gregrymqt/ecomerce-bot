@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Union
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -25,7 +25,7 @@ class NuvemshopLocationResponse(BaseModel):
 
     @field_validator("id", "store_id", mode="before")
     @classmethod
-    def coerce_to_string(cls, v: Any) -> str:
+    def coerce_to_string(cls, v: Union[str, int, float, object]) -> str:
         if v is None:
             return ""
         return str(v)
@@ -40,7 +40,7 @@ class InventoryLevelSchema(BaseModel):
 
     @field_validator("id", "variant_id", "location_id", mode="before")
     @classmethod
-    def coerce_to_string(cls, v: Any) -> str:
+    def coerce_to_string(cls, v: Union[str, int, float, object]) -> str:
         if v is None:
             return ""
         return str(v)
@@ -57,7 +57,7 @@ class NuvemshopInventoryLevelItem(BaseModel):
 
     @field_validator("id", "variant_id", "location_id", mode="before")
     @classmethod
-    def coerce_to_string(cls, v: Any) -> str:
+    def coerce_to_string(cls, v: Union[str, int, float, object]) -> str:
         if v is None:
             return ""
         return str(v)
@@ -78,7 +78,7 @@ class NuvemshopStockUpdateItem(BaseModel):
 
     @field_validator("variant_id", mode="before")
     @classmethod
-    def coerce_to_string(cls, v: Any) -> str:
+    def coerce_to_string(cls, v: Union[str, int, float, object]) -> str:
         if v is None:
             return ""
         return str(v)
@@ -87,3 +87,4 @@ class NuvemshopStockUpdateItem(BaseModel):
 class NuvemshopStockUpdateBatchRequest(BaseModel):
     """Payload para atualização em lote de saldos de estoque por depósito."""
     items: List[NuvemshopStockUpdateItem] = Field(..., description="Lista de atualizações de estoque por variante")
+
