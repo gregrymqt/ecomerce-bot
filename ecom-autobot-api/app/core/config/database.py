@@ -4,7 +4,6 @@ import ssl
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.pool import NullPool
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
 from app.core.config.settings import settings
