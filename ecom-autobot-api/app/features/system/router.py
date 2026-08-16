@@ -153,6 +153,6 @@ async def demo_stream():
             logger.info("Cliente desconectou do SSE stream de demo.")
         finally:
             await pubsub.unsubscribe("demo_progress")
-            await pubsub.close()
+            await pubsub.aclose()
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")

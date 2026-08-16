@@ -1,4 +1,28 @@
 services:
+  # Banco de Dados PostgreSQL 16 local na VPS
+  postgres:
+    image: postgres:16-alpine
+    container_name: prod-postgres-bot
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-prod_postgres_password_secure}
+      POSTGRES_DB: ${POSTGRES_DB:-ecommerce_bot_db}
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+    volumes:
+      - postgres-prod-data:/var/lib/postgresql/data
+    networks:
+      - internal-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ecommerce_bot_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   # Redis de Alta Performance local na VPS
   redis:
     image: redis:7-alpine
@@ -14,6 +38,36 @@ services:
       - redis-prod-data:/data
     networks:
       - internal-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-prod_redis_password_secure}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Broker de Mensageria RabbitMQ local na VPS
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: prod-rabbitmq-bot
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-prod_rabbitmq_password_secure}
+    ports:
+      - "127.0.0.1:15672:15672" # Painel Web de Gestão protegido no localhost da VPS
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    volumes:
+      - rabbitmq-prod-data:/var/lib/rabbitmq
+    networks:
+      - internal-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # API FastAPI Backend & Worker Pool
   api:
@@ -28,11 +82,11 @@ services:
       - ENVIRONMENT=${ENVIRONMENT:-production}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - CORS_ORIGINS=${CORS_ORIGINS:-["*"]}
-      - POSTGRES_URI=${POSTGRES_URI}
+      - POSTGRES_URI=${POSTGRES_URI:-postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-prod_postgres_password_secure}@postgres:5432/${POSTGRES_DB:-ecommerce_bot_db}}
       - POSTGRES_URI_TRANSACTION=${POSTGRES_URI_TRANSACTION}
       - POSTGRES_URI_SESSION=${POSTGRES_URI_SESSION}
-      - DB_SSL_CERT_PATH=${DB_SSL_CERT_PATH:-prod-ca-2021.crt}
-      - RABBITMQ_URL=${RABBITMQ_URL}
+      - DB_SSL_CERT_PATH=${DB_SSL_CERT_PATH}
+      - RABBITMQ_URL=${RABBITMQ_URL:-amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-prod_rabbitmq_password_secure}@rabbitmq:5672/}
       - REDIS_URL=${REDIS_URL:-redis://:${REDIS_PASSWORD:-prod_redis_password_secure}@redis:6379/0}
       - REDIS_PASSWORD=${REDIS_PASSWORD:-prod_redis_password_secure}
       - AES_MASTER_KEY=${AES_MASTER_KEY}
@@ -54,7 +108,12 @@ services:
           cpus: '1.5'
           memory: 2048M
     depends_on:
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - internal-net
 
@@ -92,35 +151,14 @@ services:
       - certbot-www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while true; do certbot renew; sleep 12h & wait $${!}; done;'"
 
-  # -----------------------------------------------------------------
-  # 🚀 Opcional: Escalonamento Standalone de Workers em Containers Separados
-  # Descomente abaixo para desacoplar a execução do worker de e-mails da API principal:
-  # -----------------------------------------------------------------
-  # worker-email:
-  #   build:
-  #     context: ../../ecom-autobot-api
-  #     dockerfile: Dockerfile
-  #   container_name: prod-worker-email-bot
-  #   restart: unless-stopped
-  #   command: python -m app.features.emails.workers.email_worker
-  #   env_file:
-  #     - .env.prod
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         cpus: '0.5'
-  #         memory: 512M
-  #   depends_on:
-  #     - redis
-  #   networks:
-  #     - internal-net
-
 networks:
   internal-net:
     driver: bridge
 
 volumes:
+  postgres-prod-data:
   redis-prod-data:
+  rabbitmq-prod-data:
   certbot-etc:
   certbot-var:
   certbot-www:

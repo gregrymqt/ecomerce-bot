@@ -221,7 +221,7 @@ async def configure_rabbitmq_topology(
             arguments={
                 "x-dead-letter-exchange": "ecommerce_dlx",
                 "x-dead-letter-routing-key": "email_failed",
-                "x-max-length": 50000
+                "x-max-length": 10000
             }
         )
 
@@ -254,7 +254,7 @@ async def configure_rabbitmq_topology(
             arguments={
                 "x-dead-letter-exchange": "nuvemshop_dlx",
                 "x-dead-letter-routing-key": "dlq_nuvemshop_bulk_sync",
-                "x-max-length": 50000
+                "x-max-length": 10000
             }
         )
 
