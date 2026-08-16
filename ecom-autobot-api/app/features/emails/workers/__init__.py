@@ -1,3 +1,5 @@
-from app.features.emails.workers.email_worker import EmailWorker
+from app.features.emails.workers.email_batch_worker import EmailBatchWorker, email_batch_worker
 
-__all__ = ["EmailWorker"]
+EmailWorker = EmailBatchWorker
+
+__all__ = ["EmailBatchWorker", "email_batch_worker", "EmailWorker"]

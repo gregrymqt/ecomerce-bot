@@ -1,17 +1,29 @@
 """
 Módulo de E-mails Transacionais (DDD) - ECom AutoBot
-Contém o serviço de renderização (EmailService), o produtor de mensageria (EmailDispatcherService),
-o consumidor de fila RabbitMQ (EmailWorker) e os templates HTML Jinja2.
+Contém o serviço de renderização (EmailTemplateService), o produtor de mensageria (EmailDispatcherService),
+o serviço de webhook (EmailWebhookService) e o consumidor de lote RabbitMQ (EmailBatchWorker).
 """
 
-from app.features.emails.services.email_dispatcher import email_dispatcher, EmailDispatcherService
-from app.features.emails.services.email_service import email_service, EmailService
-from app.features.emails.workers.email_worker import EmailWorker
+from app.features.emails.services import (
+    EmailDispatcherService,
+    EmailTemplateService,
+    EmailWebhookService,
+    email_dispatcher,
+    email_webhook_service,
+    template_service,
+)
+from app.features.emails.workers import EmailBatchWorker, email_batch_worker
+
+EmailWorker = EmailBatchWorker
 
 __all__ = [
     "email_dispatcher",
     "EmailDispatcherService",
-    "email_service",
-    "EmailService",
+    "template_service",
+    "EmailTemplateService",
+    "email_webhook_service",
+    "EmailWebhookService",
+    "email_batch_worker",
+    "EmailBatchWorker",
     "EmailWorker",
 ]

@@ -12,6 +12,7 @@ from app.features.checkout.router import router as checkout_router
 from app.features.products.router import router as products_router
 from app.features.settings.router import router as settings_router
 from app.features.ai_enrichment.router import router as metering_router
+from app.features.emails.router import router as emails_router
 
 api_router = APIRouter(dependencies=[Depends(rate_limit_dependency(times=120, seconds=60))])
 
@@ -26,3 +27,4 @@ api_router.include_router(checkout_router)
 api_router.include_router(products_router)
 api_router.include_router(settings_router)
 api_router.include_router(metering_router)
+api_router.include_router(emails_router)
