@@ -1,9 +1,8 @@
-from fastapi import Depends
-from app.core.config.database import get_db
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config.database import get_db
 from app.features.emails.domain.entities import EmailLog, EmailStatus
 
 
@@ -14,7 +13,14 @@ class EmailRepository:
     """
 
     def __init__(self, session: Optional[AsyncSession] = None):
-        self._session = session
+        self.session = session
+
+    async def _get_session(self) -> Tuple[AsyncSession, bool]:
+        if self.session is not None:
+            return self.session, False
+        gen = get_db()
+        session = await anext(gen)
+        return session, True
 
     async def create_batch(
         self,
@@ -22,45 +28,83 @@ class EmailRepository:
         session: Optional[AsyncSession] = None,
     ) -> List[EmailLog]:
         """Persiste um lote de entidades EmailLog em uma única operação no banco."""
-        db_session = session or self._session
-        db_session.add_all(logs)
-        await db_session.flush()
-        return logs
+        db_session = session or self.session
+        owned = False
+        if db_session is None:
+            db_session, owned = await self._get_session()
+
+        try:
+            db_session.add_all(logs)
+            await db_session.flush()
+            if owned:
+                await db_session.commit()
+            return logs
+        except Exception:
+            if owned:
+                await db_session.rollback()
+            raise
+        finally:
+            if owned:
+                await db_session.close()
 
     async def get_by_resend_id(
         self,
-        session: AsyncSession,
-        resend_id: str
+        resend_id: str,
+        session: Optional[AsyncSession] = None,
     ) -> Optional[EmailLog]:
         """Localiza o registro de e-mail através do UUID atribuído pelo Resend."""
-        stmt = select(EmailLog).where(EmailLog.resend_id == resend_id)
-        result = await session.execute(stmt)
-        return result.scalar_one_or_none()
+        db_session = session or self.session
+        owned = False
+        if db_session is None:
+            db_session, owned = await self._get_session()
+
+        try:
+            stmt = select(EmailLog).where(EmailLog.resend_id == resend_id)
+            result = await db_session.execute(stmt)
+            return result.scalar_one_or_none()
+        finally:
+            if owned:
+                await db_session.close()
 
     async def update_status_by_resend_id(
         self,
-        session: AsyncSession,
         resend_id: str,
         new_status: EmailStatus,
         metadata_update: Optional[Dict[str, Any]] = None,
         error_message: Optional[str] = None,
+        session: Optional[AsyncSession] = None,
     ) -> Optional[EmailLog]:
         """Atualiza o status de entrega do e-mail a partir de eventos de Webhook."""
-        email_log = await self.get_by_resend_id(session, resend_id)
-        if not email_log:
-            return None
+        db_session = session or self.session
+        owned = False
+        if db_session is None:
+            db_session, owned = await self._get_session()
 
-        email_log.status = new_status
-        if error_message:
-            email_log.error_message = error_message
+        try:
+            email_log = await self.get_by_resend_id(resend_id, session=db_session)
+            if not email_log:
+                return None
 
-        if metadata_update:
-            current_meta = dict(email_log.metadata_info or {})
-            current_meta.update(metadata_update)
-            email_log.metadata_info = current_meta
+            email_log.status = new_status
+            if error_message:
+                email_log.error_message = error_message
 
-        await session.flush()
-        return email_log
+            if metadata_update:
+                current_meta = dict(email_log.metadata_info or {})
+                current_meta.update(metadata_update)
+                email_log.metadata_info = current_meta
+
+            await db_session.flush()
+            if owned:
+                await db_session.commit()
+            return email_log
+        except Exception:
+            if owned:
+                await db_session.rollback()
+            raise
+        finally:
+            if owned:
+                await db_session.close()
 
 
 email_repository = EmailRepository()

@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config.database import AsyncSessionLocal
+from app.core.config.database import get_db
 from app.features.products.domain.models import ProductModel
 from app.features.system.domain.models import RobotActivityModel, TokenTelemetryModel
 from app.features.system.schemas.system_schemas import (
@@ -29,7 +29,8 @@ class TelemetryRepository:
     async def _get_session(self) -> Tuple[AsyncSession, bool]:
         if self.session is not None:
             return self.session, False
-        session = AsyncSessionLocal()
+        gen = get_db()
+        session = await anext(gen)
         return session, True
 
     async def get_product_status_counts(

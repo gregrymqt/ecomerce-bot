@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config.database import AsyncSessionLocal
+from app.core.config.database import get_db
 from app.core.config.redis_db import redis_cache
 from app.features.products.domain.models import TenantConfigModel
 
@@ -26,7 +26,8 @@ class TenantConfigRepository:
     async def _get_session(self) -> Tuple[AsyncSession, bool]:
         if self.session is not None:
             return self.session, False
-        session = AsyncSessionLocal()
+        gen = get_db()
+        session = await anext(gen)
         return session, True
 
     def _model_to_dict(self, model: TenantConfigModel) -> Dict[str, Any]:

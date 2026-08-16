@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Sequence
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config.database import AsyncSessionLocal
+from app.core.config.database import get_db
 from app.core.config.redis_db import redis_cache
 from app.features.plans.domain.models import PlanModel
 
@@ -24,12 +24,13 @@ class PlansRepository:
 
     async def _get_session(self) -> tuple[AsyncSession, bool]:
         """
-        Retorna a sessão injetada ou cria uma nova sessão AsyncSessionLocal.
+        Retorna a sessão injetada ou obtém uma nova sessão via get_db().
         Retorna uma tupla (session, owned) indicando se a sessão deve ser fechada.
         """
         if self.session is not None:
             return self.session, False
-        session = AsyncSessionLocal()
+        gen = get_db()
+        session = await anext(gen)
         return session, True
 
     def _model_to_dict(self, model: PlanModel) -> Dict[str, Any]:

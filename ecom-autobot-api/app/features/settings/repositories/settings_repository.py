@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional, Tuple
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config.database import AsyncSessionLocal
+from app.core.config.database import get_db
 from app.features.products.domain.models import TenantConfigModel
 from app.features.settings.schemas.settings_schemas import (
     AiSettingsSchema,
@@ -30,7 +30,8 @@ class SettingsRepository:
     async def _get_session(self) -> Tuple[AsyncSession, bool]:
         if self.session is not None:
             return self.session, False
-        session = AsyncSessionLocal()
+        gen = get_db()
+        session = await anext(gen)
         return session, True
 
     def _merge_dict(

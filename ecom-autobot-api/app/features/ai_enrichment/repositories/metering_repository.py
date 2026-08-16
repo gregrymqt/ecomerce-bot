@@ -4,6 +4,7 @@ from typing import List, Optional, Tuple
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config.database import get_db
 from app.features.ai_enrichment.domain.models import LLMUsageLogModel
 from app.features.products.domain.models import TenantConfigModel
 from app.core.shared.logger import get_logger
@@ -14,14 +15,26 @@ logger = get_logger(__name__)
 class LLMMeteringRepository:
     """Repositório de dados para persistência e consulta de metrificação de LLM e configurações de tenant."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: Optional[AsyncSession] = None):
         self.session = session
+
+    async def _get_session(self) -> Tuple[AsyncSession, bool]:
+        if self.session is not None:
+            return self.session, False
+        gen = get_db()
+        session = await anext(gen)
+        return session, True
 
     async def get_tenant_config(self, tenant_id: str) -> Optional[TenantConfigModel]:
         """Recupera as configurações e saldo do tenant pelo tenant_id."""
-        stmt = select(TenantConfigModel).where(TenantConfigModel.tenant_id == tenant_id)
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        session, owned = await self._get_session()
+        try:
+            stmt = select(TenantConfigModel).where(TenantConfigModel.tenant_id == tenant_id)
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none()
+        finally:
+            if owned:
+                await session.close()
 
     async def get_managed_credit_balance(self, tenant_id: str) -> Optional[Decimal]:
         """Recupera o saldo atual de créditos gerenciados do tenant."""

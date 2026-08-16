@@ -3,7 +3,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config.database import AsyncSessionLocal
+from app.core.config.database import get_db
 from app.features.auth.domain.enterprise_lead_model import EnterpriseLeadModel
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,8 @@ class EnterpriseLeadRepository:
     async def _get_session(self) -> tuple[AsyncSession, bool]:
         if self.session is not None:
             return self.session, False
-        session = AsyncSessionLocal()
+        gen = get_db()
+        session = await anext(gen)
         return session, True
 
     async def create_lead(self, lead: EnterpriseLeadModel) -> EnterpriseLeadModel:

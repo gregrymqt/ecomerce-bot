@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 import logging
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config.database import get_db
 from app.core.config.redis_db import redis_cache
 from app.features.checkout.domain.enums import OrderStatus, OrderStatusDetail
 from app.features.checkout.domain.models import OrderModel
@@ -21,6 +22,13 @@ class OrderRepository:
 
     def __init__(self, session: Optional[AsyncSession] = None) -> None:
         self.session = session
+
+    async def _get_session(self) -> Tuple[AsyncSession, bool]:
+        if self.session is not None:
+            return self.session, False
+        gen = get_db()
+        session = await anext(gen)
+        return session, True
 
     # ==========================================
     # HELPER DE EXPIRAÇÃO DINÂMICA DE PIX
@@ -88,18 +96,23 @@ class OrderRepository:
 
         # 2. Busca no PostgreSQL filtrando estritamente pelo tenant_id
         logger.debug(f"[OrderRepository] Cache MISS para ID: {order_id}. Consultando DB...")
-        stmt = select(OrderModel).where(
-            OrderModel.tenant_id == tenant_id,
-            OrderModel.id == order_id
-        )
-        result = await self.session.execute(stmt)
-        order = result.scalars().first()
+        session, owned = await self._get_session()
+        try:
+            stmt = select(OrderModel).where(
+                OrderModel.tenant_id == tenant_id,
+                OrderModel.id == order_id
+            )
+            result = await session.execute(stmt)
+            order = result.scalars().first()
 
-        # 3. Salva no Redis se encontrado
-        if order:
-            await redis_cache.set(cache_key, order.to_dict(), expire_seconds=self.CACHE_TTL_SECONDS)
+            # 3. Salva no Redis se encontrado
+            if order:
+                await redis_cache.set(cache_key, order.to_dict(), expire_seconds=self.CACHE_TTL_SECONDS)
 
-        return await self._check_and_expire_pix(order)
+            return await self._check_and_expire_pix(order)
+        finally:
+            if owned:
+                await session.close()
 
     async def get_by_external_reference(self, tenant_id: str, external_ref: str) -> Optional[OrderModel]:
         """Busca um pedido pela referência externa (ID do pedido do tenant) com Cache."""
@@ -111,17 +124,22 @@ class OrderRepository:
             order = OrderModel(**cached_data)
             return await self._check_and_expire_pix(order)
 
-        stmt = select(OrderModel).where(
-            OrderModel.tenant_id == tenant_id,
-            OrderModel.external_reference == external_ref
-        )
-        result = await self.session.execute(stmt)
-        order = result.scalars().first()
+        session, owned = await self._get_session()
+        try:
+            stmt = select(OrderModel).where(
+                OrderModel.tenant_id == tenant_id,
+                OrderModel.external_reference == external_ref
+            )
+            result = await session.execute(stmt)
+            order = result.scalars().first()
 
-        if order:
-            await redis_cache.set(cache_key, order.to_dict(), expire_seconds=self.CACHE_TTL_SECONDS)
+            if order:
+                await redis_cache.set(cache_key, order.to_dict(), expire_seconds=self.CACHE_TTL_SECONDS)
 
-        return await self._check_and_expire_pix(order)
+            return await self._check_and_expire_pix(order)
+        finally:
+            if owned:
+                await session.close()
 
     async def get_by_mp_order_id(self, tenant_id: str, mp_order_id: str) -> Optional[OrderModel]:
         """Busca um pedido pelo ID do Mercado Pago (útil no tratamento de Webhooks)."""
@@ -133,17 +151,22 @@ class OrderRepository:
             order = OrderModel(**cached_data)
             return await self._check_and_expire_pix(order)
 
-        stmt = select(OrderModel).where(
-            OrderModel.tenant_id == tenant_id,
-            OrderModel.mp_order_id == mp_order_id
-        )
-        result = await self.session.execute(stmt)
-        order = result.scalars().first()
+        session, owned = await self._get_session()
+        try:
+            stmt = select(OrderModel).where(
+                OrderModel.tenant_id == tenant_id,
+                OrderModel.mp_order_id == mp_order_id
+            )
+            result = await session.execute(stmt)
+            order = result.scalars().first()
 
-        if order:
-            await redis_cache.set(cache_key, order.to_dict(), expire_seconds=self.CACHE_TTL_SECONDS)
+            if order:
+                await redis_cache.set(cache_key, order.to_dict(), expire_seconds=self.CACHE_TTL_SECONDS)
 
-        return await self._check_and_expire_pix(order)
+            return await self._check_and_expire_pix(order)
+        finally:
+            if owned:
+                await session.close()
 
     # ==========================================
     # MUTAÇÕES (CRUDS COM INVALIDAÇÃO DE CACHE)
@@ -151,20 +174,42 @@ class OrderRepository:
 
     async def save(self, order: OrderModel) -> OrderModel:
         """Persiste um novo pedido e popula as chaves de cache correspondentes."""
-        self.session.add(order)
-        await self.session.flush()
+        session, owned = await self._get_session()
+        try:
+            session.add(order)
+            await session.flush()
+            if owned:
+                await session.commit()
 
-        # Atualiza/Popula Caches no Redis
-        await self._refresh_cache(order)
-        return order
+            # Atualiza/Popula Caches no Redis
+            await self._refresh_cache(order)
+            return order
+        except Exception:
+            if owned:
+                await session.rollback()
+            raise
+        finally:
+            if owned:
+                await session.close()
 
     async def update(self, order: OrderModel) -> OrderModel:
         """Atualiza a entidade no banco de dados e invalida/atualiza o cache."""
-        await self.session.flush()
+        session, owned = await self._get_session()
+        try:
+            await session.flush()
+            if owned:
+                await session.commit()
 
-        # Invalida/Atualiza chaves afetadas
-        await self._refresh_cache(order)
-        return order
+            # Invalida/Atualiza chaves afetadas
+            await self._refresh_cache(order)
+            return order
+        except Exception:
+            if owned:
+                await session.rollback()
+            raise
+        finally:
+            if owned:
+                await session.close()
 
     async def delete_by_id(self, tenant_id: str, order_id: str) -> bool:
         """Remove o pedido do banco de dados e purga o cache do Redis."""
@@ -172,15 +217,26 @@ class OrderRepository:
         if not order:
             return False
 
-        stmt = delete(OrderModel).where(
-            OrderModel.tenant_id == tenant_id,
-            OrderModel.id == order_id
-        )
-        await self.session.execute(stmt)
+        session, owned = await self._get_session()
+        try:
+            stmt = delete(OrderModel).where(
+                OrderModel.tenant_id == tenant_id,
+                OrderModel.id == order_id
+            )
+            await session.execute(stmt)
+            if owned:
+                await session.commit()
 
-        # Invalida chaves do Redis
-        await self._invalidate_cache(order)
-        return True
+            # Invalida chaves do Redis
+            await self._invalidate_cache(order)
+            return True
+        except Exception:
+            if owned:
+                await session.rollback()
+            raise
+        finally:
+            if owned:
+                await session.close()
 
     # ==========================================
     # HELPERS PRIVADOS DE CACHE

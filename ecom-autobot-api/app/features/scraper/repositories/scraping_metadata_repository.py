@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config.database import AsyncSessionLocal
+from app.core.config.database import get_db
 from app.features.products.domain.models import ScrapingMetadataModel
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,8 @@ class ScrapingMetadataRepository:
     async def _get_session(self) -> Tuple[AsyncSession, bool]:
         if self.session is not None:
             return self.session, False
-        session = AsyncSessionLocal()
+        gen = get_db()
+        session = await anext(gen)
         return session, True
 
     async def register_failure(self, domain: str) -> Tuple[int, Optional[datetime]]:

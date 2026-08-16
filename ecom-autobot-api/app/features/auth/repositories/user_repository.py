@@ -3,7 +3,7 @@ from typing import Dict, Optional, Union
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config.database import AsyncSessionLocal
+from app.core.config.database import get_db
 from app.features.auth.domain.models import UserModel
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,8 @@ class UserRepository:
     async def _get_session(self) -> tuple[AsyncSession, bool]:
         if self.session is not None:
             return self.session, False
-        session = AsyncSessionLocal()
+        gen = get_db()
+        session = await anext(gen)
         return session, True
 
     async def get_by_email(self, email: str) -> Optional[UserModel]:

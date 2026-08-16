@@ -8,7 +8,7 @@ from sqlalchemy import select, update, delete, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select as future_select
 
-from app.core.config.database import AsyncSessionLocal
+from app.core.config.database import get_db
 from app.core.config.redis_db import redis_cache
 from app.features.products.domain.models import ProductModel
 from app.features.products.schemas import Product
@@ -29,7 +29,8 @@ class ProductRepository:
     async def _get_session(self) -> Tuple[AsyncSession, bool]:
         if self.session is not None:
             return self.session, False
-        session = AsyncSessionLocal()
+        gen = get_db()
+        session = await anext(gen)
         return session, True
 
     def _to_model(self, product: Product) -> ProductModel:
