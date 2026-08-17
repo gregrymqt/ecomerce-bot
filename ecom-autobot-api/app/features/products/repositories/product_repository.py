@@ -1,3 +1,4 @@
+
 from typing import List
 from datetime import datetime, timezone, timedelta
 import logging
@@ -10,8 +11,8 @@ from sqlalchemy.future import select as future_select
 
 from app.core.config.database import get_db
 from app.core.config.redis_db import redis_cache
-from app.features.products.domain.models import ProductModel
 from app.features.products.schemas import Product
+from app.features.products.domain.entities import ProductModel
 
 logger = logging.getLogger(__name__)
 
@@ -583,3 +584,6 @@ class ProductRepository:
         finally:
             if owned:
                 await session.close()
+
+
+product_repository = ProductRepository()

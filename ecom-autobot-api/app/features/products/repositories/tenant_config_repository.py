@@ -1,3 +1,4 @@
+
 from datetime import datetime, timezone
 import logging
 from typing import Any, Dict, List, Optional, Tuple
@@ -7,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.database import get_db
 from app.core.config.redis_db import redis_cache
-from app.features.products.domain.models import TenantConfigModel
+from app.features.products.domain import TenantConfigModel
 
 logger = logging.getLogger(__name__)
 
@@ -266,5 +267,9 @@ class TenantConfigRepository:
         finally:
             if owned:
                 await session.close()
+
+
+tenant_config_repository = TenantConfigRepository()
+
 
 

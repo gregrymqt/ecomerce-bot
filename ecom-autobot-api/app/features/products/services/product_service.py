@@ -1,17 +1,21 @@
 import math
 from typing import Optional
-from fastapi import HTTPException, status
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.products.domain import ProductNotFoundError
 from app.features.products.repositories.product_repository import ProductRepository
 from app.features.products.schemas import (
-    Product, 
-    ProductUpdateSchema, 
-    PaginatedProductsResponse
+    PaginatedProductsResponse,
+    Product,
+    ProductUpdateSchema,
 )
 
+
 class ProductService:
+    """
+    Serviço de aplicação para gerenciamento e manipulação do catálogo de produtos multi-tenant.
+    """
+
     def __init__(
         self,
         repo: Optional[ProductRepository] = None,
@@ -26,14 +30,14 @@ class ProductService:
         status_filter: Optional[str] = None,
         search: Optional[str] = None,
         page: int = 1,
-        limit: int = 20
+        limit: int = 20,
     ) -> PaginatedProductsResponse:
         models, total = await self.repo.list_products(
             tenant_id=tenant_id,
             status=status_filter,
             search=search,
             page=page,
-            limit=limit
+            limit=limit,
         )
 
         items = []
@@ -52,14 +56,14 @@ class ProductService:
             total=total,
             page=page,
             limit=limit,
-            pages=pages
+            pages=pages,
         )
 
     async def update_product_details(
         self,
         tenant_id: str,
         sku: str,
-        data: ProductUpdateSchema
+        data: ProductUpdateSchema,
     ) -> Product:
         update_dict = data.model_dump(exclude_unset=True)
         if "status" in update_dict and update_dict["status"]:
@@ -67,10 +71,7 @@ class ProductService:
 
         updated_model = await self.repo.update_product_data(tenant_id, sku, update_dict)
         if not updated_model:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Produto com SKU '{sku}' não encontrado."
-            )
+            raise ProductNotFoundError(sku)
 
         payload = dict(updated_model.raw_payload or {})
         return Product(**payload)
@@ -78,8 +79,8 @@ class ProductService:
     async def delete_product(self, tenant_id: str, sku: str) -> dict:
         deleted = await self.repo.delete_product(tenant_id, sku)
         if not deleted:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Produto com SKU '{sku}' não encontrado."
-            )
+            raise ProductNotFoundError(sku)
         return {"status": "success", "message": f"Produto '{sku}' removido com sucesso."}
+
+
+product_service = ProductService()
