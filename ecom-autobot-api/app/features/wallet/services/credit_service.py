@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 
 from app.core.config.redis_db import RedisCache, redis_cache
 from app.features.wallet.domain.models import WalletModel
-from app.features.wallet.exceptions import InsufficientBalanceException
+from app.features.wallet.domain import InsufficientBalanceException
 from app.features.wallet.repositories import WalletRepository
 from app.features.wallet.schemas import (
     CreditTransactionResponse,
@@ -24,11 +24,15 @@ class CreditService:
 
     def __init__(
         self,
-        repository: WalletRepository,
+        repository: Optional[WalletRepository] = None,
         redis_client: RedisCache = redis_cache,
     ) -> None:
+        if repository is None:
+            from app.features.wallet.repositories import wallet_repository
+            repository = wallet_repository
         self.repository = repository
         self.redis_cache = redis_client
+
 
     @staticmethod
     def _cache_key(tenant_id: str) -> str:
@@ -179,3 +183,7 @@ class CreditService:
             transactions=tx_responses,
             total_count=total_count,
         )
+
+
+credit_service = CreditService()
+

@@ -1,3 +1,4 @@
+from app.features.wallet.domain import InsufficientBalanceException
 import logging
 from typing import Any, List, Optional, Tuple
 
@@ -10,7 +11,8 @@ from app.features.wallet.domain.models import (
     TransactionType,
     WalletModel,
 )
-from app.features.wallet.exceptions import InsufficientBalanceException
+from app.features.wallet.domain import InsufficientBalanceException
+
 
 logger = logging.getLogger(__name__)
 
@@ -195,3 +197,7 @@ class WalletRepository:
         finally:
             if owned:
                 await session.close()
+
+
+wallet_repository = WalletRepository()
+

@@ -38,13 +38,14 @@ class RechargeService:
 
     def __init__(
         self,
-        session: AsyncSession,
+        session: Optional[AsyncSession] = None,
         checkout_service: Optional[CheckoutService] = None,
         credit_service: Optional[CreditService] = None,
     ) -> None:
         self.session = session
-        self.checkout_service = checkout_service or CheckoutService(session)
-        self.credit_service = credit_service or CreditService(WalletRepository(session))
+        self.checkout_service = checkout_service or CheckoutService(session=session)
+        self.credit_service = credit_service or CreditService(repository=WalletRepository(session=session) if session else None)
+
 
     async def create_recharge_payment(
         self, tenant_id: str, payload: RechargeRequest
@@ -154,3 +155,7 @@ class RechargeService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Método de pagamento '{payload.payment_method}' não suportado.",
             )
+
+
+recharge_service = RechargeService()
+

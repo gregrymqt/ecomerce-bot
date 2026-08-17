@@ -1,10 +1,15 @@
 from app.features.wallet.domain import (
     CreditTransactionModel,
+    InsufficientBalanceException,
     TransactionType,
+    WalletDomainException,
     WalletModel,
+    WalletNotFoundError,
 )
-from app.features.wallet.exceptions import InsufficientBalanceException
-from app.features.wallet.repositories import WalletRepository
+from app.features.wallet.repositories import (
+    WalletRepository,
+    wallet_repository,
+)
 from app.features.wallet.schemas import (
     ConsumeCreditsRequest,
     CreditTransactionResponse,
@@ -17,20 +22,26 @@ from app.features.wallet.services import (
     CREDIT_PACKAGES,
     CreditService,
     RechargeService,
+    credit_service,
+    recharge_service,
 )
 
 __all__ = [
-    # Domain Models
+    # Domain Entities & Exceptions
     "WalletModel",
     "CreditTransactionModel",
     "TransactionType",
-    # Exceptions
+    "WalletDomainException",
     "InsufficientBalanceException",
+    "WalletNotFoundError",
     # Repositories
     "WalletRepository",
+    "wallet_repository",
     # Services
     "CreditService",
+    "credit_service",
     "RechargeService",
+    "recharge_service",
     "CREDIT_PACKAGES",
     # Schemas DTOs
     "CreditTransactionResponse",
@@ -40,4 +51,3 @@ __all__ = [
     "RechargeResponse",
     "ConsumeCreditsRequest",
 ]
-
