@@ -1,4 +1,13 @@
-from app.features.nuvemshop.domain import NuvemshopCredentials
+from app.features.nuvemshop.domain import (
+    NuvemshopAPIError,
+    NuvemshopCredentials,
+    NuvemshopDomainException,
+    NuvemshopSignatureError,
+    NuvemshopSyncError,
+    NuvemshopWebhookLog,
+    NuvemshopWebhookProcessingError,
+    NuvemshopWebhookStatus,
+)
 from app.features.nuvemshop.infrastructure import (
     NuvemshopBaseClient,
     NuvemshopCategoryClient,
@@ -8,7 +17,10 @@ from app.features.nuvemshop.infrastructure import (
     NuvemshopStockClient,
     NuvemshopWebhookClient,
 )
-from app.features.nuvemshop.repositories import NuvemshopRepository
+from app.features.nuvemshop.repositories import (
+    NuvemshopRepository,
+    nuvemshop_repository,
+)
 from app.features.nuvemshop.schemas import (
     InventoryLevelSchema,
     NuvemshopBatchStockPriceItem,
@@ -32,14 +44,23 @@ from app.features.nuvemshop.services import (
     NuvemshopService,
     NuvemshopStockService,
     NuvemshopWebhookService,
+    nuvemshop_webhook_service,
 )
 from app.features.nuvemshop.workers import NuvemshopLocationWorker
 
 __all__ = [
     # Domain
     "NuvemshopCredentials",
+    "NuvemshopWebhookLog",
+    "NuvemshopWebhookStatus",
+    "NuvemshopDomainException",
+    "NuvemshopSignatureError",
+    "NuvemshopAPIError",
+    "NuvemshopSyncError",
+    "NuvemshopWebhookProcessingError",
     # Repositories
     "NuvemshopRepository",
+    "nuvemshop_repository",
     # Infrastructure Clients
     "NuvemshopClient",
     "NuvemshopBaseClient",
@@ -67,6 +88,7 @@ __all__ = [
     "NuvemshopProductService",
     "NuvemshopStockService",
     "NuvemshopWebhookService",
+    "nuvemshop_webhook_service",
     "NuvemshopCategoryService",
     "NuvemshopOAuthService",
     "NuvemshopImageService",
