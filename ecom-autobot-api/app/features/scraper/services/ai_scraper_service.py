@@ -123,3 +123,6 @@ class AIScraperService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Não foi possível enfileirar a tarefa de extração no Message Broker.",
             )
+
+
+ai_scraper_service = AIScraperService()

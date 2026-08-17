@@ -585,5 +585,81 @@ class ProductRepository:
             if owned:
                 await session.close()
 
+    async def count_processed_products(self, tenant_id: str, status: str = "Processed") -> int:
+        """Retorna o total de produtos elegíveis (status especificado) para exportação."""
+        session, owned = await self._get_session()
+        try:
+            stmt = (
+                select(func.count())
+                .select_from(ProductModel)
+                .where(
+                    ProductModel.status == status,
+                    ProductModel.tenant_id == tenant_id,
+                )
+            )
+            result = await session.execute(stmt)
+            return result.scalar_one() or 0
+        finally:
+            if owned:
+                await session.close()
+
+    async def fetch_products_keyset(
+        self,
+        tenant_id: str,
+        status: str = "Processed",
+        last_id: str = "",
+        limit: int = 500,
+    ) -> List[ProductModel]:
+        """
+        Busca produtos em lotes via paginação por ID (keyset), evitando estouro de RAM.
+        """
+        session, owned = await self._get_session()
+        try:
+            stmt = (
+                select(ProductModel)
+                .where(
+                    ProductModel.status == status,
+                    ProductModel.tenant_id == tenant_id,
+                )
+            )
+            if last_id:
+                stmt = stmt.where(ProductModel.id > last_id)
+
+            stmt = stmt.order_by(ProductModel.id).limit(limit)
+            result = await session.execute(stmt)
+            return list(result.scalars().all())
+        finally:
+            if owned:
+                await session.close()
+
+    async def mark_products_as_exported(self, tenant_id: str, product_skus: List[str]) -> int:
+        """Marca a lista de SKUs como 'Exported' em lote no PostgreSQL."""
+        if not product_skus:
+            return 0
+
+        session, owned = await self._get_session()
+        try:
+            stmt = (
+                update(ProductModel)
+                .where(
+                    ProductModel.tenant_id == tenant_id,
+                    ProductModel.sku.in_(product_skus),
+                )
+                .values(status="Exported")
+            )
+            result = await session.execute(stmt)
+            await session.commit()
+            count = result.rowcount
+            logger.info(f"[ProductRepository] Marcados {count} produtos como 'Exported' para Tenant '{tenant_id}'.")
+            return count
+        except Exception as e:
+            logger.error(f"[ProductRepository] Erro ao atualizar status para 'Exported': {e}")
+            if owned:
+                await session.rollback()
+            raise
+        finally:
+            if owned:
+                await session.close()
+
 
 product_repository = ProductRepository()

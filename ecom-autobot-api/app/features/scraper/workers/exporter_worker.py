@@ -1,96 +1,75 @@
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime
 import logging
-from typing import Optional, Tuple, AsyncGenerator
+from typing import Any, AsyncGenerator, Optional
+
 import aiofiles
 from dotenv import load_dotenv
-from sqlalchemy import select, update, func
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config.database import AsyncSessionLocal
-from app.features.products.domain.models import ProductModel
-from app.features.products.schemas import Product, ProductStatus
 from app.core.shared.csv_exporter import CsvExportService
 from app.core.shared.progress import publish_export_progress
-from app.features.shopify.schemas import ShopifyProductSetInput
 from app.features.nuvemshop.schemas import NuvemshopProductRequest
+from app.features.products.repositories import ProductRepository, product_repository
+from app.features.products.schemas import Product, ProductStatus
+from app.features.shopify.schemas import ShopifyProductSetInput
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
+
 class ExporterWorker:
-    def __init__(self, tenant_id: str, platform="shopify", session: Optional[AsyncSession] = None):
+    """
+    Worker de background para exportação em lote/streaming de catálogos enriquecidos
+    para formatos CSV (Shopify / Nuvemshop) com relatórios de progresso em tempo real via SSE.
+    """
+
+    def __init__(
+        self,
+        tenant_id: str = "default",
+        platform: str = "shopify",
+        repo: Optional[ProductRepository] = None,
+        repository: Optional[ProductRepository] = None,
+    ):
         self.tenant_id = tenant_id
         self.platform = platform.lower()
-        self.session = session
+        self.product_repository = repo or repository or product_repository
         self.batch_size = 500  # Processa 500 registros por vez para não estourar a RAM
 
-    async def _get_session(self) -> Tuple[AsyncSession, bool]:
-        if self.session is not None:
-            return self.session, False
-        session = AsyncSessionLocal()
-        return session, True
-
     async def _count_processed_products(self) -> int:
-        """Retorna o total de produtos elegíveis (status PROCESSED) para exportação."""
-        session, should_close = await self._get_session()
-        try:
-            stmt = (
-                select(func.count())
-                .select_from(ProductModel)
-                .where(
-                    ProductModel.status == ProductStatus.PROCESSED.value,
-                    ProductModel.tenant_id == self.tenant_id,
-                )
-            )
-            result = await session.execute(stmt)
-            return result.scalar_one() or 0
-        finally:
-            if should_close:
-                await session.close()
+        """Retorna o total de produtos elegíveis (status PROCESSED) para exportação via repositório."""
+        return await self.product_repository.count_processed_products(
+            tenant_id=self.tenant_id,
+            status=ProductStatus.PROCESSED.value,
+        )
 
     async def _fetch_products_in_batches(self) -> AsyncGenerator[list[Product], None]:
         """
-        Gerador assíncrono que busca produtos em lotes via paginação por ID (keyset),
-        evitando estouro de memória (OOM) e saltos de offset durante mutação de status.
+        Gerador assíncrono que busca produtos em lotes via paginação por ID (keyset) no repositório,
+        evitando estouro de memória (OOM).
         """
         last_id = ""
         while True:
-            session, should_close = await self._get_session()
-            try:
-                stmt = (
-                    select(ProductModel)
-                    .where(
-                        ProductModel.status == ProductStatus.PROCESSED.value,
-                        ProductModel.tenant_id == self.tenant_id,
-                    )
-                )
-                if last_id:
-                    stmt = stmt.where(ProductModel.id > last_id)
+            rows = await self.product_repository.fetch_products_keyset(
+                tenant_id=self.tenant_id,
+                status=ProductStatus.PROCESSED.value,
+                last_id=last_id,
+                limit=self.batch_size,
+            )
 
-                stmt = stmt.order_by(ProductModel.id).limit(self.batch_size)
-                
-                result = await session.execute(stmt)
-                rows = list(result.scalars().all())
-                
-                if not rows:
-                    break
+            if not rows:
+                break
 
-                last_id = rows[-1].id
-                    
-                products_batch = []
-                for row in rows:
-                    try:
-                        payload = dict(row.raw_payload or {})
-                        products_batch.append(Product(**payload))
-                    except Exception as e:
-                        logger.warning(f"Aviso: Falha ao carregar produto {row.id} via pydantic: {e}")
-                
-                yield products_batch
-                
-            finally:
-                if should_close:
-                    await session.close()
+            last_id = rows[-1].id
+
+            products_batch = []
+            for row in rows:
+                try:
+                    payload = dict(row.raw_payload or {})
+                    products_batch.append(Product(**payload))
+                except Exception as e:
+                    logger.warning(f"Aviso: Falha ao carregar produto {row.id} via pydantic: {e}")
+
+            yield products_batch
 
     async def stream_export(self) -> AsyncGenerator[str, None]:
         """
@@ -109,7 +88,7 @@ class ExporterWorker:
             total_items=total_items,
             processed_items=0,
             percentage=0.0,
-            status="PROCESSING"
+            status="PROCESSING",
         )
 
         try:
@@ -136,8 +115,8 @@ class ExporterWorker:
                         exported_skus.append(p.sku)
 
                     yield converted_batch
-                    
-                    # Atualiza o status do lote processado no PostgreSQL
+
+                    # Atualiza o status do lote processado no PostgreSQL via repositório
                     await self.mark_as_exported(exported_skus)
 
                     processed_items += len(exported_skus)
@@ -150,7 +129,7 @@ class ExporterWorker:
                         total_items=total_items,
                         processed_items=processed_items,
                         percentage=pct,
-                        status="PROCESSING"
+                        status="PROCESSING",
                     )
 
             if self.platform == "shopify":
@@ -170,11 +149,12 @@ class ExporterWorker:
                 total_items=total_items,
                 processed_items=processed_items,
                 percentage=100.0,
-                status="COMPLETED"
+                status="COMPLETED",
             )
 
             # Disparo assíncrono de e-mail notificando a conclusão do lote de exportação
             from app.features.emails.services.email_dispatcher import email_dispatcher
+
             await email_dispatcher.publish_email_event(
                 event_name="BATCH_PROCESSING_COMPLETED",
                 recipient_email=f"admin@{self.tenant_id}.com",
@@ -198,7 +178,7 @@ class ExporterWorker:
                 processed_items=processed_items,
                 percentage=round((processed_items / total_items) * 100, 2) if total_items > 0 else 0.0,
                 status="FAILED",
-                error=str(exc)
+                error=str(exc),
             )
             raise exc
 
@@ -206,9 +186,6 @@ class ExporterWorker:
         """
         Exporta o CSV gravando diretamente em disco por streaming de chunks,
         sem acumular a lista completa de produtos na RAM.
-
-        Utiliza `aiofiles` para I/O assíncrono, garantindo que a gravação em
-        disco nunca bloqueie a Event Loop durante exportações de catálogos grandes.
         """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"export_{self.platform}_{self.tenant_id}_{timestamp}.csv"
@@ -225,34 +202,17 @@ class ExporterWorker:
         return filename
 
     async def mark_as_exported(self, product_skus: list[str]) -> None:
-        if not product_skus:
-            return
+        """Marca produtos como exportados delegando ao ProductRepository."""
+        await self.product_repository.mark_products_as_exported(
+            tenant_id=self.tenant_id,
+            product_skus=product_skus,
+        )
 
-        session, should_close = await self._get_session()
-        try:
-            # Bulk Update no PostgreSQL
-            stmt = (
-                update(ProductModel)
-                .where(
-                    ProductModel.tenant_id == self.tenant_id,
-                    ProductModel.sku.in_(product_skus),
-                )
-                .values(status=ProductStatus.EXPORTED.value)
-            )
-            result = await session.execute(stmt)
-            await session.commit()
-            logger.info(f"Concluído: {result.rowcount} documentos marcados como 'Exported' no PostgreSQL.")
-        except Exception as e:
-            logger.error(f"Erro ao atualizar o status no PostgreSQL: {e}")
-            await session.rollback()
-            raise
-        finally:
-            if should_close:
-                await session.close()
+
+exporter_worker = ExporterWorker()
+
 
 if __name__ == "__main__":
-    import asyncio
-
     async def main():
         exporter = ExporterWorker(tenant_id="default_tenant", platform="shopify")
         await exporter.export()

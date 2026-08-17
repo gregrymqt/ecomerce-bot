@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.database import get_db
-from app.features.products.domain.models import ScrapingMetadataModel
+from app.features.products.domain import ScrapingMetadataModel
 
 logger = logging.getLogger(__name__)
 
@@ -88,3 +88,7 @@ class ScrapingMetadataRepository:
         finally:
             if owned:
                 await session.close()
+
+
+scraping_metadata_repository = ScrapingMetadataRepository()
+

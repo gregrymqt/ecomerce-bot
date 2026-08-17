@@ -37,11 +37,21 @@ class ProcessorService:
     gestão de créditos/metering, telemetria e progresso de demo.
     """
 
-    def __init__(self, repo, llm=None, session: Optional[AsyncSession] = None, worker: Optional[Any] = None):
+    def __init__(
+        self,
+        repo: Optional[Any] = None,
+        llm: Optional[Any] = None,
+        session: Optional[AsyncSession] = None,
+        worker: Optional[Any] = None,
+    ):
+        if repo is None:
+            from app.features.products.repositories import product_repository
+            repo = product_repository
         self.repo = repo
         self.llm = llm
         self.session = session
         self.worker = worker
+
 
     async def _get_session(self) -> Tuple[AsyncSession, bool]:
         if self.session is not None:
@@ -292,3 +302,7 @@ class ProcessorService:
             original=original_data,
             enhanced=enhanced_data
         )
+
+
+processor_service = ProcessorService()
+

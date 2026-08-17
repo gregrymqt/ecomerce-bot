@@ -1,6 +1,7 @@
 import json
 import asyncio
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
+
 import aio_pika
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,11 +19,15 @@ class ProcessorWorker:
     e pela recuperação/reset de jobs travados no banco de dados.
     """
 
-    def __init__(self, repo, llm=None, session: Optional[AsyncSession] = None):
+    def __init__(self, repo: Optional[Any] = None, llm: Optional[Any] = None, session: Optional[AsyncSession] = None):
+        if repo is None:
+            from app.features.products.repositories import product_repository
+            repo = product_repository
         self.repo = repo
         self.llm = llm
         self.session = session
         self.processor_service = ProcessorService(repo=repo, llm=llm, session=session, worker=self)
+
 
     async def _get_session(self) -> Tuple[AsyncSession, bool]:
         if self.session is not None:
@@ -88,7 +93,11 @@ class ProcessorWorker:
             logger.error(f"Erro assíncrono na conexão/consumo do RabbitMQ no ProcessorWorker: {e}")
 
 
+processor_worker = ProcessorWorker()
+
+
 if __name__ == "__main__":
+
     import asyncio
     from app.features.products.repositories import ProductRepository
 

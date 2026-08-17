@@ -85,3 +85,7 @@ class ScrapingExecutionService:
             logger.error(f"Erro ao processar página de produto {product_url}: {e}")
             await self.handle_scraping_failure(domain, str(e), product_url)
             return None
+
+
+scraping_execution_service = ScrapingExecutionService()
+
