@@ -129,4 +129,7 @@ async def set_db_tenant_context(session: AsyncSession, tenant_id: str) -> None:
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Injetor de dependência para rotas FastAPI."""
     async with AsyncSessionLocal() as session:
-        yield session
+        try:
+            yield session
+        except GeneratorExit:
+            pass

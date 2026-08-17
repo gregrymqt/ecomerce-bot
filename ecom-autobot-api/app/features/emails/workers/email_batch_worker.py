@@ -134,14 +134,33 @@ class EmailBatchWorker:
             )
 
         except Exception as batch_err:
-            logger.error(
-                f"💥 [EmailBatchWorker] Falha crítica ao processar lote de e-mails: {batch_err}. "
-                f"Reenfileirando mensagens (NACK com requeue=True)...",
-                exc_info=True,
+            logger.warning(
+                f"⚠️ [EmailBatchWorker] Não foi possível enviar o lote de {len(items_to_process)} e-mail(s) via Resend "
+                f"(Domínio não configurado/verificado no Resend ou chave de API ausente/inválida): {batch_err}. "
+                f"Registrando logs como FAILED e confirmando mensagens para proteger a aplicação."
             )
-            # Rejeita e devolve para a fila para nova tentativa em caso de falha transitória
-            nack_tasks = [item.message.nack(requeue=True) for item in items_to_process]
-            await asyncio.gather(*nack_tasks, return_exceptions=True)
+            # 1. Registra os e-mails como FAILED no banco para auditoria sem quebrar a aplicação
+            try:
+                logs_to_insert: List[EmailLog] = [
+                    EmailLog(
+                        tenant_id=item.payload.tenant_id,
+                        resend_id=None,
+                        recipient=item.payload.recipient_email,
+                        event_type=item.payload.event,
+                        status=EmailStatus.FAILED,
+                        subject=item.subject,
+                        idempotency_key=item.payload.idempotency_key,
+                        metadata_info={"error": str(batch_err)},
+                    )
+                    for item in items_to_process
+                ]
+                await email_repository.create_batch(logs=logs_to_insert)
+            except Exception as db_err:
+                logger.error(f"[EmailBatchWorker] Erro ao registrar logs de falha no banco: {db_err}")
+
+            # 2. Confirma (ACK) as mensagens na fila para impedir loop infinito de requeue no RabbitMQ
+            ack_tasks = [item.message.ack() for item in items_to_process]
+            await asyncio.gather(*ack_tasks, return_exceptions=True)
 
     async def _timer_flusher(self, http_client: httpx.AsyncClient) -> None:
         """Loop de background para garantir flush por tempo mesmo sem lote cheio."""

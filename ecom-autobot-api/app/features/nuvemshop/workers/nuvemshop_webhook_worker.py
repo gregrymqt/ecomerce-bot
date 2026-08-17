@@ -38,7 +38,7 @@ class NuvemshopWebhookWorker:
             channel = await connection.channel()
 
         await channel.set_qos(prefetch_count=10)
-        queue = await channel.declare_queue(queue_name, durable=True)
+        queue = await channel.get_queue(queue_name)
 
         logger.info(f"🚀 [NuvemshopWebhookWorker] Consumidor de webhooks ativo na fila '{queue_name}'.")
 

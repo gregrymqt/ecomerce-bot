@@ -31,6 +31,21 @@ class ScraperWorker:
         self.session = session
         self.execution_service = ScrapingExecutionService(session=session)
 
+    @property
+    def json_ld_parser(self):
+        return self.execution_service.json_ld_parser
+
+    @property
+    def markdown_parser(self):
+        return self.execution_service.markdown_parser
+
+    @property
+    def client(self):
+        return self.execution_service.client
+
+    async def _process_product_page(self, product_url: str, tenant_id: str = "default"):
+        return await self.execution_service.process_product_page(product_url, tenant_id=tenant_id)
+
 
     async def _get_session(self) -> Tuple[AsyncSession, bool]:
         if self.session is not None:
