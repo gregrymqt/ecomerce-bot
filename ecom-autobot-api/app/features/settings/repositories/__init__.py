@@ -1,3 +1,9 @@
-from app.features.settings.repositories.settings_repository import SettingsRepository
+from app.features.settings.repositories.settings_repository import (
+    SettingsRepository,
+    settings_repository,
+)
 
-__all__ = ["SettingsRepository"]
+__all__ = [
+    "SettingsRepository",
+    "settings_repository",
+]

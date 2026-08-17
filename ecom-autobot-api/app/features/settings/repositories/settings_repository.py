@@ -145,3 +145,7 @@ class SettingsRepository:
         finally:
             if owned:
                 await session.close()
+
+
+settings_repository = SettingsRepository()
+

@@ -1,10 +1,10 @@
+from app.features.nuvemshop import nuvemshop_category_router
+from app.features.nuvemshop import nuvemshop_product_router
+from app.features.nuvemshop import nuvemshop_stock_router
+from app.features.nuvemshop import nuvemshop_webhook_router
+from app.features.nuvemshop import nuvemshop_oauth_router
 from fastapi import APIRouter
 
-from app.features.nuvemshop.nuvemshop_category_router import nuvemshop_category_router
-from app.features.nuvemshop.nuvemshop_oauth_router import nuvemshop_oauth_router
-from app.features.nuvemshop.nuvemshop_product_router import nuvemshop_product_router
-from app.features.nuvemshop.nuvemshop_stock_router import nuvemshop_stock_router
-from app.features.nuvemshop.nuvemshop_webhook_router import nuvemshop_webhook_router
 
 router = APIRouter()
 

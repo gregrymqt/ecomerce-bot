@@ -66,3 +66,7 @@ class SettingsService:
             logger.warning(f"Falha ao invalidar cache Redis de settings para tenant '{tenant_id}': {err}")
 
         return updated_settings
+
+
+settings_service = SettingsService()
+
