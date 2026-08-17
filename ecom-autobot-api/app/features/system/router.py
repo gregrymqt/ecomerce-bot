@@ -1,28 +1,25 @@
 import asyncio
-import logging
-from typing import List, Literal, Optional
-from fastapi import APIRouter, HTTPException, Depends, Header, Query, status
+from typing import List, Literal
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
-from app.features.system.services import SystemService
+from app.core.config.redis_db import redis_cache
+from app.core.security.auth import get_current_tenant_user
+from app.core.security.rate_limiter import check_demo_rate_limit
+from app.core.shared.logger import get_logger
+from app.features.auth.schemas import AuthenticatedUser
+from app.features.scraper.workers.exporter_worker import ExporterWorker
+from app.features.system.domain import SystemDomainException
 from app.features.system.schemas import (
-    DemoRequest,
     DashboardTelemetryResponse,
+    DemoRequest,
     RobotActivitySchema,
     SystemHealthDetails,
 )
-from app.core.security.rate_limiter import check_demo_rate_limit
-from app.core.security.auth import get_current_tenant_user
-from app.features.auth.schemas import AuthenticatedUser
-from app.features.scraper.workers.exporter_worker import ExporterWorker
-from app.core.config.redis_db import redis_cache
+from app.features.system.services import system_service
 
-logger = logging.getLogger(__name__)
+logger = get_logger("SystemRouter")
 router = APIRouter(tags=["System / Dashboard"])
-
-
-def get_system_service() -> SystemService:
-    return SystemService()
 
 
 @router.get("/telemetry", response_model=DashboardTelemetryResponse)
@@ -32,14 +29,19 @@ async def get_dashboard_telemetry(
     timeframe: Literal["24h", "7d", "30d"] = Query("24h", description="Janela temporal de análise ('24h', '7d', '30d')"),
     x_tenant_id: str = Header(..., alias="X-Tenant-ID"),
     current_user: AuthenticatedUser = Depends(get_current_tenant_user),
-    service: SystemService = Depends(get_system_service),
 ):
     """
     Retorna métricas consolidadas do Dashboard (volume por status, tokens por provedor,
     latência média e horas economizadas) com cache Redis de 30s.
     """
     try:
-        return await service.get_telemetry_metrics(tenant_id=x_tenant_id, timeframe=timeframe)
+        return await system_service.get_telemetry_metrics(tenant_id=x_tenant_id, timeframe=timeframe)
+    except SystemDomainException as err:
+        logger.warning(f"Exceção de domínio na telemetria para tenant '{x_tenant_id}': {err}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        )
     except Exception as e:
         logger.error(f"Erro ao obter telemetria do dashboard para tenant '{x_tenant_id}': {e}")
         raise HTTPException(
@@ -56,17 +58,22 @@ async def get_dashboard_activities(
     page: int = Query(1, ge=1, description="Número da página"),
     x_tenant_id: str = Header(..., alias="X-Tenant-ID"),
     current_user: AuthenticatedUser = Depends(get_current_tenant_user),
-    service: SystemService = Depends(get_system_service),
 ):
     """
     Retorna o histórico paginado de logs de execução dos robôs (ScraperWorker e ProcessorWorker).
     """
     try:
         offset = (page - 1) * limit
-        activities, _ = await service.get_recent_activities(
+        activities, _ = await system_service.get_recent_activities(
             tenant_id=x_tenant_id, limit=limit, offset=offset
         )
         return activities
+    except SystemDomainException as err:
+        logger.warning(f"Exceção de domínio ao buscar atividades para tenant '{x_tenant_id}': {err}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        )
     except Exception as e:
         logger.error(f"Erro ao buscar atividades dos robôs para tenant '{x_tenant_id}': {e}")
         raise HTTPException(
@@ -81,7 +88,7 @@ async def health_check():
     """
     Realiza o health check assíncrono real de PostgreSQL, Redis e RabbitMQ.
     """
-    return await SystemService.check_system_health()
+    return await system_service.check_system_health()
 
 
 @router.post("/demo", dependencies=[Depends(check_demo_rate_limit)])
@@ -90,7 +97,7 @@ async def request_demo(payload: DemoRequest):
         raise HTTPException(status_code=400, detail="Máximo de 3 URLs permitidas para a demo.")
 
     try:
-        await SystemService.process_demo_request(payload.urls)
+        await system_service.process_demo_request(payload.urls)
         return {"status": "enviado_para_fila"}
     except Exception as e:
         logger.error(f"Erro ao publicar demo na fila: {e}")

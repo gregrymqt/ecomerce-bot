@@ -56,3 +56,7 @@ class NotificationService:
                 logger.info(f"Alerta Discord enviado com sucesso para falhas no domínio {domain}")
             except Exception as e:
                 logger.error(f"Falha ao enviar alerta para o Discord: {e}")
+
+
+notification_service = NotificationService()
+

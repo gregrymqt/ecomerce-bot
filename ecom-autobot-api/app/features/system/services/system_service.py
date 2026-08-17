@@ -184,3 +184,7 @@ class SystemService:
         logger.info(f"Processando exportação para tenant: {tenant_id}, plataforma: {platform}")
         exporter = ExporterWorker(tenant_id=tenant_id, platform=platform)
         await exporter.export()
+
+
+system_service = SystemService()
+

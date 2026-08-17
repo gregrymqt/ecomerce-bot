@@ -232,3 +232,7 @@ class TelemetryRepository:
         finally:
             if owned:
                 await session.close()
+
+
+telemetry_repository = TelemetryRepository()
+
