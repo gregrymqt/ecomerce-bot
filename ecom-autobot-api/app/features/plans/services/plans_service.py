@@ -1,10 +1,9 @@
 import logging
 import uuid
-from typing import List, Optional, Union
-from fastapi import HTTPException, status
+from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.plans.domain.models import PlanModel
+from app.features.plans.domain import PlanModel, PlanNotFoundError
 from app.features.plans.repositories.plans_repository import PlansRepository
 from app.features.plans.schemas import (
     CreatePlanRequest,
@@ -20,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class PlansService:
     """
-    Serviço de domínio responsável pelo gerenciamento de planos de assinatura
+    Serviço de aplicação responsável pelo gerenciamento de planos de assinatura
     operando 100% de forma local via PostgreSQL e Redis.
     """
 
@@ -95,10 +94,7 @@ class PlansService:
         local_plan = await self.repository.get_by_id(plan_id)
 
         if not local_plan:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Plano com ID '{plan_id}' não foi encontrado.",
-            )
+            raise PlanNotFoundError(plan_id)
 
         return self._model_to_response(local_plan)
 
@@ -118,10 +114,7 @@ class PlansService:
 
         existing = await self.repository.get_by_id(plan_id)
         if not existing:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Plano com ID '{plan_id}' não foi encontrado para atualização.",
-            )
+            raise PlanNotFoundError(plan_id)
 
         update_fields = {}
         if payload.reason is not None:
@@ -141,10 +134,7 @@ class PlansService:
 
         updated_plan = await self.repository.update(plan_id, update_fields)
         if not updated_plan:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Falha ao atualizar plano com ID '{plan_id}'.",
-            )
+            raise PlanNotFoundError(plan_id)
 
         logger.info(f"[PlansService] Plano ID '{plan_id}' atualizado com sucesso.")
         return self._model_to_response(updated_plan)
@@ -155,3 +145,6 @@ class PlansService:
         logger.info(f"[PlansService] Listando planos locais (limit={limit}, offset={offset})")
         local_models = await self.repository.list_plans(limit=limit, offset=offset)
         return [self._model_to_response(model) for model in local_models]
+
+
+plans_service = PlansService()

@@ -1,3 +1,4 @@
+
 from datetime import datetime, timezone
 import logging
 from typing import Any, Dict, List, Optional, Sequence
@@ -6,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.database import get_db
 from app.core.config.redis_db import redis_cache
-from app.features.plans.domain.models import PlanModel
+from app.features.plans.domain import PlanModel
 
 logger = logging.getLogger(__name__)
 
@@ -223,3 +224,7 @@ class PlansRepository:
         await self._invalidate_plan_cache(plan_id, external_id=ext_id)
 
         return updated_plan
+
+
+plans_repository = PlansRepository()
+

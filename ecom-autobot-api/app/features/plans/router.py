@@ -1,10 +1,11 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.database import get_db
 from app.core.security.auth import get_current_user_admin
 from app.features.auth.schemas import AuthenticatedUser
+from app.features.plans.domain import PlanNotFoundError
 from app.features.plans.schemas import (
     CreatePlanRequest,
     PlanResponse,
@@ -108,7 +109,13 @@ async def get_plan_by_external_id(
     user: AuthenticatedUser = Depends(get_current_user_admin),
 ) -> PlanResponse:
     service = PlansService(session=db)
-    return await service.get_plan_by_external_id(external_id)
+    try:
+        return await service.get_plan_by_external_id(external_id)
+    except PlanNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(err),
+        )
 
 
 @router.get(
@@ -124,7 +131,13 @@ async def get_plan_by_id(
     user: AuthenticatedUser = Depends(get_current_user_admin),
 ) -> PlanResponse:
     service = PlansService(session=db)
-    return await service.get_plan_by_id(plan_id)
+    try:
+        return await service.get_plan_by_id(plan_id)
+    except PlanNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(err),
+        )
 
 
 @router.put(
@@ -141,4 +154,10 @@ async def update_plan(
     user: AuthenticatedUser = Depends(get_current_user_admin),
 ) -> PlanResponse:
     service = PlansService(session=db)
-    return await service.update_plan(plan_id, payload)
+    try:
+        return await service.update_plan(plan_id, payload)
+    except PlanNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(err),
+        )

@@ -1,4 +1,14 @@
-from app.features.plans.repositories import PlansRepository
+from app.features.plans.domain import (
+    PlanAlreadyExistsError,
+    PlanDomainException,
+    PlanModel,
+    PlanNotFoundError,
+    PlanValidationError,
+)
+from app.features.plans.repositories import (
+    PlansRepository,
+    plans_repository,
+)
 from app.features.plans.schemas import (
     AutoRecurringCreateDTO,
     AutoRecurringUpdateDTO,
@@ -15,11 +25,19 @@ from app.features.plans.schemas import (
 from app.features.plans.services import (
     PlanNotificationService,
     PlansService,
+    plans_service,
 )
 
 __all__ = [
+    # Domain
+    "PlanModel",
+    "PlanDomainException",
+    "PlanNotFoundError",
+    "PlanAlreadyExistsError",
+    "PlanValidationError",
     # Repositories
     "PlansRepository",
+    "plans_repository",
     # Schemas DTOs
     "FreeTrialDTO",
     "AutoRecurringCreateDTO",
@@ -34,5 +52,6 @@ __all__ = [
     "PlanSearchResponse",
     # Services
     "PlansService",
+    "plans_service",
     "PlanNotificationService",
 ]
