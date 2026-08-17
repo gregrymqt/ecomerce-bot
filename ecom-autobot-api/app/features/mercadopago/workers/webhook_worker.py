@@ -93,6 +93,9 @@ class WebhookDispatcherWorker:
             logger.error(f"Erro assíncrono na conexão/consumo do RabbitMQ no Dispatcher: {e}")
 
 
+webhook_dispatcher_worker = WebhookDispatcherWorker()
+
+
 if __name__ == "__main__":
     import asyncio
 

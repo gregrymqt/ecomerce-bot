@@ -101,6 +101,40 @@ ecommerce-bot/
 - **Cache & Pub/Sub:** Redis via `redis-py` assíncrono.
 - **Segurança:** Cryptography (`cryptography.hazmat`) para AES-256 GCM e PyJWT.
 
+### 🏛️ Estrutura Padrão Canônica de Feature Backend (Referência: `app/features/emails`):
+Todas as features backend DEVEM seguir estritamente esta estrutura de pastas e divisão de responsabilidades DDD:
+
+```
+app/features/<feature_name>/
+├── __init__.py                 # Ponto de entrada da feature. Exporta serviços, workers e instâncias singleton.
+├── router.py                   # Roteador FastAPI (APIRouter(prefix="/<feature>", tags=["..."])). Mapeia rotas e exceções HTTP.
+├── domain/                     # Regras de negócio puras e modelos de dados
+│   ├── __init__.py             # Re-exporta entidades e exceções
+│   ├── entities.py             # Modelos ORM SQLAlchemy Async, Enums, Mapped[...] e Índices de Tabela
+│   └── exceptions.py           # Exceções de domínio estritas herdando da exceção base <Feature>DomainException
+├── infrastructure/             # Gateway de Integração Externa (Resend, APIs externas, etc.)
+│   ├── __init__.py             # Re-exporta clientes de infraestrutura
+│   └── <gateway>_client.py     # Clientes HTTP/API assíncronos (httpx), resiliência e retries com tenacity
+├── repositories/               # Camada de Acesso a Dados e Persistência Assíncrona
+│   ├── __init__.py             # Re-exporta repositórios e instância singleton
+│   └── <feature>_repository.py # Acesso ao banco via AsyncSession (SQLAlchemy) com isolamento por tenant e métodos atômicos
+├── schemas/                    # DTOs Pydantic v2 (Validação e Serialização de Dados)
+│   ├── __init__.py             # Re-exporta todos os DTOs do pacote
+│   ├── <feature>_schemas.py    # DTOs para eventos de fila e respostas da API
+│   ├── <gateway>_schemas.py    # DTOs para requisições e respostas de APIs externas
+│   └── webhook_schemas.py      # DTOs para payload de Webhooks e verificação de assinaturas
+├── services/                   # Orquestração de Aplicação e Lógica de Negócio
+│   ├── __init__.py             # Re-exporta serviços de aplicação
+│   ├── <feature>_dispatcher.py # Produtor de mensagens assíncronas (RabbitMQ)
+│   ├── <feature>_service.py    # Lógica de aplicação/negócio
+│   └── webhook_service.py      # Processamento de Webhooks (Svix/HMAC, idempotência Redis 24h, transição de estado)
+├── templates/                  # (Opcional) Templates de e-mail / HTML (Jinja2)
+└── workers/                    # Consumidores de Fila em Segundo Plano
+    ├── __init__.py             # Re-exporta workers e instâncias singleton
+    └── <feature>_worker.py     # Worker RabbitMQ com buffer híbrido (lote + timeout), ACK/NACK manual e persistência no DB
+```
+
+
 ### 🏢 Multi-Tenancy & Criptografia (BYOK - Bring Your Own Key):
 1. **Isolamento de Dados:** Cada consulta no repositório de produtos OU configurações DEVE conter o filtro por `tenant_id`. Chaves primárias/lógicas são compostas `(tenant_id, sku)`.
 2. **Validação por Header:** O header `X-Tenant-ID` é obrigatório em rotas protegidas e validado em `get_current_tenant_user` contra a lista de `tenants` permitidos no token JWT.
