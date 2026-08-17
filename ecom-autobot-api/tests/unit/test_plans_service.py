@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock
 import pytest
 
-from app.features.plans.domain.models import PlanModel
+from app.features.plans.domain.entities import PlanModel
 from app.features.plans.schemas import AutoRecurringCreateDTO, CreatePlanRequest, UpdatePlanRequest
 from app.features.plans.services.plans_service import PlansService
 

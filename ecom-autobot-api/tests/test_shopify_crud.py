@@ -125,8 +125,10 @@ async def test_router_crud_endpoints():
         "X-Tenant-ID": "ecommerce_prod",
     }
 
-    from app.features.shopify.router import get_shopify_service
-    app.dependency_overrides[get_shopify_service] = lambda: mock_shopify_service
+    from app.features.shopify.routers.shopify_inventory_router import get_shopify_inventory_service
+    from app.features.shopify.routers.shopify_product_router import get_shopify_product_service
+    app.dependency_overrides[get_shopify_inventory_service] = lambda: mock_shopify_service
+    app.dependency_overrides[get_shopify_product_service] = lambda: mock_shopify_service
 
     try:
         transport = ASGITransport(app=app)

@@ -1,9 +1,11 @@
-from app.features.shopify.workers import ShopifyWebhookWorker
-from app.features.nuvemshop.workers import (
-    NuvemshopLocationWorker,
-    NuvemshopSyncWorker,
-    NuvemshopWebhookWorker,
-)
+import sys
+from pathlib import Path
+
+# Garante que o diretório raiz do backend (ecom-autobot-api) esteja no sys.path
+backend_root = Path(__file__).resolve().parent.parent
+if str(backend_root) not in sys.path:
+    sys.path.insert(0, str(backend_root))
+
 import asyncio
 import logging
 from contextlib import asynccontextmanager
@@ -26,6 +28,12 @@ from app.features.emails.workers import EmailBatchWorker as EmailWorker
 from app.features.api_router import api_router as v1_router
 from app.features.ai_enrichment.domain.exceptions import InsufficientCreditsException
 from app.features.ai_enrichment.services.llm_service import LLMService
+from app.features.shopify.workers import ShopifyWebhookWorker
+from app.features.nuvemshop.workers import (
+    NuvemshopLocationWorker,
+    NuvemshopSyncWorker,
+    NuvemshopWebhookWorker,
+)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

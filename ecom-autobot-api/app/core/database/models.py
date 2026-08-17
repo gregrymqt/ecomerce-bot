@@ -31,7 +31,7 @@ from app.features.checkout.domain.models import OrderItemModel, OrderModel
 from app.features.ai_enrichment.domain.models import LLMUsageLogModel
 
 # Modelos do módulo Plans (Planos locais)
-from app.features.plans.domain.models import PlanModel
+from app.features.plans.domain.entities import PlanModel
 
 # Modelos do módulo System / Telemetria
 from app.features.system.domain.models import (

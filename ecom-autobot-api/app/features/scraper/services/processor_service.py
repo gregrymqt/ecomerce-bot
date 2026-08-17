@@ -20,7 +20,7 @@ from app.features.ai_enrichment.schemas import LLMUsageLogCreate
 from app.features.ai_enrichment.services import LLMService, LLMMeteringService
 from app.features.products.schemas import Product, ProductStatus
 from app.features.system.repositories.telemetry_repository import TelemetryRepository
-from app.features.wallet.exceptions import InsufficientBalanceException
+from app.features.wallet.domain.exceptions import InsufficientBalanceException
 from app.features.wallet.repositories import WalletRepository
 from app.features.wallet.services import CreditService
 

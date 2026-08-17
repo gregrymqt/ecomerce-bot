@@ -6,7 +6,7 @@ from fastapi import HTTPException
 
 from app.core.config.redis_db import RedisCache
 from app.features.wallet.domain.models import CreditTransactionModel, WalletModel
-from app.features.wallet.exceptions import InsufficientBalanceException
+from app.features.wallet.domain.exceptions import InsufficientBalanceException
 from app.features.wallet.repositories import WalletRepository
 from app.features.wallet.schemas import WalletStatementResponse
 from app.features.wallet.services.credit_service import CreditService

@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.wallet.domain.models import CreditTransactionModel, WalletModel
-from app.features.wallet.exceptions import InsufficientBalanceException
+from app.features.wallet.domain.exceptions import InsufficientBalanceException
 from app.features.wallet.repositories.wallet_repository import WalletRepository
 
 

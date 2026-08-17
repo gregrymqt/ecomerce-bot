@@ -30,10 +30,20 @@ async def test_handle_products_update():
     )
 
     mock_shopify_repo.get_tenant_by_shop_domain.assert_called_once_with("loja-teste.myshopify.com")
-    mock_product_repo.update_external_ids.assert_called_once_with(
+    mock_product_repo.update_from_shopify_payload.assert_called_once_with(
         tenant_id="ecommerce_prod",
         sku="TSHIRT-BLK-L",
+        title="T-Shirt Premium Black",
         shopify_product_id="987654",
+        raw_payload_update={
+            "title": "T-Shirt Premium Black",
+            "body_html": None,
+            "vendor": None,
+            "product_type": None,
+            "price": "99.90",
+            "inventory_item_id": None,
+            "stock": 50,
+        },
     )
 
 
