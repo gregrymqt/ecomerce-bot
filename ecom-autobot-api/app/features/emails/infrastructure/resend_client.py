@@ -142,7 +142,12 @@ class ResendHttpClient:
 
         url = f"{self.BASE_URL}/emails/batch"
         headers = self._get_headers()
-        json_data = [p.model_dump(by_alias=True, exclude_none=True) for p in payloads]
+        json_data = []
+        for p in payloads:
+            item_dict = p.model_dump(by_alias=True, exclude_none=True)
+            # O endpoint /emails/batch do Resend ainda não suporta anexos ("attachments")
+            item_dict.pop("attachments", None)
+            json_data.append(item_dict)
 
         async def _execute(c: httpx.AsyncClient) -> httpx.Response:
             return await c.post(url, headers=headers, json=json_data, timeout=self.timeout + 15.0)

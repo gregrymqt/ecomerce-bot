@@ -57,6 +57,10 @@ class ResendSendEmailRequest(BaseModel):
         default_factory=list,
         description="Lista de arquivos anexados"
     )
+    template: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Objeto contendo 'id' e 'variables' para disparos via templates nativos do Resend"
+    )
 
     @field_validator("to", "bcc", "cc", "reply_to", mode="after")
     @classmethod

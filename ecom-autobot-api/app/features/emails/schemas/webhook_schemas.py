@@ -1,11 +1,15 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class ResendWebhookData(BaseModel):
     """Dados internos da mensagem enviados dentro do payload de webhook do Resend."""
-    email_id: Optional[str] = Field(None, alias="id", description="UUID do e-mail no Resend")
+    email_id: Optional[str] = Field(
+        None,
+        validation_alias=AliasChoices("email_id", "id"),
+        description="UUID do e-mail no Resend"
+    )
     from_email: Optional[str] = Field(None, alias="from")
     to: Optional[List[str]] = Field(default_factory=list)
     subject: Optional[str] = None

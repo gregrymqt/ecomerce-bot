@@ -2,6 +2,7 @@ import base64
 import hashlib
 import hmac
 import json
+import time
 from typing import Optional
 
 from app.core.config.redis_db import redis_cache
@@ -51,6 +52,15 @@ class EmailWebhookService:
 
         if not (svix_id and svix_timestamp and svix_signature):
             raise InvalidWebhookSignatureError("Headers Svix ausentes na requisição.")
+
+        # Valida a janela de tolerância do timestamp (máximo 5 minutos / 300s para evitar Replay Attack)
+        try:
+            timestamp_int = int(svix_timestamp)
+            now = int(time.time())
+            if abs(now - timestamp_int) > 300:
+                raise InvalidWebhookSignatureError("Timestamp do webhook expirado (diferença maior que 5 minutos).")
+        except ValueError:
+            raise InvalidWebhookSignatureError("Header svix-timestamp inválido.")
 
         # O segredo do Svix vem com o prefixo 'whsec_'
         secret = self.webhook_secret
