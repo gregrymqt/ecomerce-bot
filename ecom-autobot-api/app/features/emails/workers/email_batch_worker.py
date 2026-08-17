@@ -84,7 +84,7 @@ class EmailBatchWorker:
                 subject=subject,
             )
         except Exception as err:
-            logger.error(f"[EmailBatchWorker] Erro ao preparar item da fila: {err}", exc_info=True)
+            logger.warning(f"⚠️ [EmailBatchWorker] Descartando mensagem da fila por erro de payload: {err}")
             return None
 
     async def _flush_buffer(self, http_client: httpx.AsyncClient) -> None:

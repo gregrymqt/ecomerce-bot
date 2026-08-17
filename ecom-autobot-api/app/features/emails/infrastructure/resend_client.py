@@ -165,7 +165,7 @@ class ResendHttpClient:
                 return ResendBatchResponse.model_validate(data)
 
             error_body = response.text
-            logger.warning(
+            logger.debug(
                 f"[ResendClient] Resend API retornou HTTP {response.status_code} no envio em lote: {error_body}"
             )
             raise EmailDeliveryError(

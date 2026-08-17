@@ -9,7 +9,7 @@ from app.features.emails.domain.entities import EmailStatus
 class EmailEventPayload(BaseModel):
     """Schema para mensagens serializadas trafegadas na fila RabbitMQ 'email_notifications'."""
     event: str = Field(..., description="Nome do evento de negócio (ex: USER_WELCOME)")
-    recipient_email: EmailStr = Field(..., description="E-mail de destino")
+    recipient_email: str = Field(..., description="E-mail de destino")
     recipient_name: Optional[str] = Field("Cliente", description="Nome do cliente para o template")
     tenant_id: str = Field("default", description="Identificador único do tenant")
     idempotency_key: Optional[str] = Field(
