@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 from app.core.security.rate_limiter import rate_limit_dependency
 
-from app.features.auth.router import router as auth_router
 from app.features.shopify.router import router as shopify_router
 from app.features.nuvemshop.router import router as nuvemshop_router
 from app.features.scraper.router import router as scraper_router
@@ -16,7 +15,6 @@ from app.features.emails.router import router as emails_router
 
 api_router = APIRouter(dependencies=[Depends(rate_limit_dependency(times=120, seconds=60))])
 
-api_router.include_router(auth_router)
 api_router.include_router(shopify_router)
 api_router.include_router(nuvemshop_router)
 api_router.include_router(scraper_router)

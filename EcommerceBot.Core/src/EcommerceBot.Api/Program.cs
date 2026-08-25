@@ -36,11 +36,53 @@ builder.Services.AddScoped<ITenantContext, TenantContext>();
 builder.Services.AddScoped<ITenantRepository, TenantRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ITenantAiCredentialRepository, TenantAiCredentialRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IEnterpriseLeadRepository, EnterpriseLeadRepository>();
+
+// Serviços de Aplicação
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+builder.Services.AddScoped<IEnterpriseLeadService, EnterpriseLeadService>();
 
 // Gateways de E-commerce
 builder.Services.AddHttpClient<IEcommerceGateway, ShopifyGateway>();
 builder.Services.AddHttpClient<IEcommerceGateway, NuvemshopGateway>();
 builder.Services.AddSingleton<IEcommerceGatewayFactory, EcommerceGatewayFactory>();
+
+// -------------------------------------------------------------
+// Configuração JWT Auth
+// -------------------------------------------------------------
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "MinhaChaveSuperSecretaGigante123!";
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtKey)),
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        ClockSkew = System.TimeSpan.Zero
+    };
+    options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var token = context.Request.Cookies["access_token"];
+            if (!string.IsNullOrEmpty(token))
+            {
+                context.Token = token;
+            }
+            return System.Threading.Tasks.Task.CompletedTask;
+        }
+    };
+});
 
 // -------------------------------------------------------------
 // Configuração StackExchange.Redis
@@ -90,6 +132,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Adicionando middlewares de Autenticação e Autorização ANTES do Middleware Multi-Tenant Global
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Adicionando o Middleware Multi-Tenant Global
 app.UseMiddleware<TenantHeaderMiddleware>();
