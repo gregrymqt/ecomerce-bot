@@ -40,6 +40,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IEnterpriseLeadRepository, EnterpriseLeadRepository>();
 builder.Services.AddScoped<IMeteringRepository, MeteringRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IEmailRepository, EmailRepository>();
 
 // Serviços de Aplicação
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -52,6 +53,7 @@ builder.Services.AddScoped<ICheckoutService, CheckoutService>();
 builder.Services.AddHttpClient<IEcommerceGateway, ShopifyGateway>();
 builder.Services.AddHttpClient<IEcommerceGateway, NuvemshopGateway>();
 builder.Services.AddSingleton<IEcommerceGatewayFactory, EcommerceGatewayFactory>();
+builder.Services.AddHttpClient<IResendGateway, ResendGateway>();
 
 // -------------------------------------------------------------
 // Configuração JWT Auth
@@ -105,6 +107,7 @@ builder.Services.AddMassTransit(x =>
 {
     // Registra os Consumers (Escuta das filas do Python e de outros serviços)
     x.AddConsumer<ProcessedProductConsumer>();
+    x.AddConsumer<EmailNotificationConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -122,6 +125,12 @@ builder.Services.AddMassTransit(x =>
         cfg.ReceiveEndpoint("ecommerce_processed_queue", e =>
         {
             e.ConfigureConsumer<ProcessedProductConsumer>(context);
+        });
+
+        // Configura a fila de emails transacionais
+        cfg.ReceiveEndpoint("email_notifications", e =>
+        {
+            e.ConfigureConsumer<EmailNotificationConsumer>(context);
         });
     });
 });
