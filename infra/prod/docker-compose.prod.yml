@@ -117,6 +117,35 @@ services:
     networks:
       - internal-net
 
+  # Banco de Dados Microsoft SQL Server 2022 em Docker/Linux
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: prod-mssql-bot
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-prod_mssql_password_secure}
+      MSSQL_PID: ${MSSQL_PID:-Developer}
+      MSSQL_AGENT_ENABLED: "true"
+    ports:
+      - "127.0.0.1:1433:1433" # Acesso seguro restrito ao localhost (Túnel SSH / DBeaver / Azure Data Studio)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 3072M
+    volumes:
+      - mssql-prod-data:/var/opt/mssql/data
+      - mssql-prod-backup:/var/opt/mssql/backup
+    networks:
+      - internal-net
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD:-prod_mssql_password_secure}\" -C -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   # Reverse Proxy Nginx com suporte a SSL e SSE
   nginx:
     image: nginx:alpine
@@ -159,6 +188,8 @@ volumes:
   postgres-prod-data:
   redis-prod-data:
   rabbitmq-prod-data:
+  mssql-prod-data:
+  mssql-prod-backup:
   certbot-etc:
   certbot-var:
   certbot-www:
