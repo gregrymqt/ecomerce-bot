@@ -39,12 +39,14 @@ builder.Services.AddScoped<ITenantAiCredentialRepository, TenantAiCredentialRepo
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IEnterpriseLeadRepository, EnterpriseLeadRepository>();
 builder.Services.AddScoped<IMeteringRepository, MeteringRepository>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 
 // Serviços de Aplicação
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 builder.Services.AddScoped<IEnterpriseLeadService, EnterpriseLeadService>();
 builder.Services.AddScoped<IMeteringService, MeteringService>();
+builder.Services.AddScoped<ICheckoutService, CheckoutService>();
 
 // Gateways de E-commerce
 builder.Services.AddHttpClient<IEcommerceGateway, ShopifyGateway>();

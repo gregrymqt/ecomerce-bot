@@ -7,7 +7,6 @@ from app.features.scraper.router import router as scraper_router
 from app.features.system.router import router as system_router
 from app.features.plans.router import router as plans_router
 from app.features.mercadopago.router import router as webhook_router
-from app.features.checkout.router import router as checkout_router
 from app.features.products.router import router as products_router
 from app.features.settings.router import router as settings_router
 from app.features.emails.router import router as emails_router
@@ -20,7 +19,6 @@ api_router.include_router(scraper_router)
 api_router.include_router(system_router)
 api_router.include_router(plans_router)
 api_router.include_router(webhook_router)
-api_router.include_router(checkout_router)
 api_router.include_router(products_router)
 api_router.include_router(settings_router)
 api_router.include_router(emails_router)
