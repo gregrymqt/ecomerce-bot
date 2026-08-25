@@ -8,29 +8,37 @@ Este documento descreve a arquitetura, pilha de tecnologias, convenções de có
 
 ## 📐 1. Visão Geral da Arquitetura
 
-O **E-commerce Bot** é uma plataforma monorepo escalável para extração automática, enriquecimento via IA e exportação/sincronização de catálogos de produtos de e-commerce.
+O **E-commerce Bot** é uma plataforma monorepo escalável dividida em 3 partes principais:
+1. **Frontend:** SPA em React + Vite.
+2. **Core API:** Aplicação Central em .NET 8 (C#) responsável pelas regras de negócio, multi-tenancy, pagamentos e persistência.
+3. **AI/ML Engine:** Worker em Python focado estritamente em inferência de LLMs (OpenRouter), Scraping inteligente e Machine Learning preditivo.
 
-```
-                  ┌────────────────────────────────────────┐
-                  │   ecom-autobot-web (React + Vite)     │
-                  └──────────────────┬─────────────────────┘
-                                     │ HTTP / SSE (X-Tenant-ID + JWT)
-                                     ▼
-                  ┌────────────────────────────────────────┐
-                  │      ecom-autobot-api (FastAPI)        │
-                  └──────┬─────────────┬─────────────┬─────┘
-                         │             │             │
-        ┌────────────────▼──┐   ┌──────▼──────┐   ┌──▼───────────────┐
-        │ PostgreSQL + DB   │   │  RabbitMQ   │   │  Redis Pub/Sub   │
-        │ (SQLAlchemy Async)│   │ (aio-pika)  │   │  & Rate Limit    │
-        └───────────────────┘   └──────┬──────┘   └──────────────────┘
-                                       │
-                         ┌─────────────┴─────────────┐
-                         │      Worker Pool          │
-                         │  • ScraperWorker          │
-                         │  • ProcessorWorker (LLM)  │
-                         │  • ExporterWorker         │
-                         └───────────────────────────┘
+```text
+                               ┌────────────────────────────────────────┐
+                               │   ecom-autobot-web (React + Vite)     │
+                               └──────────────────┬─────────────────────┘
+                                                  │ HTTP / SSE (/api/v1, X-Tenant-ID, JWT)
+                                                  ▼
+                               ┌────────────────────────────────────────┐
+                               │    EcommerceBot.Core (API .NET 8)      │
+                               │  • Auth JWT & Multi-Tenancy            │
+                               │  • Dapper + SQL Server 2022            │
+                               │  • Mercado Pago (PIX / CC / Preapproval│
+                               │  • Shopify (GraphQL) & Nuvemshop (REST)│
+                               │  • MassTransit Producer/Consumer       │
+                               │  • Redis Cache, RateLimit & SSE Stream │
+                               └───────┬────────────────────────┬───────┘
+                                       │                        │
+                     ecommerce_raw_queue (RabbitMQ)             │ analytics_ml_queue
+                                       │                        │
+                                       ▼                        ▼
+                               ┌────────────────────────────────────────┐
+                               │  ecom-autobot-api (Python AI/ML Engine)│
+                               │  • ScraperWorker (JSON-LD + Markdown)  │
+                               │  • LLMEngineRouter (OpenRouter Fallback│
+                               │  • Scikit-Learn (RFM, Churn, LTV)      │
+                               │  • Telemetria de Tokens e Latência     │
+                               └────────────────────────────────────────┘
 ```
 
 ---
@@ -40,233 +48,94 @@ O **E-commerce Bot** é uma plataforma monorepo escalável para extração autom
 ```
 ecommerce-bot/
 ├── .agents/
-│   └── AGENTS.md               # Instruções e diretrizes universais para IAs
+│   ├── AGENTS.md               # Instruções e diretrizes universais para IAs (Fonte da Verdade)
+│   └── skills/                 # Skills customizadas (sqlserver-dba, production-security, etc.)
+├── Database.Migrations/        # 🔷 Projeto .NET 8 com DbUp para SQL Server 2022
+│   ├── Database.Migrations.csproj # Runner de migrações determinísticas
+│   ├── Program.cs              # Execução CLI/Startup com transações por script
+│   └── Scripts/                # DDL T-SQL idempotente (001 a 005)
+├── EcommerceBot.Core/          # ⚡ API Central em .NET 8 (C#) - Clean Architecture
+│   ├── EcommerceBot.Core.sln
+│   └── src/
+│       ├── EcommerceBot.Domain/         # Entidades, Enums e Interfaces
+│       ├── EcommerceBot.Application/    # Casos de Uso, DTOs, FluentValidation
+│       ├── EcommerceBot.Infrastructure/ # Dapper, MassTransit, Redis, Gateways
+│       └── EcommerceBot.Api/            # ASP.NET Core Web API (Controllers, Middlewares)
 ├── infra/                      # 🛠️ Infraestrutura e Deploy Dev/Prod
-│   ├── dev/                    # docker-compose.dev.yml, .env.dev.example (Postgres/Redis/RabbitMQ locais)
-│   └── prod/                   # docker-compose.prod.yml, .env.prod.example, Nginx (proxy SSE), deploy.sh (VPS)
-├── docker-compose.yml          # Atalho para infra/dev/docker-compose.dev.yml
-├── .env.example                # Template de variáveis de ambiente
-├── ecom-autobot-api/           # 🟢 Backend Python (FastAPI)
+│   ├── dev/                    # docker-compose.dev.yml, .env.dev.example (MSSQL, Redis, RabbitMQ)
+│   └── prod/                   # docker-compose.prod.yml, scripts de manutenção e backups (Cloudflare R2)
+├── .gitignore                  # Regras estritas de exclusão (bin/obj, .venv, node_modules, *.bak)
+├── ecom-autobot-api/           # 🐍 Microsserviço Python (AI & ML Engine)
 │   ├── app/
-│   │   ├── main.py             # Entrypoint FastAPI, Lifespan e inicializador dos Workers
-│   │   ├── core/               # Infraestrutura compartilhada
-│   │   │   ├── config/         # Settings (OpenRouter, Pydantic), Database, RabbitMQ, Redis
-│   │   │   ├── security/       # Auth JWT, AES-256 GCM (BYOK), Rate Limiter
-│   │   │   └── shared/         # Logger, CSV Exporter, Progress SSE Helper
-│   │   └── features/           # Módulos Funcionais DDD (Domain-Driven Design Architecture)
-│   │       ├── api_router.py   # Roteador central de v1 (/api/v1)
-│   │       ├── ai_enrichment/  # LLMEngineRouter, OpenRouterLLMProvider (DeepSeek/Llama/Gemini), Providers nativos, Schemas, Services
-│   │       ├── auth/           # Login, Register, Users, Blacklist (domain, infra, repo, schemas, services)
-│   │       ├── checkout/       # Mercado Pago Transparente, Pagamentos, Pedidos e Estornos (domain, infra, repo, schemas, services)
-│   │       ├── mercadopago/    # Cliente Async Mercado Pago, Dispatcher & Worker de Webhooks (domain, infra, schemas, services, workers)
-│   │       ├── nuvemshop/      # Client REST, OAuth & Sync Nuvemshop (infra, schemas, services)
-│   │       ├── plans/          # Gestão de Planos Locais e MP Preapproval (domain, infra, repo, schemas, services)
-│   │       ├── products/       # ProductModel, TenantConfigRepository, Schemas (domain, repositories, schemas)
-│   │       ├── scraper/        # Worker Pool, Parsers JSON-LD/LLM, Scraper Service (parsers, schemas, services, workers)
-│   │       ├── shopify/        # Client GraphQL (productSet), CSV Fallback, Sync (infra, schemas, services)
-│   │       ├── subscriptions/  # Assinaturas Recorrentes MP & Cache Redis (domain, infra, repo, schemas, services)
-│   │       └── system/         # Demo Stream (SSE), Health, Rate Limit, Discord Alerts (schemas, services)
-│   ├── alembic/                # Migrações de banco de dados
+│   │   ├── main.py             # Entrypoint e inicializador dos Workers (RabbitMQ)
+│   │   ├── ai/                 # OpenRouterLLMProvider, Tenacity Retries
+│   │   ├── scraper/            # ScraperWorker, JsonLdParser, MarkdownParser
+│   │   └── ml/                 # Modelos Scikit-Learn (RFM, Churn, LTV)
 │   ├── Dockerfile
 │   └── requirements.txt
 └── ecom-autobot-web/           # 🔵 Frontend Web SPA (React 18 + TypeScript + Vite + Tailwind CSS)
     ├── src/
-    │   ├── components/ui/      # Atomic Design System (display, feedback, form, navigation, overlay, Button)
-    │   ├── features/           # Módulos Funcionais DDD (Types -> Services -> Hooks -> UI Components)
-    │   │   ├── ai-keys/        # Gestão de credenciais de IA por Tenant (BYOK: OpenRouter, DeepSeek, Groq, OpenAI, Gemini)
-    │   │   ├── auth/           # Autenticação JWT, Login, Cadastro e Contexto Multi-Tenant (X-Tenant-ID)
-    │   │   ├── catalog/        # Central do Catálogo, Tabela de Produtos Enriquecidos, Filtros e Exportação
-    │   │   ├── checkout/       # Checkout Transparente MP (PIX QR Code/Copia e Cola e Cartão de Crédito)
-    │   │   ├── live-demo/      # Live Demo com progresso em tempo real do robô via SSE (sseClient)
-    │   │   ├── plans/          # Vitrine Pública de Planos e Painel Admin Mercado Pago Preapproval
-    │   │   ├── scraper/        # Formulário e Ingestão de Scraping de URLs de Produtos
-    │   │   └── subscription/   # Card de Faturamento Ativo do Tenant, Histórico de Assinaturas e CSV
-    │   ├── layouts/            # Layouts Globais (MainLayout com Sidebar Responsiva e Header Bar)
-    │   ├── lib/                # Client HTTP (apiClient Axios com JWT/X-Tenant-ID) e Client SSE (sseClient)
-    │   ├── routes/             # Roteamento Central React Router (/auth, /demo, /catalog, /subscriptions, /plans, /checkout)
-    │   └── utils/              # Utilitários de UI e Helpers (cn, errors, storage)
+    │   ├── components/ui/      # Atomic Design System
+    │   ├── features/           # Módulos Funcionais DDD
+    │   ├── layouts/            # MainLayout responsivo
+    │   └── lib/                # apiClient (Axios com JWT/X-Tenant-ID) e sseClient
     ├── package.json
     └── vite.config.ts
 ```
 
 ---
 
-## ⚙️ 3. Regras de Arquitetura Backend (`ecom-autobot-api`)
+## ⚙️ 3. Regras de Arquitetura Backend (.NET 8 & Python)
 
-### 🛠️ Tech Stack:
-- **Framework:** Python 3.10+ com **FastAPI** e `uvicorn`.
-- **ORMs / DB:** SQLAlchemy 2.0 Async (`asyncpg`) em PostgreSQL.
-- **Mensageria:** RabbitMQ via `aio-pika`.
-- **Gateway LLM & Resiliência:** **OpenRouter** com lista de fallback encadeada (`models: [...]`) e `tenacity` para retries com exponencial backoff.
-- **Cache & Pub/Sub:** Redis via `redis-py` assíncrono.
-- **Segurança:** Cryptography (`cryptography.hazmat`) para AES-256 GCM e PyJWT.
+### ⚡ EcommerceBot.Core (.NET 8 / C#)
+- **Framework:** ASP.NET Core Web API (.NET 8).
+- **Arquitetura:** Clean Architecture (Domain, Application, Infrastructure, Api) baseada em DDD.
+- **Acesso a Dados:** **Dapper** com `Microsoft.Data.SqlClient` chamando rotinas T-SQL e Views criadas pelo `Database.Migrations` (DbUp).
+- **Mensageria:** **MassTransit** (`MassTransit.RabbitMQ`) para publicação e consumo nas filas `ecommerce_raw_queue`, `ecommerce_processed_queue` e `analytics_ml_queue`.
+- **Criptografia e Multi-Tenancy:** 
+  - Todo request passa pelo `TenantHeaderMiddleware` requerendo `X-Tenant-ID`.
+  - Consultas Dapper obrigatoriamente incluem filtro por `TenantId`.
+  - Criptografia BYOK com `System.Security.Cryptography.AesGcm` (AES-256 GCM) no banco.
 
-### 🏛️ Estrutura Padrão Canônica de Feature Backend (Referência: `app/features/emails`):
-Todas as features backend DEVEM seguir estritamente esta estrutura de pastas e divisão de responsabilidades DDD:
-
-```
-app/features/<feature_name>/
-├── __init__.py                 # Ponto de entrada da feature. Exporta serviços, workers e instâncias singleton.
-├── router.py                   # Roteador FastAPI (APIRouter(prefix="/<feature>", tags=["..."])). Mapeia rotas e exceções HTTP.
-├── domain/                     # Regras de negócio puras e modelos de dados
-│   ├── __init__.py             # Re-exporta entidades e exceções
-│   ├── entities.py             # Modelos ORM SQLAlchemy Async, Enums, Mapped[...] e Índices de Tabela
-│   └── exceptions.py           # Exceções de domínio estritas herdando da exceção base <Feature>DomainException
-├── infrastructure/             # Gateway de Integração Externa (Resend, APIs externas, etc.)
-│   ├── __init__.py             # Re-exporta clientes de infraestrutura
-│   └── <gateway>_client.py     # Clientes HTTP/API assíncronos (httpx), resiliência e retries com tenacity
-├── repositories/               # Camada de Acesso a Dados e Persistência Assíncrona
-│   ├── __init__.py             # Re-exporta repositórios e instância singleton
-│   └── <feature>_repository.py # Acesso ao banco via AsyncSession (SQLAlchemy) com isolamento por tenant e métodos atômicos
-├── schemas/                    # DTOs Pydantic v2 (Validação e Serialização de Dados)
-│   ├── __init__.py             # Re-exporta todos os DTOs do pacote
-│   ├── <feature>_schemas.py    # DTOs para eventos de fila e respostas da API
-│   ├── <gateway>_schemas.py    # DTOs para requisições e respostas de APIs externas
-│   └── webhook_schemas.py      # DTOs para payload de Webhooks e verificação de assinaturas
-├── services/                   # Orquestração de Aplicação e Lógica de Negócio
-│   ├── __init__.py             # Re-exporta serviços de aplicação
-│   ├── <feature>_dispatcher.py # Produtor de mensagens assíncronas (RabbitMQ)
-│   ├── <feature>_service.py    # Lógica de aplicação/negócio
-│   └── webhook_service.py      # Processamento de Webhooks (Svix/HMAC, idempotência Redis 24h, transição de estado)
-├── templates/                  # (Opcional) Templates de e-mail / HTML (Jinja2)
-└── workers/                    # Consumidores de Fila em Segundo Plano
-    ├── __init__.py             # Re-exporta workers e instâncias singleton
-    └── <feature>_worker.py     # Worker RabbitMQ com buffer híbrido (lote + timeout), ACK/NACK manual e persistência no DB
-```
-
-
-### 🏢 Multi-Tenancy & Criptografia (BYOK - Bring Your Own Key):
-1. **Isolamento de Dados:** Cada consulta no repositório de produtos OU configurações DEVE conter o filtro por `tenant_id`. Chaves primárias/lógicas são compostas `(tenant_id, sku)`.
-2. **Validação por Header:** O header `X-Tenant-ID` é obrigatório em rotas protegidas e validado em `get_current_tenant_user` contra a lista de `tenants` permitidos no token JWT.
-3. **Criptografia AES-256 GCM:** Chaves de API dos clientes (OpenRouter, DeepSeek, Groq, OpenAI, Gemini, Tokens Shopify/Nuvemshop) NUNCA são salvas em texto puro. Elas usam `encrypt_api_key()` e `decrypt_api_key()` no módulo `app.core.security.crypto` utilizando a chave mestre `AES_MASTER_KEY`.
-4. **Resolução de Chave LLM (`LLMEngineRouter`):**
-   - O `LLMEngineRouter` busca primeiro a chave BYOK do tenant (`openrouter_api_key`) no PostgreSQL via `TenantConfigRepository`.
-   - Se a chave do tenant falhar com erro 401 (não autorizada) ou 402 (sem crédito), o serviço faz **fallback automático** para a chave mestre do sistema (`OPENROUTER_API_KEY`).
-
-### 🔄 Pipeline de Scraping & Enriquecimento de Dados (Worker Flow):
-1. **Disparo / Ingestão:** `POST /api/v1/scraper/extract` envia uma mensagem para a fila RabbitMQ (`ecommerce_prod` ou `ecommerce_demo`).
-2. **ScraperWorker:**
-   - Consome a mensagem da fila.
-   - **Estratégia 1 (Primary):** Tenta extrair metadados estruturados via `JsonLdParserService`.
-   - **Estratégia 2 (Fallback):** Se JSON-LD falhar ou vier sem título/descrição, aciona `MarkdownParserService` enviando o HTML/Markdown para LLM.
-   - Salva o produto no banco com estado `status = ProductStatus.RAW`.
-   - Gerencia contadores de falhas por domínio (`scraping_metadata`). Ao atingir 3 falhas consecutivas sem silenciamento, dispara webhook de alerta no Discord (`NotificationService`).
-3. **ProcessorWorker & LLMEngineRouter:**
-   - Worker contínuo de background que busca produtos em estado `RAW`.
-   - Altera status para `PROCESSING` e executa um timeout/cleanup para resetar jobs travados há mais de 10 minutos.
-   - Invoca `LLMService` e `LLMEngineRouter` para enriquecer título (foco em conversão), copywriting magnético e tags de SEO enviando a lista encadeada de modelos fallback ao OpenRouter:
-     1. `deepseek/deepseek-chat`
-     2. `meta-llama/llama-3.3-70b-instruct`
-     3. `google/gemini-flash-1.5`
-   - Salva no JSON `enrichment_metadata` do produto os dados de auditoria: `model_used`, `prompt_tokens`, `completion_tokens`, `total_tokens` e `response_time_ms`.
-   - Registra a telemetria com uso real de tokens no `TelemetryRepository`.
-   - Registra log estruturado: `[ProcessorWorker] Produto {sku} enriquecido com sucesso via {model_used} em {response_time_ms}ms`.
-   - Envia updates de progresso para o Redis Pub/Sub (canal `demo_progress`) se for requisição de demo.
-   - Atualiza o produto para `PROCESSED` ou `FAILED`.
+### 🐍 ecom-autobot-api (Python AI/ML Engine)
+- **Framework:** Python 3.10+ (FastAPI simplificado rodando `uvicorn` e Lifespan workers).
+- **Responsabilidades:** Apenas Inferência LLM, Scraping e Machine Learning. **Sem acesso ao Banco de Dados** — o estado é mantido pelo C# através do RabbitMQ.
+- **Módulos ML:** Uso de `scikit-learn`, `pandas`, e `numpy` para clusterização RFM, análise de Churn e projeção LTV.
 
 ---
 
-## 🎨 4. Regras de Arquitetura Frontend (`ecom-autobot-web`)
+### 🗄️ 4. Padrão Canônico SQL Server 2022 & DbUp (.NET 8)
 
-### 🛠️ Tech Stack:
-- **Framework:** React 18, TypeScript, Vite.
-- **Estilização:** Tailwind CSS + Vanilla CSS (sem utilitários genéricos arbitrários fora do padrão).
-- **Roteamento:** React Router DOM.
-- **Ícones:** `lucide-react`.
-
-### 🏗️ Padrão Arquitetural de Feature (Feature-Based Architecture):
-Todo módulo funcional em `src/features/<feature>/` DEVE seguir estritamente o fluxo em 4 camadas:
-1. **`types/` (`<feature>.type.ts`):** Definição de contratos TypeScript alinhados aos Schemas Pydantic / DTOs do backend.
-2. **`services/` (`<feature>.service.ts`):** Encapsulamento de chamadas HTTP utilizando o `apiClient` com tratamento de erros.
-3. **`hooks/` (`use<Feature>.ts`):** Hook customizado para gerenciar estado reativo, requisições, filtros e loading/error states.
-4. **`components/` & `pages/`:** Componentes de UI pura e páginas de visualização responsivas (Mobile-First).
-
-### 🧩 Módulos Funcionais do Frontend:
-1. **Autenticação & Multi-Tenancy (`src/features/auth`):**
-   - Autenticação via JWT (Bearer) com salvamento de tokens e tenant ativo no `localStorage`.
-   - Injeção automática dos headers `Authorization` e `X-Tenant-ID` no `apiClient`.
-2. **Central do Catálogo (`src/features/catalog`):**
-   - Visualização e gerenciamento de produtos com estados (`RAW`, `PROCESSING`, `PROCESSED`, `FAILED`).
-   - Exportação direta de catálogos para arquivos CSV, Shopify e Nuvemshop.
-3. **Demonstração em Tempo Real (`src/features/live-demo`):**
-   - Transmissão ao vivo de etapas de scraping e enriquecimento com IA usando `sseClient` (`GET /api/v1/demo/stream`).
-4. **Checkout Transparente Mercado Pago (`src/features/checkout`):**
-   - Aba **PIX**: Exibição de QR Code Base64, botão Copia e Cola com feedback visual ("Copiado!"), cronômetro de expiração em tempo real (`MM:SS`) e polling automático a cada 4s chamando `syncOrderStatus`.
-   - Aba **Cartão de Crédito**: Form transparente com mascaramento dinâmico de cartão (`0000 0000 0000 0000`), expiração (`MM/AA`), CVV, parcelamento em até 12x e identificação automática de bandeira.
-5. **Gestão de Planos (`src/features/plans`):**
-   - **Vitrine Pública (`PublicPlanCards`):** Cards responsivos com preços formatados em R$, badges de teste grátis e atalhos de contratação.
-   - **Painel Administrativo (`AdminPlanTable` & `AdminPlanModal`):** Gerenciamento e criação/edição de planos sincronizados com o Mercado Pago Preapproval.
-6. **Assinaturas & Faturamento (`src/features/subscription`):**
-   - Exibição da assinatura ativa do tenant (`SubscriptionBillingCard`), validade, valor recorrente e diálogo de confirmação de cancelamento.
-   - Tabela de histórico de assinaturas (`SubscriptionHistoryTable`) com badges coloridos (`authorized` = verde, `pending` = amarelo, `cancelled` = vermelho, `paused` = azul) e exportação para CSV.
-7. **Credenciais de IA / BYOK (`src/features/ai-keys`):**
-   - Modal para cadastro e atualização criptografada de chaves de API próprias por tenant (OpenRouter, DeepSeek, Groq, OpenAI, Gemini).
-8. **Web Scraper & Ingestão (`src/features/scraper`):**
-   - Formulário de disparo assíncrono de extração de produtos a partir de URLs de e-commerce.
-
-### 📱 Design System & Acessibilidade (WCAG):
-1. **Mobile-First:** Todo componente de formulário ou layout DEVE ser projetado primariamente para telas pequenas com adaptação para desktop.
-2. **Touch Targets:** Botões e áreas clicáveis DEVEM possuir altura/largura mínima de **44px** (`min-h-[44px]` ou `h-11`).
-3. **Prevenção de Auto-Zoom no iOS Safari:** Inputs, selects e textareas DEVEM possuir `font-size >= 16px` (`text-base` ou `text-sm sm:text-base`).
-4. **Respeito às APIs do Navegador:** Componentes DEVEM aceitar `forwardRef`, tratar acessibilidade com atributos ARIA (`aria-invalid`, `aria-describedby`, `aria-required`) e manipular estados `disabled`, `loading` e `error`.
-5. **Estilização Padronizada:** Utilização de Tailwind CSS combinada com o utilitário `cn` (`clsx` + `tailwind-merge`) importado de `@/utils/cn`.
-
-### 🔌 Comunicação com o Backend:
-- **Client HTTP (`src/lib/apiClient.ts`):** Envia o token JWT (Bearer) no header `Authorization` e o tenant atual no header `X-Tenant-ID`.
-- **Client SSE (`src/lib/sseClient.ts`):** Ouve eventos em tempo real transmitidos pelo endpoint `GET /api/v1/demo/stream` para atualizar barras de progresso e visualizações do robô.
+Consulte a skill [`sqlserver-dba`](file:///c:/Users/digob/Desktop/ecommerce-bot/.agents/skills/sqlserver-dba/SKILL.md):
+1. **Versionamento com DbUp:** Todos os scripts residem em `Database.Migrations/Scripts/` (`NNN_Nome_Do_Script.sql`). Scripts DDL DEVEM ser idempotentes (`IF NOT EXISTS...`).
+2. **Isolamento Multi-Tenant:** Coluna `TenantId UNIQUEIDENTIFIER NOT NULL` nas tabelas transacionais. IDs primários usam `NEWSEQUENTIALID()`.
+3. **Índices:** Uso estrito de índices compostos e de cobertura (ex: `Orders (TenantId, CreatedAt DESC) INCLUDE (...)`).
+4. **Agent & Ola Hallengren:** Limite de 2560 MB no SQL Server. Manutenção ativa via jobs do Ola Hallengren e DMVs customizadas (`vw_Monitor_TopQueries`).
 
 ---
 
-## 🚨 5. Diretrizes Fundamentais para a Inteligência Artificial
+### ☁️ 5. Política de Backups & Resiliência (Cloudflare R2)
 
-Ao interagir ou gerar código neste repositório, a IA DEVE seguir estas diretrizes:
-
-1. **Arquitetura DDD (Domain-Driven Design):** Cada feature em `app/features/<feature>/` é dividida em subpastas (`domain/`, `infrastructure/`, `repositories/`, `schemas/`, `services/`, `workers/`, `parsers/`). Sempre consulte os DTOs Pydantic na subpasta `schemas/` e os modelos SQLAlchemy na subpasta `domain/` (ou exportados via `__init__.py` da feature) antes de alterar APIs ou queries.
-2. **Código Assíncrono:** No backend, NUNCA use chamadas bloqueantes síncronas. Utilize `async def`, `httpx.AsyncClient`, `AsyncSession` e `await` em Redis e RabbitMQ.
-3. **Arquitetura Modular (Feature-Based):** Mantenha o isolamento dos módulos no backend e no frontend (`Types -> Services -> Hooks -> UI Components`). Novas rotas devem ser incluídas no respectivo router.
-4. **Sem Patches Superficiais de Sintoma:** Se um erro ocorrer em um worker ou rota, resolva a causa raiz da falha em vez de ocultar com `try/except` silencioso ou retornos vazios falsos.
-5. **Verificação Runtime:** NUNCA considere uma tarefa concluída sem testar a compilação/execução do código (`python -m app.main` ou `npm run build / npm run dev`).
-6. **Modularidade e Limite de Linhas (Anti-Monólito):** Mantenha arquivos com responsabilidade única (SRP) e tamanho saudável entre **100 e 300 linhas**. Se um arquivo se aproximar de 300-350 linhas, fatie proativamente por domínio (extraindo custom hooks, subcomponentes, DTOs ou classes de serviço) antes de adicionar novas funcionalidades, prevenindo degradação de atenção (*Lost in the Middle*) e alucinações de LLM.
-7. **Densidade de Sinal & Zero-Fluff (Token Economy):** Elimine preâmbulos conversacionais vazios e sanitize saídas de comandos e logs, focando o contexto estritamente em código, decisões técnicas e diffs cirúrgicos.
-8. **Análise de Raio de Impacto (Blast Radius):** Antes de alterar ou remover métodos, props ou DTOs, mapeie deterministamente todos os nós consumidores na cadeia Full-Stack (`Model -> Schema -> Repo -> Service -> Router -> Frontend Service -> Hook -> Component`).
+1. **Rotina Diária:** Script `backup_sqlserver_r2.sh` rodando via cron.
+2. **Backup Nativo SQL Server:** `WITH COMPRESSION, CHECKSUM, INIT` dos bancos `EcommerceBotDb`, `master`, `msdb`.
+3. **Sincronização Cloudflare R2:** Upload via `rclone` (com fallback AWS CLI/Boto3) + Alertas Discord.
+4. **Housekeeping:** Remoção local em 2 dias (`find ... -mtime +2 -delete`).
 
 ---
 
-## 🧩 6. Engenharia de Contexto & Diretriz Anti-Monólito (Clean Code)
+### 🎨 6. Regras de Arquitetura Frontend (`ecom-autobot-web`)
 
-Para evitar a degradação de contexto das IAs (*Lost in the Middle*) e alucinações decorrentes de compactação de histórico:
-
-### 📏 Limites Operacionais de Linhas por Arquivo:
-- **Teto Saudável Recomendado:** Entre **100 e 300 linhas** por arquivo.
-- **Teto Máximo Tolerado:** **350 linhas** (apenas para arquivos de schemas agregados ou rotas extensas).
-- **Proibição de Monólitos:** NUNCA crie ou permita o crescimento de arquivos com 500+ ou 1.000+ linhas contendo lógicas misturadas (ex.: componente React contendo JSX, chamadas de API, transformações de dados e modais no mesmo arquivo).
-
-### ✂️ Como Modularizar Corretamente (Evitando o *Ravioli Code*):
-A modularização deve respeitar o **domínio e a coesão arquitetural**, e não ser um corte mecânico cego:
-1. **Frontend:**
-   - Se uma página crescer: Extraia o estado e requisições para um **Custom Hook** (`hooks/use<Feature>.ts`).
-   - Se o JSX for longo: Isole cards, tabelas, toolbars e modais em subcomponentes puros (`components/<SubComponent>.tsx`).
-   - Se houver formulários complexos: Isole a validação e formatação em funções utilitárias ou schemas Zod/Types.
-2. **Backend:**
-   - Se um serviço crescer: Separe a orquestração (`<feature>_service.py`), disparo assíncrono (`<feature>_dispatcher.py`) e parsing/gateways (`infrastructure/`).
-   - Se queries ficarem extensas: Isole filtros e aggregations em métodos dedicados no repositório (`repositories/<feature>_repository.py`).
+- **Contratos da API:** O Frontend aponta para `/api/v1/...` no backend C#, que mantém total paridade com os endpoints originais para evitar breaking changes.
+- **Padrão em 4 Camadas:** `Types -> Services -> Hooks -> UI Components`.
+- **Mobile-First:** Touch Targets com altura mínima de 44px (`min-h-[44px]`). Sem Auto-Zoom no iOS (`font-size >= 16px`).
+- **Clients:** `apiClient.ts` (Axios com interceptors JWT/Tenant) e `sseClient.ts` (EventSource para SSE).
 
 ---
 
-## ⚡ 7. Densificação de Contexto & Economia de Tokens (I/O Filtering)
+### 🚨 7. Diretrizes Fundamentais para Agentes de IA
 
-Para manter a janela de contexto limpa e eficiente durante tarefas de longa duração:
-1. **Resumos Cirúrgicos de Ferramentas:** Ao executar comandos ou scripts, resuma logs massivos reportando apenas `Status + Tempo + Erros/Alertas específicos`.
-2. **Leitura com Janela Delimitada:** Prefira `view_file` com `StartLine` e `EndLine` para carregar apenas as funções sob escopo, em vez de despejar arquivos inteiros no prompt.
-3. **Comunicação de Alto Sinal:** Vá direto ao ponto técnico. Explicações devem focar nas regras de negócio e contratos de segurança, omitindo saudações e enrolações vazias.
-
----
-
-## 🕸️ 8. Grafo de Dependências & Raio de Impacto (Blast Radius)
-
-Para evitar quebras silenciosas e bugs em cascata durante refatorações:
-1. **Rastreamento Determinístico:** Antes de renomear ou modificar uma prop, rota ou DTO, execute uma busca por todos os consumidores (`grep_search`).
-2. **Propagação Sincronizada:** Nunca altere a assinatura de um método na camada de dados sem atualizar imediatamente o serviço, roteador, tipagem TypeScript no frontend e componentes que o consomem.
-3. **Validação Cruzada de Compilação:** Após alterações em contratos, valide sempre a compilação completa do frontend (`npm run build`) e backend (`py_compile`).
-
-
+1. **Modularidade (Anti-Monólito):** Mantenha arquivos menores que 300 linhas aplicando Single Responsibility Principle (SRP).
+2. **Código Assíncrono:** No .NET, use `Task`, `async/await` e `IDbConnection.QueryAsync`. No Python, use `async def`, `httpx.AsyncClient` e `aio-pika`.
+3. **Densidade de Sinal:** Elimine preâmbulos vazios e formate respostas curtas.
+4. **Análise de Raio de Impacto:** Valide a cadeia inteira de dados (`UI Component -> Hook -> .NET API Controller -> .NET MediatR/Service -> Dapper Repo -> SQL Server` + `RabbitMQ -> Python Worker`) antes de quebrar contratos.
+5. **Verificação Runtime:** NUNCA considere uma tarefa concluída sem testar a compilação (`dotnet build`, `npm run build`).

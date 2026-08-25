@@ -1,0 +1,86 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Dapper;
+using EcommerceBot.Domain.Entities;
+using EcommerceBot.Domain.Interfaces;
+
+namespace EcommerceBot.Infrastructure.Repositories;
+
+public class ProductRepository : IProductRepository
+{
+    private readonly IDbConnectionFactory _connectionFactory;
+
+    public ProductRepository(IDbConnectionFactory connectionFactory)
+    {
+        _connectionFactory = connectionFactory;
+    }
+
+    public async Task<Product?> GetBySkuAsync(Guid tenantId, string sku)
+    {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        
+        const string sql = """
+            SELECT * FROM dbo.Products 
+            WHERE TenantId = @TenantId AND Sku = @Sku
+        """;
+
+        return await connection.QueryFirstOrDefaultAsync<Product>(sql, new { TenantId = tenantId, Sku = sku });
+    }
+
+    public async Task<IEnumerable<Product>> GetProductsAsync(Guid tenantId, int page, int pageSize)
+    {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        
+        // Leveraging the covering index created in 002_Products_And_Catalog.sql
+        const string sql = """
+            SELECT * FROM dbo.Products 
+            WHERE TenantId = @TenantId
+            ORDER BY CreatedAt DESC
+            OFFSET @Offset ROWS
+            FETCH NEXT @PageSize ROWS ONLY
+        """;
+
+        var offset = (page - 1) * pageSize;
+        return await connection.QueryAsync<Product>(sql, new { TenantId = tenantId, Offset = offset, PageSize = pageSize });
+    }
+
+    public async Task<Guid> AddAsync(Product product)
+    {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        
+        const string sql = """
+            INSERT INTO dbo.Products (
+                Id, TenantId, Sku, Title, Description, OriginalPrice, Price, 
+                Category, Brand, StockQuantity, Status, SourceUrl, ImagesJson, 
+                EnrichmentMetadata, ErrorMessage, CreatedAt, UpdatedAt
+            )
+            OUTPUT INSERTED.Id
+            VALUES (
+                @Id, @TenantId, @Sku, @Title, @Description, @OriginalPrice, @Price, 
+                @Category, @Brand, @StockQuantity, @Status, @SourceUrl, @ImagesJson, 
+                @EnrichmentMetadata, @ErrorMessage, SYSDATETIMEOFFSET(), SYSDATETIMEOFFSET()
+            )
+        """;
+
+        if (product.Id == Guid.Empty)
+            product.Id = Guid.NewGuid();
+
+        return await connection.ExecuteScalarAsync<Guid>(sql, product);
+    }
+
+    public async Task UpdateStatusAsync(Guid tenantId, string sku, string status, string? metadata = null)
+    {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        
+        const string sql = """
+            UPDATE dbo.Products 
+            SET Status = @Status,
+                EnrichmentMetadata = COALESCE(@Metadata, EnrichmentMetadata),
+                UpdatedAt = SYSDATETIMEOFFSET()
+            WHERE TenantId = @TenantId AND Sku = @Sku
+        """;
+
+        await connection.ExecuteAsync(sql, new { TenantId = tenantId, Sku = sku, Status = status, Metadata = metadata });
+    }
+}

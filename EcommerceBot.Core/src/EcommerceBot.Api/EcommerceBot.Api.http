@@ -1,0 +1,6 @@
+@EcommerceBot.Api_HostAddress = http://localhost:5183
+
+GET {{EcommerceBot.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
