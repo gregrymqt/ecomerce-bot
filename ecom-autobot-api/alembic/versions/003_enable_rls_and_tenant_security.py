@@ -24,12 +24,13 @@ TENANT_TABLES = [
 def upgrade() -> None:
     # 1. Habilita RLS e aplica regras de isolamento para tabelas baseadas em tenant_id
     for table in TENANT_TABLES:
-        # Ativa Row Level Security
-        op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
-        op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
+        # Ativa Row Level Security (DDL estático em allowlist controlada)
+        op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")  # nosemgrep: python.lang.security.audit.formatted-sql-query.formatted-sql-query, python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
+        op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")   # nosemgrep: python.lang.security.audit.formatted-sql-query.formatted-sql-query, python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
 
         # Política: Garante acesso apenas quando tenant_id for igual à variável de sessão 'app.current_tenant'
-        op.execute(f"""
+        op.execute(  # nosemgrep: python.lang.security.audit.formatted-sql-query.formatted-sql-query, python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
+            f"""
             CREATE POLICY tenant_isolation_{table}_policy ON {table}
             FOR ALL
             USING (
@@ -42,7 +43,8 @@ def upgrade() -> None:
                 OR current_setting('role', true) = 'postgres'
                 OR current_setting('role', true) = 'service_role'
             );
-        """)
+        """
+        )
 
     # 2. Política RLS Especial para checkout_order_items (Vinculado por FK à checkout_orders)
     op.execute("ALTER TABLE checkout_order_items ENABLE ROW LEVEL SECURITY;")
@@ -66,5 +68,5 @@ def downgrade() -> None:
     op.execute("ALTER TABLE checkout_order_items DISABLE ROW LEVEL SECURITY;")
 
     for table in TENANT_TABLES:
-        op.execute(f"DROP POLICY IF EXISTS tenant_isolation_{table}_policy ON {table};")
-        op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")
+        op.execute(f"DROP POLICY IF EXISTS tenant_isolation_{table}_policy ON {table};")  # nosemgrep: python.lang.security.audit.formatted-sql-query.formatted-sql-query, python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
+        op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")  # nosemgrep: python.lang.security.audit.formatted-sql-query.formatted-sql-query, python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query

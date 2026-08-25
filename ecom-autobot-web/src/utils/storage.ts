@@ -10,7 +10,7 @@ export const setLocalStorage = <T>(key: string, value: T): void => {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (e) {
-    console.error(`Erro ao armazenar "${key}" no localStorage:`, e);
+    console.error('Erro ao armazenar item no localStorage:', key, e);
   }
 };
 
@@ -23,7 +23,7 @@ export const getLocalStorage = <T>(key: string): T | null => {
     const value = localStorage.getItem(key);
     return value ? (JSON.parse(value) as T) : null;
   } catch (e) {
-    console.error(`Erro ao buscar "${key}" no localStorage:`, e);
+    console.error('Erro ao buscar item no localStorage:', key, e);
     return null;
   }
 };
@@ -36,7 +36,7 @@ export const deleteLocalStorage = (key: string): void => {
   try {
     localStorage.removeItem(key);
   } catch (e) {
-    console.error(`Erro ao deletar "${key}" do localStorage:`, e);
+    console.error('Erro ao deletar item do localStorage:', key, e);
   }
 };
 

@@ -32,6 +32,12 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copia os arquivos estáticos compilados do estágio de build
 COPY --from=builder /app/dist /usr/share/nginx/html
 
+# Ajusta permissões para execução segura com usuário não-root (Least Privilege)
+RUN touch /var/run/nginx.pid && \
+    chown -R nginx:nginx /var/run/nginx.pid /usr/share/nginx/html /var/cache/nginx /var/log/nginx /etc/nginx/conf.d
+
+USER nginx
+
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]

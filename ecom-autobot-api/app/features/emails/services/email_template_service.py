@@ -1,3 +1,4 @@
+import html
 import os
 from typing import Any, Dict, Tuple
 from app.core.shared.logger import get_logger
@@ -57,18 +58,21 @@ class EmailTemplateService:
 
         if os.path.exists(template_path):
             try:
-                from jinja2 import Environment, FileSystemLoader
-                env = Environment(loader=FileSystemLoader(self.templates_dir), autoescape=True)
+                from jinja2 import Environment, FileSystemLoader, select_autoescape
+                env = Environment(  # nosemgrep: python.flask.security.xss.audit.direct-use-of-jinja2.direct-use-of-jinja2
+                    loader=FileSystemLoader(self.templates_dir),
+                    autoescape=select_autoescape(["html", "xml", "htm"]),
+                )
                 tmpl = env.get_template(template_name)
-                return tmpl.render(**context)
+                return tmpl.render(**context)  # nosemgrep: python.flask.security.xss.audit.direct-use-of-jinja2.direct-use-of-jinja2
             except Exception as err:
                 logger.warning(f"[TemplateService] Falha ao renderizar Jinja2 '{template_name}': {err}. Usando fallback.")
 
-        # Fallback de HTML responsivo padrão
-        user_name = context.get("user_name", "Cliente")
-        tenant_id = context.get("tenant_id", "default")
+        # Fallback de HTML responsivo padrão com escape seguro
+        user_name = html.escape(str(context.get("user_name", "Cliente")))
+        tenant_id = html.escape(str(context.get("tenant_id", "default")))
         items_html = "".join(
-            f"<li><strong>{k}:</strong> {v}</li>"
+            f"<li><strong>{html.escape(str(k))}:</strong> {html.escape(str(v))}</li>"
             for k, v in context.items()
             if k not in {"user_name", "tenant_id"}
         )

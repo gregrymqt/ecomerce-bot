@@ -119,11 +119,14 @@ async def set_db_tenant_context(session: AsyncSession, tenant_id: str) -> None:
     """
     Define a variável de sessão 'app.current_tenant' na conexão ativa do PostgreSQL.
     Isso ativa o filtro nativo das políticas de Row Level Security (RLS).
+    Utiliza set_config parametrizado para garantir proteção contra SQL Injection.
     """
     if tenant_id:
-        # Sanitização básica para evitar SQL Injection em variáveis de sessão
-        clean_tenant = tenant_id.strip().replace("'", "")
-        await session.execute(text(f"SET LOCAL app.current_tenant = '{clean_tenant}';"))
+        clean_tenant = str(tenant_id).strip()
+        await session.execute(
+            text("SELECT set_config('app.current_tenant', :tenant_id, true);"),
+            {"tenant_id": clean_tenant},
+        )
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

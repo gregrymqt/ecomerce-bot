@@ -12,6 +12,7 @@ export const JsonLd: React.FC<JsonLdProps> = ({ data }) => {
   return (
     <script
       type="application/ld+json"
+      // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml
       dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, '\\u003c') }}
     />
   );
