@@ -1,0 +1,22 @@
+# Agent Dev Tooling & Vendor Skill Scripts
+.agents/
+.gemini/
+.vscode/
+
+# Node & Build artifacts
+node_modules/
+dist/
+dist-ssr/
+build/
+
+# Python Virtual Environments & Caches
+.venv/
+venv/
+env/
+__pycache__/
+.pytest_cache/
+htmlcov/
+
+# Temporary / Scratch
+scratch/
+*.min.js

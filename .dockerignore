@@ -1,0 +1,47 @@
+# Git & VCS
+.git/
+.gitignore
+.github/
+
+# Agent Dev Tooling & Skills (Do not ship to production containers)
+.agents/
+.gemini/
+.vscode/
+.idea/
+
+# Environment files & Secret vaults
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Node / Frontend build artifacts
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+
+# Temporary files, artifacts & docs
+scratch/
+*.md
+!README.md
+*.log
+*.sqlite3
+*.tmp
