@@ -38,11 +38,13 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ITenantAiCredentialRepository, TenantAiCredentialRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IEnterpriseLeadRepository, EnterpriseLeadRepository>();
+builder.Services.AddScoped<IMeteringRepository, MeteringRepository>();
 
 // Serviços de Aplicação
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 builder.Services.AddScoped<IEnterpriseLeadService, EnterpriseLeadService>();
+builder.Services.AddScoped<IMeteringService, MeteringService>();
 
 // Gateways de E-commerce
 builder.Services.AddHttpClient<IEcommerceGateway, ShopifyGateway>();
