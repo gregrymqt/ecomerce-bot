@@ -217,7 +217,8 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
                             onClick={() => onRegenerateAiTitle(product)}
                             disabled={isRegenerating}
                             title="Re-gerar Título com IA"
-                            className="text-violet-400 hover:text-violet-300 hover:bg-violet-950/50 p-2"
+                            aria-label={`Re-gerar título com IA para o produto ${product.sku}`}
+                            className="text-violet-400 hover:text-violet-300 hover:bg-violet-950/50 min-h-[44px] min-w-[44px] p-2.5 focus-visible:ring-2 focus-visible:ring-violet-500"
                           >
                             {isRegenerating ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
@@ -256,7 +257,8 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
                             size="sm"
                             onClick={() => onEditProduct(product)}
                             title="Editar Copy / Produto"
-                            className="text-slate-300 hover:text-violet-300 hover:bg-violet-950/40 p-2"
+                            aria-label={`Editar produto ${product.sku}`}
+                            className="text-slate-300 hover:text-violet-300 hover:bg-violet-950/40 min-h-[44px] min-w-[44px] p-2.5 focus-visible:ring-2 focus-visible:ring-violet-500"
                           >
                             <Edit3 className="w-4 h-4" />
                           </Button>
@@ -269,7 +271,8 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
                             onClick={() => onSyncProduct(product)}
                             disabled={isSyncing}
                             title="Sincronizar com Plataforma"
-                            className="text-slate-300 hover:text-emerald-300 hover:bg-emerald-950/40 p-2"
+                            aria-label={`Sincronizar produto ${product.sku} com plataforma`}
+                            className="text-slate-300 hover:text-emerald-300 hover:bg-emerald-950/40 min-h-[44px] min-w-[44px] p-2.5 focus-visible:ring-2 focus-visible:ring-emerald-500"
                           >
                             {isSyncing ? (
                               <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
@@ -286,7 +289,8 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
                             onClick={() => onDeleteProduct(product.sku)}
                             disabled={isDeleting}
                             title="Excluir Produto"
-                            className="text-slate-400 hover:text-red-400 hover:bg-red-950/40 p-2"
+                            aria-label={`Excluir produto ${product.sku}`}
+                            className="text-slate-400 hover:text-red-400 hover:bg-red-950/40 min-h-[44px] min-w-[44px] p-2.5 focus-visible:ring-2 focus-visible:ring-red-500"
                           >
                             {isDeleting ? (
                               <Loader2 className="w-4 h-4 animate-spin text-red-400" />

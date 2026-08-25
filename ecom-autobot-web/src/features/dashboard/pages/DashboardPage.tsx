@@ -21,6 +21,7 @@ import { VolumePerformanceChart } from '@/features/dashboard';
 import { RecentActivityTable } from '@/features/dashboard';
 import { TokenTelemetryCard } from '@/features/dashboard';
 import { SystemHealthWidget } from '@/features/dashboard';
+import { Button } from '@/components/ui/Button';
 import { SEO } from '@/components/common/SEO';
 
 export const DashboardPage: React.FC = () => {
@@ -44,9 +45,9 @@ export const DashboardPage: React.FC = () => {
         description="Painel de controle do E-Commerce AutoBot. Acompanhe métricas de ingestão, uso de tokens de IA e saúde do sistema."
       />
       {/* Cabeçalho da Página */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1E293B] pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-violet-400 mb-1">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-400 mb-1">
             <LayoutDashboard className="h-4 w-4" />
             <span>Painel Principal & Telemetria IA</span>
           </div>
@@ -60,23 +61,27 @@ export const DashboardPage: React.FC = () => {
 
         {/* Ações Rápidas no Header (min-h-[44px]) */}
         <div className="flex flex-wrap items-center gap-3">
-          <button
+          <Button
             type="button"
+            variant="primary"
+            size="md"
             onClick={() => navigate('/demo')}
-            className="min-h-[44px] h-11 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs sm:text-sm transition-all shadow-lg shadow-violet-600/20 flex items-center gap-2 cursor-pointer"
+            iconLeft={<Zap className="h-4 w-4" />}
+            className="min-h-[44px]"
           >
-            <Zap className="h-4 w-4" />
-            <span>Novo Scraping</span>
-          </button>
+            Novo Scraping
+          </Button>
 
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="md"
             onClick={() => navigate('/catalog')}
-            className="min-h-[44px] h-11 px-4 rounded-xl bg-[#15121B] hover:bg-[#1E293B] border border-[#1E293B] text-slate-200 text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer"
+            iconLeft={<Download className="h-4 w-4 text-emerald-400" />}
+            className="min-h-[44px] border-slate-800 text-slate-200 hover:bg-slate-800/80"
           >
-            <Download className="h-4 w-4 text-emerald-400" />
-            <span>Exportar Catálogo</span>
-          </button>
+            Exportar Catálogo
+          </Button>
         </div>
       </div>
 

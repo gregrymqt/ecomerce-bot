@@ -12,6 +12,7 @@ import { IntegrationKpiGrid } from '@/features/integrations';
 import { ShopifyCard } from '@/features/integrations';
 import { NuvemshopCard } from '@/features/integrations';
 import { ShopifyCredentialsModal } from '@/features/integrations';
+import { Button } from '@/components/ui/Button';
 
 export const IntegrationsPage: React.FC = () => {
   const {
@@ -36,9 +37,9 @@ export const IntegrationsPage: React.FC = () => {
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-16 px-4 sm:px-6">
       {/* Cabeçalho da Página */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#1E293B] pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-violet-400 mb-1">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-400 mb-1">
             <LinkIcon className="h-4 w-4" />
             <span>Ecossistema Multi-Store</span>
           </div>
@@ -51,14 +52,16 @@ export const IntegrationsPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
-          <button
+          <Button
             type="button"
+            variant="primary"
+            size="md"
             onClick={() => setIsShopifyModalOpen(true)}
-            className="min-h-[44px] h-11 px-5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-sm transition-all shadow-lg shadow-violet-600/20 flex items-center gap-2 cursor-pointer"
+            iconLeft={<Plus className="h-4 w-4" />}
+            className="min-h-[44px]"
           >
-            <Plus className="h-4 w-4" />
-            <span>Adicionar Nova Loja</span>
-          </button>
+            Adicionar Nova Loja
+          </Button>
         </div>
       </div>
 

@@ -164,48 +164,54 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
       {/* Header do Card com Título e Filtros (Pills) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2">
-          <div className="p-2 bg-[#a078ff]/10 text-[#d0bcff] rounded-lg border border-[#a078ff]/20">
-            <History className="w-5 h-5 text-[#a078ff]" />
+          <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20">
+            <History className="w-5 h-5 text-indigo-400" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-[#e7e0ed]">
+            <h3 className="text-base font-bold text-white">
               Histórico de Movimentações
             </h3>
-            <p className="text-xs text-[#978e9e]">Extrato detalhado de recargas e usos de créditos</p>
+            <p className="text-xs text-slate-400">Extrato detalhado de recargas e usos de créditos</p>
           </div>
         </div>
 
         {/* Filtros em formato de Pills */}
-        <div className="flex items-center gap-1.5 p-1 bg-[#25212e] border border-[#3c3647] rounded-lg self-start sm:self-auto">
+        <div role="tablist" aria-label="Filtros de transação" className="flex items-center gap-1.5 p-1 bg-slate-900 border border-slate-800 rounded-lg self-start sm:self-auto">
           <button
             type="button"
+            role="tab"
+            aria-selected={activeFilter === 'ALL'}
             onClick={() => onFilterChange('ALL')}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all min-h-[36px] cursor-pointer ${
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all min-h-[44px] sm:min-h-[36px] flex items-center justify-center cursor-pointer focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none ${
               activeFilter === 'ALL'
-                ? 'bg-[#a078ff] text-white shadow-xs'
-                : 'text-[#978e9e] hover:text-[#e7e0ed] hover:bg-[#342f3d]/50'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             }`}
           >
             Todas
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={activeFilter === 'RECHARGE'}
             onClick={() => onFilterChange('RECHARGE')}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all min-h-[36px] cursor-pointer ${
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all min-h-[44px] sm:min-h-[36px] flex items-center justify-center cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none ${
               activeFilter === 'RECHARGE'
                 ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-[#978e9e] hover:text-emerald-400 hover:bg-[#342f3d]/50'
+                : 'text-slate-400 hover:text-emerald-400 hover:bg-slate-800/60'
             }`}
           >
             Recargas (+)
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={activeFilter === 'USAGE'}
             onClick={() => onFilterChange('USAGE')}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all min-h-[36px] cursor-pointer ${
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all min-h-[44px] sm:min-h-[36px] flex items-center justify-center cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none ${
               activeFilter === 'USAGE'
                 ? 'bg-rose-600 text-white shadow-xs'
-                : 'text-[#978e9e] hover:text-rose-400 hover:bg-[#342f3d]/50'
+                : 'text-slate-400 hover:text-rose-400 hover:bg-slate-800/60'
             }`}
           >
             Consumos (-)
@@ -221,14 +227,14 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
           keyExtractor={(tx) => tx.id}
           isLoading={loading}
           emptyMessage="Suas transações de recarga e consumo de créditos aparecerão listadas aqui."
-          emptyIcon={<Inbox className="w-6 h-6 text-[#978e9e]" />}
-          className="border-[#383344] bg-[#1a1721]/50 text-[#e7e0ed]"
+          emptyIcon={<Inbox className="w-6 h-6 text-slate-400" />}
+          className="border-slate-800 bg-slate-950/50 text-slate-100"
         />
       </div>
 
       {/* Paginação */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-        <span className="text-xs text-[#978e9e]">{getPaginationInfo()}</span>
+        <span className="text-xs text-slate-400">{getPaginationInfo()}</span>
 
         <div className="flex items-center gap-2">
           <button
@@ -236,12 +242,12 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
             disabled={currentPage <= 1 || loading}
             onClick={() => onPageChange(currentPage - 1)}
             aria-label="Página Anterior"
-            className="flex items-center justify-center p-2 rounded-lg border border-[#3c3647] bg-[#25212e] text-[#e7e0ed] hover:bg-[#342f3d] disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[38px] min-w-[38px] cursor-pointer"
+            className="flex items-center justify-center p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-200 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] min-w-[44px] cursor-pointer focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
 
-          <span className="text-xs font-semibold text-[#e7e0ed] px-2 font-mono">
+          <span className="text-xs font-semibold text-slate-200 px-2 font-mono">
             {currentPage} / {totalPages}
           </span>
 
@@ -250,7 +256,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
             disabled={currentPage >= totalPages || loading}
             onClick={() => onPageChange(currentPage + 1)}
             aria-label="Próxima Página"
-            className="flex items-center justify-center p-2 rounded-lg border border-[#3c3647] bg-[#25212e] text-[#e7e0ed] hover:bg-[#342f3d] disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[38px] min-w-[38px] cursor-pointer"
+            className="flex items-center justify-center p-2 rounded-lg border border-slate-800 bg-slate-900 text-slate-200 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] min-w-[44px] cursor-pointer focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
           >
             <ChevronRight className="w-4 h-4" />
           </button>

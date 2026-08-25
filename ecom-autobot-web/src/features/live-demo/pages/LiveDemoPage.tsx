@@ -21,57 +21,56 @@ export const LiveDemoPage: React.FC = () => {
   const isWorking = status === 'connecting' || status === 'simulating';
 
   return (
-    <div className="min-h-screen bg-[#090D16] text-white flex flex-col selection:bg-purple-500 selection:text-white pb-32">
+    <div className="w-full max-w-7xl mx-auto space-y-12 animate-in fade-in duration-300 pb-12">
       <SEO
         title="Demonstração em Tempo Real"
         description="Assista ao robô extraindo e enriquecendo títulos e descrições de e-commerce ao vivo via Server-Sent Events."
       />
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 space-y-12 flex-1 w-full">
-        {/* Hero Section */}
-        <section className="text-center space-y-4 max-w-4xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-purple-950/60 text-purple-300 border border-purple-500/30 shadow-lg backdrop-blur-md">
-            <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
-            <span>ENGENHO DE AUTOMAÇÃO EM TEMPO REAL</span>
-          </div>
+      {/* Hero Section */}
+      <section className="text-center space-y-4 max-w-4xl mx-auto">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-indigo-950/60 text-indigo-300 border border-indigo-500/30 shadow-lg backdrop-blur-md">
+          <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
+          <span>ENGENHO DE AUTOMAÇÃO EM TEMPO REAL</span>
+        </div>
 
-          <h1 className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-purple-300 tracking-tight leading-tight">
-            Veja a IA Extraindo e Enriquecendo Produtos em Tempo Real
-          </h1>
+        <h1 className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-indigo-300 tracking-tight leading-tight">
+          Veja a IA Extraindo e Enriquecendo Produtos em Tempo Real
+        </h1>
 
-          <p className="text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
-            Transforme URLs brutas da Shopify, Nuvemshop ou Mercado Livre em títulos magnéticos de alta conversão, descrições persuasivas e SEO impecável em segundos.
-          </p>
+        <p className="text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
+          Transforme URLs brutas da Shopify, Nuvemshop ou Mercado Livre em títulos magnéticos de alta conversão, descrições persuasivas e SEO impecável em segundos.
+        </p>
 
-          <div className="pt-4">
-            <DemoHeroInput onSubmit={startExtraction} isLoading={isWorking} />
-          </div>
-        </section>
+        <div className="pt-4">
+          <DemoHeroInput onSubmit={startExtraction} isLoading={isWorking} />
+        </div>
+      </section>
 
-        {/* Workspace de 2 Colunas (Terminal SSE + Preview Card) */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-purple-400" />
-              <h2 className="text-lg font-bold text-white">Workspace de Transmissão</h2>
-              {targetUrl && (
-                <span className="text-xs font-mono text-slate-400 truncate max-w-md hidden sm:inline-block">
-                  — {targetUrl}
-                </span>
-              )}
-            </div>
-
-            {status !== 'idle' && (
-              <button
-                type="button"
-                onClick={resetDemo}
-                className="min-h-[40px] px-3.5 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 transition-all flex items-center gap-1.5"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Resetar Demo</span>
-              </button>
+      {/* Workspace de 2 Colunas (Terminal SSE + Preview Card) */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="w-5 h-5 text-indigo-400" />
+            <h2 className="text-lg font-bold text-white">Workspace de Transmissão</h2>
+            {targetUrl && (
+              <span className="text-xs font-mono text-slate-400 truncate max-w-md hidden sm:inline-block">
+                — {targetUrl}
+              </span>
             )}
           </div>
+
+          {status !== 'idle' && (
+            <button
+              type="button"
+              onClick={resetDemo}
+              aria-label="Resetar demonstração ao vivo"
+              className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-medium text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 transition-all flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Resetar Demo</span>
+            </button>
+          )}
+        </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Terminal SSE à Esquerda */}
@@ -109,7 +108,6 @@ export const LiveDemoPage: React.FC = () => {
             </div>
           </div>
         </section>
-      </main>
 
       {/* Banner CTA Flutuante no Rodapé */}
       <BottomCtaBanner

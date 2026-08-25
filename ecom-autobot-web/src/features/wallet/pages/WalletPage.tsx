@@ -42,19 +42,19 @@ export const WalletPage: React.FC = () => {
   }, [transactions]);
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 animate-fadeIn text-[#e7e0ed]">
+    <div className="space-y-8 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 animate-fadeIn text-slate-100">
       {/* Cabeçalho da Página */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#3c3647]">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-[#a078ff]/10 text-[#d0bcff] rounded-xl border border-[#a078ff]/20">
-              <Wallet className="w-8 h-8 text-[#a078ff]" />
+            <div className="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-xl border border-indigo-500/20">
+              <Wallet className="w-8 h-8 text-indigo-400" />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#e7e0ed]">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
                 Carteira & Créditos
               </h1>
-              <p className="text-xs sm:text-sm text-[#978e9e]">
+              <p className="text-xs sm:text-sm text-slate-400">
                 Gerencie seu saldo de extração e enriquecimento por IA.
               </p>
             </div>
@@ -63,8 +63,8 @@ export const WalletPage: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-3">
           {/* Pill Badge Informativa (JetBrains Mono) */}
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#25202e] border border-[#494454] rounded-full text-[#d0bcff] font-mono text-xs font-semibold shadow-xs">
-            <Sparkles className="w-3.5 h-3.5 text-[#a078ff] shrink-0" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900/80 border border-slate-800 rounded-full text-indigo-300 font-mono text-xs font-semibold shadow-xs">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
             <span>1 PRODUTO PROCESSADO = 1 CRÉDITO</span>
           </div>
 
@@ -75,7 +75,7 @@ export const WalletPage: React.FC = () => {
             onClick={() => refetchWallet()}
             isLoading={loadingBalance || loadingStatement}
             iconLeft={<RefreshCw className="w-4 h-4" />}
-            className="min-h-[44px] border-[#494454] text-[#e7e0ed] hover:bg-[#2e2938]"
+            className="min-h-[44px] border-slate-700 text-slate-200 hover:bg-slate-800"
           >
             Atualizar
           </Button>

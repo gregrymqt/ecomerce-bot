@@ -153,7 +153,7 @@ export const MainLayout: React.FC = () => {
       {/* Área Principal de Conteúdo */}
       <div className="flex-1 flex flex-col h-full overflow-y-auto">
         {/* Header Superior Mobile / Desktop Context Bar */}
-        <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-3.5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs">
+        <header className="sticky top-0 z-30 flex items-center justify-between pl-16 pr-4 sm:px-6 py-3.5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center gap-3">
             <span className="font-semibold text-sm text-slate-700 dark:text-slate-300">
               E-commerce Automation Workspace

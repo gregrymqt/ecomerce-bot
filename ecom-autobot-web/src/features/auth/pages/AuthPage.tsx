@@ -58,14 +58,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
         {/* Card Glassmorphic Centralizado */}
         <div className="my-auto w-full max-w-lg mx-auto bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-2xl relative z-20">
-          {/* Segmented Control (Toggle Entrar / Criar Conta) */}
-          <div className="grid grid-cols-2 p-1 bg-slate-950/70 border border-slate-800 rounded-xl mb-6">
+          {/* Segmented Control (Toggle Entrar / Criar Conta com A11y role=tablist) */}
+          <div role="tablist" aria-label="Modo de autenticação" className="grid grid-cols-2 p-1 bg-slate-950/70 border border-slate-800 rounded-xl mb-6">
             <button
               type="button"
+              role="tab"
+              aria-selected={mode === 'login'}
               onClick={() => setMode('login')}
               disabled={isLoading}
               className={cn(
-                'py-2.5 text-sm font-semibold rounded-lg transition-all min-h-[44px] flex items-center justify-center cursor-pointer disabled:opacity-50',
+                'py-2.5 text-sm font-semibold rounded-lg transition-all min-h-[44px] flex items-center justify-center cursor-pointer disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none',
                 mode === 'login'
                   ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shadow-sm font-bold'
                   : 'text-slate-400 hover:text-slate-200'
@@ -75,10 +77,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={mode === 'register'}
               onClick={() => setMode('register')}
               disabled={isLoading}
               className={cn(
-                'py-2.5 text-sm font-semibold rounded-lg transition-all min-h-[44px] flex items-center justify-center cursor-pointer disabled:opacity-50',
+                'py-2.5 text-sm font-semibold rounded-lg transition-all min-h-[44px] flex items-center justify-center cursor-pointer disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none',
                 mode === 'register'
                   ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shadow-sm font-bold'
                   : 'text-slate-400 hover:text-slate-200'

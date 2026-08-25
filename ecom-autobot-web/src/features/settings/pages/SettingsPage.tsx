@@ -23,6 +23,7 @@ import { StoreProfileTab } from '@/features/settings';
 import { BillingProfileTab } from '@/features/settings';
 import { SettingsSuccessToast } from '@/features/settings';
 import type { SettingsTab } from '@/features/settings';
+import { Button } from '@/components/ui/Button';
 
 export const SettingsPage: React.FC = () => {
   const {
@@ -48,7 +49,7 @@ export const SettingsPage: React.FC = () => {
     {
       id: 'AI_RULES',
       label: 'Regras da IA & Copywriting',
-      icon: <Sparkles className="h-4 w-4 text-violet-400" />,
+      icon: <Sparkles className="h-4 w-4 text-indigo-400" />,
     },
     {
       id: 'STORE_PROFILE',
@@ -65,9 +66,9 @@ export const SettingsPage: React.FC = () => {
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-16 px-4 sm:px-6 text-slate-100 animate-in fade-in duration-300">
       {/* Cabeçalho da Página */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1E293B] pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-violet-400 mb-1">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-400 mb-1">
             <Settings className="h-4 w-4" />
             <span>Configurações Globais</span>
           </div>
@@ -81,33 +82,29 @@ export const SettingsPage: React.FC = () => {
 
         {/* Barra de Ações (min-h-[44px]) */}
         <div className="flex items-center gap-3">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="md"
             onClick={fetchSettings}
             disabled={loading || saving}
-            className="min-h-[44px] h-11 px-4 rounded-xl bg-[#15121B] hover:bg-[#1E293B] border border-[#1E293B] text-slate-300 text-xs sm:text-sm font-semibold transition-all cursor-pointer disabled:opacity-50"
+            className="min-h-[44px] border-slate-800 text-slate-300 hover:bg-slate-800/80"
           >
             Cancelar / Resetar
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
+            variant="primary"
+            size="md"
             onClick={handleSaveSettings}
             disabled={saving}
-            className="min-h-[44px] h-11 px-6 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm transition-all shadow-lg shadow-violet-600/30 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            isLoading={saving}
+            iconLeft={!saving ? <Save className="h-4 w-4" /> : undefined}
+            className="min-h-[44px]"
           >
-            {saving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Salvando...</span>
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                <span>Salvar Configurações</span>
-              </>
-            )}
-          </button>
+            Salvar Configurações
+          </Button>
         </div>
       </div>
 
@@ -128,19 +125,21 @@ export const SettingsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Navegação por Abas (min-h-[44px]) */}
-      <div className="flex border-b border-[#1E293B] overflow-x-auto gap-2 scrollbar-none">
+      {/* Navegação por Abas (min-h-[44px] com suporte a A11y role=tablist) */}
+      <div role="tablist" aria-label="Abas de configuração" className="flex border-b border-slate-800 overflow-x-auto gap-2 scrollbar-none">
         {tabs.map((t) => {
           const isActive = activeTab === t.id;
           return (
             <button
               key={t.id}
               type="button"
+              role="tab"
+              aria-selected={isActive}
               onClick={() => handleTabChange(t.id)}
               className={cn(
-                'min-h-[44px] h-11 px-5 font-bold text-xs sm:text-sm flex items-center gap-2 border-b-2 transition-all whitespace-nowrap cursor-pointer',
+                'min-h-[44px] h-11 px-5 font-bold text-xs sm:text-sm flex items-center gap-2 border-b-2 transition-all whitespace-nowrap cursor-pointer focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none',
                 isActive
-                  ? 'border-violet-500 text-violet-400 bg-violet-500/5'
+                  ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
                   : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
               )}
             >

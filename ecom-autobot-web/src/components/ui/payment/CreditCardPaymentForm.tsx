@@ -137,7 +137,7 @@ export const CreditCardPaymentForm: React.FC<CreditCardPaymentFormProps> = ({
             placeholder="0000 0000 0000 0000"
             required
             maxLength={19}
-            className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base sm:text-sm placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
+            className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-base sm:text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
           />
           <CreditCard className="absolute left-3 top-3 h-5 w-5 text-slate-400 pointer-events-none" />
         </div>
@@ -156,7 +156,7 @@ export const CreditCardPaymentForm: React.FC<CreditCardPaymentFormProps> = ({
             onChange={(e) => setCardholderName(e.target.value.toUpperCase())}
             placeholder="NOME COMO ESTÁ NO CARTÃO"
             required
-            className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base sm:text-sm placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors uppercase"
+            className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-base sm:text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors uppercase"
           />
           <User className="absolute left-3 top-3 h-5 w-5 text-slate-400 pointer-events-none" />
         </div>
@@ -177,7 +177,7 @@ export const CreditCardPaymentForm: React.FC<CreditCardPaymentFormProps> = ({
               placeholder="MM/AA"
               required
               maxLength={5}
-              className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base sm:text-sm placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
+              className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-base sm:text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
             />
             <Calendar className="absolute left-3 top-3 h-5 w-5 text-slate-400 pointer-events-none" />
           </div>
@@ -196,7 +196,7 @@ export const CreditCardPaymentForm: React.FC<CreditCardPaymentFormProps> = ({
               placeholder="123"
               required
               maxLength={4}
-              className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base sm:text-sm placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
+              className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-base sm:text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
             />
             <Lock className="absolute left-3 top-3 h-5 w-5 text-slate-400 pointer-events-none" />
           </div>
@@ -213,10 +213,10 @@ export const CreditCardPaymentForm: React.FC<CreditCardPaymentFormProps> = ({
             id="card-installments"
             value={installments}
             onChange={(e) => setInstallments(Number(e.target.value))}
-            className="w-full min-h-[44px] h-11 px-3 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base sm:text-sm focus:outline-none focus:border-violet-500 transition-colors"
+            className="w-full min-h-[44px] h-11 px-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-base sm:text-sm focus:outline-none focus:border-indigo-500 transition-colors"
           >
             {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
-              <option key={num} value={num} className="bg-[#090D16] text-slate-100">
+              <option key={num} value={num} className="bg-slate-950 text-slate-100">
                 {num}x {num === 1 ? `de R$ ${amountBrl.toFixed(2).replace('.', ',')} à vista` : `de R$ ${(amountBrl / num).toFixed(2).replace('.', ',')}`}
               </option>
             ))}
@@ -237,7 +237,7 @@ export const CreditCardPaymentForm: React.FC<CreditCardPaymentFormProps> = ({
                 placeholder="000.000.000-00"
                 required
                 maxLength={14}
-                className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base sm:text-sm placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
+                className="w-full min-h-[44px] h-11 pl-10 pr-4 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-base sm:text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
               />
               <FileText className="absolute left-3 top-3 h-5 w-5 text-slate-400 pointer-events-none" />
             </div>
