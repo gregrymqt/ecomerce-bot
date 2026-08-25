@@ -227,6 +227,8 @@ Ao interagir ou gerar código neste repositório, a IA DEVE seguir estas diretri
 4. **Sem Patches Superficiais de Sintoma:** Se um erro ocorrer em um worker ou rota, resolva a causa raiz da falha em vez de ocultar com `try/except` silencioso ou retornos vazios falsos.
 5. **Verificação Runtime:** NUNCA considere uma tarefa concluída sem testar a compilação/execução do código (`python -m app.main` ou `npm run build / npm run dev`).
 6. **Modularidade e Limite de Linhas (Anti-Monólito):** Mantenha arquivos com responsabilidade única (SRP) e tamanho saudável entre **100 e 300 linhas**. Se um arquivo se aproximar de 300-350 linhas, fatie proativamente por domínio (extraindo custom hooks, subcomponentes, DTOs ou classes de serviço) antes de adicionar novas funcionalidades, prevenindo degradação de atenção (*Lost in the Middle*) e alucinações de LLM.
+7. **Densidade de Sinal & Zero-Fluff (Token Economy):** Elimine preâmbulos conversacionais vazios e sanitize saídas de comandos e logs, focando o contexto estritamente em código, decisões técnicas e diffs cirúrgicos.
+8. **Análise de Raio de Impacto (Blast Radius):** Antes de alterar ou remover métodos, props ou DTOs, mapeie deterministamente todos os nós consumidores na cadeia Full-Stack (`Model -> Schema -> Repo -> Service -> Router -> Frontend Service -> Hook -> Component`).
 
 ---
 
@@ -248,4 +250,23 @@ A modularização deve respeitar o **domínio e a coesão arquitetural**, e não
 2. **Backend:**
    - Se um serviço crescer: Separe a orquestração (`<feature>_service.py`), disparo assíncrono (`<feature>_dispatcher.py`) e parsing/gateways (`infrastructure/`).
    - Se queries ficarem extensas: Isole filtros e aggregations em métodos dedicados no repositório (`repositories/<feature>_repository.py`).
+
+---
+
+## ⚡ 7. Densificação de Contexto & Economia de Tokens (I/O Filtering)
+
+Para manter a janela de contexto limpa e eficiente durante tarefas de longa duração:
+1. **Resumos Cirúrgicos de Ferramentas:** Ao executar comandos ou scripts, resuma logs massivos reportando apenas `Status + Tempo + Erros/Alertas específicos`.
+2. **Leitura com Janela Delimitada:** Prefira `view_file` com `StartLine` e `EndLine` para carregar apenas as funções sob escopo, em vez de despejar arquivos inteiros no prompt.
+3. **Comunicação de Alto Sinal:** Vá direto ao ponto técnico. Explicações devem focar nas regras de negócio e contratos de segurança, omitindo saudações e enrolações vazias.
+
+---
+
+## 🕸️ 8. Grafo de Dependências & Raio de Impacto (Blast Radius)
+
+Para evitar quebras silenciosas e bugs em cascata durante refatorações:
+1. **Rastreamento Determinístico:** Antes de renomear ou modificar uma prop, rota ou DTO, execute uma busca por todos os consumidores (`grep_search`).
+2. **Propagação Sincronizada:** Nunca altere a assinatura de um método na camada de dados sem atualizar imediatamente o serviço, roteador, tipagem TypeScript no frontend e componentes que o consomem.
+3. **Validação Cruzada de Compilação:** Após alterações em contratos, valide sempre a compilação completa do frontend (`npm run build`) e backend (`py_compile`).
+
 
