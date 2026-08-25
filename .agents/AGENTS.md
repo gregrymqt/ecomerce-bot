@@ -226,3 +226,26 @@ Ao interagir ou gerar código neste repositório, a IA DEVE seguir estas diretri
 3. **Arquitetura Modular (Feature-Based):** Mantenha o isolamento dos módulos no backend e no frontend (`Types -> Services -> Hooks -> UI Components`). Novas rotas devem ser incluídas no respectivo router.
 4. **Sem Patches Superficiais de Sintoma:** Se um erro ocorrer em um worker ou rota, resolva a causa raiz da falha em vez de ocultar com `try/except` silencioso ou retornos vazios falsos.
 5. **Verificação Runtime:** NUNCA considere uma tarefa concluída sem testar a compilação/execução do código (`python -m app.main` ou `npm run build / npm run dev`).
+6. **Modularidade e Limite de Linhas (Anti-Monólito):** Mantenha arquivos com responsabilidade única (SRP) e tamanho saudável entre **100 e 300 linhas**. Se um arquivo se aproximar de 300-350 linhas, fatie proativamente por domínio (extraindo custom hooks, subcomponentes, DTOs ou classes de serviço) antes de adicionar novas funcionalidades, prevenindo degradação de atenção (*Lost in the Middle*) e alucinações de LLM.
+
+---
+
+## 🧩 6. Engenharia de Contexto & Diretriz Anti-Monólito (Clean Code)
+
+Para evitar a degradação de contexto das IAs (*Lost in the Middle*) e alucinações decorrentes de compactação de histórico:
+
+### 📏 Limites Operacionais de Linhas por Arquivo:
+- **Teto Saudável Recomendado:** Entre **100 e 300 linhas** por arquivo.
+- **Teto Máximo Tolerado:** **350 linhas** (apenas para arquivos de schemas agregados ou rotas extensas).
+- **Proibição de Monólitos:** NUNCA crie ou permita o crescimento de arquivos com 500+ ou 1.000+ linhas contendo lógicas misturadas (ex.: componente React contendo JSX, chamadas de API, transformações de dados e modais no mesmo arquivo).
+
+### ✂️ Como Modularizar Corretamente (Evitando o *Ravioli Code*):
+A modularização deve respeitar o **domínio e a coesão arquitetural**, e não ser um corte mecânico cego:
+1. **Frontend:**
+   - Se uma página crescer: Extraia o estado e requisições para um **Custom Hook** (`hooks/use<Feature>.ts`).
+   - Se o JSX for longo: Isole cards, tabelas, toolbars e modais em subcomponentes puros (`components/<SubComponent>.tsx`).
+   - Se houver formulários complexos: Isole a validação e formatação em funções utilitárias ou schemas Zod/Types.
+2. **Backend:**
+   - Se um serviço crescer: Separe a orquestração (`<feature>_service.py`), disparo assíncrono (`<feature>_dispatcher.py`) e parsing/gateways (`infrastructure/`).
+   - Se queries ficarem extensas: Isole filtros e aggregations em métodos dedicados no repositório (`repositories/<feature>_repository.py`).
+
