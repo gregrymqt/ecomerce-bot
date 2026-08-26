@@ -4,16 +4,17 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Api.Controllers;
 
-[ApiController]
 [Route("api/v1/shopify")]
-public class ShopifyIntegrationController : ControllerBase
+public class ShopifyIntegrationController : BaseApiController
 {
     private readonly IShopifyIntegrationService _shopifyService;
     private readonly ILogger<ShopifyIntegrationController> _logger;
@@ -30,6 +31,8 @@ public class ShopifyIntegrationController : ControllerBase
     }
 
     [HttpPost("webhooks")]
+    [AllowAnonymous]
+    [RateLimit(MaxRequests = 120, WindowSeconds = 60, BlockDurationSeconds = 300)]
     public async Task<IActionResult> ReceiveWebhook(
         [FromHeader(Name = "X-Shopify-Topic")] string topic,
         [FromHeader(Name = "X-Shopify-Shop-Domain")] string shopDomain,
@@ -53,10 +56,7 @@ public class ShopifyIntegrationController : ControllerBase
         try
         {
             var jsonPayload = JsonSerializer.Deserialize<JsonElement>(rawBody);
-            
-            // Dispara para o service em background ou await direto (neste caso, fast execution)
             await _shopifyService.ProcessWebhookAsync(tenantId, topic, shopDomain, jsonPayload);
-            
             return Ok();
         }
         catch (Exception ex)
@@ -67,6 +67,7 @@ public class ShopifyIntegrationController : ControllerBase
     }
 
     [HttpGet("oauth/callback")]
+    [AllowAnonymous]
     public async Task<IActionResult> OAuthCallback(
         [FromQuery] string code,
         [FromQuery] string shop,
@@ -78,8 +79,8 @@ public class ShopifyIntegrationController : ControllerBase
             return BadRequest("Missing code or shop parameter.");
         }
 
-        // Simplificação: Em PRD validariamos o querystring inteiro com HMAC
-        await _shopifyService.HandleOAuthCallbackAsync(tenantId, code, shop);
+        var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
+        await _shopifyService.HandleOAuthCallbackAsync(activeTenantId, code, shop);
 
         return Ok(new { message = "OAuth concluído com sucesso." });
     }

@@ -2,15 +2,12 @@ using System;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Settings;
 using EcommerceBot.Application.Interfaces;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceBot.Api.Controllers;
 
-[ApiController]
 [Route("api/v1/settings")]
-[Authorize] // Pode ajustar se tiver auth middleware customizado
-public class SettingsController : ControllerBase
+public class SettingsController : BaseApiController
 {
     private readonly ISettingsService _settingsService;
 
@@ -22,10 +19,11 @@ public class SettingsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetSettings([FromHeader(Name = "X-Tenant-ID")] Guid tenantId)
     {
-        if (tenantId == Guid.Empty)
+        var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
+        if (activeTenantId == Guid.Empty)
             return BadRequest("X-Tenant-ID header is required.");
 
-        var settings = await _settingsService.GetSettingsAsync(tenantId);
+        var settings = await _settingsService.GetSettingsAsync(activeTenantId);
         return Ok(settings);
     }
 
@@ -34,10 +32,11 @@ public class SettingsController : ControllerBase
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
         [FromBody] TenantSettingsUpdate payload)
     {
-        if (tenantId == Guid.Empty)
+        var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
+        if (activeTenantId == Guid.Empty)
             return BadRequest("X-Tenant-ID header is required.");
 
-        var updatedSettings = await _settingsService.UpdateSettingsAsync(tenantId, payload);
+        var updatedSettings = await _settingsService.UpdateSettingsAsync(activeTenantId, payload);
         return Ok(updatedSettings);
     }
 }

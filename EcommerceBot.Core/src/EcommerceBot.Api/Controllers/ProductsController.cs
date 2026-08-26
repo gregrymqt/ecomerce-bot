@@ -1,16 +1,14 @@
 using System;
 using System.Threading.Tasks;
+using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.DTOs.Products;
 using EcommerceBot.Application.Interfaces;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceBot.Api.Controllers;
 
-[ApiController]
 [Route("api/v1/products")]
-[Authorize]
-public class ProductsController : ControllerBase
+public class ProductsController : BaseApiController
 {
     private readonly ICatalogService _catalogService;
 
@@ -27,24 +25,27 @@ public class ProductsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20)
     {
-        if (tenantId == Guid.Empty)
+        var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
+        if (activeTenantId == Guid.Empty)
             return BadRequest("X-Tenant-ID is required");
 
-        var response = await _catalogService.GetProductsAsync(tenantId, statusFilter, search, page, limit);
+        var response = await _catalogService.GetProductsAsync(activeTenantId, statusFilter, search, page, limit);
         return Ok(response);
     }
 
     [HttpPost("scrape")]
+    [RateLimit(MaxRequests = 30, WindowSeconds = 60, BlockDurationSeconds = 300)]
     public async Task<IActionResult> RequestScraping(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
         [FromBody] ScrapingRequestDto request)
     {
-        if (tenantId == Guid.Empty)
+        var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
+        if (activeTenantId == Guid.Empty)
             return BadRequest("X-Tenant-ID is required");
 
         try
         {
-            var result = await _catalogService.RequestScrapingAsync(tenantId, request);
+            var result = await _catalogService.RequestScrapingAsync(activeTenantId, request);
             return Accepted(result);
         }
         catch (ArgumentException ex)
@@ -63,10 +64,11 @@ public class ProductsController : ControllerBase
         string sku,
         [FromBody] ProductUpdateDto payload)
     {
-        if (tenantId == Guid.Empty)
+        var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
+        if (activeTenantId == Guid.Empty)
             return BadRequest("X-Tenant-ID is required");
 
-        var result = await _catalogService.UpdateProductAsync(tenantId, sku, payload);
+        var result = await _catalogService.UpdateProductAsync(activeTenantId, sku, payload);
         if (result == null)
             return NotFound($"Product with SKU '{sku}' not found.");
 
@@ -78,10 +80,11 @@ public class ProductsController : ControllerBase
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
         string sku)
     {
-        if (tenantId == Guid.Empty)
+        var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
+        if (activeTenantId == Guid.Empty)
             return BadRequest("X-Tenant-ID is required");
 
-        var deleted = await _catalogService.DeleteProductAsync(tenantId, sku);
+        var deleted = await _catalogService.DeleteProductAsync(activeTenantId, sku);
         if (!deleted)
             return NotFound($"Product with SKU '{sku}' not found.");
 

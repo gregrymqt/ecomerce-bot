@@ -1,16 +1,18 @@
-using System;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Api.Controllers;
 
-[ApiController]
 [Route("api/v1/webhooks/mercadopago")]
-public class MercadoPagoWebhookController : ControllerBase
+[AllowAnonymous]
+[RateLimit(MaxRequests = 120, WindowSeconds = 60, BlockDurationSeconds = 300)]
+public class MercadoPagoWebhookController : BaseApiController
 {
     private readonly IMercadoPagoWebhookService _webhookService;
     private readonly ILogger<MercadoPagoWebhookController> _logger;

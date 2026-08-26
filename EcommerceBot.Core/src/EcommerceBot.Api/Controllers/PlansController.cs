@@ -2,13 +2,13 @@ using System;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Plans;
 using EcommerceBot.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceBot.Api.Controllers;
 
-[ApiController]
 [Route("api/v1/plans")]
-public class PlansController : ControllerBase
+public class PlansController : BaseApiController
 {
     private readonly IPlanService _planService;
 
@@ -18,6 +18,7 @@ public class PlansController : ControllerBase
     }
 
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> GetAll([FromQuery] bool onlyActive = false)
     {
         var plans = await _planService.GetAllPlansAsync(onlyActive);
@@ -25,6 +26,7 @@ public class PlansController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetById(Guid id)
     {
         var plan = await _planService.GetPlanByIdAsync(id);
@@ -33,7 +35,7 @@ public class PlansController : ControllerBase
     }
 
     [HttpPost]
-    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "ADMIN")]
+    [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> Create([FromBody] CreatePlanRequest request)
     {
         var plan = await _planService.CreatePlanAsync(request);
@@ -41,7 +43,7 @@ public class PlansController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "ADMIN")]
+    [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePlanRequest request)
     {
         var plan = await _planService.UpdatePlanAsync(id, request);

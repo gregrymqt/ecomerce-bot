@@ -64,6 +64,6 @@ public class ShopifyGateway : IEcommerceGateway
     public async Task<IEnumerable<Product>> FetchProductsAsync(Guid tenantId)
     {
         // Simulando listagem de produtos da Shopify
-        return Array.Empty<Product>();
+        return [];
     }
 }

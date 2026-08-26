@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.DTOs.Nuvemshop;
 using EcommerceBot.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -7,9 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceBot.Api.Controllers;
 
-[ApiController]
 [Route("api/v1/nuvemshop")]
-public class NuvemshopIntegrationController : ControllerBase
+public class NuvemshopIntegrationController : BaseApiController
 {
     private readonly INuvemshopIntegrationService _nuvemshopService;
 
@@ -19,6 +19,7 @@ public class NuvemshopIntegrationController : ControllerBase
     }
 
     [HttpGet("oauth/callback")]
+    [AllowAnonymous]
     public async Task<IActionResult> OAuthCallback([FromQuery] string code, [FromQuery] string state)
     {
         if (!Guid.TryParse(state, out var tenantId))
@@ -31,6 +32,8 @@ public class NuvemshopIntegrationController : ControllerBase
     }
 
     [HttpPost("webhooks/{tenantId}")]
+    [AllowAnonymous]
+    [RateLimit(MaxRequests = 120, WindowSeconds = 60, BlockDurationSeconds = 300)]
     public async Task<IActionResult> ReceiveWebhook(Guid tenantId, [FromBody] object payload)
     {
         if (tenantId == Guid.Empty)
@@ -41,14 +44,17 @@ public class NuvemshopIntegrationController : ControllerBase
     }
 
     [HttpPost("sync/bulk")]
-    [Authorize]
     public async Task<IActionResult> TriggerBulkSync(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
         [FromBody] NuvemshopBulkSyncRequest request)
     {
+        var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
+        if (activeTenantId == Guid.Empty)
+            return BadRequest("X-Tenant-ID header is required.");
+
         try
         {
-            var result = await _nuvemshopService.TriggerBulkSyncAsync(tenantId, request);
+            var result = await _nuvemshopService.TriggerBulkSyncAsync(activeTenantId, request);
             return Accepted(result);
         }
         catch (ArgumentException ex)

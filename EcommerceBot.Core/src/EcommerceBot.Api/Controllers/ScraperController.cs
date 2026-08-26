@@ -1,16 +1,14 @@
 using System;
 using System.Threading.Tasks;
+using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.DTOs.Scraper;
 using EcommerceBot.Application.Interfaces;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceBot.Api.Controllers;
 
-[ApiController]
 [Route("api/v1/scraper")]
-[Authorize]
-public class ScraperController : ControllerBase
+public class ScraperController : BaseApiController
 {
     private readonly IScraperService _scraperService;
 
@@ -20,16 +18,18 @@ public class ScraperController : ControllerBase
     }
 
     [HttpPost("extract")]
+    [RateLimit(MaxRequests = 20, WindowSeconds = 60, BlockDurationSeconds = 300)]
     public async Task<IActionResult> Extract(
         [FromBody] WebScraperRequest payload,
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId)
     {
-        if (tenantId == Guid.Empty)
+        var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
+        if (activeTenantId == Guid.Empty)
             return BadRequest("X-Tenant-ID header is required.");
 
         try
         {
-            var taskId = await _scraperService.EnqueueExtractionTaskAsync(tenantId, payload.Url);
+            var taskId = await _scraperService.EnqueueExtractionTaskAsync(activeTenantId, payload.Url);
 
             return Accepted(new
             {

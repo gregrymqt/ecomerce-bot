@@ -1,109 +1,108 @@
 using System;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Metering;
 using EcommerceBot.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 
-namespace EcommerceBot.Api.Controllers
+namespace EcommerceBot.Api.Controllers;
+
+[Route("api/v1/[controller]")]
+public class MeteringController : BaseApiController
 {
-    [ApiController]
-    [Route("api/v1/[controller]")]
-    public class MeteringController : ControllerBase
+    private readonly IMeteringService _meteringService;
+    private readonly IConfiguration _configuration;
+
+    public MeteringController(IMeteringService meteringService, IConfiguration configuration)
     {
-        private readonly IMeteringService _meteringService;
-        private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
+        _meteringService = meteringService;
+        _configuration = configuration;
+    }
 
-        public MeteringController(IMeteringService meteringService, Microsoft.Extensions.Configuration.IConfiguration configuration)
+    private bool IsAuthorizedInternalService()
+    {
+        var internalKey = _configuration["Security:InternalServiceKey"];
+        if (!string.IsNullOrEmpty(internalKey))
         {
-            _meteringService = meteringService;
-            _configuration = configuration;
-        }
-
-        private bool IsAuthorizedInternalService()
-        {
-            var internalKey = _configuration["Security:InternalServiceKey"];
-            if (!string.IsNullOrEmpty(internalKey))
-            {
-                if (Request.Headers.TryGetValue("X-Internal-Secret", out var providedKey) &&
-                    System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
-                        System.Text.Encoding.UTF8.GetBytes(providedKey.ToString()),
-                        System.Text.Encoding.UTF8.GetBytes(internalKey)))
-                {
-                    return true;
-                }
-            }
-
-            if (User.Identity?.IsAuthenticated == true && (User.IsInRole("ADMIN") || User.IsInRole("SYSTEM")))
+            if (Request.Headers.TryGetValue("X-Internal-Secret", out var providedKey) &&
+                CryptographicOperations.FixedTimeEquals(
+                    Encoding.UTF8.GetBytes(providedKey.ToString()),
+                    Encoding.UTF8.GetBytes(internalKey)))
             {
                 return true;
             }
-
-            return false;
         }
 
-        private Guid GetTenantId()
+        if (User.Identity?.IsAuthenticated == true && (IsAdmin || IsSystem))
         {
-            if (HttpContext.Request.Headers.TryGetValue("X-Tenant-ID", out var tenantIdStr) && Guid.TryParse(tenantIdStr, out var tenantId))
-            {
-                return tenantId;
-            }
-            throw new UnauthorizedAccessException("X-Tenant-ID header is missing or invalid.");
+            return true;
         }
 
-        [HttpGet("balance")]
-        [Authorize]
-        public async Task<IActionResult> GetBalance()
+        return false;
+    }
+
+    [HttpGet("balance")]
+    public async Task<IActionResult> GetBalance()
+    {
+        var tenantId = CurrentTenantId;
+        if (tenantId == Guid.Empty)
+            return BadRequest(new { detail = "X-Tenant-ID header is missing or invalid." });
+
+        var result = await _meteringService.GetTenantCreditBalanceAsync(tenantId);
+        return Ok(result);
+    }
+
+    [HttpGet("usage")]
+    public async Task<IActionResult> GetUsageLogs([FromQuery] int page = 1, [FromQuery] int limit = 20, [FromQuery] DateTimeOffset? startDate = null, [FromQuery] DateTimeOffset? endDate = null)
+    {
+        var tenantId = CurrentTenantId;
+        if (tenantId == Guid.Empty)
+            return BadRequest(new { detail = "X-Tenant-ID header is missing or invalid." });
+
+        var result = await _meteringService.GetTenantUsageLogsAsync(tenantId, page, limit, startDate, endDate);
+        return Ok(result);
+    }
+
+    [HttpPost("internal/reserve")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ReserveCredits([FromHeader(Name = "X-Tenant-ID")] Guid tenantId, [FromBody] ReserveCreditsRequest request)
+    {
+        if (!IsAuthorizedInternalService())
+            return Unauthorized(new { detail = "Acesso restrito a serviços internos ou administradores." });
+
+        try
         {
-            var tenantId = GetTenantId();
-            var result = await _meteringService.GetTenantCreditBalanceAsync(tenantId);
-            return Ok(result);
+            var reservedCost = await _meteringService.ReserveCreditsForLlmAsync(tenantId, request);
+            return Ok(new { reserved_cost = reservedCost });
         }
-
-        [HttpGet("usage")]
-        [Authorize]
-        public async Task<IActionResult> GetUsageLogs([FromQuery] int page = 1, [FromQuery] int limit = 20, [FromQuery] DateTimeOffset? startDate = null, [FromQuery] DateTimeOffset? endDate = null)
+        catch (InvalidOperationException ex)
         {
-            var tenantId = GetTenantId();
-            var result = await _meteringService.GetTenantUsageLogsAsync(tenantId, page, limit, startDate, endDate);
-            return Ok(result);
+            return BadRequest(new { detail = ex.Message });
         }
+    }
 
-        [HttpPost("internal/reserve")]
-        public async Task<IActionResult> ReserveCredits([FromHeader(Name = "X-Tenant-ID")] Guid tenantId, [FromBody] ReserveCreditsRequest request)
-        {
-            if (!IsAuthorizedInternalService())
-                return Unauthorized(new { detail = "Acesso restrito a serviços internos ou administradores." });
+    [HttpPost("internal/refund")]
+    [AllowAnonymous]
+    public async Task<IActionResult> RefundCredits([FromHeader(Name = "X-Tenant-ID")] Guid tenantId, [FromBody] RefundCreditsRequest request)
+    {
+        if (!IsAuthorizedInternalService())
+            return Unauthorized(new { detail = "Acesso restrito a serviços internos ou administradores." });
 
-            try
-            {
-                var reservedCost = await _meteringService.ReserveCreditsForLlmAsync(tenantId, request);
-                return Ok(new { reserved_cost = reservedCost });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { detail = ex.Message });
-            }
-        }
+        await _meteringService.RefundCreditsOnFailureAsync(tenantId, request.ReservedCost);
+        return Ok();
+    }
 
-        [HttpPost("internal/refund")]
-        public async Task<IActionResult> RefundCredits([FromHeader(Name = "X-Tenant-ID")] Guid tenantId, [FromBody] RefundCreditsRequest request)
-        {
-            if (!IsAuthorizedInternalService())
-                return Unauthorized(new { detail = "Acesso restrito a serviços internos ou administradores." });
+    [HttpPost("internal/record")]
+    [AllowAnonymous]
+    public async Task<IActionResult> RecordUsage([FromHeader(Name = "X-Tenant-ID")] Guid tenantId, [FromBody] LlmUsageLogCreate request)
+    {
+        if (!IsAuthorizedInternalService())
+            return Unauthorized(new { detail = "Acesso restrito a serviços internos ou administradores." });
 
-            await _meteringService.RefundCreditsOnFailureAsync(tenantId, request.ReservedCost);
-            return Ok();
-        }
-
-        [HttpPost("internal/record")]
-        public async Task<IActionResult> RecordUsage([FromHeader(Name = "X-Tenant-ID")] Guid tenantId, [FromBody] LlmUsageLogCreate request)
-        {
-            if (!IsAuthorizedInternalService())
-                return Unauthorized(new { detail = "Acesso restrito a serviços internos ou administradores." });
-
-            var result = await _meteringService.RecordUsageAndDeductAsync(tenantId, request);
-            return Ok(result);
-        }
+        var result = await _meteringService.RecordUsageAndDeductAsync(tenantId, request);
+        return Ok(result);
     }
 }

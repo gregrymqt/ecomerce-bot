@@ -8,9 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceBot.Api.Controllers;
 
-[ApiController]
 [Route("api/v1/demo/stream")]
-public class StreamController : ControllerBase
+public class StreamController : BaseApiController
 {
     private readonly ITenantContext _tenantContext;
     private readonly IRedisService _redisService;
@@ -24,7 +23,7 @@ public class StreamController : ControllerBase
     [HttpGet]
     public async Task GetStream(CancellationToken cancellationToken)
     {
-        var tenantId = _tenantContext.TenantId;
+        var tenantId = _tenantContext.TenantId != Guid.Empty ? _tenantContext.TenantId : CurrentTenantId;
 
         Response.Headers.Append("Content-Type", "text/event-stream");
         Response.Headers.Append("Cache-Control", "no-cache");

@@ -3,16 +3,17 @@ using System.IO;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.DTOs.System;
 using EcommerceBot.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceBot.Api.Controllers;
 
-[ApiController]
 [Route("api/v1/[controller]")]
-public class SystemController : ControllerBase
+public class SystemController : BaseApiController
 {
     private readonly ISystemService _systemService;
     private readonly IRedisService _redisService;
@@ -24,27 +25,28 @@ public class SystemController : ControllerBase
     }
 
     [HttpGet("telemetry")]
-    [Microsoft.AspNetCore.Authorization.Authorize]
     public async Task<IActionResult> GetTelemetry(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
         [FromQuery] string timeframe = "24h")
     {
-        var metrics = await _systemService.GetTelemetryMetricsAsync(tenantId, timeframe);
+        var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
+        var metrics = await _systemService.GetTelemetryMetricsAsync(activeTenantId, timeframe);
         return Ok(metrics);
     }
 
     [HttpGet("activities")]
-    [Microsoft.AspNetCore.Authorization.Authorize]
     public async Task<IActionResult> GetActivities(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
         [FromQuery] int limit = 20,
         [FromQuery] int page = 1)
     {
-        var activities = await _systemService.GetRecentActivitiesAsync(tenantId, limit, page);
+        var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
+        var activities = await _systemService.GetRecentActivitiesAsync(activeTenantId, limit, page);
         return Ok(activities);
     }
 
     [HttpGet("health")]
+    [AllowAnonymous]
     public async Task<IActionResult> HealthCheck()
     {
         var health = await _systemService.CheckSystemHealthAsync();
@@ -52,6 +54,8 @@ public class SystemController : ControllerBase
     }
 
     [HttpPost("demo")]
+    [AllowAnonymous]
+    [RateLimit(MaxRequests = 10, WindowSeconds = 60, BlockDurationSeconds = 300)]
     public async Task<IActionResult> RequestDemo([FromBody] DemoRequest payload)
     {
         if (payload.Urls.Count > 3) return BadRequest("Max 3 URLs allowed");
@@ -60,20 +64,23 @@ public class SystemController : ControllerBase
     }
 
     [HttpGet("export")]
-    [Microsoft.AspNetCore.Authorization.Authorize]
+    [CsvSizeLimit(MaxMegabytes = 10)]
     public async Task ExportData(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
         [FromQuery] string platform = "shopify")
     {
-        Response.Headers.Append("Content-Disposition", $"attachment; filename=export_{platform}_{tenantId}.csv");
+        var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
+
+        Response.Headers.Append("Content-Disposition", $"attachment; filename=export_{platform}_{activeTenantId}.csv");
         Response.Headers.Append("Access-Control-Expose-Headers", "Content-Disposition");
         Response.ContentType = "text/csv";
 
         using var streamWriter = new StreamWriter(Response.Body);
-        await _systemService.ExportDataToStreamAsync(tenantId, platform, streamWriter);
+        await _systemService.ExportDataToStreamAsync(activeTenantId, platform, streamWriter);
     }
 
     [HttpGet("demo/stream")]
+    [AllowAnonymous]
     public async Task DemoStream(CancellationToken cancellationToken)
     {
         Response.Headers.Append("Content-Type", "text/event-stream");

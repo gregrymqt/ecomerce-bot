@@ -1,14 +1,17 @@
 using System.Text.Json;
 using System.Threading.Tasks;
+using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Api.Controllers;
 
-[ApiController]
 [Route("api/v1/emails/webhooks")]
-public class EmailWebhookController : ControllerBase
+[AllowAnonymous]
+[RateLimit(MaxRequests = 120, WindowSeconds = 60, BlockDurationSeconds = 300)]
+public class EmailWebhookController : BaseApiController
 {
     private readonly IEmailWebhookService _emailWebhookService;
     private readonly ILogger<EmailWebhookController> _logger;
