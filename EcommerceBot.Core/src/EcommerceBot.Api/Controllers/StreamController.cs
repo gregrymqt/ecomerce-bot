@@ -1,11 +1,10 @@
 using System;
-using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
+using EcommerceBot.Application.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using StackExchange.Redis;
-using EcommerceBot.Application.Interfaces;
 
 namespace EcommerceBot.Api.Controllers;
 
@@ -14,12 +13,12 @@ namespace EcommerceBot.Api.Controllers;
 public class StreamController : ControllerBase
 {
     private readonly ITenantContext _tenantContext;
-    private readonly IConnectionMultiplexer _redis;
+    private readonly IRedisService _redisService;
 
-    public StreamController(ITenantContext tenantContext, IConnectionMultiplexer redis)
+    public StreamController(ITenantContext tenantContext, IRedisService redisService)
     {
         _tenantContext = tenantContext;
-        _redis = redis;
+        _redisService = redisService;
     }
 
     [HttpGet]
@@ -31,44 +30,38 @@ public class StreamController : ControllerBase
         Response.Headers.Append("Cache-Control", "no-cache");
         Response.Headers.Append("Connection", "keep-alive");
 
-        var subscriber = _redis.GetSubscriber();
-        // O canal é isolado por TenantId para que usuários de uma empresa não vejam eventos de outra
-        var channel = new RedisChannel($"events:tenant:{tenantId}", RedisChannel.PatternMode.Literal);
+        var channel = $"events:tenant:{tenantId}";
 
         // Envia um ping inicial
         await Response.WriteAsync($"data: {{\"type\":\"connected\", \"tenantId\":\"{tenantId}\"}}\n\n", cancellationToken);
         await Response.Body.FlushAsync(cancellationToken);
 
-        // Criamos um Channel do C# para transferir os dados da thread do Redis para a thread da WebAPI
-        var channelBuffer = System.Threading.Channels.Channel.CreateUnbounded<string>();
+        // Channel do C# para transferir mensagens do Redis para a thread da WebAPI
+        var channelBuffer = Channel.CreateUnbounded<string>();
 
-        await subscriber.SubscribeAsync(channel, async (ch, message) =>
+        await _redisService.SubscribeAsync(channel, async message =>
         {
-            await channelBuffer.Writer.WriteAsync(message.ToString());
+            await channelBuffer.Writer.WriteAsync(message, cancellationToken);
         });
 
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                // Espera por mensagens do Redis ou pelo timeout de heartbeat (30s)
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 cts.CancelAfter(TimeSpan.FromSeconds(30));
 
                 try
                 {
                     var msg = await channelBuffer.Reader.ReadAsync(cts.Token);
-                    
-                    // Formato SSE: "data: payload\n\n"
                     await Response.WriteAsync($"data: {msg}\n\n", cancellationToken);
                     await Response.Body.FlushAsync(cancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
-                    // Heartbeat para manter a conexão ativa
                     if (!cancellationToken.IsCancellationRequested)
                     {
-                        await Response.WriteAsync($": heartbeat\n\n", cancellationToken);
+                        await Response.WriteAsync(": heartbeat\n\n", cancellationToken);
                         await Response.Body.FlushAsync(cancellationToken);
                     }
                 }
@@ -76,7 +69,7 @@ public class StreamController : ControllerBase
         }
         finally
         {
-            await subscriber.UnsubscribeAsync(channel);
+            await _redisService.UnsubscribeAsync(channel);
             channelBuffer.Writer.TryComplete();
         }
     }

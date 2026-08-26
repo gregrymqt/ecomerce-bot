@@ -1,104 +1,59 @@
 using System;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Nuvemshop;
-using EcommerceBot.Domain.Entities;
-using EcommerceBot.Domain.Interfaces;
-using MassTransit;
+using EcommerceBot.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
-namespace EcommerceBot.Api.Controllers
+namespace EcommerceBot.Api.Controllers;
+
+[ApiController]
+[Route("api/v1/nuvemshop")]
+public class NuvemshopIntegrationController : ControllerBase
 {
-    [ApiController]
-    [Route("api/v1/nuvemshop")]
-    public class NuvemshopIntegrationController : ControllerBase
+    private readonly INuvemshopIntegrationService _nuvemshopService;
+
+    public NuvemshopIntegrationController(INuvemshopIntegrationService nuvemshopService)
     {
-        private readonly IPublishEndpoint _publishEndpoint;
-        private readonly ITenantAiCredentialRepository _credentialRepository;
-        private readonly ILogger<NuvemshopIntegrationController> _logger;
+        _nuvemshopService = nuvemshopService;
+    }
 
-        public NuvemshopIntegrationController(
-            IPublishEndpoint publishEndpoint,
-            ITenantAiCredentialRepository credentialRepository,
-            ILogger<NuvemshopIntegrationController> logger)
+    [HttpGet("oauth/callback")]
+    public async Task<IActionResult> OAuthCallback([FromQuery] string code, [FromQuery] string state)
+    {
+        if (!Guid.TryParse(state, out var tenantId))
         {
-            _publishEndpoint = publishEndpoint;
-            _credentialRepository = credentialRepository;
-            _logger = logger;
+            return BadRequest("Invalid state parameter");
         }
 
-        [HttpGet("oauth/callback")]
-        public async Task<IActionResult> OAuthCallback([FromQuery] string code, [FromQuery] string state)
+        await _nuvemshopService.HandleOAuthCallbackAsync(tenantId, code);
+        return Ok(new { message = "Nuvemshop connected successfully!" });
+    }
+
+    [HttpPost("webhooks/{tenantId}")]
+    public async Task<IActionResult> ReceiveWebhook(Guid tenantId, [FromBody] object payload)
+    {
+        if (tenantId == Guid.Empty)
+            return BadRequest("Invalid tenantId");
+
+        await _nuvemshopService.ProcessWebhookAsync(tenantId, payload);
+        return Ok();
+    }
+
+    [HttpPost("sync/bulk")]
+    [Authorize]
+    public async Task<IActionResult> TriggerBulkSync(
+        [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
+        [FromBody] NuvemshopBulkSyncRequest request)
+    {
+        try
         {
-            // O state geralmente contém o TenantId e uma assinatura de segurança
-            if (!Guid.TryParse(state, out var tenantId))
-            {
-                return BadRequest("Invalid state parameter");
-            }
-
-            _logger.LogInformation("Receiving Nuvemshop OAuth callback for Tenant {TenantId} with code {Code}", tenantId, code);
-
-            // Neste ponto seria feita a troca do code por um access_token através de um HttpClient.
-            // Para efeitos de migração do boilerplate, vamos considerar que o token foi recebido:
-            string mockToken = "ns_" + Guid.NewGuid().ToString("N");
-            string mockStoreId = "123456";
-
-            // Salva a credencial
-            // ... (implementação com CryptoService e repositório)
-            _logger.LogInformation("Saved Nuvemshop credentials for Tenant {TenantId}", tenantId);
-
-            return Ok(new { message = "Nuvemshop connected successfully!" });
+            var result = await _nuvemshopService.TriggerBulkSyncAsync(tenantId, request);
+            return Accepted(result);
         }
-
-        [HttpPost("webhooks/{tenantId}")]
-        public IActionResult ReceiveWebhook(Guid tenantId, [FromBody] object payload)
+        catch (ArgumentException ex)
         {
-            if (tenantId == Guid.Empty)
-                return BadRequest("Invalid tenantId");
-
-            // Processa webhooks de pedidos ou produtos modificados na Nuvemshop
-            _logger.LogInformation("Received Nuvemshop Webhook for Tenant {TenantId}", tenantId);
-            return Ok();
-        }
-
-        [HttpPost("sync/bulk")]
-        [Microsoft.AspNetCore.Authorization.Authorize]
-        public async Task<IActionResult> TriggerBulkSync([FromHeader(Name = "X-Tenant-ID")] Guid tenantId, [FromBody] NuvemshopBulkSyncRequest request)
-        {
-            if (tenantId == Guid.Empty)
-                return BadRequest("X-Tenant-ID header is required.");
-
-            if (request.Skus == null || request.Skus.Count == 0)
-                return BadRequest("Skus list cannot be empty.");
-
-            var jobId = Guid.NewGuid().ToString("N");
-
-            foreach (var sku in request.Skus)
-            {
-                var msg = new NuvemshopBulkSyncMessage
-                {
-                    JobId = jobId,
-                    TenantId = tenantId,
-                    Sku = sku,
-                    ForceUpdate = request.ForceUpdate,
-                    Visibility = request.Visibility
-                };
-
-                // Envia para o RabbitMQ via MassTransit
-                await _publishEndpoint.Publish(msg, context => 
-                {
-                    context.SetRoutingKey("nuvemshop_bulk_sync");
-                });
-            }
-
-            _logger.LogInformation("Enqueued {Count} products for Nuvemshop sync. JobId: {JobId}", request.Skus.Count, jobId);
-
-            return Accepted(new { 
-                job_id = jobId, 
-                total_enqueued = request.Skus.Count, 
-                status = "queued",
-                message = "Sync job started" 
-            });
+            return BadRequest(ex.Message);
         }
     }
 }

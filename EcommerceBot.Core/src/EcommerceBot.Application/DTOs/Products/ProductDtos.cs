@@ -3,6 +3,20 @@ using System.Collections.Generic;
 
 namespace EcommerceBot.Application.DTOs.Products;
 
+public class ScrapingRequestDto
+{
+    public string Url { get; set; } = string.Empty;
+    public string? Title { get; set; }
+    public string? CustomPrompt { get; set; }
+}
+
+public class ScrapingResponseDto
+{
+    public string Message { get; set; } = string.Empty;
+    public string Sku { get; set; } = string.Empty;
+    public string Status { get; set; } = "PROCESSING";
+}
+
 public class ProductUpdateDto
 {
     public string? Title { get; set; }

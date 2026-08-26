@@ -5,7 +5,6 @@ using EcommerceBot.Application.DTOs.Settings;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Services;
@@ -13,20 +12,20 @@ namespace EcommerceBot.Infrastructure.Services;
 public class SettingsService : ISettingsService
 {
     private readonly ITenantConfigRepository _repository;
-    private readonly IDistributedCache _cache;
+    private readonly IRedisService _redisService;
     private readonly ILogger<SettingsService> _logger;
 
     public SettingsService(
         ITenantConfigRepository repository,
-        IDistributedCache cache,
+        IRedisService redisService,
         ILogger<SettingsService> logger)
     {
         _repository = repository;
-        _cache = cache;
+        _redisService = redisService;
         _logger = logger;
     }
 
-    private T DeserializeOrDefault<T>(string? json, T defaultObj)
+    private static T DeserializeOrDefault<T>(string? json, T defaultObj)
     {
         if (string.IsNullOrWhiteSpace(json)) return defaultObj;
         try
@@ -42,22 +41,11 @@ public class SettingsService : ISettingsService
     public async Task<TenantSettingsResponse> GetSettingsAsync(Guid tenantId)
     {
         var cacheKey = $"settings:{tenantId}";
-        try
+        var cached = await _redisService.GetAsync<TenantSettingsResponse>(cacheKey);
+        if (cached != null)
         {
-            var cachedStr = await _cache.GetStringAsync(cacheKey);
-            if (!string.IsNullOrEmpty(cachedStr))
-            {
-                var cached = JsonSerializer.Deserialize<TenantSettingsResponse>(cachedStr);
-                if (cached != null)
-                {
-                    _logger.LogInformation("Cache hit for settings of tenant '{TenantId}'", tenantId);
-                    return cached;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning("Failed to read Redis cache for settings of tenant '{TenantId}': {Error}", tenantId, ex.Message);
+            _logger.LogInformation("Cache hit for settings of tenant '{TenantId}'", tenantId);
+            return cached;
         }
 
         var config = await _repository.GetByTenantIdAsync(tenantId);
@@ -71,18 +59,7 @@ public class SettingsService : ISettingsService
             UpdatedAt = config?.UpdatedAt
         };
 
-        try
-        {
-            var serializedResponse = JsonSerializer.Serialize(response);
-            await _cache.SetStringAsync(cacheKey, serializedResponse, new DistributedCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1)
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning("Failed to write Redis cache for settings of tenant '{TenantId}': {Error}", tenantId, ex.Message);
-        }
+        await _redisService.SetAsync(cacheKey, response, TimeSpan.FromHours(1));
 
         return response;
     }
@@ -123,15 +100,8 @@ public class SettingsService : ISettingsService
         await _repository.UpsertAsync(config);
 
         var cacheKey = $"settings:{tenantId}";
-        try
-        {
-            await _cache.RemoveAsync(cacheKey);
-            _logger.LogInformation("Redis cache for settings of tenant '{TenantId}' successfully invalidated.", tenantId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning("Failed to invalidate Redis cache for settings of tenant '{TenantId}': {Error}", tenantId, ex.Message);
-        }
+        await _redisService.RemoveAsync(cacheKey);
+        _logger.LogInformation("Redis cache for settings of tenant '{TenantId}' successfully invalidated.", tenantId);
 
         return await GetSettingsAsync(tenantId);
     }

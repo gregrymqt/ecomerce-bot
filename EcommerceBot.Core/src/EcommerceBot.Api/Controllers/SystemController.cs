@@ -1,10 +1,12 @@
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.System;
 using EcommerceBot.Application.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using StackExchange.Redis;
 
 namespace EcommerceBot.Api.Controllers;
 
@@ -13,12 +15,12 @@ namespace EcommerceBot.Api.Controllers;
 public class SystemController : ControllerBase
 {
     private readonly ISystemService _systemService;
-    private readonly IConnectionMultiplexer _redis;
+    private readonly IRedisService _redisService;
 
-    public SystemController(ISystemService systemService, IConnectionMultiplexer redis)
+    public SystemController(ISystemService systemService, IRedisService redisService)
     {
         _systemService = systemService;
-        _redis = redis;
+        _redisService = redisService;
     }
 
     [HttpGet("telemetry")]
@@ -35,7 +37,7 @@ public class SystemController : ControllerBase
     [Microsoft.AspNetCore.Authorization.Authorize]
     public async Task<IActionResult> GetActivities(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
-        [FromQuery] int limit = 20, 
+        [FromQuery] int limit = 20,
         [FromQuery] int page = 1)
     {
         var activities = await _systemService.GetRecentActivitiesAsync(tenantId, limit, page);
@@ -72,37 +74,47 @@ public class SystemController : ControllerBase
     }
 
     [HttpGet("demo/stream")]
-    public async Task DemoStream()
+    public async Task DemoStream(CancellationToken cancellationToken)
     {
         Response.Headers.Append("Content-Type", "text/event-stream");
-        var subscriber = _redis.GetSubscriber();
-        var channel = new RedisChannel("demo_progress", RedisChannel.PatternMode.Literal);
+        Response.Headers.Append("Cache-Control", "no-cache");
+        Response.Headers.Append("Connection", "keep-alive");
 
-        // Aguarda os eventos e faz flush pro client
-        var queue = await subscriber.SubscribeAsync(channel);
+        var channel = "demo_progress";
+        var channelBuffer = Channel.CreateUnbounded<string>();
+
+        await _redisService.SubscribeAsync(channel, async message =>
+        {
+            await channelBuffer.Writer.WriteAsync(message, cancellationToken);
+        });
+
         try
         {
-            queue.OnMessage(async message => 
+            while (!cancellationToken.IsCancellationRequested)
             {
-                var data = $"data: {message.Message}\n\n";
-                var bytes = System.Text.Encoding.UTF8.GetBytes(data);
-                await Response.Body.WriteAsync(bytes, 0, bytes.Length);
-                await Response.Body.FlushAsync();
-            });
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-            // Mantém a conexão viva até o cliente desconectar
-            while (!HttpContext.RequestAborted.IsCancellationRequested)
-            {
-                await Task.Delay(1000, HttpContext.RequestAborted);
+                try
+                {
+                    var msg = await channelBuffer.Reader.ReadAsync(cts.Token);
+                    await Response.WriteAsync($"data: {msg}\n\n", cancellationToken);
+                    await Response.Body.FlushAsync(cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    if (!cancellationToken.IsCancellationRequested)
+                    {
+                        await Response.WriteAsync(": heartbeat\n\n", cancellationToken);
+                        await Response.Body.FlushAsync(cancellationToken);
+                    }
+                }
             }
-        }
-        catch (TaskCanceledException)
-        {
-            // Cliente desconectou
         }
         finally
         {
-            await subscriber.UnsubscribeAsync(channel);
+            await _redisService.UnsubscribeAsync(channel);
+            channelBuffer.Writer.TryComplete();
         }
     }
 }

@@ -1,42 +1,33 @@
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
 using EcommerceBot.Application.Interfaces;
-using EcommerceBot.Domain.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceBot.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/tenant")]
-[Microsoft.AspNetCore.Authorization.Authorize]
+[Authorize]
 public class TenantController : ControllerBase
 {
     private readonly ITenantContext _tenantContext;
-    private readonly ITenantRepository _tenantRepository;
+    private readonly ITenantService _tenantService;
 
-    public TenantController(ITenantContext tenantContext, ITenantRepository tenantRepository)
+    public TenantController(ITenantContext tenantContext, ITenantService tenantService)
     {
         _tenantContext = tenantContext;
-        _tenantRepository = tenantRepository;
+        _tenantService = tenantService;
     }
 
     [HttpGet("me")]
     public async Task<IActionResult> GetCurrentTenantInfo()
     {
-        // Pega o GUID injetado pelo Middleware
         var tenantId = _tenantContext.TenantId;
+        var profile = await _tenantService.GetTenantProfileAsync(tenantId);
         
-        var tenant = await _tenantRepository.GetByIdAsync(tenantId);
-        if (tenant == null)
+        if (profile == null)
             return NotFound("Tenant não encontrado.");
 
-        return Ok(new 
-        {
-            tenant.Id,
-            tenant.Name,
-            tenant.Slug,
-            tenant.PlanTier,
-            tenant.CreditsBalance,
-            tenant.CreatedAt
-        });
+        return Ok(profile);
     }
 }

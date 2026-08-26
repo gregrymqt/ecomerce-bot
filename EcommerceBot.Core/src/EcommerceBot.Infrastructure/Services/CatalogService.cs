@@ -1,23 +1,37 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using EcommerceBot.Application.DTOs.Messaging;
 using EcommerceBot.Application.DTOs.Products;
 using EcommerceBot.Application.Interfaces;
+using EcommerceBot.Application.Security;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
+using MassTransit;
+using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Services;
 
 public class CatalogService : ICatalogService
 {
     private readonly IProductRepository _productRepository;
+    private readonly ITenantRepository _tenantRepository;
+    private readonly IPublishEndpoint _publishEndpoint;
+    private readonly ILogger<CatalogService> _logger;
 
-    public CatalogService(IProductRepository productRepository)
+    public CatalogService(
+        IProductRepository productRepository,
+        ITenantRepository tenantRepository,
+        IPublishEndpoint publishEndpoint,
+        ILogger<CatalogService> logger)
     {
         _productRepository = productRepository;
+        _tenantRepository = tenantRepository;
+        _publishEndpoint = publishEndpoint;
+        _logger = logger;
     }
 
-    private ProductResponseDto MapToResponse(Product product)
+    private static ProductResponseDto MapToResponse(Product product)
     {
         return new ProductResponseDto
         {
@@ -78,5 +92,50 @@ public class CatalogService : ICatalogService
 
         await _productRepository.DeleteAsync(tenantId, sku);
         return true;
+    }
+
+    public async Task<ScrapingResponseDto> RequestScrapingAsync(Guid tenantId, ScrapingRequestDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Url) || !UrlSecurityValidator.IsSafePublicUrl(request.Url))
+        {
+            throw new ArgumentException("URL inválida ou bloqueada por política de segurança Anti-SSRF.");
+        }
+
+        if (!await _tenantRepository.HasCreditsAsync(tenantId, 1))
+        {
+            throw new InvalidOperationException("Créditos insuficientes para realizar o scraping com IA.");
+        }
+
+        await _tenantRepository.DeductCreditsAsync(tenantId, 1);
+
+        var sku = Guid.NewGuid().ToString("N")[..10].ToUpper();
+
+        var product = new Product
+        {
+            TenantId = tenantId,
+            Sku = sku,
+            Title = request.Title ?? "Produto a ser analisado",
+            SourceUrl = request.Url,
+            Status = "RAW"
+        };
+
+        await _productRepository.AddAsync(product);
+
+        await _publishEndpoint.Publish(new ScrapingRequestMessage
+        {
+            TenantId = tenantId,
+            Sku = sku,
+            Url = request.Url,
+            PromptContext = request.CustomPrompt ?? string.Empty
+        });
+
+        _logger.LogInformation("Scraping enqueued for SKU '{Sku}', Tenant '{TenantId}'", sku, tenantId);
+
+        return new ScrapingResponseDto
+        {
+            Message = "Scraping solicitado com sucesso.",
+            Sku = sku,
+            Status = "PROCESSING"
+        };
     }
 }

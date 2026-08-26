@@ -25,6 +25,14 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
 });
 
+// -------------------------------------------------------------
+// Configuração StackExchange.Redis & IRedisService (Singleton)
+// -------------------------------------------------------------
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp => 
+    ConnectionMultiplexer.Connect(redisConnectionString));
+builder.Services.AddSingleton<IRedisService, RedisService>();
+
 // Registrar Core API Services (Domain & Infra)
 builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
 builder.Services.AddSingleton<IAesGcmCryptoService, AesGcmCryptoService>();
@@ -48,8 +56,10 @@ builder.Services.AddScoped<IRobotActivityRepository, RobotActivityRepository>();
 // Serviços de Aplicação
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddScoped<IShopifyIntegrationService, ShopifyIntegrationService>();
+builder.Services.AddScoped<INuvemshopIntegrationService, NuvemshopIntegrationService>();
 builder.Services.AddScoped<ISystemService, SystemService>();
 builder.Services.AddScoped<IEnterpriseLeadService, EnterpriseLeadService>();
 builder.Services.AddScoped<IMeteringService, MeteringService>();
@@ -57,6 +67,8 @@ builder.Services.AddScoped<ICheckoutService, CheckoutService>();
 builder.Services.AddScoped<IPlanService, PlanService>();
 builder.Services.AddScoped<ICatalogService, CatalogService>();
 builder.Services.AddScoped<IScraperService, ScraperService>();
+builder.Services.AddScoped<IMercadoPagoWebhookService, MercadoPagoWebhookService>();
+builder.Services.AddScoped<IEmailWebhookService, EmailWebhookService>();
 
 // Gateways de E-commerce
 builder.Services.AddHttpClient<IEcommerceGateway, ShopifyGateway>();
@@ -109,18 +121,6 @@ builder.Services.AddAuthentication(options =>
         }
     };
 });
-
-// -------------------------------------------------------------
-// Configuração StackExchange.Redis
-// -------------------------------------------------------------
-var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
-builder.Services.AddSingleton<IConnectionMultiplexer>(sp => 
-    ConnectionMultiplexer.Connect(redisConnectionString));
-
-// -------------------------------------------------------------
-// Configuração Distributed Cache (Memory / Redis)
-// -------------------------------------------------------------
-builder.Services.AddDistributedMemoryCache(); // Ou Redis, caso deseje injetar IDistributedCache no Redis
 
 // Registra os Controllers
 builder.Services.AddControllers();
@@ -191,7 +191,6 @@ app.MapControllers(); // Habilita o roteamento dos Controllers
 
 // Healthcheck público
 app.MapGet("/health", () => new { Status = "OK", Service = "EcommerceBot.Core.API" });
-
 
 // Exemplo de rota privada utilizando o TenantContext
 app.MapGet("/api/v1/tenant-info", (ITenantContext tenantContext) => 
