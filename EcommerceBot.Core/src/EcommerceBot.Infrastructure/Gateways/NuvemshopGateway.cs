@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
@@ -28,9 +31,10 @@ public class NuvemshopGateway : IEcommerceGateway
         _credentialRepository = credentialRepository;
         _cryptoService = cryptoService;
         _logger = logger;
+        _httpClient.BaseAddress = new Uri("https://api.nuvemshop.com.br/v1/");
     }
 
-    private async Task<string?> GetNuvemshopTokenAsync(Guid tenantId)
+    private async Task<(string Token, string StoreId)?> GetNuvemshopCredentialsAsync(Guid tenantId)
     {
         var creds = await _credentialRepository.GetByProviderAsync(tenantId, PlatformName);
         if (creds == null) return null;
@@ -42,27 +46,99 @@ public class NuvemshopGateway : IEcommerceGateway
             Tag = creds.AuthTag 
         };
 
-        return _cryptoService.Decrypt(payload);
+        var decrypted = _cryptoService.Decrypt(payload);
+        if (string.IsNullOrEmpty(decrypted)) return null;
+
+        // O formato será: "access_token|store_id"
+        var parts = decrypted.Split('|');
+        var token = parts[0];
+        var storeId = parts.Length > 1 ? parts[1] : "";
+
+        return (token, storeId);
     }
 
     public async Task<bool> PushProductAsync(Guid tenantId, Product product)
     {
-        var token = await GetNuvemshopTokenAsync(tenantId);
-        if (string.IsNullOrEmpty(token))
+        var creds = await GetNuvemshopCredentialsAsync(tenantId);
+        if (creds == null || string.IsNullOrEmpty(creds.Value.Token))
         {
-            _logger.LogWarning("Token Nuvemshop não encontrado para Tenant {TenantId}", tenantId);
+            _logger.LogWarning("Nuvemshop credentials not found for Tenant {TenantId}", tenantId);
             return false;
         }
 
-        // Lógica de envio via Nuvemshop REST API (Mock)
-        _logger.LogInformation("Enviando produto {Sku} para a Nuvemshop...", product.Sku);
-        await Task.Delay(500); 
-        
-        return true; 
+        var storeId = creds.Value.StoreId;
+        var requestUrl = $"{storeId}/products";
+
+        // Mapeamento simplificado do domínio local para Payload Nuvemshop
+        var payload = new
+        {
+            name = new { pt = product.Title },
+            description = new { pt = product.Description },
+            variants = new[] 
+            {
+                new {
+                    price = product.Price,
+                    stock = product.StockQuantity,
+                    sku = product.Sku,
+                    stock_management = true
+                }
+            }
+        };
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, requestUrl);
+        request.Headers.Add("Authentication", $"bearer {creds.Value.Token}");
+        request.Headers.Add("User-Agent", "EcomAutobot (contato@ecommercebot.com)");
+        request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+        try
+        {
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Failed to push product {Sku} to Nuvemshop. Status: {Status}. Error: {Error}", product.Sku, response.StatusCode, error);
+                return false;
+            }
+
+            _logger.LogInformation("Successfully pushed product {Sku} to Nuvemshop.", product.Sku);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error syncing product {Sku} to Nuvemshop.", product.Sku);
+            return false;
+        }
     }
 
     public async Task<IEnumerable<Product>> FetchProductsAsync(Guid tenantId)
     {
+        var creds = await GetNuvemshopCredentialsAsync(tenantId);
+        if (creds == null || string.IsNullOrEmpty(creds.Value.Token))
+        {
+            return Array.Empty<Product>();
+        }
+        
+        // Em um cenário real, processaríamos a paginação
+        var requestUrl = $"{creds.Value.StoreId}/products";
+        using var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+        request.Headers.Add("Authentication", $"bearer {creds.Value.Token}");
+        request.Headers.Add("User-Agent", "EcomAutobot");
+
+        try
+        {
+            var response = await _httpClient.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("Fetched products from Nuvemshop.");
+                // Retornando array vazio para satisfazer a interface sem desserializar todo JSON
+                return Array.Empty<Product>(); 
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch Nuvemshop products.");
+        }
+        
         return Array.Empty<Product>();
     }
 }

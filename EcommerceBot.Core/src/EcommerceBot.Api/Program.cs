@@ -108,6 +108,7 @@ builder.Services.AddMassTransit(x =>
     // Registra os Consumers (Escuta das filas do Python e de outros serviços)
     x.AddConsumer<ProcessedProductConsumer>();
     x.AddConsumer<EmailNotificationConsumer>();
+    x.AddConsumer<NuvemshopBulkSyncConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -131,6 +132,12 @@ builder.Services.AddMassTransit(x =>
         cfg.ReceiveEndpoint("email_notifications", e =>
         {
             e.ConfigureConsumer<EmailNotificationConsumer>(context);
+        });
+
+        // Configura a fila de sincronização em lote da Nuvemshop
+        cfg.ReceiveEndpoint("nuvemshop_bulk_sync", e =>
+        {
+            e.ConfigureConsumer<NuvemshopBulkSyncConsumer>(context);
         });
     });
 });
