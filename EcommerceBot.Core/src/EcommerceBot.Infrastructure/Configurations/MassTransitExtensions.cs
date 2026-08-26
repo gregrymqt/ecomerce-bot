@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace EcommerceBot.Infrastructure.Configurations;
 
 /// <summary>
-/// Configuração do MassTransit e RabbitMQ para mensageria assíncrona entre .NET e Python Workers.
+/// Configuração do MassTransit e RabbitMQ com políticas de Retry Exponencial, DLQs e consumidores EDA.
 /// </summary>
 public static class MassTransitExtensions
 {
@@ -15,10 +15,13 @@ public static class MassTransitExtensions
     {
         services.AddMassTransit(x =>
         {
-            // Registra os Consumers de eventos
+            // 1. Registra os Consumers de eventos
             x.AddConsumer<ProcessedProductConsumer>();
             x.AddConsumer<EmailNotificationConsumer>();
             x.AddConsumer<NuvemshopBulkSyncConsumer>();
+            x.AddConsumer<LlmUsageConsumer>();
+            x.AddConsumer<AnalyticsProcessedConsumer>();
+            x.AddConsumer<PaymentProcessingConsumer>();
 
             x.UsingRabbitMq((context, cfg) =>
             {
@@ -34,12 +37,26 @@ public static class MassTransitExtensions
                     h.Password(rabbitMqPass);
                 });
 
-                // Endpoints de fila
+                // Configuração global de Retry com Backoff Exponencial para resiliência
+                cfg.UseMessageRetry(r => r.Exponential(
+                    retryLimit: 3,
+                    minInterval: TimeSpan.FromSeconds(2),
+                    maxInterval: TimeSpan.FromSeconds(30),
+                    intervalDelta: TimeSpan.FromSeconds(5)
+                ));
+
+                // 2. Endpoints de fila de Scraping e IA
                 cfg.ReceiveEndpoint("ecommerce_processed_queue", e =>
                 {
                     e.ConfigureConsumer<ProcessedProductConsumer>(context);
                 });
 
+                cfg.ReceiveEndpoint("llm_usage_queue", e =>
+                {
+                    e.ConfigureConsumer<LlmUsageConsumer>(context);
+                });
+
+                // 3. Endpoints de Notificações e Integrações
                 cfg.ReceiveEndpoint("email_notifications", e =>
                 {
                     e.ConfigureConsumer<EmailNotificationConsumer>(context);
@@ -48,6 +65,17 @@ public static class MassTransitExtensions
                 cfg.ReceiveEndpoint("nuvemshop_bulk_sync", e =>
                 {
                     e.ConfigureConsumer<NuvemshopBulkSyncConsumer>(context);
+                });
+
+                // 4. Endpoints de Machine Learning e Financeiro
+                cfg.ReceiveEndpoint("analytics_processed_queue", e =>
+                {
+                    e.ConfigureConsumer<AnalyticsProcessedConsumer>(context);
+                });
+
+                cfg.ReceiveEndpoint("payments_process_queue", e =>
+                {
+                    e.ConfigureConsumer<PaymentProcessingConsumer>(context);
                 });
             });
         });

@@ -39,8 +39,8 @@ async def configure_rabbitmq_topology(
     channel: aio_pika.abc.AbstractChannel
 ) -> Dict[str, aio_pika.abc.AbstractQueue]:
     """
-    Configura a topologia completa do RabbitMQ com 7 filas principais e 3 isolamentos de DLQ
-    para operações de scraping, IA e transações financeiras.
+    Configura a topologia completa do RabbitMQ com filas principais e isolamentos de DLQ
+    para operações de scraping, IA, Machine Learning e transações financeiras.
     """
     try:
         # ------------------------------------------------------------------
@@ -124,15 +124,8 @@ async def configure_rabbitmq_topology(
         )
         await dlq_nuvemshop_bulk_sync.bind(nuvemshop_dlx, routing_key="dlq_nuvemshop_bulk_sync")
 
-        dlq_nuvemshop_webhooks = await channel.declare_queue(
-            "dlq_nuvemshop_webhooks",
-            durable=True,
-            arguments=dlq_args
-        )
-        await dlq_nuvemshop_webhooks.bind(nuvemshop_dlx, routing_key="dlq_nuvemshop_webhooks")
-
         # ------------------------------------------------------------------
-        # 3. FILAS DE E-COMMERCE & DEMO (SCRAPING)
+        # 3. FILAS DE E-COMMERCE & SCRAPING
         # ------------------------------------------------------------------
         demo_ecommerce = await channel.declare_queue(
             "demo_ecommerce",
@@ -155,31 +148,21 @@ async def configure_rabbitmq_topology(
             }
         )
 
-        # ------------------------------------------------------------------
-        # 4. FILAS FINANCEIRAS & WEBHOOKS (MERCADO PAGO)
-        # ------------------------------------------------------------------
-        webhook = await channel.declare_queue(
-            "webhook",
+        ecommerce_processed_queue = await channel.declare_queue(
+            "ecommerce_processed_queue",
             durable=True,
             arguments={
-                "x-dead-letter-exchange": "mercadopago_dlx",
-                "x-dead-letter-routing-key": "mp_failed",
+                "x-dead-letter-exchange": "ecommerce_dlx",
+                "x-dead-letter-routing-key": "ecommerce_failed",
                 "x-max-length": 10000
             }
         )
 
-        payments = await channel.declare_queue(
-            "payments",
-            durable=True,
-            arguments={
-                "x-dead-letter-exchange": "mercadopago_dlx",
-                "x-dead-letter-routing-key": "mp_failed",
-                "x-max-length": 10000
-            }
-        )
-
-        subscription = await channel.declare_queue(
-            "subscription",
+        # ------------------------------------------------------------------
+        # 4. FILAS FINANCEIRAS & WEBHOOKS
+        # ------------------------------------------------------------------
+        payments_process_queue = await channel.declare_queue(
+            "payments_process_queue",
             durable=True,
             arguments={
                 "x-dead-letter-exchange": "mercadopago_dlx",
@@ -189,7 +172,7 @@ async def configure_rabbitmq_topology(
         )
 
         # ------------------------------------------------------------------
-        # 5. FILAS LLM (PRODUÇÃO & DEMO)
+        # 5. FILAS LLM & TELEMETRIA ASSÍNCRONA
         # ------------------------------------------------------------------
         llm = await channel.declare_queue(
             "llm", 
@@ -201,19 +184,41 @@ async def configure_rabbitmq_topology(
             }
         )
 
-        demo_llm = await channel.declare_queue(
-            "demo_llm", 
+        llm_usage_queue = await channel.declare_queue(
+            "llm_usage_queue",
             durable=True,
             arguments={
                 "x-dead-letter-exchange": "llm_dlx",
                 "x-dead-letter-routing-key": "llm_failed",
-                "x-max-priority": 10,
-                "x-max-length": 100
+                "x-max-length": 10000
             }
         )
 
         # ------------------------------------------------------------------
-        # 6. FILAS DE NOTIFICAÇÕES (E-MAIL TRANSACIONAL)
+        # 6. FILAS DE MACHINE LEARNING & ANALYTICS
+        # ------------------------------------------------------------------
+        analytics_ml_queue = await channel.declare_queue(
+            "analytics_ml_queue",
+            durable=True,
+            arguments={
+                "x-dead-letter-exchange": "ecommerce_dlx",
+                "x-dead-letter-routing-key": "ecommerce_failed",
+                "x-max-length": 1000
+            }
+        )
+
+        analytics_processed_queue = await channel.declare_queue(
+            "analytics_processed_queue",
+            durable=True,
+            arguments={
+                "x-dead-letter-exchange": "ecommerce_dlx",
+                "x-dead-letter-routing-key": "ecommerce_failed",
+                "x-max-length": 1000
+            }
+        )
+
+        # ------------------------------------------------------------------
+        # 7. FILAS DE NOTIFICAÇÕES & INTEGRAÇÕES
         # ------------------------------------------------------------------
         email_notifications = await channel.declare_queue(
             "email_notifications",
@@ -225,25 +230,12 @@ async def configure_rabbitmq_topology(
             }
         )
 
-        # ------------------------------------------------------------------
-        # 7. FILAS DE INTEGRAÇÕES (SHOPIFY E NUVEMSHOP)
-        # ------------------------------------------------------------------
         shopify_webhook = await channel.declare_queue(
             "shopify_webhook",
             durable=True,
             arguments={
                 "x-dead-letter-exchange": "shopify_dlx",
                 "x-dead-letter-routing-key": "shopify_failed",
-                "x-max-length": 10000
-            }
-        )
-
-        nuvemshop_webhook = await channel.declare_queue(
-            "nuvemshop_webhook",
-            durable=True,
-            arguments={
-                "x-dead-letter-exchange": "nuvemshop_dlx",
-                "x-dead-letter-routing-key": "dlq_nuvemshop_webhooks",
                 "x-max-length": 10000
             }
         )
@@ -258,19 +250,19 @@ async def configure_rabbitmq_topology(
             }
         )
 
-        logger.info("Topologia RabbitMQ (11 filas principais, 5 DLXs e 6 DLQs) configurada com sucesso.")
+        logger.info("Topologia RabbitMQ (Exchanges, DLQs com TTL 7d e Filas Principais) configurada com sucesso.")
 
         return {
             "demo_ecommerce": demo_ecommerce,
             "ecommerce": ecommerce,
-            "webhook": webhook,
-            "payments": payments,
-            "subscription": subscription,
-            "demo_llm": demo_llm,
+            "ecommerce_processed_queue": ecommerce_processed_queue,
+            "payments_process_queue": payments_process_queue,
             "llm": llm,
+            "llm_usage_queue": llm_usage_queue,
+            "analytics_ml_queue": analytics_ml_queue,
+            "analytics_processed_queue": analytics_processed_queue,
             "email_notifications": email_notifications,
             "shopify_webhook": shopify_webhook,
-            "nuvemshop_webhook": nuvemshop_webhook,
             "nuvemshop_bulk_sync": nuvemshop_bulk_sync,
             "dlq_ecommerce": dlq_ecommerce,
             "dlq_mercado_pago": dlq_mercado_pago,
@@ -279,7 +271,6 @@ async def configure_rabbitmq_topology(
             "dlq_nuvemshop": dlq_nuvemshop,
             "dlq_nuvemshop_bulk_sync": dlq_nuvemshop_bulk_sync,
         }
-
 
     except Exception as e:
         logger.error(f"Erro ao configurar topologia do RabbitMQ: {e}")

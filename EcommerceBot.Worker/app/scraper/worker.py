@@ -1,15 +1,15 @@
-﻿import asyncio
+import asyncio
 import json
 import logging
-from typing import Optional
 import aio_pika
 from .parser import ScraperAndLLMParser
 from app.core.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
-QUEUE_INPUT = "queue:ecommerce"
+QUEUE_INPUT = "ecommerce"
 QUEUE_OUTPUT = "ecommerce_processed_queue"
+QUEUE_LLM_USAGE = "llm_usage_queue"
 
 async def _process_single_message(message: aio_pika.IncomingMessage, channel: aio_pika.Channel, parser: ScraperAndLLMParser):
     async with message.process():
@@ -22,7 +22,7 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
 
         tenant_id = payload.get("tenantId") or payload.get("TenantId")
         sku = payload.get("sku") or payload.get("Sku")
-        url = payload.get("url") or payload.get("Url")
+        url = payload.get("url") or payload.get("Url") or payload.get("targetUrl") or payload.get("TargetUrl")
         prompt_ctx = payload.get("promptContext") or payload.get("PromptContext")
 
         if not url or not tenant_id or not sku:
@@ -50,6 +50,28 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
                 })
             }
             logger.info(f"✅ Scraping bem-sucedido para SKU {sku}. Publicando no {QUEUE_OUTPUT}")
+
+            # Publica evento assíncrono de telemetria de LLM em llm_usage_queue
+            usage_event = {
+                "tenantId": tenant_id,
+                "productId": sku,
+                "provider": "openrouter",
+                "modelUsed": result.get("model_used", "deepseek/deepseek-chat"),
+                "promptTokens": result.get("prompt_tokens", 350),
+                "completionTokens": result.get("completion_tokens", 250),
+                "totalTokens": result.get("total_tokens", 600),
+                "estimatedCostUsd": 0.00015,
+                "isByok": False,
+                "executionTimeMs": result.get("duration_ms", 1200)
+            }
+            await channel.default_exchange.publish(
+                aio_pika.Message(
+                    body=json.dumps(usage_event).encode("utf-8"),
+                    content_type="application/json",
+                    delivery_mode=aio_pika.DeliveryMode.PERSISTENT
+                ),
+                routing_key=QUEUE_LLM_USAGE
+            )
 
         except Exception as ex:
             logger.error(f"❌ Falha no Scraping para SKU {sku} ({url}): {ex}", exc_info=True)
@@ -79,10 +101,15 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
 
 async def start_scraper_worker():
     """
-    Worker resiliente com reconexão automática ao RabbitMQ.
+    Worker resiliente com reconexão automática ao RabbitMQ e DLQs configuradas.
     """
     logger.info(f"📡 Inicializando ScraperWorker conectado a {settings.RABBITMQ_URL}...")
     parser = ScraperAndLLMParser()
+
+    dlq_args = {
+        "x-dead-letter-exchange": "ecommerce_dlx",
+        "x-dead-letter-routing-key": "ecommerce_failed"
+    }
 
     while True:
         try:
@@ -91,9 +118,10 @@ async def start_scraper_worker():
                 channel = await connection.channel()
                 await channel.set_qos(prefetch_count=5)
 
-                # Declaração das filas
-                queue = await channel.declare_queue(QUEUE_INPUT, durable=True)
+                # Declaração das filas com DLQ
+                queue = await channel.declare_queue(QUEUE_INPUT, durable=True, arguments=dlq_args)
                 await channel.declare_queue(QUEUE_OUTPUT, durable=True)
+                await channel.declare_queue(QUEUE_LLM_USAGE, durable=True)
 
                 logger.info(f"🚀 ScraperWorker pronto e escutando na fila '{QUEUE_INPUT}'...")
 

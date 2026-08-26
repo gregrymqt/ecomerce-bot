@@ -4,8 +4,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using EcommerceBot.Application.DTOs.Messaging;
 using EcommerceBot.Application.Interfaces;
-using EcommerceBot.Domain.Interfaces;
+using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -13,21 +14,21 @@ namespace EcommerceBot.Infrastructure.Services;
 
 public class MercadoPagoWebhookService : IMercadoPagoWebhookService
 {
-    private readonly IOrderRepository _orderRepository;
     private readonly IRedisService _redisService;
+    private readonly IPublishEndpoint _publishEndpoint;
     private readonly ILogger<MercadoPagoWebhookService> _logger;
     private readonly string? _webhookSecret;
 
     private static readonly Regex TsV1Regex = new(@"(?:ts=(?<ts>\d+))|(?:v1=(?<v1>[a-fA-F0-9]+))", RegexOptions.Compiled);
 
     public MercadoPagoWebhookService(
-        IOrderRepository orderRepository,
         IRedisService redisService,
+        IPublishEndpoint publishEndpoint,
         IConfiguration configuration,
         ILogger<MercadoPagoWebhookService> logger)
     {
-        _orderRepository = orderRepository;
         _redisService = redisService;
+        _publishEndpoint = publishEndpoint;
         _logger = logger;
         _webhookSecret = configuration["MercadoPago:WebhookSecret"];
     }
@@ -102,18 +103,19 @@ public class MercadoPagoWebhookService : IMercadoPagoWebhookService
                 }
             }
 
-            if (action.StartsWith("payment.") || action.StartsWith("order."))
+            // Publica o evento assíncrono para processamento desacoplado em payments_process_queue
+            await _publishEndpoint.Publish(new PaymentReceivedEvent
             {
-                _logger.LogInformation("Payment/Order event {Action} recorded for {ResourceId}", action, resourceId);
-            }
-            else if (action.StartsWith("subscription"))
+                ResourceId = resourceId,
+                Action = action,
+                RawPayload = rawBody,
+                ReceivedAt = DateTimeOffset.UtcNow
+            }, ctx =>
             {
-                _logger.LogInformation("Subscription event {Action} recorded for {ResourceId}", action, resourceId);
-            }
-            else
-            {
-                _logger.LogInformation("Ignored unmapped event {Action} for {ResourceId}", action, resourceId);
-            }
+                ctx.SetRoutingKey("payments_process_queue");
+            });
+
+            _logger.LogInformation("Published PaymentReceivedEvent to RabbitMQ queue 'payments_process_queue' for {ResourceId}", resourceId);
 
             return new WebhookProcessResult
             {

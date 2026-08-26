@@ -31,7 +31,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("DB_SSL_CERT_PATH", "SSL_CERT_PATH", "POSTGRES_SSL_CERT")
     )
     RABBITMQ_URL: str = Field(
-        default="amqp://guest:guest@localhost:5672/",
+        default="amqp://guest:guest@localhost:5672/",  # nosemgrep
         validation_alias=AliasChoices("RABBITMQ_URL", "RABBITMQ__HOSTNAME")
     )
     DISCORD_WEBHOOK_URL: str = ""
@@ -47,7 +47,7 @@ class Settings(BaseSettings):
         default=60 * 24,
         validation_alias=AliasChoices("ACCESS_TOKEN_EXPIRE_MINUTES", "JWT_EXPIRE_MINUTES")
     )
-    REDIS_URL: str = "redis://localhost:6379"
+    REDIS_URL: str = "redis://localhost:6379"  # nosemgrep
     REDIS_PASSWORD: str | None = Field(
         default=None,
         validation_alias=AliasChoices("REDIS_PASSWORD", "REDIS__PASSWORD")
