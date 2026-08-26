@@ -20,9 +20,6 @@ from app.features.ai_enrichment.schemas import LLMUsageLogCreate
 from app.features.ai_enrichment.services import LLMService, LLMMeteringService
 from app.features.products.schemas import Product, ProductStatus
 from app.features.system.repositories.telemetry_repository import TelemetryRepository
-from app.features.wallet.domain.exceptions import InsufficientBalanceException
-from app.features.wallet.repositories import WalletRepository
-from app.features.wallet.services import CreditService
 
 logger = get_logger("ProcessorService")
 
@@ -140,7 +137,7 @@ class ProcessorService:
                 await metering_service.reserve_credits_for_llm(
                     tenant_id=tenant_id, estimated_cost=reserved_cost
                 )
-            except (InsufficientCreditsException, InsufficientBalanceException):
+            except InsufficientCreditsException:
                 logger.warning(
                     f"[ProcessorService] Saldo de créditos insuficiente para tenant '{tenant_id}' (SKU: {sku}). Produto marcado como FAILED.",
                     extra=log_extra,
@@ -194,18 +191,7 @@ class ProcessorService:
             processed_data.updated_at = datetime.now(timezone.utc)
             await self.repo.upsert_product(processed_data)
 
-            try:
-                credit_service = CreditService(repository=WalletRepository(session=session))
-                await credit_service.consume_credits(
-                    tenant_id=tenant_id,
-                    amount=1,
-                    description=f"Enriquecimento de produto SKU {sku}",
-                )
-            except Exception as credit_err:
-                logger.warning(
-                    f"[ProcessorService] Erro ao debitar crédito para tenant '{tenant_id}', SKU '{sku}': {credit_err}",
-                    extra=log_extra,
-                )
+            # Removido CreditService, agora o faturamento fica no C#
 
             duration_ms = int((time.time() - start_time) * 1000)
 
