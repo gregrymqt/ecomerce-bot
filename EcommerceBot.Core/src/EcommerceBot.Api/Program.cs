@@ -42,10 +42,12 @@ builder.Services.AddScoped<IMeteringRepository, MeteringRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IEmailRepository, EmailRepository>();
 builder.Services.AddScoped<IPlanRepository, PlanRepository>();
+builder.Services.AddScoped<ITenantConfigRepository, TenantConfigRepository>();
 
 // Serviços de Aplicação
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddScoped<IEnterpriseLeadService, EnterpriseLeadService>();
 builder.Services.AddScoped<IMeteringService, MeteringService>();
 builder.Services.AddScoped<ICheckoutService, CheckoutService>();
@@ -100,6 +102,11 @@ builder.Services.AddAuthentication(options =>
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp => 
     ConnectionMultiplexer.Connect(redisConnectionString));
+
+// -------------------------------------------------------------
+// Configuração Distributed Cache (Memory / Redis)
+// -------------------------------------------------------------
+builder.Services.AddDistributedMemoryCache(); // Ou Redis, caso deseje injetar IDistributedCache no Redis
 
 // Registra os Controllers
 builder.Services.AddControllers();
