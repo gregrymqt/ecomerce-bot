@@ -83,4 +83,68 @@ public class ProductRepository : IProductRepository
 
         await connection.ExecuteAsync(sql, new { TenantId = tenantId, Sku = sku, Status = status, Metadata = metadata });
     }
+
+    public async Task<(IEnumerable<Product> Products, int TotalCount)> GetPaginatedAsync(
+        Guid tenantId, string? statusFilter, string? search, int page, int limit)
+    {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        
+        var offset = (page - 1) * limit;
+        
+        var sqlWhere = "WHERE TenantId = @TenantId";
+        if (!string.IsNullOrEmpty(statusFilter))
+            sqlWhere += " AND Status = @StatusFilter";
+        if (!string.IsNullOrEmpty(search))
+            sqlWhere += " AND (Title LIKE @Search OR Sku LIKE @Search)";
+
+        var countSql = $"SELECT COUNT(1) FROM dbo.Products {sqlWhere}";
+        var totalCount = await connection.ExecuteScalarAsync<int>(countSql, new { TenantId = tenantId, StatusFilter = statusFilter, Search = $"%{search}%" });
+
+        var sql = $@"
+            SELECT * FROM dbo.Products 
+            {sqlWhere}
+            ORDER BY CreatedAt DESC
+            OFFSET @Offset ROWS
+            FETCH NEXT @Limit ROWS ONLY
+        ";
+
+        var products = await connection.QueryAsync<Product>(sql, new { 
+            TenantId = tenantId, 
+            StatusFilter = statusFilter, 
+            Search = $"%{search}%", 
+            Offset = offset, 
+            Limit = limit 
+        });
+
+        return (products, totalCount);
+    }
+
+    public async Task UpdateAsync(Product product)
+    {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        
+        const string sql = """
+            UPDATE dbo.Products 
+            SET Title = @Title,
+                Description = @Description,
+                OriginalPrice = @OriginalPrice,
+                Price = @Price,
+                Category = @Category,
+                Brand = @Brand,
+                StockQuantity = @StockQuantity,
+                Status = @Status,
+                ImagesJson = @ImagesJson,
+                UpdatedAt = SYSDATETIMEOFFSET()
+            WHERE TenantId = @TenantId AND Sku = @Sku
+        """;
+
+        await connection.ExecuteAsync(sql, product);
+    }
+
+    public async Task DeleteAsync(Guid tenantId, string sku)
+    {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        const string sql = "DELETE FROM dbo.Products WHERE TenantId = @TenantId AND Sku = @Sku";
+        await connection.ExecuteAsync(sql, new { TenantId = tenantId, Sku = sku });
+    }
 }

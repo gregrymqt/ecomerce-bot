@@ -50,6 +50,7 @@ builder.Services.AddScoped<IEnterpriseLeadService, EnterpriseLeadService>();
 builder.Services.AddScoped<IMeteringService, MeteringService>();
 builder.Services.AddScoped<ICheckoutService, CheckoutService>();
 builder.Services.AddScoped<IPlanService, PlanService>();
+builder.Services.AddScoped<ICatalogService, CatalogService>();
 
 // Gateways de E-commerce
 builder.Services.AddHttpClient<IEcommerceGateway, ShopifyGateway>();
