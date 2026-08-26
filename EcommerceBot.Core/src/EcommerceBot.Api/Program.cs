@@ -51,6 +51,7 @@ builder.Services.AddScoped<IMeteringService, MeteringService>();
 builder.Services.AddScoped<ICheckoutService, CheckoutService>();
 builder.Services.AddScoped<IPlanService, PlanService>();
 builder.Services.AddScoped<ICatalogService, CatalogService>();
+builder.Services.AddScoped<IScraperService, ScraperService>();
 
 // Gateways de E-commerce
 builder.Services.AddHttpClient<IEcommerceGateway, ShopifyGateway>();
@@ -115,6 +116,8 @@ builder.Services.AddMassTransit(x =>
 
     x.UsingRabbitMq((context, cfg) =>
     {
+        cfg.UseRawJsonSerializer();
+
         var rabbitMqHost = builder.Configuration["RabbitMQ:Host"] ?? "localhost";
         var rabbitMqUser = builder.Configuration["RabbitMQ:Username"] ?? "guest";
         var rabbitMqPass = builder.Configuration["RabbitMQ:Password"] ?? "guest";

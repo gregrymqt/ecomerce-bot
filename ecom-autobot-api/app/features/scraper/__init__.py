@@ -22,10 +22,8 @@ from app.features.scraper.schemas import (
     WebScraperRequest,
 )
 from app.features.scraper.services import (
-    AIScraperService,
     ProcessorService,
     ScrapingExecutionService,
-    ai_scraper_service,
     processor_service,
     scraping_execution_service,
 )
@@ -56,8 +54,6 @@ __all__ = [
     "ScrapingMetadataRepository",
     "scraping_metadata_repository",
     # Services
-    "AIScraperService",
-    "ai_scraper_service",
     "ProcessorService",
     "processor_service",
     "ScrapingExecutionService",
