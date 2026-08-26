@@ -43,12 +43,14 @@ builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IEmailRepository, EmailRepository>();
 builder.Services.AddScoped<IPlanRepository, PlanRepository>();
 builder.Services.AddScoped<ITenantConfigRepository, TenantConfigRepository>();
+builder.Services.AddScoped<IRobotActivityRepository, RobotActivityRepository>();
 
 // Serviços de Aplicação
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddScoped<IShopifyIntegrationService, ShopifyIntegrationService>();
+builder.Services.AddScoped<ISystemService, SystemService>();
 builder.Services.AddScoped<IEnterpriseLeadService, EnterpriseLeadService>();
 builder.Services.AddScoped<IMeteringService, MeteringService>();
 builder.Services.AddScoped<ICheckoutService, CheckoutService>();
