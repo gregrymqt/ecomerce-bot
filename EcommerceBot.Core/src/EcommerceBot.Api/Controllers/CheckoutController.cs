@@ -9,6 +9,7 @@ namespace EcommerceBot.Api.Controllers
 {
     [ApiController]
     [Route("api/v1/[controller]")]
+    [Authorize]
     public class CheckoutController : ControllerBase
     {
         private readonly ICheckoutService _checkoutService;

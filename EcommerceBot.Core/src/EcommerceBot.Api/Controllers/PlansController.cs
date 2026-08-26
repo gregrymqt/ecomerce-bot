@@ -33,6 +33,7 @@ public class PlansController : ControllerBase
     }
 
     [HttpPost]
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> Create([FromBody] CreatePlanRequest request)
     {
         var plan = await _planService.CreatePlanAsync(request);
@@ -40,6 +41,7 @@ public class PlansController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePlanRequest request)
     {
         var plan = await _planService.UpdatePlanAsync(id, request);

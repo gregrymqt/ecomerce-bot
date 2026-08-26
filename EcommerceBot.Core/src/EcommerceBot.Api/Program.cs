@@ -67,7 +67,18 @@ builder.Services.AddHttpClient<IResendGateway, ResendGateway>();
 // -------------------------------------------------------------
 // Configuração JWT Auth
 // -------------------------------------------------------------
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "MinhaChaveSuperSecretaGigante123!";
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrEmpty(jwtKey))
+{
+    if (builder.Environment.IsDevelopment())
+    {
+        jwtKey = "DevOnly_EcommerceBotSecureSigningKey_Minimum32CharsLong!";
+    }
+    else
+    {
+        throw new InvalidOperationException("Jwt:Key is mandatory and must be configured in Production environment.");
+    }
+}
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;

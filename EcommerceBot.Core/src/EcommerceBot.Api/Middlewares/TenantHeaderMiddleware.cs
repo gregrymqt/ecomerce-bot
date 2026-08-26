@@ -15,11 +15,37 @@ public class TenantHeaderMiddleware
         _next = next;
     }
 
+    private static readonly string[] PublicPathPrefixes = new[]
+    {
+        "/health",
+        "/openapi",
+        "/api/v1/auth/login",
+        "/api/v1/auth/register",
+        "/api/v1/auth/google",
+        "/api/v1/auth/sso-enterprise",
+        "/api/v1/webhooks",
+        "/api/v1/emails/webhooks",
+        "/api/v1/shopify/webhooks",
+        "/api/v1/shopify/oauth",
+        "/api/v1/nuvemshop/webhooks",
+        "/api/v1/nuvemshop/oauth"
+    };
+
     public async Task InvokeAsync(HttpContext context, ITenantContext tenantContext, ITenantRepository tenantRepository)
     {
-        // Ignorar rotas públicas como health checks (caso necessário)
-        if (context.Request.Path.StartsWithSegments("/health"))
+        var path = context.Request.Path.Value ?? string.Empty;
+
+        // Isenção para rotas públicas e webhooks externos
+        if (PublicPathPrefixes.Any(p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase)) ||
+            (path.Equals("/api/v1/plans", StringComparison.OrdinalIgnoreCase) && HttpMethods.IsGet(context.Request.Method)))
         {
+            // Se o header foi fornecido opcionalmente na rota pública, tenta popular o contexto
+            if (context.Request.Headers.TryGetValue("X-Tenant-ID", out var optionalTenantIdHeader) &&
+                Guid.TryParse(optionalTenantIdHeader, out var optionalTenantId))
+            {
+                tenantContext.SetTenantId(optionalTenantId);
+            }
+
             await _next(context);
             return;
         }
@@ -36,6 +62,24 @@ public class TenantHeaderMiddleware
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
             await context.Response.WriteAsJsonAsync(new { detail = "O X-Tenant-ID fornecido não é um GUID válido." });
             return;
+        }
+
+        // Validação Estrita de Multi-Tenancy (Anti-IDOR / Tenant Spoofing):
+        // Se o usuário está autenticado e não é ADMIN, valida se o TenantId do header confere com o claim do JWT
+        if (context.User.Identity?.IsAuthenticated == true)
+        {
+            var userRole = context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            var userTenantClaim = context.User.FindFirst("tenantId")?.Value;
+
+            if (userRole != "ADMIN" && !string.IsNullOrEmpty(userTenantClaim))
+            {
+                if (!Guid.TryParse(userTenantClaim, out var claimTenantId) || claimTenantId != tenantId)
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    await context.Response.WriteAsJsonAsync(new { detail = "Acesso negado: o token de autenticação não pertence ao Tenant solicitado." });
+                    return;
+                }
+            }
         }
 
         // Valida se o Tenant existe e está ativo (via Dapper/Cache)

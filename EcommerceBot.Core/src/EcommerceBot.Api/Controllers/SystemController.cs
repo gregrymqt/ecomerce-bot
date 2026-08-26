@@ -22,6 +22,7 @@ public class SystemController : ControllerBase
     }
 
     [HttpGet("telemetry")]
+    [Microsoft.AspNetCore.Authorization.Authorize]
     public async Task<IActionResult> GetTelemetry(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
         [FromQuery] string timeframe = "24h")
@@ -31,6 +32,7 @@ public class SystemController : ControllerBase
     }
 
     [HttpGet("activities")]
+    [Microsoft.AspNetCore.Authorization.Authorize]
     public async Task<IActionResult> GetActivities(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
         [FromQuery] int limit = 20, 
@@ -56,12 +58,13 @@ public class SystemController : ControllerBase
     }
 
     [HttpGet("export")]
+    [Microsoft.AspNetCore.Authorization.Authorize]
     public async Task ExportData(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
         [FromQuery] string platform = "shopify")
     {
-        Response.Headers.Add("Content-Disposition", $"attachment; filename=export_{platform}_{tenantId}.csv");
-        Response.Headers.Add("Access-Control-Expose-Headers", "Content-Disposition");
+        Response.Headers.Append("Content-Disposition", $"attachment; filename=export_{platform}_{tenantId}.csv");
+        Response.Headers.Append("Access-Control-Expose-Headers", "Content-Disposition");
         Response.ContentType = "text/csv";
 
         using var streamWriter = new StreamWriter(Response.Body);
@@ -71,7 +74,7 @@ public class SystemController : ControllerBase
     [HttpGet("demo/stream")]
     public async Task DemoStream()
     {
-        Response.Headers.Add("Content-Type", "text/event-stream");
+        Response.Headers.Append("Content-Type", "text/event-stream");
         var subscriber = _redis.GetSubscriber();
         var channel = new RedisChannel("demo_progress", RedisChannel.PatternMode.Literal);
 

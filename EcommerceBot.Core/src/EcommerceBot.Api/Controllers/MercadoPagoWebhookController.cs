@@ -18,14 +18,20 @@ namespace EcommerceBot.Api.Controllers
     public class MercadoPagoWebhookController : ControllerBase
     {
         private readonly IOrderRepository _orderRepository;
+        private readonly StackExchange.Redis.IConnectionMultiplexer _redis;
         private readonly ILogger<MercadoPagoWebhookController> _logger;
         private readonly string? _webhookSecret;
 
         private static readonly Regex TsV1Regex = new Regex(@"(?:ts=(?<ts>\d+))|(?:v1=(?<v1>[a-fA-F0-9]+))", RegexOptions.Compiled);
 
-        public MercadoPagoWebhookController(IOrderRepository orderRepository, IConfiguration configuration, ILogger<MercadoPagoWebhookController> logger)
+        public MercadoPagoWebhookController(
+            IOrderRepository orderRepository, 
+            StackExchange.Redis.IConnectionMultiplexer redis,
+            IConfiguration configuration, 
+            ILogger<MercadoPagoWebhookController> logger)
         {
             _orderRepository = orderRepository;
+            _redis = redis;
             _logger = logger;
             _webhookSecret = configuration["MercadoPago:WebhookSecret"];
         }
@@ -44,17 +50,16 @@ namespace EcommerceBot.Api.Controllers
                 
                 var resourceId = dataId ?? idParam ?? "";
 
-                if (!string.IsNullOrEmpty(_webhookSecret))
+                if (string.IsNullOrEmpty(_webhookSecret))
                 {
-                    if (string.IsNullOrEmpty(xSignature) || !VerifySignature(xSignature, xRequestId, resourceId, _webhookSecret))
-                    {
-                        _logger.LogWarning("Invalid or missing Mercado Pago webhook signature.");
-                        return Unauthorized(new { detail = "Invalid webhook signature." });
-                    }
+                    _logger.LogWarning("MercadoPago:WebhookSecret is not configured. Rejecting request for security.");
+                    return Unauthorized(new { detail = "Webhook secret not configured on server." });
                 }
-                else
+
+                if (string.IsNullOrEmpty(xSignature) || !VerifySignature(xSignature, xRequestId, resourceId, _webhookSecret))
                 {
-                    _logger.LogWarning("MercadoPago:WebhookSecret is not configured. Skipping signature verification.");
+                    _logger.LogWarning("Invalid or missing Mercado Pago webhook signature.");
+                    return Unauthorized(new { detail = "Invalid webhook signature." });
                 }
 
                 JsonDocument payload;
@@ -81,7 +86,17 @@ namespace EcommerceBot.Api.Controllers
 
                 _logger.LogInformation("Processing Mercado Pago webhook action: {Action}, resource_id: {ResourceId}", action, resourceId);
 
-                // Handling payments and orders
+                if (!string.IsNullOrEmpty(resourceId))
+                {
+                    var db = _redis.GetDatabase();
+                    var idempotencyKey = $"webhook:idempotency:mp:{resourceId}:{action}";
+                    var isNew = await db.StringSetAsync(idempotencyKey, "processed", TimeSpan.FromHours(24), StackExchange.Redis.When.NotExists);
+                    if (!isNew)
+                    {
+                        _logger.LogInformation("Mercado Pago webhook already processed for resource {ResourceId} and action {Action}", resourceId, action);
+                        return Ok(new { status = "already_processed" });
+                    }
+                }
                 if (action.StartsWith("payment.") || action.StartsWith("order."))
                 {
                     // Na prática, buscaríamos a Order pelo tenant e atualizaríamos o status.

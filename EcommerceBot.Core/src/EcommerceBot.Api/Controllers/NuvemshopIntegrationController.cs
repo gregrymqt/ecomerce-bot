@@ -53,14 +53,24 @@ namespace EcommerceBot.Api.Controllers
         [HttpPost("webhooks/{tenantId}")]
         public IActionResult ReceiveWebhook(Guid tenantId, [FromBody] object payload)
         {
+            if (tenantId == Guid.Empty)
+                return BadRequest("Invalid tenantId");
+
             // Processa webhooks de pedidos ou produtos modificados na Nuvemshop
             _logger.LogInformation("Received Nuvemshop Webhook for Tenant {TenantId}", tenantId);
             return Ok();
         }
 
         [HttpPost("sync/bulk")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
         public async Task<IActionResult> TriggerBulkSync([FromHeader(Name = "X-Tenant-ID")] Guid tenantId, [FromBody] NuvemshopBulkSyncRequest request)
         {
+            if (tenantId == Guid.Empty)
+                return BadRequest("X-Tenant-ID header is required.");
+
+            if (request.Skus == null || request.Skus.Count == 0)
+                return BadRequest("Skus list cannot be empty.");
+
             var jobId = Guid.NewGuid().ToString("N");
 
             foreach (var sku in request.Skus)

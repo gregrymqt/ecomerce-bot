@@ -7,6 +7,7 @@ namespace EcommerceBot.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/tenant")]
+[Microsoft.AspNetCore.Authorization.Authorize]
 public class TenantController : ControllerBase
 {
     private readonly ITenantContext _tenantContext;

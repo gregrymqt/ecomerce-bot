@@ -12,10 +12,34 @@ namespace EcommerceBot.Api.Controllers
     public class MeteringController : ControllerBase
     {
         private readonly IMeteringService _meteringService;
+        private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
 
-        public MeteringController(IMeteringService meteringService)
+        public MeteringController(IMeteringService meteringService, Microsoft.Extensions.Configuration.IConfiguration configuration)
         {
             _meteringService = meteringService;
+            _configuration = configuration;
+        }
+
+        private bool IsAuthorizedInternalService()
+        {
+            var internalKey = _configuration["Security:InternalServiceKey"];
+            if (!string.IsNullOrEmpty(internalKey))
+            {
+                if (Request.Headers.TryGetValue("X-Internal-Secret", out var providedKey) &&
+                    System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+                        System.Text.Encoding.UTF8.GetBytes(providedKey.ToString()),
+                        System.Text.Encoding.UTF8.GetBytes(internalKey)))
+                {
+                    return true;
+                }
+            }
+
+            if (User.Identity?.IsAuthenticated == true && (User.IsInRole("ADMIN") || User.IsInRole("SYSTEM")))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private Guid GetTenantId()
@@ -46,9 +70,11 @@ namespace EcommerceBot.Api.Controllers
         }
 
         [HttpPost("internal/reserve")]
-        // In a real app this would be protected by an internal API key or network policy
         public async Task<IActionResult> ReserveCredits([FromHeader(Name = "X-Tenant-ID")] Guid tenantId, [FromBody] ReserveCreditsRequest request)
         {
+            if (!IsAuthorizedInternalService())
+                return Unauthorized(new { detail = "Acesso restrito a serviços internos ou administradores." });
+
             try
             {
                 var reservedCost = await _meteringService.ReserveCreditsForLlmAsync(tenantId, request);
@@ -63,6 +89,9 @@ namespace EcommerceBot.Api.Controllers
         [HttpPost("internal/refund")]
         public async Task<IActionResult> RefundCredits([FromHeader(Name = "X-Tenant-ID")] Guid tenantId, [FromBody] RefundCreditsRequest request)
         {
+            if (!IsAuthorizedInternalService())
+                return Unauthorized(new { detail = "Acesso restrito a serviços internos ou administradores." });
+
             await _meteringService.RefundCreditsOnFailureAsync(tenantId, request.ReservedCost);
             return Ok();
         }
@@ -70,6 +99,9 @@ namespace EcommerceBot.Api.Controllers
         [HttpPost("internal/record")]
         public async Task<IActionResult> RecordUsage([FromHeader(Name = "X-Tenant-ID")] Guid tenantId, [FromBody] LlmUsageLogCreate request)
         {
+            if (!IsAuthorizedInternalService())
+                return Unauthorized(new { detail = "Acesso restrito a serviços internos ou administradores." });
+
             var result = await _meteringService.RecordUsageAndDeductAsync(tenantId, request);
             return Ok(result);
         }

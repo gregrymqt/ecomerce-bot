@@ -45,7 +45,7 @@ namespace EcommerceBot.Infrastructure.Services
                 Email = request.Email.ToLower(),
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                 FullName = request.Name,
-                Role = string.IsNullOrEmpty(request.Role) ? "MEMBER" : request.Role,
+                Role = "MEMBER", // Enforce default MEMBER role to prevent privilege escalation
                 TenantId = tenantId
             };
 
@@ -71,7 +71,8 @@ namespace EcommerceBot.Infrastructure.Services
             }
 
             var tokenHandler = new JwtSecurityTokenHandler();
-            var keyStr = _configuration["Jwt:Key"] ?? "MinhaChaveSuperSecretaGigante123!";
+            var keyStr = _configuration["Jwt:Key"] 
+                ?? throw new InvalidOperationException("Jwt:Key is required and must be configured in environment or appsettings.");
             var key = Encoding.UTF8.GetBytes(keyStr);
             var descriptor = new SecurityTokenDescriptor
             {
@@ -108,7 +109,7 @@ namespace EcommerceBot.Infrastructure.Services
 
             if (!string.IsNullOrEmpty(request.Name)) user.FullName = request.Name;
             if (!string.IsNullOrEmpty(request.Password)) user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
-            if (!string.IsNullOrEmpty(request.Role)) user.Role = request.Role;
+            // Role cannot be updated via standard user self-service profile update
 
             await _userRepository.UpdateAsync(user);
 

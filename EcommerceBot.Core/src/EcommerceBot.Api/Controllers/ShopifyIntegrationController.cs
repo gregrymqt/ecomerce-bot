@@ -26,7 +26,7 @@ public class ShopifyIntegrationController : ControllerBase
     {
         _shopifyService = shopifyService;
         _logger = logger;
-        _clientSecret = config["Shopify:ClientSecret"] ?? "dummy_secret";
+        _clientSecret = config["Shopify:ClientSecret"] ?? string.Empty;
     }
 
     [HttpPost("webhooks")]
@@ -86,6 +86,8 @@ public class ShopifyIntegrationController : ControllerBase
 
     private bool VerifyShopifySignature(string rawBody, string hmacHeader)
     {
+        if (string.IsNullOrEmpty(_clientSecret)) return false;
+
         var keyBytes = Encoding.UTF8.GetBytes(_clientSecret);
         var messageBytes = Encoding.UTF8.GetBytes(rawBody);
 
@@ -93,9 +95,12 @@ public class ShopifyIntegrationController : ControllerBase
         var hash = hmac.ComputeHash(messageBytes);
         var calculatedSignature = Convert.ToBase64String(hash);
 
-        // Retorna true em ambiente sem secret real para evitar travar debug, mas em PRD faz equality
-        if (_clientSecret == "dummy_secret") return true;
-        
-        return calculatedSignature == hmacHeader;
+        var calculatedBytes = Encoding.UTF8.GetBytes(calculatedSignature);
+        var headerBytes = Encoding.UTF8.GetBytes(hmacHeader);
+
+        if (calculatedBytes.Length != headerBytes.Length)
+            return false;
+
+        return CryptographicOperations.FixedTimeEquals(calculatedBytes, headerBytes);
     }
 }
