@@ -11,14 +11,14 @@ Este documento é a **Fonte Canônica da Verdade** sobre a arquitetura, regras d
 
 O **E-commerce Bot** é uma plataforma SaaS monorepo escalável dividida em 4 pilares:
 
-1. **Frontend Web SPA (`ecom-autobot-web`):** React 18 + TypeScript + Vite + Tailwind CSS.
+1. **Frontend Web SPA (`EcommerceBot.Web`):** React 18 + TypeScript + Vite + Tailwind CSS.
 2. **Core API Central (`EcommerceBot.Core`):** ASP.NET Core Web API em .NET 8 (C#) seguindo Clean Architecture / DDD, responsável por autenticação, autorização, regras de negócio, persistência Dapper, pagamentos e orquestração.
-3. **AI/ML Engine (`ecom-autobot-api`):** Microsserviço Python (FastAPI + Workers) focado estritamente em inferência LLM (OpenRouter/DeepSeek), Scraping inteligente e Machine Learning preditivo. **Sem acesso direto ao banco de dados** (comunicação 100% via RabbitMQ).
+3. **AI/ML Engine (`EcommerceBot.Worker`):** Microsserviço Python (FastAPI + Workers) focado estritamente em inferência LLM (OpenRouter/DeepSeek), Scraping inteligente e Machine Learning preditivo. **Sem acesso direto ao banco de dados** (comunicação 100% via RabbitMQ).
 4. **Database & Migrations (`Database.Migrations`):** Runner de migrações determinísticas em .NET 8 com DbUp para **Microsoft SQL Server 2022**.
 
 ```text
                                ┌────────────────────────────────────────┐
-                               │   ecom-autobot-web (React + Vite)     │
+                               │     EcommerceBot.Web (React + Vite)    │
                                └──────────────────┬─────────────────────┘
                                                   │ HTTP / SSE (/api/v1, X-Tenant-ID, Cookie JWT)
                                                   ▼
@@ -36,7 +36,7 @@ O **E-commerce Bot** é uma plataforma SaaS monorepo escalável dividida em 4 pi
                                        │                        │
                                        ▼                        ▼
                                ┌────────────────────────────────────────┐
-                               │  ecom-autobot-api (Python AI/ML Engine)│
+                               │  EcommerceBot.Worker (Python AI Engine)│
                                │  • ScraperWorker (JSON-LD + Markdown)  │
                                │  • LLMEngineRouter (OpenRouter Fallback│
                                │  • Scikit-Learn (RFM, Churn, LTV)      │
@@ -75,7 +75,7 @@ ecommerce-bot/
 │       ├── EcommerceBot.Application/    # DTOs, Interfaces de Serviço, Contratos
 │       ├── EcommerceBot.Infrastructure/ # Dapper, MassTransit, Redis, Gateways, Serviços
 │       └── EcommerceBot.Api/            # ASP.NET Core Web API (Controllers, Middlewares)
-├── ecom-autobot-api/           # 🐍 AI & ML Engine em Python (Sem acesso a DB)
+├── EcommerceBot.Worker/        # 🐍 AI & ML Engine em Python (Sem acesso a DB)
 │   ├── app/
 │   │   ├── main.py             # Entrypoint e Lifespan workers (RabbitMQ aio-pika)
 │   │   ├── ai/                 # OpenRouterLLMProvider, Tenacity Retries
@@ -83,7 +83,7 @@ ecommerce-bot/
 │   │   └── ml/                 # Modelos Scikit-Learn (RFM, Churn, LTV)
 │   ├── Dockerfile
 │   └── requirements.txt
-├── ecom-autobot-web/           # 🔵 Frontend Web SPA (React 18 + TypeScript + Vite + Tailwind)
+├── EcommerceBot.Web/           # 🔵 Frontend Web SPA (React 18 + TypeScript + Vite + Tailwind)
 │   ├── src/
 │   │   ├── components/ui/      # Atomic Design System (Botões, Modais, Inputs)
 │   │   ├── features/           # Módulos DDD (Auth, Catalog, Settings, Analytics)
@@ -196,6 +196,6 @@ O ecossistema utiliza `MassTransit` com `cfg.UseRawJsonSerializer()` para garant
 5. **Verificação Runtime Obrigatória:** NUNCA considere uma tarefa concluída sem testar a compilação:
    - Backend Core: `dotnet build EcommerceBot.Core`
    - Migrações: `dotnet build Database.Migrations`
-   - Frontend Web: `npm run build` (em `ecom-autobot-web`)
+   - Frontend Web: `npm run build` (em `EcommerceBot.Web`)
    - Análise Estática: Varredura de segurança com Semgrep.
 

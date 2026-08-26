@@ -6,10 +6,12 @@ Um ecossistema escalável focado em extração, processamento e enriquecimento a
 
 ## 📁 Estrutura do Repositório (Monorepo)
 
-O projeto é dividido em módulos principais:
+O projeto é dividido em 4 pilares principais:
 
-* 🟢 **`ecom-autobot-api/`**: API Central e Workers em Python (FastAPI, RabbitMQ, Redis, PostgreSQL).
-* 🔵 **`ecom-autobot-web/`**: Portal Web Frontend construído em React 18, TypeScript, Vite e Tailwind CSS.
+* ⚡ **`EcommerceBot.Core/`**: API Central em .NET 8 (C#) seguindo Clean Architecture / DDD, responsável por autenticação, autorização, regras de negócio, persistência Dapper, pagamentos e orquestração.
+* 🔷 **`Database.Migrations/`**: Runner de migrações determinísticas em .NET 8 com DbUp para **Microsoft SQL Server 2022**.
+* 🐍 **`EcommerceBot.Worker/`**: Microsserviço Python (Workers assíncronos) focado estritamente em inferência LLM (OpenRouter/DeepSeek), Scraping inteligente e Machine Learning preditivo (Scikit-Learn).
+* 🔵 **`EcommerceBot.Web/`**: Portal Web Frontend construído em React 18, TypeScript, Vite e Tailwind CSS.
 * 🛠️ **`infra/`**: Configurações de infraestrutura isoladas para **Desenvolvimento** (`infra/dev`) e **Produção VPS** (`infra/prod`).
 
 ---

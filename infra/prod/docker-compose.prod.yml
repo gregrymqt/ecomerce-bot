@@ -69,12 +69,12 @@ services:
       timeout: 5s
       retries: 5
 
-  # API FastAPI Backend & Worker Pool
-  api:
+  # AI/ML Engine & Worker Pool (Python)
+  worker:
     build:
-      context: ../../ecom-autobot-api
+      context: ../../EcommerceBot.Worker
       dockerfile: Dockerfile
-    container_name: prod-api-bot
+    container_name: prod-worker-bot
     restart: unless-stopped
     env_file:
       - .env.prod
@@ -165,7 +165,7 @@ services:
       - certbot-var:/var/lib/letsencrypt
       - certbot-www:/var/www/certbot
     depends_on:
-      - api
+      - worker
     networks:
       - internal-net
 
