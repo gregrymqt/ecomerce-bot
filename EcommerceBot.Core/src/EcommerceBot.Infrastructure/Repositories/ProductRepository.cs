@@ -54,6 +54,7 @@ public class ProductRepository : IProductRepository
                 Id, TenantId, Sku, Title, Description, OriginalPrice, Price, 
                 Category, Brand, StockQuantity, Status, SourceUrl, ImagesJson, 
                 EnrichmentMetadata, ErrorMessage, ShopifyProductId, ShopifyVariantId, ShopifyInventoryItemId,
+                NuvemshopProductId, NuvemshopVariantId,
                 CreatedAt, UpdatedAt
             )
             OUTPUT INSERTED.Id
@@ -61,6 +62,7 @@ public class ProductRepository : IProductRepository
                 @Id, @TenantId, @Sku, @Title, @Description, @OriginalPrice, @Price, 
                 @Category, @Brand, @StockQuantity, @Status, @SourceUrl, @ImagesJson, 
                 @EnrichmentMetadata, @ErrorMessage, @ShopifyProductId, @ShopifyVariantId, @ShopifyInventoryItemId,
+                @NuvemshopProductId, @NuvemshopVariantId,
                 SYSDATETIMEOFFSET(), SYSDATETIMEOFFSET()
             )
         """;
@@ -139,6 +141,8 @@ public class ProductRepository : IProductRepository
                 ShopifyProductId = COALESCE(@ShopifyProductId, ShopifyProductId),
                 ShopifyVariantId = COALESCE(@ShopifyVariantId, ShopifyVariantId),
                 ShopifyInventoryItemId = COALESCE(@ShopifyInventoryItemId, ShopifyInventoryItemId),
+                NuvemshopProductId = COALESCE(@NuvemshopProductId, NuvemshopProductId),
+                NuvemshopVariantId = COALESCE(@NuvemshopVariantId, NuvemshopVariantId),
                 UpdatedAt = SYSDATETIMEOFFSET()
             WHERE TenantId = @TenantId AND Sku = @Sku
         """;

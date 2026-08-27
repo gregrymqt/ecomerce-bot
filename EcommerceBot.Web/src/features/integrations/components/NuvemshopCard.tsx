@@ -16,6 +16,7 @@ import {
   Activity,
   Unlink,
   Globe,
+  Key,
 } from 'lucide-react';
 import { Card, Button, Badge } from '@/components/ui';
 import type { StoreIntegration } from '@/features/integrations';
@@ -26,6 +27,7 @@ interface NuvemshopCardProps {
   loadingDisconnect?: boolean;
   loadingOAuth?: boolean;
   onConnectOAuth: () => void;
+  onEditCredentials?: () => void;
   onTestConnection?: () => void;
   onDisconnect?: () => void;
   className?: string;
@@ -37,6 +39,7 @@ export const NuvemshopCard: React.FC<NuvemshopCardProps> = ({
   loadingDisconnect = false,
   loadingOAuth = false,
   onConnectOAuth,
+  onEditCredentials,
   onTestConnection,
   onDisconnect,
   className,
@@ -162,6 +165,18 @@ export const NuvemshopCard: React.FC<NuvemshopCardProps> = ({
                 className="flex-1 min-h-[44px]"
               >
                 Testar Conexão
+              </Button>
+            )}
+
+            {onEditCredentials && (
+              <Button
+                variant="secondary"
+                onClick={onEditCredentials}
+                aria-label="Editar credenciais da Nuvemshop"
+                iconLeft={<Key className="h-4 w-4 text-purple-400" />}
+                className="flex-1 min-h-[44px]"
+              >
+                Editar Token
               </Button>
             )}
 

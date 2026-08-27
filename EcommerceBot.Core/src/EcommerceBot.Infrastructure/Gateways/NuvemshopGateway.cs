@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using EcommerceBot.Application.DTOs.Nuvemshop;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
@@ -15,52 +17,52 @@ namespace EcommerceBot.Infrastructure.Gateways;
 public class NuvemshopGateway : IEcommerceGateway
 {
     private readonly HttpClient _httpClient;
-    private readonly ITenantAiCredentialRepository _credentialRepository;
+    private readonly IStoreIntegrationRepository _integrationRepository;
     private readonly IAesGcmCryptoService _cryptoService;
+    private readonly IProductRepository _productRepository;
     private readonly ILogger<NuvemshopGateway> _logger;
 
     public string PlatformName => "Nuvemshop";
 
     public NuvemshopGateway(
-        HttpClient httpClient, 
-        ITenantAiCredentialRepository credentialRepository,
+        HttpClient httpClient,
+        IStoreIntegrationRepository integrationRepository,
         IAesGcmCryptoService cryptoService,
+        IProductRepository productRepository,
         ILogger<NuvemshopGateway> logger)
     {
         _httpClient = httpClient;
-        _credentialRepository = credentialRepository;
+        _integrationRepository = integrationRepository;
         _cryptoService = cryptoService;
+        _productRepository = productRepository;
         _logger = logger;
         _httpClient.BaseAddress = new Uri("https://api.nuvemshop.com.br/v1/");
     }
 
     private async Task<(string Token, string StoreId)?> GetNuvemshopCredentialsAsync(Guid tenantId)
     {
-        var creds = await _credentialRepository.GetByProviderAsync(tenantId, PlatformName);
-        if (creds == null) return null;
+        var integration = await _integrationRepository.GetByTenantAndPlatformAsync(tenantId, "NUVEMSHOP");
+        if (integration == null || integration.EncryptedAccessToken == null || integration.InitializationVector == null || integration.AuthTag == null)
+            return null;
 
-        var payload = new EncryptedPayload 
-        { 
-            CipherText = creds.EncryptedApiKey, 
-            Nonce = creds.InitializationVector, 
-            Tag = creds.AuthTag 
+        var payload = new EncryptedPayload
+        {
+            CipherText = integration.EncryptedAccessToken,
+            Nonce = integration.InitializationVector,
+            Tag = integration.AuthTag
         };
 
-        var decrypted = _cryptoService.Decrypt(payload);
-        if (string.IsNullOrEmpty(decrypted)) return null;
+        var decryptedToken = _cryptoService.Decrypt(payload);
+        if (string.IsNullOrEmpty(decryptedToken)) return null;
 
-        // O formato será: "access_token|store_id"
-        var parts = decrypted.Split('|');
-        var token = parts[0];
-        var storeId = parts.Length > 1 ? parts[1] : "";
-
-        return (token, storeId);
+        var storeId = !string.IsNullOrEmpty(integration.StoreDomain) ? integration.StoreDomain : "";
+        return (decryptedToken, storeId);
     }
 
     public async Task<bool> PushProductAsync(Guid tenantId, Product product)
     {
         var creds = await GetNuvemshopCredentialsAsync(tenantId);
-        if (creds == null || string.IsNullOrEmpty(creds.Value.Token))
+        if (creds == null || string.IsNullOrEmpty(creds.Value.Token) || string.IsNullOrEmpty(creds.Value.StoreId))
         {
             _logger.LogWarning("Nuvemshop credentials not found for Tenant {TenantId}", tenantId);
             return false;
@@ -69,20 +71,58 @@ public class NuvemshopGateway : IEcommerceGateway
         var storeId = creds.Value.StoreId;
         var requestUrl = $"{storeId}/products";
 
-        // Mapeamento simplificado do domínio local para Payload Nuvemshop
-        var payload = new
+        // Extrai imagens da galeria se existirem
+        var imagePayloads = new List<NuvemshopImagePayload>();
+        if (!string.IsNullOrEmpty(product.ImagesJson))
         {
-            name = new { pt = product.Title },
-            description = new { pt = product.Description },
-            variants = new[] 
+            try
             {
-                new {
-                    price = product.Price,
-                    stock = product.StockQuantity,
-                    sku = product.Sku,
-                    stock_management = true
+                var images = JsonSerializer.Deserialize<List<string>>(product.ImagesJson);
+                if (images != null)
+                {
+                    int pos = 1;
+                    foreach (var imgUrl in images.Where(u => !string.IsNullOrWhiteSpace(u)))
+                    {
+                        imagePayloads.Add(new NuvemshopImagePayload { Src = imgUrl.Trim(), Position = pos++ });
+                    }
                 }
             }
+            catch
+            {
+                // Fallback para URL única
+                if (!string.IsNullOrWhiteSpace(product.ImagesJson) && product.ImagesJson.StartsWith("http"))
+                {
+                    imagePayloads.Add(new NuvemshopImagePayload { Src = product.ImagesJson.Trim(), Position = 1 });
+                }
+            }
+        }
+
+        var priceStr = product.Price.ToString("F2", CultureInfo.InvariantCulture);
+        string? promoPriceStr = null;
+        if (product.OriginalPrice.HasValue && product.OriginalPrice.Value > product.Price)
+        {
+            promoPriceStr = priceStr;
+            priceStr = product.OriginalPrice.Value.ToString("F2", CultureInfo.InvariantCulture);
+        }
+
+        var payload = new NuvemshopProductPayload
+        {
+            Name = new Dictionary<string, string> { { "pt", product.Title } },
+            Description = new Dictionary<string, string> { { "pt", product.Description ?? product.Title } },
+            Brand = product.Brand,
+            Published = true,
+            Variants = new List<NuvemshopVariantPayload>
+            {
+                new()
+                {
+                    Price = priceStr,
+                    PromotionalPrice = promoPriceStr,
+                    Stock = product.StockQuantity,
+                    Sku = product.Sku,
+                    StockManagement = true
+                }
+            },
+            Images = imagePayloads.Count > 0 ? imagePayloads : null
         };
 
         using var request = new HttpRequestMessage(HttpMethod.Post, requestUrl);
@@ -93,14 +133,28 @@ public class NuvemshopGateway : IEcommerceGateway
         try
         {
             var response = await _httpClient.SendAsync(request);
+            var responseBody = await response.Content.ReadAsStringAsync();
+
             if (!response.IsSuccessStatusCode)
             {
-                var error = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Failed to push product {Sku} to Nuvemshop. Status: {Status}. Error: {Error}", product.Sku, response.StatusCode, error);
+                _logger.LogError("Failed to push product {Sku} to Nuvemshop. Status: {Status}. Error: {Error}", product.Sku, response.StatusCode, responseBody);
                 return false;
             }
 
-            _logger.LogInformation("Successfully pushed product {Sku} to Nuvemshop.", product.Sku);
+            var createdProduct = JsonSerializer.Deserialize<NuvemshopProductResponse>(responseBody);
+            if (createdProduct != null && createdProduct.Id > 0)
+            {
+                product.NuvemshopProductId = createdProduct.Id.ToString();
+                var firstVariant = createdProduct.Variants?.FirstOrDefault();
+                if (firstVariant != null && firstVariant.Id > 0)
+                {
+                    product.NuvemshopVariantId = firstVariant.Id.ToString();
+                }
+
+                await _productRepository.UpdateAsync(product);
+                _logger.LogInformation("Successfully pushed product {Sku} to Nuvemshop (Id: {ProductId}, VariantId: {VariantId}).", product.Sku, product.NuvemshopProductId, product.NuvemshopVariantId);
+            }
+
             return true;
         }
         catch (Exception ex)
@@ -113,12 +167,9 @@ public class NuvemshopGateway : IEcommerceGateway
     public async Task<IEnumerable<Product>> FetchProductsAsync(Guid tenantId)
     {
         var creds = await GetNuvemshopCredentialsAsync(tenantId);
-        if (creds == null || string.IsNullOrEmpty(creds.Value.Token))
-        {
+        if (creds == null || string.IsNullOrEmpty(creds.Value.Token) || string.IsNullOrEmpty(creds.Value.StoreId))
             return Array.Empty<Product>();
-        }
-        
-        // Em um cenário real, processaríamos a paginação
+
         var requestUrl = $"{creds.Value.StoreId}/products";
         using var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
         request.Headers.Add("Authentication", $"bearer {creds.Value.Token}");
@@ -129,23 +180,33 @@ public class NuvemshopGateway : IEcommerceGateway
             var response = await _httpClient.SendAsync(request);
             if (response.IsSuccessStatusCode)
             {
-                _logger.LogInformation("Fetched products from Nuvemshop.");
-                // Retornando array vazio para satisfazer a interface sem desserializar todo JSON
-                return Array.Empty<Product>(); 
+                var body = await response.Content.ReadAsStringAsync();
+                var nuvemProducts = JsonSerializer.Deserialize<List<NuvemshopProductResponse>>(body);
+                if (nuvemProducts == null) return Array.Empty<Product>();
+
+                return nuvemProducts.Select(np => new Product
+                {
+                    TenantId = tenantId,
+                    NuvemshopProductId = np.Id.ToString(),
+                    Title = np.Name?.GetValueOrDefault("pt") ?? "Produto Nuvemshop",
+                    Sku = np.Variants?.FirstOrDefault()?.Sku ?? $"NUVEM-{np.Id}",
+                    Price = decimal.TryParse(np.Variants?.FirstOrDefault()?.Price, NumberStyles.Any, CultureInfo.InvariantCulture, out var p) ? p : 0m,
+                    StockQuantity = np.Variants?.FirstOrDefault()?.Stock ?? 0
+                });
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to fetch Nuvemshop products.");
+            _logger.LogError(ex, "Failed to fetch Nuvemshop products for Tenant {TenantId}", tenantId);
         }
-        
+
         return Array.Empty<Product>();
     }
 
     public async Task<(bool Success, int LatencyMs, string Message)> HealthCheckAsync(Guid tenantId)
     {
         var creds = await GetNuvemshopCredentialsAsync(tenantId);
-        if (creds == null || string.IsNullOrEmpty(creds.Value.Token))
+        if (creds == null || string.IsNullOrEmpty(creds.Value.Token) || string.IsNullOrEmpty(creds.Value.StoreId))
             return (false, 0, "Credenciais da Nuvemshop não encontradas.");
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -171,21 +232,65 @@ public class NuvemshopGateway : IEcommerceGateway
         }
     }
 
-    public Task<bool> UpdateInventoryAsync(Guid tenantId, string sku, int availableQuantity, string? inventoryItemId = null)
+    public async Task<bool> UpdateInventoryAsync(Guid tenantId, string sku, int availableQuantity, string? inventoryItemId = null)
     {
-        _logger.LogInformation("Nuvemshop UpdateInventory para SKU {Sku} -> {Quantity}", sku, availableQuantity);
-        return Task.FromResult(true);
+        var creds = await GetNuvemshopCredentialsAsync(tenantId);
+        if (creds == null || string.IsNullOrEmpty(creds.Value.Token)) return false;
+
+        var product = await _productRepository.GetBySkuAsync(tenantId, sku);
+        if (product == null || string.IsNullOrEmpty(product.NuvemshopProductId) || string.IsNullOrEmpty(product.NuvemshopVariantId))
+        {
+            _logger.LogWarning("Nuvemshop variant ID not mapped for SKU {Sku}", sku);
+            return false;
+        }
+
+        var requestUrl = $"{creds.Value.StoreId}/products/{product.NuvemshopProductId}/variants/{product.NuvemshopVariantId}";
+        using var request = new HttpRequestMessage(HttpMethod.Put, requestUrl);
+        request.Headers.Add("Authentication", $"bearer {creds.Value.Token}");
+        request.Headers.Add("User-Agent", "EcomAutobot");
+
+        var payload = new { stock = availableQuantity };
+        request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+        var response = await _httpClient.SendAsync(request);
+        return response.IsSuccessStatusCode;
     }
 
-    public Task<bool> UpdateProductStatusAsync(Guid tenantId, string sku, string status)
+    public async Task<bool> UpdateProductStatusAsync(Guid tenantId, string sku, string status)
     {
-        _logger.LogInformation("Nuvemshop UpdateProductStatus para SKU {Sku} -> {Status}", sku, status);
-        return Task.FromResult(true);
+        var creds = await GetNuvemshopCredentialsAsync(tenantId);
+        if (creds == null || string.IsNullOrEmpty(creds.Value.Token)) return false;
+
+        var product = await _productRepository.GetBySkuAsync(tenantId, sku);
+        if (product == null || string.IsNullOrEmpty(product.NuvemshopProductId)) return false;
+
+        var requestUrl = $"{creds.Value.StoreId}/products/{product.NuvemshopProductId}";
+        using var request = new HttpRequestMessage(HttpMethod.Put, requestUrl);
+        request.Headers.Add("Authentication", $"bearer {creds.Value.Token}");
+        request.Headers.Add("User-Agent", "EcomAutobot");
+
+        var isPublished = status.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase) || status.Equals("PROCESSED", StringComparison.OrdinalIgnoreCase);
+        var payload = new { published = isPublished };
+        request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+        var response = await _httpClient.SendAsync(request);
+        return response.IsSuccessStatusCode;
     }
 
-    public Task<bool> DeleteProductAsync(Guid tenantId, string sku)
+    public async Task<bool> DeleteProductAsync(Guid tenantId, string sku)
     {
-        _logger.LogInformation("Nuvemshop DeleteProduct para SKU {Sku}", sku);
-        return Task.FromResult(true);
+        var creds = await GetNuvemshopCredentialsAsync(tenantId);
+        if (creds == null || string.IsNullOrEmpty(creds.Value.Token)) return false;
+
+        var product = await _productRepository.GetBySkuAsync(tenantId, sku);
+        if (product == null || string.IsNullOrEmpty(product.NuvemshopProductId)) return false;
+
+        var requestUrl = $"{creds.Value.StoreId}/products/{product.NuvemshopProductId}";
+        using var request = new HttpRequestMessage(HttpMethod.Delete, requestUrl);
+        request.Headers.Add("Authentication", $"bearer {creds.Value.Token}");
+        request.Headers.Add("User-Agent", "EcomAutobot");
+
+        var response = await _httpClient.SendAsync(request);
+        return response.IsSuccessStatusCode;
     }
 }

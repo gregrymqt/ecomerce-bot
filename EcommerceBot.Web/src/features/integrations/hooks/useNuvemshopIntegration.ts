@@ -19,8 +19,8 @@ export function useNuvemshopIntegration() {
     setError(null);
     try {
       const response = await integrationService.getNuvemshopOAuthUrl();
-      if (response.oauth_url) {
-        window.location.href = response.oauth_url;
+      if (response.url) {
+        window.location.href = response.url;
         return true;
       }
       throw new Error('URL OAuth não gerada pela Nuvemshop.');

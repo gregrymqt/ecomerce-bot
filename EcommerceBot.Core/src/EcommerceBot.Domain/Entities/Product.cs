@@ -22,6 +22,8 @@ public class Product
     public string? ShopifyProductId { get; set; }
     public string? ShopifyVariantId { get; set; }
     public string? ShopifyInventoryItemId { get; set; }
+    public string? NuvemshopProductId { get; set; }
+    public string? NuvemshopVariantId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }

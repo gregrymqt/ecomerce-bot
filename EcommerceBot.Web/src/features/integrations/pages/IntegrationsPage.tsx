@@ -21,6 +21,7 @@ import { IntegrationKpiGrid } from '@/features/integrations';
 import { ShopifyCard } from '@/features/integrations';
 import { NuvemshopCard } from '@/features/integrations';
 import { ShopifyCredentialsModal } from '@/features/integrations';
+import { NuvemshopCredentialsModal } from '@/features/integrations';
 import { Button } from '@/components/ui/Button';
 
 export const IntegrationsPage: React.FC = () => {
@@ -31,11 +32,14 @@ export const IntegrationsPage: React.FC = () => {
     actionLoading,
     isShopifyModalOpen,
     setIsShopifyModalOpen,
+    isNuvemshopModalOpen,
+    setIsNuvemshopModalOpen,
     error,
     setError,
     successMessage,
     setSuccessMessage,
     handleSaveShopify,
+    handleSaveNuvemshop,
     handleTestConnection,
     handleDisconnect,
     handleConnectNuvemshop,
@@ -159,6 +163,7 @@ export const IntegrationsPage: React.FC = () => {
           loadingDisconnect={Boolean(actionLoading[`disconnect_${nuvemshopIntegration?.id}`])}
           loadingOAuth={Boolean(actionLoading['connect_nuvemshop'])}
           onConnectOAuth={handleConnectNuvemshop}
+          onEditCredentials={() => setIsNuvemshopModalOpen(true)}
           onTestConnection={nuvemshopIntegration ? () => handleTestConnection(nuvemshopIntegration.id) : undefined}
           onDisconnect={nuvemshopIntegration ? () => handleDisconnect(nuvemshopIntegration.id) : undefined}
         />
@@ -186,6 +191,16 @@ export const IntegrationsPage: React.FC = () => {
         onSave={handleSaveShopify}
         loading={Boolean(actionLoading['save_shopify'])}
         initialDomain={shopifyIntegration?.store_domain || ''}
+      />
+
+      {/* Modal de Credenciais da Nuvemshop */}
+      <NuvemshopCredentialsModal
+        isOpen={isNuvemshopModalOpen}
+        onClose={() => setIsNuvemshopModalOpen(false)}
+        onSave={handleSaveNuvemshop}
+        onConnectOAuth={handleConnectNuvemshop}
+        loading={Boolean(actionLoading['save_nuvemshop'])}
+        initialStoreId={nuvemshopIntegration?.store_domain || ''}
       />
     </div>
   );

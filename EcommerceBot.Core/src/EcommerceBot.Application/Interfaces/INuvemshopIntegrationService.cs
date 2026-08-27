@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Nuvemshop;
 
@@ -14,7 +15,12 @@ public class NuvemshopBulkSyncResponse
 
 public interface INuvemshopIntegrationService
 {
-    Task HandleOAuthCallbackAsync(Guid tenantId, string code);
-    Task ProcessWebhookAsync(Guid tenantId, object payload);
+    string GetOAuthUrl(Guid tenantId);
+    Task<bool> HandleOAuthCallbackAsync(Guid tenantId, string code);
+    Task<bool> SaveCredentialsAsync(Guid tenantId, NuvemshopCredentialsPayloadDto payload);
+    Task ProcessWebhookAsync(Guid tenantId, string topic, string eventId, JsonElement payload);
     Task<NuvemshopBulkSyncResponse> TriggerBulkSyncAsync(Guid tenantId, NuvemshopBulkSyncRequest request);
+    Task<bool> UpdateInventoryAsync(Guid tenantId, string sku, int quantity);
+    Task<bool> UpdateProductStatusAsync(Guid tenantId, string sku, string status);
+    Task<bool> DeleteRemoteProductAsync(Guid tenantId, string sku);
 }

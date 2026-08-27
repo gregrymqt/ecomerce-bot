@@ -197,14 +197,35 @@ export const integrationService = {
   },
 
   /**
-   * Obtém a URL de autorização OAuth para integração com a Nuvemshop.
-   * Endpoint: GET /api/v1/nuvemshop/oauth/url
+   * Salva e valida as credenciais manuais (Store ID & Access Token) da Nuvemshop.
+   * Endpoint: POST /api/v1/nuvemshop/credentials
    */
-  getNuvemshopOAuthUrl: async (): Promise<{ oauth_url: string }> => {
+  saveNuvemshopCredentials: async (payload: {
+    store_id: string;
+    access_token: string;
+  }): Promise<{ success: boolean; message: string }> => {
     try {
-      const response = await apiClient.get<{ oauth_url: string }>(
-        '/api/v1/nuvemshop/oauth/url'
+      const response = await apiClient.post<{ success: boolean; message: string }>(
+        '/api/v1/nuvemshop/credentials',
+        payload
       );
+      return response.data;
+    } catch (error: unknown) {
+      const message = getErrorMessage(
+        error,
+        'Falha ao salvar as credenciais da Nuvemshop. Verifique o Store ID e o Access Token.'
+      );
+      throw new Error(message);
+    }
+  },
+
+  /**
+   * Obtém a URL de autorização OAuth para integração com a Nuvemshop.
+   * Endpoint: GET /api/v1/nuvemshop/auth
+   */
+  getNuvemshopOAuthUrl: async (): Promise<{ url: string }> => {
+    try {
+      const response = await apiClient.get<{ url: string }>('/api/v1/nuvemshop/auth');
       return response.data;
     } catch (error: unknown) {
       const message = getErrorMessage(

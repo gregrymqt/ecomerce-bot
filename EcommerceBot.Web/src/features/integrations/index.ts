@@ -12,5 +12,6 @@ export * from './components/IntegrationKpiGrid';
 export * from './components/ShopifyCard';
 export * from './components/NuvemshopCard';
 export * from './components/ShopifyCredentialsModal';
+export * from './components/NuvemshopCredentialsModal';
 export * from './pages/IntegrationsPage';
 

@@ -23,6 +23,7 @@ export function useIntegrations() {
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
   const [isShopifyModalOpen, setIsShopifyModalOpen] = useState<boolean>(false);
+  const [isNuvemshopModalOpen, setIsNuvemshopModalOpen] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -78,7 +79,30 @@ export function useIntegrations() {
     [fetchData]
   );
 
-  // 4. Testar Conexão / Health Check de uma loja específica
+  // 4. Salvar Credenciais da Nuvemshop (Manual)
+  const handleSaveNuvemshop = useCallback(
+    async (payload: { store_id: string; access_token: string }): Promise<boolean> => {
+      setActionState('save_nuvemshop', true);
+      setError(null);
+      setSuccessMessage(null);
+      try {
+        await integrationService.saveNuvemshopCredentials(payload);
+        setIsNuvemshopModalOpen(false);
+        setSuccessMessage('Loja Nuvemshop conectada com sucesso!');
+        await fetchData();
+        return true;
+      } catch (err: unknown) {
+        const message = getErrorMessage(err, 'Erro ao salvar credenciais da Nuvemshop.');
+        setError(message);
+        return false;
+      } finally {
+        setActionState('save_nuvemshop', false);
+      }
+    },
+    [fetchData]
+  );
+
+  // 5. Testar Conexão / Health Check de uma loja específica
   const handleTestConnection = useCallback(
     async (integrationId: string): Promise<HealthCheckResponse | null> => {
       const actionKey = `test_${integrationId}`;
@@ -113,7 +137,7 @@ export function useIntegrations() {
     []
   );
 
-  // 5. Desconectar / Remover uma integração de loja
+  // 6. Desconectar / Remover uma integração de loja
   const handleDisconnect = useCallback(
     async (integrationId: string): Promise<boolean> => {
       const confirmed = window.confirm(
@@ -140,14 +164,14 @@ export function useIntegrations() {
     [fetchData]
   );
 
-  // 6. Iniciar Fluxo OAuth da Nuvemshop (redirecionamento de página)
+  // 7. Iniciar Fluxo OAuth da Nuvemshop (redirecionamento de página)
   const handleConnectNuvemshop = useCallback(async (): Promise<void> => {
     setActionState('connect_nuvemshop', true);
     setError(null);
     try {
       const res = await integrationService.getNuvemshopOAuthUrl();
-      if (res.oauth_url) {
-        window.location.href = res.oauth_url;
+      if (res.url) {
+        window.location.href = res.url;
       } else {
         throw new Error('URL de autorização OAuth da Nuvemshop inválida.');
       }
@@ -167,6 +191,8 @@ export function useIntegrations() {
     actionLoading,
     isShopifyModalOpen,
     setIsShopifyModalOpen,
+    isNuvemshopModalOpen,
+    setIsNuvemshopModalOpen,
     error,
     setError,
     successMessage,
@@ -175,6 +201,7 @@ export function useIntegrations() {
     // Handlers
     fetchData,
     handleSaveShopify,
+    handleSaveNuvemshop,
     handleTestConnection,
     handleDisconnect,
     handleConnectNuvemshop,
