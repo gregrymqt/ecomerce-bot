@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Zap, User, Bot, ShoppingBag, LogOut, ShieldCheck, Store, Settings, Activity, Wallet } from 'lucide-react';
+import { LayoutDashboard, Zap, User, Bot, ShoppingBag, LogOut, ShieldCheck, Store, Settings, Activity, Wallet, TrendingUp } from 'lucide-react';
 import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar';
 import { useAuth, useFeatureGate } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
@@ -78,6 +78,15 @@ export const MainLayout: React.FC = () => {
       onClick: () => navigate('/wallet'),
     },
     {
+      id: 'traffic',
+      label: 'Tráfego & Anúncios',
+      icon: <TrendingUp className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />,
+      badge: 'Ads',
+      badgeVariant: 'indigo',
+      active: location.pathname === '/analytics/traffic' || location.pathname === '/traffic',
+      onClick: () => navigate('/analytics/traffic'),
+    },
+    {
       id: 'settings',
       label: 'Configurações',
       icon: <Settings className="w-5 h-5" />,
@@ -86,6 +95,15 @@ export const MainLayout: React.FC = () => {
     },
     ...(isAdmin
       ? [
+          {
+            id: 'admin-growth',
+            label: 'Growth & CAC (Admin)',
+            icon: <TrendingUp className="w-5 h-5 text-emerald-400" />,
+            badge: 'SaaS',
+            badgeVariant: 'indigo' as const,
+            active: location.pathname === '/admin/growth',
+            onClick: () => navigate('/admin/growth'),
+          },
           {
             id: 'admin-plans',
             label: 'Gestão de Planos (Admin)',

@@ -30,7 +30,9 @@ public class TenantHeaderMiddleware
         "/api/v1/nuvemshop/webhooks",
         "/api/v1/nuvemshop/oauth",
         "/api/v1/checkout/pix",
-        "/api/v1/checkout/status"
+        "/api/v1/checkout/status",
+        "/api/v1/admin/traffic/visit",
+        "/api/v1/analytics/traffic/visit"
     };
 
     public async Task InvokeAsync(HttpContext context, ITenantContext tenantContext, ITenantRepository tenantRepository)

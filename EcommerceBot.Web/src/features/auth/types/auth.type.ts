@@ -83,6 +83,10 @@ export interface RegisterPayload {
   password: string;
   name: string;
   tenants?: string[];
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  ad_id?: string;
 }
 
 export interface UpdateUserPayload {

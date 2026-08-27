@@ -16,6 +16,8 @@ const DashboardPage = lazy(() => import('@/features/dashboard/pages/DashboardPag
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage'));
 const MeteringDashboardPage = lazy(() => import('@/features/metering/pages/MeteringDashboardPage'));
 const WalletPage = lazy(() => import('@/features/wallet/pages/WalletPage'));
+const TrafficAnalyticsPage = lazy(() => import('@/features/analytics/pages/TrafficAnalyticsPage'));
+const AdminGrowthPage = lazy(() => import('@/features/admin/pages/AdminGrowthPage'));
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -97,8 +99,28 @@ export const AppRoutes: React.FC = () => {
                 </PaidRouteGuard>
               }
             />
+            <Route
+              path="/analytics/traffic"
+              element={
+                <PaidRouteGuard featureKey="dashboard">
+                  <TrafficAnalyticsPage />
+                </PaidRouteGuard>
+              }
+            />
+            <Route
+              path="/traffic"
+              element={<Navigate to="/analytics/traffic" replace />}
+            />
 
             {/* Rotas de Administração Protegidas por AdminRouteGuard */}
+            <Route
+              path="/admin/growth"
+              element={
+                <AdminRouteGuard>
+                  <AdminGrowthPage />
+                </AdminRouteGuard>
+              }
+            />
             <Route
               path="/admin/plans"
               element={

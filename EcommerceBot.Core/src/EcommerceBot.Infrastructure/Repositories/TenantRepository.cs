@@ -72,4 +72,27 @@ public class TenantRepository : ITenantRepository
         """;
         await connection.ExecuteAsync(sql, new { Id = tenantId, Amount = amount });
     }
+
+    public async Task<Tenant> CreateAsync(Tenant tenant)
+    {
+        if (tenant.Id == Guid.Empty) tenant.Id = Guid.NewGuid();
+        if (tenant.CreatedAt == default) tenant.CreatedAt = DateTimeOffset.UtcNow;
+        if (tenant.UpdatedAt == default) tenant.UpdatedAt = DateTimeOffset.UtcNow;
+        if (string.IsNullOrWhiteSpace(tenant.Slug)) tenant.Slug = tenant.Name.ToLower().Replace(" ", "-") + "-" + Guid.NewGuid().ToString("N")[..6];
+
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        const string sql = """
+            INSERT INTO dbo.Tenants (
+                Id, Name, Slug, PlanTier, CreditsBalance, ManagedCreditBalance, IsActive,
+                FirstUtmSource, FirstUtmMedium, FirstUtmCampaign, FirstAdId, FirstTouchAt,
+                CreatedAt, UpdatedAt
+            ) VALUES (
+                @Id, @Name, @Slug, @PlanTier, @CreditsBalance, @ManagedCreditBalance, @IsActive,
+                @FirstUtmSource, @FirstUtmMedium, @FirstUtmCampaign, @FirstAdId, @FirstTouchAt,
+                @CreatedAt, @UpdatedAt
+            );
+        """;
+        await connection.ExecuteAsync(sql, tenant);
+        return tenant;
+    }
 }

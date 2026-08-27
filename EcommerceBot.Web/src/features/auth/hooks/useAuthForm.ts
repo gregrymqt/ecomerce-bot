@@ -63,11 +63,16 @@ export function useAuthForm(initialMode: AuthMode = 'login'): UseAuthFormReturn 
     async (data: RegisterFormData): Promise<void> => {
       setLocalLoading(true);
       try {
+        const storedUtms = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('_saas_utm_attribution') || '{}') : {};
         const userResp = await register({
           name: data.name,
           email: data.email,
           password: data.password,
           tenants: data.tenantName?.trim() ? [data.tenantName.trim()] : undefined,
+          utm_source: storedUtms.utm_source,
+          utm_medium: storedUtms.utm_medium,
+          utm_campaign: storedUtms.utm_campaign,
+          ad_id: storedUtms.ad_id,
         });
         const plan = userResp?.plan?.toLowerCase() || 'free';
         const isAdmin = userResp?.is_admin === true || userResp?.role === 'admin';

@@ -12,4 +12,5 @@ public interface ITenantRepository
     Task DeductCreditsAsync(Guid tenantId, int amount);
     Task AddCreditsAsync(Guid tenantId, int amount);
     Task AddManagedBalanceAsync(Guid tenantId, decimal amount);
+    Task<Tenant> CreateAsync(Tenant tenant);
 }

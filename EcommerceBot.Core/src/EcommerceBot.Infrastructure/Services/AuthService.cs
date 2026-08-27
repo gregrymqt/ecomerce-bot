@@ -38,7 +38,27 @@ namespace EcommerceBot.Infrastructure.Services
             {
                 tenantId = parsedId;
             }
-            // In a real app we'd verify the Tenant exists or create one here.
+            else
+            {
+                // Cria o Tenant para a nova conta com atribuição de primeiro toque
+                var tenantName = !string.IsNullOrWhiteSpace(request.Name) ? $"Loja de {request.Name}" : "Minha Loja";
+                var newTenant = new Tenant
+                {
+                    Id = tenantId,
+                    Name = tenantName,
+                    PlanTier = "FREE",
+                    CreditsBalance = 10, // 10 créditos de boas-vindas
+                    IsActive = true,
+                    FirstUtmSource = request.UtmSource,
+                    FirstUtmMedium = request.UtmMedium,
+                    FirstUtmCampaign = request.UtmCampaign,
+                    FirstAdId = request.AdId,
+                    FirstTouchAt = DateTimeOffset.UtcNow,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow
+                };
+                await _tenantRepository.CreateAsync(newTenant);
+            }
 
             var newUser = new User
             {

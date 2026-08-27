@@ -7,5 +7,9 @@ namespace EcommerceBot.Application.DTOs.Auth
         public string? Name { get; set; }
         public string? Role { get; set; }
         public string? TenantId { get; set; }
+        public string? UtmSource { get; set; }
+        public string? UtmMedium { get; set; }
+        public string? UtmCampaign { get; set; }
+        public string? AdId { get; set; }
     }
 }
