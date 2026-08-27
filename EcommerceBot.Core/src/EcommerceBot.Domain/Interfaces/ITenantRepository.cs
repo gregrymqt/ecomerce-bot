@@ -10,4 +10,6 @@ public interface ITenantRepository
     Task<Tenant?> GetBySlugAsync(string slug);
     Task<bool> HasCreditsAsync(Guid tenantId, int requiredCredits = 1);
     Task DeductCreditsAsync(Guid tenantId, int amount);
+    Task AddCreditsAsync(Guid tenantId, int amount);
+    Task AddManagedBalanceAsync(Guid tenantId, decimal amount);
 }

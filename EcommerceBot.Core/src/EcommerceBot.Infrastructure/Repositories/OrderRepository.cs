@@ -82,6 +82,36 @@ namespace EcommerceBot.Infrastructure.Repositories
             return order;
         }
 
+        public async Task<Order?> GetOrderByExternalReferenceGlobalAsync(string externalReference)
+        {
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+            var sql = "SELECT * FROM dbo.Orders WHERE ExternalReference = @ExternalReference";
+            var order = await connection.QueryFirstOrDefaultAsync<Order>(sql, new { ExternalReference = externalReference });
+            
+            if (order != null)
+            {
+                var sqlItems = "SELECT * FROM dbo.OrderItems WHERE OrderId = @OrderId";
+                var items = await connection.QueryAsync<OrderItem>(sqlItems, new { OrderId = order.Id });
+                order.Items = items.ToList();
+            }
+            return order;
+        }
+
+        public async Task<Order?> GetOrderByMpPaymentIdAsync(string mpPaymentId)
+        {
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+            var sql = "SELECT * FROM dbo.Orders WHERE MpPaymentId = @MpPaymentId";
+            var order = await connection.QueryFirstOrDefaultAsync<Order>(sql, new { MpPaymentId = mpPaymentId });
+            
+            if (order != null)
+            {
+                var sqlItems = "SELECT * FROM dbo.OrderItems WHERE OrderId = @OrderId";
+                var items = await connection.QueryAsync<OrderItem>(sqlItems, new { OrderId = order.Id });
+                order.Items = items.ToList();
+            }
+            return order;
+        }
+
         public async Task UpdateOrderAsync(Order order)
         {
             order.UpdatedAt = DateTimeOffset.UtcNow;

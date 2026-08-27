@@ -76,6 +76,7 @@ public class MercadoPagoWebhookService : IMercadoPagoWebhookService
 
             var root = payload.RootElement;
             var action = string.Empty;
+            var topic = string.Empty;
 
             if (root.TryGetProperty("action", out var actionElement))
             {
@@ -86,7 +87,24 @@ public class MercadoPagoWebhookService : IMercadoPagoWebhookService
                 action = typeElement.GetString() ?? string.Empty;
             }
 
-            _logger.LogInformation("Processing Mercado Pago webhook action: {Action}, resource_id: {ResourceId}", action, resourceId);
+            if (root.TryGetProperty("topic", out var topicElement))
+            {
+                topic = topicElement.GetString() ?? string.Empty;
+            }
+
+            if (string.IsNullOrEmpty(resourceId))
+            {
+                if (root.TryGetProperty("data", out var dataObj) && dataObj.TryGetProperty("id", out var idInBody))
+                {
+                    resourceId = idInBody.GetString() ?? idInBody.GetInt64().ToString();
+                }
+                else if (root.TryGetProperty("id", out var directId))
+                {
+                    resourceId = directId.GetString() ?? directId.GetInt64().ToString();
+                }
+            }
+
+            _logger.LogInformation("Processing Mercado Pago webhook action: {Action}, topic: {Topic}, resource_id: {ResourceId}", action, topic, resourceId);
 
             if (!string.IsNullOrEmpty(resourceId))
             {

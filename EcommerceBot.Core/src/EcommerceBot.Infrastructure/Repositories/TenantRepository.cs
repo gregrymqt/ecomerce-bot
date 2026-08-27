@@ -48,4 +48,28 @@ public class TenantRepository : ITenantRepository
         """;
         await connection.ExecuteAsync(sql, new { Id = tenantId, Amount = amount });
     }
+
+    public async Task AddCreditsAsync(Guid tenantId, int amount)
+    {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        const string sql = """
+            UPDATE dbo.Tenants 
+            SET CreditsBalance = CreditsBalance + @Amount,
+                UpdatedAt = SYSDATETIMEOFFSET()
+            WHERE Id = @Id AND IsActive = 1
+        """;
+        await connection.ExecuteAsync(sql, new { Id = tenantId, Amount = amount });
+    }
+
+    public async Task AddManagedBalanceAsync(Guid tenantId, decimal amount)
+    {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        const string sql = """
+            UPDATE dbo.Tenants 
+            SET ManagedCreditBalance = ManagedCreditBalance + @Amount,
+                UpdatedAt = SYSDATETIMEOFFSET()
+            WHERE Id = @Id AND IsActive = 1
+        """;
+        await connection.ExecuteAsync(sql, new { Id = tenantId, Amount = amount });
+    }
 }

@@ -1,7 +1,7 @@
 /**
  * src/features/checkout/components/CreditCardPaymentTab.tsx
  *
- * Aba de Pagamento Transparente via Cartão de Crédito (Checkout de Planos).
+ * Aba de Pagamento Transparente via Cartão de Crédito (Checkout de Planos e Recargas).
  * Integra o SDK do Mercado Pago (@mercadopago/sdk-react) para tokenização PCI-DSS.
  * Reutiliza o componente atômico CreditCardPaymentForm da biblioteca de UI.
  */
@@ -19,14 +19,18 @@ if (MP_PUBLIC_KEY) {
 
 export interface CreditCardPaymentTabProps {
   planId: string;
+  amountBrl?: number;
   loading: boolean;
+  submitButtonText?: string;
   onSubmit: (payload: CreditCardPaymentPayload) => Promise<void>;
   className?: string;
 }
 
 export const CreditCardPaymentTab: React.FC<CreditCardPaymentTabProps> = ({
   planId,
+  amountBrl = 197.0,
   loading,
+  submitButtonText = 'Finalizar Pagamento Seguro',
   onSubmit,
   className,
 }) => {
@@ -85,9 +89,9 @@ export const CreditCardPaymentTab: React.FC<CreditCardPaymentTabProps> = ({
 
   return (
     <CreditCardPaymentForm
-      amountBrl={197.0}
+      amountBrl={amountBrl}
       loading={loading}
-      submitButtonText="Finalizar Assinatura Segura"
+      submitButtonText={submitButtonText}
       showDocNumber={true}
       onSubmitForm={handleFormSubmit}
       className={className}

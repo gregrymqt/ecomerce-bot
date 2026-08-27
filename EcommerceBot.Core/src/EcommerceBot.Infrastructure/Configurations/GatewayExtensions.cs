@@ -14,6 +14,7 @@ public static class GatewayExtensions
         services.AddHttpClient<IEcommerceGateway, ShopifyGateway>();
         services.AddHttpClient<IEcommerceGateway, NuvemshopGateway>();
         services.AddHttpClient<IResendGateway, ResendGateway>();
+        services.AddHttpClient<IMercadoPagoGateway, MercadoPagoGateway>();
 
         return services;
     }

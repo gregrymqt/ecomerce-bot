@@ -9,6 +9,8 @@ namespace EcommerceBot.Domain.Interfaces
         Task<Order> CreateOrderAsync(Order order);
         Task<Order?> GetOrderByIdAsync(Guid id, Guid tenantId);
         Task<Order?> GetOrderByExternalReferenceAsync(string externalReference, Guid tenantId);
+        Task<Order?> GetOrderByExternalReferenceGlobalAsync(string externalReference);
+        Task<Order?> GetOrderByMpPaymentIdAsync(string mpPaymentId);
         Task UpdateOrderAsync(Order order);
     }
 }

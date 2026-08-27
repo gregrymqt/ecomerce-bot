@@ -28,7 +28,9 @@ public class TenantHeaderMiddleware
         "/api/v1/shopify/webhooks",
         "/api/v1/shopify/oauth",
         "/api/v1/nuvemshop/webhooks",
-        "/api/v1/nuvemshop/oauth"
+        "/api/v1/nuvemshop/oauth",
+        "/api/v1/checkout/pix",
+        "/api/v1/checkout/status"
     };
 
     public async Task InvokeAsync(HttpContext context, ITenantContext tenantContext, ITenantRepository tenantRepository)

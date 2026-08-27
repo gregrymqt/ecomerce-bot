@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Checkout;
 using EcommerceBot.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceBot.Api.Controllers;
@@ -14,6 +15,59 @@ public class CheckoutController : BaseApiController
     public CheckoutController(ICheckoutService checkoutService)
     {
         _checkoutService = checkoutService;
+    }
+
+    [HttpPost("pix")]
+    public async Task<IActionResult> CreatePixPayment([FromBody] PixPaymentRequestDto request)
+    {
+        var tenantId = CurrentTenantId != Guid.Empty ? CurrentTenantId : (Guid.TryParse(request.TenantId, out var g) ? g : Guid.Empty);
+        if (tenantId == Guid.Empty)
+        {
+            return BadRequest(new { detail = "X-Tenant-ID header ou tenant_id no corpo da requisição é obrigatório." });
+        }
+
+        try
+        {
+            var response = await _checkoutService.CreatePixOrderAsync(tenantId, request);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { detail = ex.Message });
+        }
+    }
+
+    [HttpPost("card")]
+    public async Task<IActionResult> ProcessCreditCardPayment([FromBody] CreditCardPaymentRequestDto request)
+    {
+        var tenantId = CurrentTenantId;
+        if (tenantId == Guid.Empty)
+        {
+            return BadRequest(new { detail = "X-Tenant-ID header é obrigatório para pagamento via cartão." });
+        }
+
+        try
+        {
+            var response = await _checkoutService.ProcessCreditCardOrderAsync(tenantId, request);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { detail = ex.Message });
+        }
+    }
+
+    [HttpGet("status/{paymentId}")]
+    public async Task<IActionResult> GetPaymentStatus(string paymentId)
+    {
+        var tenantId = CurrentTenantId;
+        if (tenantId == Guid.Empty)
+        {
+            return BadRequest(new { detail = "X-Tenant-ID header é obrigatório." });
+        }
+
+        var response = await _checkoutService.GetOrderStatusAsync(paymentId, tenantId);
+        return Ok(response);
     }
 
     [HttpPost("orders")]

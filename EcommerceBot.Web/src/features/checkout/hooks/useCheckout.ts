@@ -2,12 +2,13 @@
  * src/features/checkout/hooks/useCheckout.ts
  *
  * Custom Hook reativo para gerenciamento do fluxo de Checkout Transparente.
- * Controla navegação entre PIX e Cartão de Crédito, polling de status, timer regressivo,
- * cópia do código PIX e processamento das requisições de pagamento.
+ * Controla navegação entre PIX e Cartão de Crédito, polling de status, SSE em tempo real,
+ * timer regressivo, cópia do código PIX e processamento das requisições de pagamento.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { checkoutService } from '@/features/checkout';
+import { SSEClient } from '@/lib/sseClient';
 import type {
   PaymentMethod,
   PaymentStatus,
@@ -30,6 +31,7 @@ export function useCheckout(initialPlanId?: string) {
 
   // Ref para o timer de reset do botão de cópia
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sseClientRef = useRef<SSEClient | null>(null);
 
   /**
    * Formata os segundos em uma string MM:SS (ex: 15:00 ou 04:32).
@@ -66,7 +68,39 @@ export function useCheckout(initialPlanId?: string) {
     return () => clearInterval(timer);
   }, [activeTab, paymentStatus, timeLeft, pixData]);
 
-  // 3. Polling automático a cada 4s quando pixData.payment_id existir e status for PENDING
+  // 3. Conexão SSE em tempo real para detecção instantânea (0ms)
+  useEffect(() => {
+    if (paymentStatus === 'APPROVED' || !pixData?.payment_id) {
+      sseClientRef.current?.close();
+      return;
+    }
+
+    const sse = new SSEClient<any>();
+    sseClientRef.current = sse;
+
+    sse.connect({
+      endpoint: '/api/v1/demo/stream',
+      onMessage: (eventData) => {
+        if (
+          eventData?.type === 'payment_approved' ||
+          eventData?.status === 'approved' ||
+          eventData?.event === 'payment.approved'
+        ) {
+          setPaymentStatus('APPROVED');
+          sse.close();
+        }
+      },
+      onError: () => {
+        // Fallback garantido pelo polling abaixo
+      },
+    });
+
+    return () => {
+      sse.close();
+    };
+  }, [pixData?.payment_id, paymentStatus]);
+
+  // 4. Polling automático de contingência a cada 4s quando pixData.payment_id existir e status for PENDING
   useEffect(() => {
     const paymentId = pixData?.payment_id;
     if (!paymentId || paymentStatus !== 'PENDING' || activeTab !== 'PIX') {
@@ -92,7 +126,7 @@ export function useCheckout(initialPlanId?: string) {
     return () => clearInterval(pollInterval);
   }, [pixData?.payment_id, paymentStatus, activeTab]);
 
-  // 4. Função para copiar código PIX para o clipboard
+  // 5. Função para copiar código PIX para o clipboard
   const copyPixToClipboard = useCallback(async (codeOverride?: string) => {
     const codeToCopy = codeOverride || pixData?.qr_code_copy_paste;
     if (!codeToCopy) return;
@@ -119,10 +153,11 @@ export function useCheckout(initialPlanId?: string) {
       if (copyTimeoutRef.current) {
         clearTimeout(copyTimeoutRef.current);
       }
+      sseClientRef.current?.close();
     };
   }, []);
 
-  // 5. Handlers de Ações do Usuário
+  // 6. Handlers de Ações do Usuário
 
   /**
    * Gera uma cobrança transparente PIX via checkoutService.
