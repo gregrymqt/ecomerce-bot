@@ -293,4 +293,79 @@ public class NuvemshopGateway : IEcommerceGateway
         var response = await _httpClient.SendAsync(request);
         return response.IsSuccessStatusCode;
     }
+
+    public async Task<NuvemshopProductResponse?> GetProductByIdAsync(Guid tenantId, string productId)
+    {
+        var creds = await GetNuvemshopCredentialsAsync(tenantId);
+        if (creds == null || string.IsNullOrEmpty(creds.Value.Token) || string.IsNullOrEmpty(creds.Value.StoreId))
+            return null;
+
+        var requestUrl = $"{creds.Value.StoreId}/products/{productId}";
+        using var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+        request.Headers.Add("Authentication", $"bearer {creds.Value.Token}");
+        request.Headers.Add("User-Agent", "EcomAutobot");
+
+        try
+        {
+            var response = await _httpClient.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<NuvemshopProductResponse>(body);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch Nuvemshop product {ProductId} for Tenant {TenantId}", productId, tenantId);
+        }
+
+        return null;
+    }
+
+    public async Task<bool> RegisterWebhooksAsync(Guid tenantId, string callbackUrl)
+    {
+        var creds = await GetNuvemshopCredentialsAsync(tenantId);
+        if (creds == null || string.IsNullOrEmpty(creds.Value.Token) || string.IsNullOrEmpty(creds.Value.StoreId))
+            return false;
+
+        var events = new[] { "product/updated", "product/deleted", "order/created", "app/uninstalled" };
+        var allSuccess = true;
+
+        foreach (var ev in events)
+        {
+            try
+            {
+                var requestUrl = $"{creds.Value.StoreId}/webhooks";
+                using var request = new HttpRequestMessage(HttpMethod.Post, requestUrl);
+                request.Headers.Add("Authentication", $"bearer {creds.Value.Token}");
+                request.Headers.Add("User-Agent", "EcomAutobot");
+
+                var payload = new NuvemshopWebhookRegistrationPayload
+                {
+                    Event = ev,
+                    Url = callbackUrl
+                };
+                request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.SendAsync(request);
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation("Registered Nuvemshop Webhook '{Event}' for Store {StoreId}", ev, creds.Value.StoreId);
+                }
+                else
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    _logger.LogWarning("Webhook '{Event}' registration returned status {Status}: {Error}", ev, response.StatusCode, error);
+                    allSuccess = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error registering Nuvemshop webhook '{Event}'", ev);
+                allSuccess = false;
+            }
+        }
+
+        return allSuccess;
+    }
 }

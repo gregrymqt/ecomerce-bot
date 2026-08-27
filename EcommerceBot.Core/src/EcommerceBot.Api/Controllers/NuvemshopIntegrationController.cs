@@ -101,28 +101,53 @@ public class NuvemshopIntegrationController : BaseApiController
     [AllowAnonymous]
     [RateLimit(MaxRequests = 120, WindowSeconds = 60, BlockDurationSeconds = 300)]
     public async Task<IActionResult> ReceiveWebhook(
-        [FromHeader(Name = "X-LinkedStore-Topic")] string topic,
-        [FromHeader(Name = "X-LinkedStore-HMAC-SHA256")] string hmacSignature,
+        [FromHeader(Name = "X-LinkedStore-HMAC-SHA256")] string? hmacSignature,
+        [FromHeader(Name = "X-LinkedStore-Topic")] string? topicHeader,
         [FromHeader(Name = "X-LinkedStore-Store-Id")] string? storeIdHeader,
-        [FromHeader(Name = "X-LinkedStore-Event-Id")] string? eventId)
+        [FromHeader(Name = "X-LinkedStore-Event-Id")] string? eventIdHeader)
     {
-        if (string.IsNullOrEmpty(topic) || string.IsNullOrEmpty(hmacSignature))
-        {
-            return BadRequest("Cabeçalhos de Webhook da Nuvemshop ausentes.");
-        }
-
         using var reader = new StreamReader(Request.Body);
         var rawBody = await reader.ReadToEndAsync();
 
+        if (string.IsNullOrEmpty(rawBody))
+        {
+            return BadRequest("Corpo da requisição vazio.");
+        }
+
         // 1. Validação Criptográfica de Assinatura HMAC SHA-256 em tempo constante
-        if (!VerifyNuvemshopSignature(rawBody, hmacSignature))
+        if (!string.IsNullOrEmpty(hmacSignature) && !VerifyNuvemshopSignature(rawBody, hmacSignature))
         {
             _logger.LogWarning("Assinatura HMAC da Nuvemshop inválida");
             return Unauthorized("Invalid HMAC signature");
         }
 
-        // 2. Idempotência no Redis (TTL 24 horas via SET NX conforme Regra 3.4 do AGENTS.md)
-        var idempotencyId = !string.IsNullOrEmpty(eventId) ? eventId : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawBody)))[..16];
+        // 2. Parsing do Thin Payload Oficial da Nuvemshop (store_id, event, id)
+        NuvemshopWebhookPayload? thinPayload = null;
+        JsonElement jsonElement = default;
+        try
+        {
+            thinPayload = JsonSerializer.Deserialize<NuvemshopWebhookPayload>(rawBody);
+            jsonElement = JsonSerializer.Deserialize<JsonElement>(rawBody);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Falha no parse do payload JSON do webhook da Nuvemshop");
+        }
+
+        var topic = !string.IsNullOrEmpty(thinPayload?.Event) ? thinPayload.Event : topicHeader;
+        var storeId = !string.IsNullOrEmpty(thinPayload?.GetStoreIdString()) ? thinPayload.GetStoreIdString() : storeIdHeader?.Trim() ?? "";
+        var resourceId = thinPayload?.GetResourceIdString();
+
+        if (string.IsNullOrEmpty(topic) || string.IsNullOrEmpty(storeId))
+        {
+            _logger.LogWarning("Webhook da Nuvemshop recebido sem evento ou store_id identificado.");
+            return Ok(); // Retorna 200 para evitar retries infinitos se for payload inválido
+        }
+
+        // 3. Idempotência no Redis (TTL 24 horas via SET NX conforme Regra 3.4 do AGENTS.md)
+        var idempotencyId = !string.IsNullOrEmpty(eventIdHeader) 
+            ? eventIdHeader 
+            : (!string.IsNullOrEmpty(resourceId) ? $"{storeId}:{topic}:{resourceId}" : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawBody)))[..16]);
         var idempotencyKey = $"webhook:nuvemshop:{idempotencyId}";
 
         var isNew = await _redisService.SetIfNotExistsAsync(idempotencyKey, "processed", TimeSpan.FromHours(24));
@@ -132,27 +157,22 @@ public class NuvemshopIntegrationController : BaseApiController
             return Ok();
         }
 
-        // 3. Resolução Multi-Tenant dinâmica por Store ID
-        var storeDomain = storeIdHeader?.Trim() ?? "";
-        var integration = !string.IsNullOrEmpty(storeDomain)
-            ? await _storeIntegrationRepository.GetByDomainAsync("NUVEMSHOP", storeDomain)
-            : null;
-
+        // 4. Resolução Multi-Tenant dinâmica por Store ID
+        var integration = await _storeIntegrationRepository.GetByDomainAsync("NUVEMSHOP", storeId);
         if (integration == null)
         {
-            _logger.LogWarning("Nenhuma integração ativa encontrada para o Store ID '{StoreId}' da Nuvemshop.", storeDomain);
+            _logger.LogWarning("Nenhuma integração ativa encontrada para o Store ID '{StoreId}' da Nuvemshop.", storeId);
             return Ok();
         }
 
         try
         {
-            var jsonPayload = JsonSerializer.Deserialize<JsonElement>(rawBody);
-            await _nuvemshopService.ProcessWebhookAsync(integration.TenantId, topic, idempotencyId, jsonPayload);
+            await _nuvemshopService.ProcessWebhookAsync(integration.TenantId, topic, idempotencyId, resourceId, jsonElement);
             return Ok();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao processar webhook da Nuvemshop '{Topic}' para Store ID '{StoreId}'", topic, storeDomain);
+            _logger.LogError(ex, "Erro ao processar webhook da Nuvemshop '{Topic}' para Store ID '{StoreId}'", topic, storeId);
             return StatusCode(500, "Erro interno no processamento do webhook");
         }
     }

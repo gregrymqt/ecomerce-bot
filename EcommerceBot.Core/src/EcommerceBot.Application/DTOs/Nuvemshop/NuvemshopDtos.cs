@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace EcommerceBot.Application.DTOs.Nuvemshop;
@@ -152,3 +153,43 @@ public class NuvemshopSyncResultDto
     public string? NuvemshopVariantId { get; set; }
     public string Message { get; set; } = string.Empty;
 }
+
+public class NuvemshopWebhookPayload
+{
+    [JsonPropertyName("store_id")]
+    public JsonElement StoreId { get; set; }
+
+    [JsonPropertyName("event")]
+    public string? Event { get; set; }
+
+    [JsonPropertyName("id")]
+    public JsonElement Id { get; set; }
+
+    public string GetStoreIdString()
+    {
+        if (StoreId.ValueKind == JsonValueKind.Number)
+            return StoreId.GetInt64().ToString();
+        if (StoreId.ValueKind == JsonValueKind.String)
+            return StoreId.GetString() ?? string.Empty;
+        return string.Empty;
+    }
+
+    public string GetResourceIdString()
+    {
+        if (Id.ValueKind == JsonValueKind.Number)
+            return Id.GetInt64().ToString();
+        if (Id.ValueKind == JsonValueKind.String)
+            return Id.GetString() ?? string.Empty;
+        return string.Empty;
+    }
+}
+
+public class NuvemshopWebhookRegistrationPayload
+{
+    [JsonPropertyName("event")]
+    public string Event { get; set; } = string.Empty;
+
+    [JsonPropertyName("url")]
+    public string Url { get; set; } = string.Empty;
+}
+

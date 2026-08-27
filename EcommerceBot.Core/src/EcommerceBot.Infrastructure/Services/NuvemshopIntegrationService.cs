@@ -1,4 +1,6 @@
 using System;
+using System.Globalization;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -7,6 +9,7 @@ using EcommerceBot.Application.DTOs.Nuvemshop;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
+using EcommerceBot.Infrastructure.Gateways;
 using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -19,17 +22,22 @@ public class NuvemshopIntegrationService : INuvemshopIntegrationService
     private readonly IStoreIntegrationRepository _integrationRepository;
     private readonly IAesGcmCryptoService _cryptoService;
     private readonly IEcommerceGatewayFactory _gatewayFactory;
+    private readonly IProductRepository _productRepository;
+    private readonly IRedisService _redisService;
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly ILogger<NuvemshopIntegrationService> _logger;
     private readonly string _clientId;
     private readonly string _clientSecret;
     private readonly string _redirectUri;
+    private readonly string _webhookCallbackUrl;
 
     public NuvemshopIntegrationService(
         HttpClient httpClient,
         IStoreIntegrationRepository integrationRepository,
         IAesGcmCryptoService cryptoService,
         IEcommerceGatewayFactory gatewayFactory,
+        IProductRepository productRepository,
+        IRedisService redisService,
         IPublishEndpoint publishEndpoint,
         IConfiguration config,
         ILogger<NuvemshopIntegrationService> logger)
@@ -38,12 +46,15 @@ public class NuvemshopIntegrationService : INuvemshopIntegrationService
         _integrationRepository = integrationRepository;
         _cryptoService = cryptoService;
         _gatewayFactory = gatewayFactory;
+        _productRepository = productRepository;
+        _redisService = redisService;
         _publishEndpoint = publishEndpoint;
         _logger = logger;
 
         _clientId = config["Nuvemshop:ClientId"] ?? "default_client_id";
         _clientSecret = config["Nuvemshop:ClientSecret"] ?? "default_client_secret";
         _redirectUri = config["Nuvemshop:RedirectUri"] ?? "https://app.ecommercebot.com/api/v1/nuvemshop/oauth/callback";
+        _webhookCallbackUrl = config["Nuvemshop:WebhookCallbackUrl"] ?? "https://app.ecommercebot.com/api/v1/nuvemshop/webhooks";
     }
 
     public string GetOAuthUrl(Guid tenantId)
@@ -126,7 +137,7 @@ public class NuvemshopIntegrationService : INuvemshopIntegrationService
         await _integrationRepository.UpsertAsync(integration);
         _logger.LogInformation("Nuvemshop integration saved for Tenant {TenantId} (StoreId: {StoreId})", tenantId, storeId);
 
-        // Executa health check imediato
+        // 1. Executa health check imediato
         try
         {
             var gateway = _gatewayFactory.GetGateway("Nuvemshop");
@@ -138,12 +149,34 @@ public class NuvemshopIntegrationService : INuvemshopIntegrationService
             _logger.LogWarning(ex, "Initial health check failed for Nuvemshop Tenant {TenantId}", tenantId);
         }
 
+        // 2. Auto-registro de Webhooks essenciais na API da Nuvemshop (1-Clique Handshake)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await RegisterWebhooksAsync(tenantId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Auto webhook registration failed for Tenant {TenantId}", tenantId);
+            }
+        });
+
         return true;
     }
 
-    public async Task ProcessWebhookAsync(Guid tenantId, string topic, string eventId, JsonElement payload)
+    public async Task<bool> RegisterWebhooksAsync(Guid tenantId)
     {
-        _logger.LogInformation("Processing Nuvemshop Webhook '{Topic}' for Tenant {TenantId}", topic, tenantId);
+        var gateway = _gatewayFactory.GetGateway("Nuvemshop") as NuvemshopGateway;
+        if (gateway == null) return false;
+
+        _logger.LogInformation("Triggering automatic webhook registration for Nuvemshop Tenant {TenantId}", tenantId);
+        return await gateway.RegisterWebhooksAsync(tenantId, _webhookCallbackUrl);
+    }
+
+    public async Task ProcessWebhookAsync(Guid tenantId, string topic, string eventId, string? resourceId, JsonElement payload)
+    {
+        _logger.LogInformation("Processing Nuvemshop Webhook '{Topic}' (Resource: {ResourceId}) for Tenant {TenantId}", topic, resourceId, tenantId);
 
         if (topic.Equals("app/uninstalled", StringComparison.OrdinalIgnoreCase))
         {
@@ -155,6 +188,55 @@ public class NuvemshopIntegrationService : INuvemshopIntegrationService
                 integration.UpdatedAt = DateTimeOffset.UtcNow;
                 await _integrationRepository.UpsertAsync(integration);
                 _logger.LogInformation("Marked Nuvemshop integration as DISCONNECTED for Tenant {TenantId}", tenantId);
+            }
+            return;
+        }
+
+        // Sincronização Reativa (Fetch-on-Notification) para product/updated
+        if (topic.Equals("product/updated", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(resourceId))
+        {
+            var gateway = _gatewayFactory.GetGateway("Nuvemshop") as NuvemshopGateway;
+            if (gateway != null)
+            {
+                var remoteProduct = await gateway.GetProductByIdAsync(tenantId, resourceId);
+                if (remoteProduct != null)
+                {
+                    var sku = remoteProduct.Variants?.FirstOrDefault()?.Sku;
+                    if (!string.IsNullOrEmpty(sku))
+                    {
+                        var localProduct = await _productRepository.GetBySkuAsync(tenantId, sku);
+                        if (localProduct != null)
+                        {
+                            var firstVariant = remoteProduct.Variants?.FirstOrDefault();
+                            if (firstVariant != null)
+                            {
+                                if (decimal.TryParse(firstVariant.Price, NumberStyles.Any, CultureInfo.InvariantCulture, out var price))
+                                {
+                                    localProduct.Price = price;
+                                }
+                                localProduct.StockQuantity = firstVariant.Stock ?? 0;
+                                localProduct.NuvemshopProductId = remoteProduct.Id.ToString();
+                                localProduct.NuvemshopVariantId = firstVariant.Id.ToString();
+                                localProduct.UpdatedAt = DateTimeOffset.UtcNow;
+
+                                await _productRepository.UpdateAsync(localProduct);
+                                _logger.LogInformation("Reactively synced SKU {Sku} from Nuvemshop Webhook.", sku);
+
+                                // Dispara SSE para o Frontend
+                                var sseEvent = new
+                                {
+                                    type = "NUVEMSHOP_PRODUCT_UPDATED",
+                                    sku = sku,
+                                    product_id = remoteProduct.Id,
+                                    price = localProduct.Price,
+                                    stock = localProduct.StockQuantity,
+                                    timestamp = DateTimeOffset.UtcNow
+                                };
+                                await _redisService.PublishAsync($"events:tenant:{tenantId}", JsonSerializer.Serialize(sseEvent));
+                            }
+                        }
+                    }
+                }
             }
         }
     }
