@@ -35,6 +35,9 @@ When MCP tools aren't available, fall back to the CLI commands below.
 # pip (recommended)
 python3 -m pip install semgrep
 
+# Windows (Local environment - Python alias 'py')
+& "C:\Users\digob\AppData\Local\Programs\Python\Python313\Scripts\semgrep.exe" scan --config auto --exclude="**/bin" --exclude="**/obj" --exclude="**/dist" --exclude="**/node_modules" EcommerceBot.Core EcommerceBot.Web/src Database.Migrations
+
 # Homebrew
 brew install semgrep
 

@@ -53,13 +53,15 @@ public class ProductRepository : IProductRepository
             INSERT INTO dbo.Products (
                 Id, TenantId, Sku, Title, Description, OriginalPrice, Price, 
                 Category, Brand, StockQuantity, Status, SourceUrl, ImagesJson, 
-                EnrichmentMetadata, ErrorMessage, CreatedAt, UpdatedAt
+                EnrichmentMetadata, ErrorMessage, ShopifyProductId, ShopifyVariantId, ShopifyInventoryItemId,
+                CreatedAt, UpdatedAt
             )
             OUTPUT INSERTED.Id
             VALUES (
                 @Id, @TenantId, @Sku, @Title, @Description, @OriginalPrice, @Price, 
                 @Category, @Brand, @StockQuantity, @Status, @SourceUrl, @ImagesJson, 
-                @EnrichmentMetadata, @ErrorMessage, SYSDATETIMEOFFSET(), SYSDATETIMEOFFSET()
+                @EnrichmentMetadata, @ErrorMessage, @ShopifyProductId, @ShopifyVariantId, @ShopifyInventoryItemId,
+                SYSDATETIMEOFFSET(), SYSDATETIMEOFFSET()
             )
         """;
 
@@ -134,6 +136,9 @@ public class ProductRepository : IProductRepository
                 StockQuantity = @StockQuantity,
                 Status = @Status,
                 ImagesJson = @ImagesJson,
+                ShopifyProductId = COALESCE(@ShopifyProductId, ShopifyProductId),
+                ShopifyVariantId = COALESCE(@ShopifyVariantId, ShopifyVariantId),
+                ShopifyInventoryItemId = COALESCE(@ShopifyInventoryItemId, ShopifyInventoryItemId),
                 UpdatedAt = SYSDATETIMEOFFSET()
             WHERE TenantId = @TenantId AND Sku = @Sku
         """;

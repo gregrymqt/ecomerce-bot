@@ -19,6 +19,7 @@ public static class MassTransitExtensions
             x.AddConsumer<ProcessedProductConsumer>();
             x.AddConsumer<EmailNotificationConsumer>();
             x.AddConsumer<NuvemshopBulkSyncConsumer>();
+            x.AddConsumer<ShopifyBulkSyncConsumer>();
             x.AddConsumer<LlmUsageConsumer>();
             x.AddConsumer<AnalyticsProcessedConsumer>();
             x.AddConsumer<PaymentProcessingConsumer>();
@@ -65,6 +66,11 @@ public static class MassTransitExtensions
                 cfg.ReceiveEndpoint("nuvemshop_bulk_sync", e =>
                 {
                     e.ConfigureConsumer<NuvemshopBulkSyncConsumer>(context);
+                });
+
+                cfg.ReceiveEndpoint("shopify_bulk_sync", e =>
+                {
+                    e.ConfigureConsumer<ShopifyBulkSyncConsumer>(context);
                 });
 
                 // 4. Endpoints de Machine Learning e Financeiro

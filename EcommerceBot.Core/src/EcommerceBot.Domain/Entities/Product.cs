@@ -19,6 +19,9 @@ public class Product
     public string? ImagesJson { get; set; }
     public string? EnrichmentMetadata { get; set; }
     public string? ErrorMessage { get; set; }
+    public string? ShopifyProductId { get; set; }
+    public string? ShopifyVariantId { get; set; }
+    public string? ShopifyInventoryItemId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }

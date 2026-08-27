@@ -197,5 +197,8 @@ O ecossistema utiliza `MassTransit` com `cfg.UseRawJsonSerializer()` para garant
    - Backend Core: `dotnet build EcommerceBot.Core`
    - Migrações: `dotnet build Database.Migrations`
    - Frontend Web: `npm run build` (em `EcommerceBot.Web`)
-   - Análise Estática: Varredura de segurança com Semgrep.
+   - Análise Estática Semgrep (Windows / Python alias `py`):
+     ```powershell
+     & "C:\Users\digob\AppData\Local\Programs\Python\Python313\Scripts\semgrep.exe" scan --config auto --exclude="**/bin" --exclude="**/obj" --exclude="**/dist" --exclude="**/node_modules" EcommerceBot.Core EcommerceBot.Web/src Database.Migrations
+     ```
 

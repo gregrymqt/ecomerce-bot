@@ -141,4 +141,51 @@ public class NuvemshopGateway : IEcommerceGateway
         
         return Array.Empty<Product>();
     }
+
+    public async Task<(bool Success, int LatencyMs, string Message)> HealthCheckAsync(Guid tenantId)
+    {
+        var creds = await GetNuvemshopCredentialsAsync(tenantId);
+        if (creds == null || string.IsNullOrEmpty(creds.Value.Token))
+            return (false, 0, "Credenciais da Nuvemshop não encontradas.");
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            var requestUrl = $"{creds.Value.StoreId}/categories";
+            using var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+            request.Headers.Add("Authentication", $"bearer {creds.Value.Token}");
+            request.Headers.Add("User-Agent", "EcomAutobot");
+
+            var response = await _httpClient.SendAsync(request);
+            sw.Stop();
+
+            if (response.IsSuccessStatusCode)
+                return (true, (int)sw.ElapsedMilliseconds, "API Nuvemshop operacional");
+
+            return (false, (int)sw.ElapsedMilliseconds, $"Erro HTTP {response.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            return (false, (int)sw.ElapsedMilliseconds, $"Falha de conexão: {ex.Message}");
+        }
+    }
+
+    public Task<bool> UpdateInventoryAsync(Guid tenantId, string sku, int availableQuantity, string? inventoryItemId = null)
+    {
+        _logger.LogInformation("Nuvemshop UpdateInventory para SKU {Sku} -> {Quantity}", sku, availableQuantity);
+        return Task.FromResult(true);
+    }
+
+    public Task<bool> UpdateProductStatusAsync(Guid tenantId, string sku, string status)
+    {
+        _logger.LogInformation("Nuvemshop UpdateProductStatus para SKU {Sku} -> {Status}", sku, status);
+        return Task.FromResult(true);
+    }
+
+    public Task<bool> DeleteProductAsync(Guid tenantId, string sku)
+    {
+        _logger.LogInformation("Nuvemshop DeleteProduct para SKU {Sku}", sku);
+        return Task.FromResult(true);
+    }
 }
