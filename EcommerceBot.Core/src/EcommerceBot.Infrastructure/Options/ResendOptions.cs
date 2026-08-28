@@ -7,6 +7,8 @@ public class ResendOptions
 {
     public const string SectionName = "Resend";
 
+    public bool Enabled { get; set; } = true;
+    public string DeliveryMode { get; set; } = "Mock";
     public string ApiKey { get; set; } = "re_test123";
     public string WebhookSecret { get; set; } = string.Empty;
     public string FromEmail { get; set; } = "ECom AutoBot <notificacoes@ecommercebot.com>";

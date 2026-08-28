@@ -49,24 +49,27 @@ namespace EcommerceBot.Infrastructure.Messaging
                     idempotencyKey: payload.IdempotencyKey
                 );
 
+                var isSimulated = !string.IsNullOrEmpty(resendId) && resendId.StartsWith("simulated_", StringComparison.OrdinalIgnoreCase);
+                var status = isSimulated ? EmailStatus.SIMULATED.ToString() : EmailStatus.SENT.ToString();
+
                 var log = new EmailLog
                 {
                     TenantId = payload.TenantId,
                     ResendId = resendId,
                     Recipient = payload.RecipientEmail,
                     EventType = payload.Event,
-                    Status = EmailStatus.SENT.ToString(),
+                    Status = status,
                     Subject = subject,
                     IdempotencyKey = payload.IdempotencyKey,
                     MetadataInfo = JsonSerializer.Serialize(payload.Data)
                 };
 
                 await _emailRepository.CreateEmailLogAsync(log);
-                _logger.LogInformation("E-mail enviado com sucesso. ResendId={ResendId}, Evento={Event}", resendId, payload.Event);
+                _logger.LogInformation("E-mail processado com sucesso [{Status}]. ResendId={ResendId}, Evento={Event}", status, resendId, payload.Event);
             }
-            catch (Exception ex)
+            catch (ResendPermanentException ex)
             {
-                _logger.LogError(ex, "Falha ao enviar e-mail transacional para {Email}.", payload.RecipientEmail);
+                _logger.LogWarning("Falha permanente de envio no Resend para {Email} (Domínio/Configuração): {Error}", payload.RecipientEmail, ex.Message);
                 var logError = new EmailLog
                 {
                     TenantId = payload.TenantId,
@@ -79,7 +82,24 @@ namespace EcommerceBot.Infrastructure.Messaging
                     MetadataInfo = JsonSerializer.Serialize(payload.Data)
                 };
                 await _emailRepository.CreateEmailLogAsync(logError);
-                throw;
+                // Não re-lança exceção: evita re-tentativas desnecessárias e poluição de DLQ
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Falha transitória ao processar e-mail transacional para {Email}.", payload.RecipientEmail);
+                var logError = new EmailLog
+                {
+                    TenantId = payload.TenantId,
+                    Recipient = payload.RecipientEmail,
+                    EventType = payload.Event,
+                    Status = EmailStatus.FAILED.ToString(),
+                    Subject = subject,
+                    IdempotencyKey = payload.IdempotencyKey,
+                    ErrorMessage = ex.Message,
+                    MetadataInfo = JsonSerializer.Serialize(payload.Data)
+                };
+                await _emailRepository.CreateEmailLogAsync(logError);
+                throw; // Aciona política de retry do MassTransit para falhas transitórias
             }
         }
 

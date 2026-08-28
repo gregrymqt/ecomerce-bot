@@ -1,4 +1,7 @@
+using System;
+using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -8,6 +11,16 @@ using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Gateways
 {
+    public class ResendPermanentException : Exception
+    {
+        public int? StatusCode { get; }
+
+        public ResendPermanentException(string message, int? statusCode = null) : base(message)
+        {
+            StatusCode = statusCode;
+        }
+    }
+
     public interface IResendGateway
     {
         Task<string?> SendEmailAsync(string to, string subject, string htmlContent, string? idempotencyKey);
@@ -24,45 +37,125 @@ namespace EcommerceBot.Infrastructure.Gateways
             _httpClient = httpClient;
             _logger = logger;
             _resendOptions = resendOptions.Value;
-            var apiKey = !string.IsNullOrWhiteSpace(_resendOptions.ApiKey) ? _resendOptions.ApiKey : "re_test123";
-            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
         }
 
         public async Task<string?> SendEmailAsync(string to, string subject, string htmlContent, string? idempotencyKey)
         {
+            var isMockMode = !_resendOptions.Enabled ||
+                             string.Equals(_resendOptions.DeliveryMode, "Mock", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(_resendOptions.DeliveryMode, "LogOnly", StringComparison.OrdinalIgnoreCase) ||
+                             string.IsNullOrWhiteSpace(_resendOptions.ApiKey) ||
+                             _resendOptions.ApiKey == "re_test123";
+
+            if (isMockMode)
+            {
+                var simulatedId = "simulated_" + Guid.NewGuid().ToString("N");
+                _logger.LogInformation(
+                    "[EMAIL SIMULATED] To: {To} | Subject: {Subject} | Mode: {Mode} | SimulatedId: {SimulatedId}",
+                    to,
+                    subject,
+                    _resendOptions.DeliveryMode ?? "Mock",
+                    simulatedId);
+
+                return simulatedId;
+            }
+
             try
             {
                 var payload = new
                 {
-                    from = !string.IsNullOrWhiteSpace(_resendOptions.FromEmail) 
-                        ? _resendOptions.FromEmail 
+                    from = !string.IsNullOrWhiteSpace(_resendOptions.FromEmail)
+                        ? _resendOptions.FromEmail
                         : "ECom AutoBot <notificacoes@ecommercebot.com>",
                     to = new[] { to },
                     subject = subject,
                     html = htmlContent
                 };
 
-                var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-
-                // Em ambiente de desenvolvimento sem API key válida, fazemos um mock
-                if (_resendOptions.ApiKey == "re_test123" || string.IsNullOrWhiteSpace(_resendOptions.ApiKey))
+                using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _resendOptions.ApiKey);
+                if (!string.IsNullOrWhiteSpace(idempotencyKey))
                 {
-                    _logger.LogInformation("Mocking Resend API call for {To}", to);
-                    return "resend_" + System.Guid.NewGuid().ToString("N");
+                    request.Headers.TryAddWithoutValidation("X-Entity-Ref-ID", idempotencyKey);
+                }
+                request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.SendAsync(request);
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    using var jsonDoc = JsonDocument.Parse(responseBody);
+                    if (jsonDoc.RootElement.TryGetProperty("id", out var idProp))
+                    {
+                        return idProp.GetString();
+                    }
+                    return "resend_" + Guid.NewGuid().ToString("N");
                 }
 
-                var response = await _httpClient.PostAsync("https://api.resend.com/emails", content);
-                response.EnsureSuccessStatusCode();
+                // Trata erros da API do Resend
+                var statusCodeInt = (int)response.StatusCode;
+                var errorMessage = ExtractErrorMessage(responseBody, response.StatusCode);
 
-                var responseBody = await response.Content.ReadAsStringAsync();
-                using var jsonDoc = JsonDocument.Parse(responseBody);
-                return jsonDoc.RootElement.GetProperty("id").GetString();
+                if (response.StatusCode == HttpStatusCode.Unauthorized ||
+                    response.StatusCode == HttpStatusCode.Forbidden ||
+                    response.StatusCode == HttpStatusCode.BadRequest ||
+                    response.StatusCode == HttpStatusCode.UnprocessableEntity)
+                {
+                    // Erro permanente (ex: Domínio não verificado no DNS/Cloudflare, Chave inválida)
+                    _logger.LogWarning(
+                        "Resend API permanent rejection ({StatusCode}): {ErrorMessage} for recipient {To}",
+                        statusCodeInt,
+                        errorMessage,
+                        to);
+
+                    throw new ResendPermanentException(
+                        $"Resend API Permanent Error ({statusCodeInt}): {errorMessage}",
+                        statusCodeInt);
+                }
+
+                // Erros transitórios de rede/servidor (5xx, 429)
+                _logger.LogError(
+                    "Resend API transient failure ({StatusCode}): {ErrorMessage} for recipient {To}",
+                    statusCodeInt,
+                    errorMessage,
+                    to);
+
+                throw new HttpRequestException($"Resend API Error ({statusCodeInt}): {errorMessage}");
             }
-            catch (System.Exception ex)
+            catch (ResendPermanentException)
             {
-                _logger.LogError(ex, "Failed to send email via Resend to {To}", to);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected exception while communicating with Resend for {To}", to);
                 throw;
             }
         }
+
+        private static string ExtractErrorMessage(string responseBody, HttpStatusCode statusCode)
+        {
+            if (string.IsNullOrWhiteSpace(responseBody))
+            {
+                return $"HTTP {statusCode}";
+            }
+
+            try
+            {
+                using var jsonDoc = JsonDocument.Parse(responseBody);
+                if (jsonDoc.RootElement.TryGetProperty("message", out var msgProp))
+                {
+                    return msgProp.GetString() ?? responseBody;
+                }
+            }
+            catch
+            {
+                // Corpo não é JSON válido
+            }
+
+            return responseBody;
+        }
     }
 }
+

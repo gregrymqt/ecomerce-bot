@@ -11,6 +11,7 @@ namespace EcommerceBot.Domain.Enums
         BOUNCED,
         OPENED,
         CLICKED,
-        FAILED
+        FAILED,
+        SIMULATED
     }
 }
