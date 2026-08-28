@@ -2,7 +2,8 @@ using System;
 using System.Security.Cryptography;
 using System.Text;
 using EcommerceBot.Application.Interfaces;
-using Microsoft.Extensions.Configuration;
+using EcommerceBot.Infrastructure.Options;
+using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Services;
 
@@ -10,10 +11,13 @@ public class AesGcmCryptoService : IAesGcmCryptoService
 {
     private readonly byte[] _masterKey;
 
-    public AesGcmCryptoService(IConfiguration configuration)
+    public AesGcmCryptoService(IOptions<SecurityOptions> securityOptions)
     {
-        var keyHex = configuration["Security:AesMasterKey"] 
-                     ?? throw new ArgumentNullException("Security:AesMasterKey", "Master key is required for BYOK encryption.");
+        var keyHex = securityOptions.Value.AesMasterKey;
+        if (string.IsNullOrWhiteSpace(keyHex))
+        {
+            throw new ArgumentNullException(nameof(securityOptions), "Security:AesMasterKey is required for BYOK encryption.");
+        }
         
         _masterKey = Convert.FromHexString(keyHex);
         

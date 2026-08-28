@@ -6,8 +6,9 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.MercadoPago;
 using EcommerceBot.Application.Interfaces;
-using Microsoft.Extensions.Configuration;
+using EcommerceBot.Infrastructure.Options;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Gateways;
 
@@ -24,13 +25,11 @@ public class MercadoPagoGateway : IMercadoPagoGateway
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
     };
 
-    public MercadoPagoGateway(HttpClient httpClient, IConfiguration configuration, ILogger<MercadoPagoGateway> logger)
+    public MercadoPagoGateway(HttpClient httpClient, IOptions<MercadoPagoOptions> mercadoPagoOptions, ILogger<MercadoPagoGateway> logger)
     {
         _httpClient = httpClient;
         _logger = logger;
-        _accessToken = configuration["MercadoPago:AccessToken"] 
-            ?? configuration["MERCADOPAGO_ACCESS_TOKEN"] 
-            ?? string.Empty;
+        _accessToken = mercadoPagoOptions.Value.AccessToken ?? string.Empty;
 
         _httpClient.BaseAddress = new Uri(BaseUrl);
         _httpClient.DefaultRequestHeaders.Accept.Clear();

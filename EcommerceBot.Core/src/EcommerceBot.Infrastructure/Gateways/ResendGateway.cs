@@ -2,8 +2,9 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
+using EcommerceBot.Infrastructure.Options;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Gateways
 {
@@ -16,14 +17,15 @@ namespace EcommerceBot.Infrastructure.Gateways
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<ResendGateway> _logger;
-        private readonly string _apiKey;
+        private readonly ResendOptions _resendOptions;
 
-        public ResendGateway(HttpClient httpClient, IConfiguration configuration, ILogger<ResendGateway> logger)
+        public ResendGateway(HttpClient httpClient, IOptions<ResendOptions> resendOptions, ILogger<ResendGateway> logger)
         {
             _httpClient = httpClient;
             _logger = logger;
-            _apiKey = configuration["Resend:ApiKey"] ?? "re_test123";
-            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey);
+            _resendOptions = resendOptions.Value;
+            var apiKey = !string.IsNullOrWhiteSpace(_resendOptions.ApiKey) ? _resendOptions.ApiKey : "re_test123";
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
         }
 
         public async Task<string?> SendEmailAsync(string to, string subject, string htmlContent, string? idempotencyKey)
@@ -32,7 +34,9 @@ namespace EcommerceBot.Infrastructure.Gateways
             {
                 var payload = new
                 {
-                    from = "ECom AutoBot <notificacoes@ecommercebot.com>",
+                    from = !string.IsNullOrWhiteSpace(_resendOptions.FromEmail) 
+                        ? _resendOptions.FromEmail 
+                        : "ECom AutoBot <notificacoes@ecommercebot.com>",
                     to = new[] { to },
                     subject = subject,
                     html = htmlContent
@@ -41,7 +45,7 @@ namespace EcommerceBot.Infrastructure.Gateways
                 var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
                 // Em ambiente de desenvolvimento sem API key válida, fazemos um mock
-                if (_apiKey == "re_test123")
+                if (_resendOptions.ApiKey == "re_test123" || string.IsNullOrWhiteSpace(_resendOptions.ApiKey))
                 {
                     _logger.LogInformation("Mocking Resend API call for {To}", to);
                     return "resend_" + System.Guid.NewGuid().ToString("N");

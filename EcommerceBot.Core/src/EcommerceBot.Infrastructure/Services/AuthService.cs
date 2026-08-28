@@ -4,12 +4,13 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
 using EcommerceBot.Application.DTOs.Auth;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
+using EcommerceBot.Infrastructure.Options;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using BCrypt.Net;
 
 namespace EcommerceBot.Infrastructure.Services
@@ -18,13 +19,16 @@ namespace EcommerceBot.Infrastructure.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly ITenantRepository _tenantRepository;
-        private readonly IConfiguration _configuration;
+        private readonly JwtOptions _jwtOptions;
 
-        public AuthService(IUserRepository userRepository, ITenantRepository tenantRepository, IConfiguration configuration)
+        public AuthService(
+            IUserRepository userRepository, 
+            ITenantRepository tenantRepository, 
+            IOptions<JwtOptions> jwtOptions)
         {
             _userRepository = userRepository;
             _tenantRepository = tenantRepository;
-            _configuration = configuration;
+            _jwtOptions = jwtOptions.Value;
         }
 
         public async Task<UserResponse> RegisterUserAsync(CreateUserRequest request)
@@ -91,9 +95,14 @@ namespace EcommerceBot.Infrastructure.Services
             }
 
             var tokenHandler = new JwtSecurityTokenHandler();
-            var keyStr = _configuration["Jwt:Key"] 
-                ?? throw new InvalidOperationException("Jwt:Key is required and must be configured in environment or appsettings.");
+            var keyStr = _jwtOptions.Key;
+            if (string.IsNullOrWhiteSpace(keyStr))
+            {
+                throw new InvalidOperationException("Jwt:Key is required and must be configured in environment or appsettings.");
+            }
+
             var key = Encoding.UTF8.GetBytes(keyStr);
+            var expireMinutes = _jwtOptions.ExpireMinutes > 0 ? _jwtOptions.ExpireMinutes : 120;
             var descriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
@@ -103,7 +112,9 @@ namespace EcommerceBot.Infrastructure.Services
                     new Claim("tenantId", user.TenantId.ToString()),
                     new Claim(ClaimTypes.Role, user.Role)
                 }),
-                Expires = DateTime.UtcNow.AddHours(2),
+                Issuer = _jwtOptions.Issuer,
+                Audience = _jwtOptions.Audience,
+                Expires = DateTime.UtcNow.AddMinutes(expireMinutes),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
             var token = tokenHandler.CreateToken(descriptor);

@@ -1,3 +1,4 @@
+using EcommerceBot.Infrastructure.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -14,6 +15,7 @@ public static class InfrastructureExtensions
         IConfiguration configuration,
         IHostEnvironment environment)
     {
+        services.AddAppOptions(configuration);
         services.AddDependencyInjection();
         services.AddRedisInfrastructure(configuration);
         services.AddJwtAuthentication(configuration, environment);

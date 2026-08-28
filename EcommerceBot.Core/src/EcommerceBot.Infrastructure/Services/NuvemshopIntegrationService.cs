@@ -10,9 +10,10 @@ using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
 using EcommerceBot.Infrastructure.Gateways;
+using EcommerceBot.Infrastructure.Options;
 using MassTransit;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Services;
 
@@ -39,7 +40,7 @@ public class NuvemshopIntegrationService : INuvemshopIntegrationService
         IProductRepository productRepository,
         IRedisService redisService,
         IPublishEndpoint publishEndpoint,
-        IConfiguration config,
+        IOptions<NuvemshopOptions> nuvemshopOptions,
         ILogger<NuvemshopIntegrationService> logger)
     {
         _httpClient = httpClient;
@@ -51,10 +52,11 @@ public class NuvemshopIntegrationService : INuvemshopIntegrationService
         _publishEndpoint = publishEndpoint;
         _logger = logger;
 
-        _clientId = config["Nuvemshop:ClientId"] ?? "default_client_id";
-        _clientSecret = config["Nuvemshop:ClientSecret"] ?? "default_client_secret";
-        _redirectUri = config["Nuvemshop:RedirectUri"] ?? "https://app.ecommercebot.com/api/v1/nuvemshop/oauth/callback";
-        _webhookCallbackUrl = config["Nuvemshop:WebhookCallbackUrl"] ?? "https://app.ecommercebot.com/api/v1/nuvemshop/webhooks";
+        var options = nuvemshopOptions.Value;
+        _clientId = !string.IsNullOrWhiteSpace(options.ClientId) ? options.ClientId : "default_client_id";
+        _clientSecret = !string.IsNullOrWhiteSpace(options.ClientSecret) ? options.ClientSecret : "default_client_secret";
+        _redirectUri = !string.IsNullOrWhiteSpace(options.RedirectUri) ? options.RedirectUri : "https://app.ecommercebot.com/api/v1/nuvemshop/oauth/callback";
+        _webhookCallbackUrl = !string.IsNullOrWhiteSpace(options.WebhookCallbackUrl) ? options.WebhookCallbackUrl : "https://app.ecommercebot.com/api/v1/nuvemshop/webhooks";
     }
 
     public string GetOAuthUrl(Guid tenantId)

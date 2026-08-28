@@ -5,8 +5,9 @@ using System.Threading.Tasks;
 using Dapper;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
+using EcommerceBot.Infrastructure.Options;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Repositories;
 
@@ -14,10 +15,14 @@ public class PlanRepository : IPlanRepository
 {
     private readonly string _connectionString;
 
-    public PlanRepository(IConfiguration configuration)
+    public PlanRepository(IOptions<DatabaseOptions> databaseOptions)
     {
-        _connectionString = configuration.GetConnectionString("DefaultConnection") 
-            ?? throw new ArgumentNullException("DefaultConnection");
+        _connectionString = databaseOptions.Value.DefaultConnection;
+
+        if (string.IsNullOrWhiteSpace(_connectionString))
+        {
+            throw new ArgumentNullException(nameof(databaseOptions), "DefaultConnection string is required for PlanRepository.");
+        }
     }
 
     private IDbConnection CreateConnection() => new SqlConnection(_connectionString);

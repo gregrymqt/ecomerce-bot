@@ -9,9 +9,10 @@ using EcommerceBot.Application.DTOs.Shopify;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
+using EcommerceBot.Infrastructure.Options;
 using MassTransit;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Services;
 
@@ -35,7 +36,8 @@ public class ShopifyIntegrationService : IShopifyIntegrationService
         IEcommerceGatewayFactory gatewayFactory,
         IPublishEndpoint publishEndpoint,
         HttpClient httpClient,
-        IConfiguration config,
+        IOptions<ShopifyOptions> shopifyOptions,
+        IOptions<AppOptions> appOptions,
         ILogger<ShopifyIntegrationService> logger)
     {
         _storeIntegrationRepository = storeIntegrationRepository;
@@ -45,9 +47,15 @@ public class ShopifyIntegrationService : IShopifyIntegrationService
         _publishEndpoint = publishEndpoint;
         _httpClient = httpClient;
         _logger = logger;
-        _clientId = config["Shopify:ClientId"] ?? string.Empty;
-        _clientSecret = config["Shopify:ClientSecret"] ?? string.Empty;
-        _appUrl = config["App:BaseUrl"] ?? "https://app.ecommercesaas.com";
+
+        var shopifyOpt = shopifyOptions.Value;
+        var appOpt = appOptions.Value;
+
+        _clientId = shopifyOpt.ClientId ?? string.Empty;
+        _clientSecret = shopifyOpt.ClientSecret ?? string.Empty;
+        _appUrl = !string.IsNullOrWhiteSpace(shopifyOpt.AppUrl) 
+            ? shopifyOpt.AppUrl 
+            : (!string.IsNullOrWhiteSpace(appOpt.BaseUrl) ? appOpt.BaseUrl : "https://app.ecommercebot.com");
     }
 
     public async Task<StoreIntegrationResponseDto> SaveCredentialsAsync(Guid tenantId, ShopifyCredentialsPayloadDto payload)

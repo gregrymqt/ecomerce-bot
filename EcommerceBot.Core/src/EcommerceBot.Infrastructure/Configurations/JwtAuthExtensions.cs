@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using System.Threading.Tasks;
+using EcommerceBot.Infrastructure.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,7 +20,9 @@ public static class JwtAuthExtensions
         IConfiguration configuration,
         IHostEnvironment environment)
     {
-        var jwtKey = configuration["Jwt:Key"];
+        var jwtOptions = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
+        var jwtKey = jwtOptions.Key;
+
         if (string.IsNullOrEmpty(jwtKey))
         {
             if (environment.IsDevelopment())

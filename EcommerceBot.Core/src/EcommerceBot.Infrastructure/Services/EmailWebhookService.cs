@@ -6,8 +6,9 @@ using System.Threading.Tasks;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Enums;
 using EcommerceBot.Domain.Interfaces;
-using Microsoft.Extensions.Configuration;
+using EcommerceBot.Infrastructure.Options;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Services;
 
@@ -19,12 +20,12 @@ public class EmailWebhookService : IEmailWebhookService
 
     public EmailWebhookService(
         IEmailRepository emailRepository,
-        IConfiguration configuration,
+        IOptions<ResendOptions> resendOptions,
         ILogger<EmailWebhookService> logger)
     {
         _emailRepository = emailRepository;
         _logger = logger;
-        _webhookSecret = configuration["Resend:WebhookSecret"];
+        _webhookSecret = resendOptions.Value.WebhookSecret;
     }
 
     public async Task<WebhookProcessResult> ProcessResendWebhookAsync(

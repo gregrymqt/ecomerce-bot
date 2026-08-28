@@ -4,9 +4,10 @@ using System.Text;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Metering;
 using EcommerceBot.Application.Interfaces;
+using EcommerceBot.Infrastructure.Options;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Api.Controllers;
 
@@ -14,17 +15,17 @@ namespace EcommerceBot.Api.Controllers;
 public class MeteringController : BaseApiController
 {
     private readonly IMeteringService _meteringService;
-    private readonly IConfiguration _configuration;
+    private readonly SecurityOptions _securityOptions;
 
-    public MeteringController(IMeteringService meteringService, IConfiguration configuration)
+    public MeteringController(IMeteringService meteringService, IOptions<SecurityOptions> securityOptions)
     {
         _meteringService = meteringService;
-        _configuration = configuration;
+        _securityOptions = securityOptions.Value;
     }
 
     private bool IsAuthorizedInternalService()
     {
-        var internalKey = _configuration["Security:InternalServiceKey"];
+        var internalKey = _securityOptions.InternalServiceKey;
         if (!string.IsNullOrEmpty(internalKey))
         {
             if (Request.Headers.TryGetValue("X-Internal-Secret", out var providedKey) &&

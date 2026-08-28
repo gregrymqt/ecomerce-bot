@@ -8,12 +8,13 @@ using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.DTOs.Shopify;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Interfaces;
+using EcommerceBot.Infrastructure.Options;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Api.Controllers;
 
@@ -31,7 +32,7 @@ public class ShopifyIntegrationController : BaseApiController
         IShopifyIntegrationService shopifyService,
         IStoreIntegrationRepository storeIntegrationRepository,
         IRedisService redisService,
-        IConfiguration config,
+        IOptions<ShopifyOptions> shopifyOptions,
         IWebHostEnvironment env,
         ILogger<ShopifyIntegrationController> logger)
     {
@@ -40,7 +41,7 @@ public class ShopifyIntegrationController : BaseApiController
         _redisService = redisService;
         _env = env;
         _logger = logger;
-        _clientSecret = config["Shopify:ClientSecret"] ?? string.Empty;
+        _clientSecret = shopifyOptions.Value.ClientSecret ?? string.Empty;
     }
 
     [HttpPost("credentials")]

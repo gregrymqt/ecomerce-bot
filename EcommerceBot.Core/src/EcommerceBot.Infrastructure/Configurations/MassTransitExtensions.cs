@@ -1,5 +1,6 @@
 using System;
 using EcommerceBot.Infrastructure.Messaging;
+using EcommerceBot.Infrastructure.Options;
 using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,14 +29,12 @@ public static class MassTransitExtensions
             {
                 cfg.UseRawJsonSerializer();
 
-                var rabbitMqHost = configuration["RabbitMQ:Host"] ?? "localhost";
-                var rabbitMqUser = configuration["RabbitMQ:Username"] ?? "guest";
-                var rabbitMqPass = configuration["RabbitMQ:Password"] ?? "guest";
+                var rabbitMqOptions = configuration.GetSection(RabbitMqOptions.SectionName).Get<RabbitMqOptions>() ?? new RabbitMqOptions();
 
-                cfg.Host(rabbitMqHost, "/", h =>
+                cfg.Host(rabbitMqOptions.Host, rabbitMqOptions.VirtualHost, h =>
                 {
-                    h.Username(rabbitMqUser);
-                    h.Password(rabbitMqPass);
+                    h.Username(rabbitMqOptions.Username);
+                    h.Password(rabbitMqOptions.Password);
                 });
 
                 // Configuração global de Retry com Backoff Exponencial para resiliência

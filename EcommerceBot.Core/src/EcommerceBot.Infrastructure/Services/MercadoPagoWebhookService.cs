@@ -6,9 +6,10 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Messaging;
 using EcommerceBot.Application.Interfaces;
+using EcommerceBot.Infrastructure.Options;
 using MassTransit;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Services;
 
@@ -24,13 +25,13 @@ public class MercadoPagoWebhookService : IMercadoPagoWebhookService
     public MercadoPagoWebhookService(
         IRedisService redisService,
         IPublishEndpoint publishEndpoint,
-        IConfiguration configuration,
+        IOptions<MercadoPagoOptions> mercadoPagoOptions,
         ILogger<MercadoPagoWebhookService> logger)
     {
         _redisService = redisService;
         _publishEndpoint = publishEndpoint;
         _logger = logger;
-        _webhookSecret = configuration["MercadoPago:WebhookSecret"];
+        _webhookSecret = mercadoPagoOptions.Value.WebhookSecret;
     }
 
     public async Task<WebhookProcessResult> ProcessWebhookAsync(
