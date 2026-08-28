@@ -3,7 +3,6 @@ using EcommerceBot.Api.Middlewares;
 using EcommerceBot.Api.Services;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Infrastructure.Configurations;
-using Microsoft.AspNetCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,39 +25,8 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Tratamento global de exceções não tratadas com disparo de alerta no Discord
-app.UseExceptionHandler(errorApp =>
-{
-    errorApp.Run(async context =>
-    {
-        var exceptionHandlerPathFeature = context.Features.Get<IExceptionHandlerPathFeature>();
-        if (exceptionHandlerPathFeature?.Error != null)
-        {
-            var ex = exceptionHandlerPathFeature.Error;
-            var path = exceptionHandlerPathFeature.Path;
-            var discordAlertService = context.RequestServices.GetService<IDiscordAlertService>();
-
-            if (discordAlertService != null)
-            {
-                await discordAlertService.SendCriticalAlertAsync(
-                    title: $"Exceção Não Tratada na Rota {path}",
-                    description: $"Ocorreu uma falha interna na requisição HTTP `{context.Request.Method} {path}`: {ex.Message}",
-                    exception: ex,
-                    source: "Core API Exception Handler"
-                );
-            }
-
-            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new
-            {
-                status = 500,
-                error = "Internal Server Error",
-                message = app.Environment.IsDevelopment() ? ex.Message : "Ocorreu um erro interno no servidor."
-            });
-        }
-    });
-});
+// Tratamento global de exceções não tratadas com disparo de alerta no Discord & Log Estruturado
+app.UseGlobalExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {

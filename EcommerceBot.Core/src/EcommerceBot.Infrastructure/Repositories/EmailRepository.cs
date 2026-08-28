@@ -46,7 +46,7 @@ namespace EcommerceBot.Infrastructure.Repositories
                 UPDATE dbo.EmailLogs 
                 SET Status = @Status, ErrorMessage = @ErrorMessage, UpdatedAt = SYSDATETIMEOFFSET()
                 WHERE ResendId = @ResendId";
-            
+
             await connection.ExecuteAsync(sql, new { ResendId = resendId, Status = status.ToString(), ErrorMessage = error });
         }
     }

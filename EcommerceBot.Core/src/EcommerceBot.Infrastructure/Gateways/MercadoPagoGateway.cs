@@ -219,8 +219,8 @@ public class MercadoPagoGateway : IMercadoPagoGateway
             CaptureMode = "automatic",
             Transactions = new MercadoPagoOrderTransactionsResponse
             {
-                Payments = new System.Collections.Generic.List<MercadoPagoOrderPaymentResponse>
-                {
+                Payments =
+                [
                     new()
                     {
                         Id = payId,
@@ -237,7 +237,7 @@ public class MercadoPagoGateway : IMercadoPagoGateway
                             TicketUrl = isPix ? "https://www.mercadopago.com.br/payments/ticket/simulated" : null
                         }
                     }
-                }
+                ]
             }
         };
     }

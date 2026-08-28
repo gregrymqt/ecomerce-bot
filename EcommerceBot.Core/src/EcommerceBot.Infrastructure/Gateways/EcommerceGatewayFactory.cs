@@ -18,12 +18,11 @@ public class EcommerceGatewayFactory : IEcommerceGatewayFactory
     public IEcommerceGateway GetGateway(string platformName)
     {
         var gateways = _serviceProvider.GetServices<IEcommerceGateway>();
-        
-        var gateway = gateways.FirstOrDefault(g => 
-            g.PlatformName.Equals(platformName, StringComparison.OrdinalIgnoreCase));
 
-        if (gateway == null)
-            throw new NotSupportedException($"Gateway de E-commerce '{platformName}' não está configurado.");
+
+        var gateway = gateways.FirstOrDefault(g =>
+
+            g.PlatformName.Equals(platformName, StringComparison.OrdinalIgnoreCase)) ?? throw new NotSupportedException($"Gateway de E-commerce '{platformName}' não está configurado.");
 
         return gateway;
     }

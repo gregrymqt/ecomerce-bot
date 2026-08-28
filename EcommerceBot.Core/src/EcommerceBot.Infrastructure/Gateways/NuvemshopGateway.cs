@@ -200,7 +200,7 @@ public class NuvemshopGateway : IEcommerceGateway
             _logger.LogError(ex, "Failed to fetch Nuvemshop products for Tenant {TenantId}", tenantId);
         }
 
-        return Array.Empty<Product>();
+        return [];
     }
 
     public async Task<(bool Success, int LatencyMs, string Message)> HealthCheckAsync(Guid tenantId)
