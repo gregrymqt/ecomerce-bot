@@ -18,6 +18,7 @@ public static class DependencyInjectionExtensions
         services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
         services.AddSingleton<IAesGcmCryptoService, AesGcmCryptoService>();
         services.AddSingleton<IEcommerceGatewayFactory, EcommerceGatewayFactory>();
+        services.AddScoped<IRazorTemplateRenderer, RazorViewToStringRenderer>();
 
         // 2. Escaneamento automático por convenção via Scrutor
         services.Scan(scan => scan

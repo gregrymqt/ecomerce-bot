@@ -21,6 +21,7 @@ public static class OptionsConfigurationExtensions
         services.Configure<NuvemshopOptions>(configuration.GetSection(NuvemshopOptions.SectionName));
         services.Configure<GoogleAuthOptions>(configuration.GetSection(GoogleAuthOptions.SectionName));
         services.Configure<AppOptions>(configuration.GetSection(AppOptions.SectionName));
+        services.Configure<DiscordOptions>(configuration.GetSection(DiscordOptions.SectionName));
 
         return services;
     }

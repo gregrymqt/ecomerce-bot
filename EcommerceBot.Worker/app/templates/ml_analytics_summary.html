@@ -1,0 +1,21 @@
+<div style="font-family: sans-serif; background: #0f172a; color: #f8fafc; padding: 24px; border-radius: 8px;">
+    <h2 style="color: #60a5fa; margin-top: 0;">📊 Relatório Analítico de Machine Learning</h2>
+    <p><strong>Tenant ID:</strong> {{ tenant_id }}</p>
+    <p><strong>Job Type:</strong> {{ job_type }}</p>
+    <p><strong>Status:</strong> <span style="color: {% if status == 'SUCCESS' %}#34d399{% else %}#f87171{% endif %}; font-weight: bold;">{{ status }}</span></p>
+
+    {% if rfm %}
+    <div style="background: #1e293b; padding: 16px; border-radius: 6px; margin: 16px 0;">
+        <h3 style="margin-top: 0; color: #e2e8f0;">Resumo RFM</h3>
+        <p>Total de Clientes: {{ rfm.summary.total_customers }}</p>
+        <p>Receita Total: R$ {{ "%.2f"|format(rfm.summary.total_revenue) }}</p>
+    </div>
+    {% endif %}
+
+    {% if churn %}
+    <div style="background: #1e293b; padding: 16px; border-radius: 6px; margin: 16px 0;">
+        <h3 style="margin-top: 0; color: #e2e8f0;">Previsão de Churn</h3>
+        <p>Clientes em Risco Crítico: {{ churn.summary.high_risk_count }}</p>
+    </div>
+    {% endif %}
+</div>

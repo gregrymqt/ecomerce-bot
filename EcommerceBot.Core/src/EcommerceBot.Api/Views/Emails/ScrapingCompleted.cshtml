@@ -1,0 +1,59 @@
+@model EcommerceBot.Application.ViewModels.Emails.ScrapingCompletedEmailViewModel
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extração de Produtos Concluída</title>
+    <style>
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .container { max-width: 600px; margin: 40px auto; background-color: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #334155; }
+        .header { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); padding: 32px; text-align: center; }
+        .header h1 { margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; }
+        .content { padding: 32px; line-height: 1.6; color: #cbd5e1; }
+        .content h2 { color: #ffffff; font-size: 20px; margin-top: 0; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 24px 0; }
+        .stat-box { background-color: #0f172a; border-radius: 8px; padding: 16px; text-align: center; border: 1px solid #334155; }
+        .stat-value { font-size: 22px; font-weight: 700; display: block; margin-top: 4px; }
+        .btn-wrapper { text-align: center; margin: 32px 0; }
+        .btn { display: inline-block; background-color: #6366f1; color: #ffffff !important; font-weight: 600; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 16px; }
+        .footer { padding: 24px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #334155; background-color: #0f172a; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📦 Extração Concluída</h1>
+        </div>
+        <div class="content">
+            <h2>Olá, @Model.RecipientName!</h2>
+            <p>O lote de extração e enriquecimento com IA de catálogo foi finalizado com sucesso.</p>
+            
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <span style="color:#94a3b8; font-size:12px;">Total</span>
+                    <span class="stat-value" style="color:#ffffff;">@Model.TotalProducts</span>
+                </div>
+                <div class="stat-box">
+                    <span style="color:#94a3b8; font-size:12px;">Enriquecidos</span>
+                    <span class="stat-value" style="color:#34d399;">@Model.SuccessCount</span>
+                </div>
+                <div class="stat-box">
+                    <span style="color:#94a3b8; font-size:12px;">Falhas</span>
+                    <span class="stat-value" style="color:#f87171;">@Model.FailedCount</span>
+                </div>
+            </div>
+
+            <div class="btn-wrapper">
+                <a href="@Model.CatalogUrl" class="btn" target="_blank">Ver Catálogo de Produtos</a>
+            </div>
+
+            <p style="font-size: 14px; color: #94a3b8;">Os produtos enriquecidos já estão prontos para sincronização com sua loja online.</p>
+        </div>
+        <div class="footer">
+            <p>&copy; @Model.Year E-commerce Bot. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,47 @@
+@model EcommerceBot.Application.ViewModels.Emails.SyncFailedEmailViewModel
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Falha na Sincronização de Loja</title>
+    <style>
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .container { max-width: 600px; margin: 40px auto; background-color: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #334155; }
+        .header { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); padding: 32px; text-align: center; }
+        .header h1 { margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; }
+        .content { padding: 32px; line-height: 1.6; color: #cbd5e1; }
+        .content h2 { color: #ffffff; font-size: 20px; margin-top: 0; }
+        .error-card { background-color: #0f172a; border-radius: 8px; padding: 20px; margin: 24px 0; border-left: 4px solid #ef4444; border-top: 1px solid #334155; border-right: 1px solid #334155; border-bottom: 1px solid #334155; font-family: monospace; font-size: 13px; color: #fca5a5; word-break: break-all; }
+        .btn-wrapper { text-align: center; margin: 32px 0; }
+        .btn { display: inline-block; background-color: #ef4444; color: #ffffff !important; font-weight: 600; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 16px; }
+        .footer { padding: 24px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #334155; background-color: #0f172a; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>❌ Falha de Sincronização</h1>
+        </div>
+        <div class="content">
+            <h2>Olá, @Model.RecipientName!</h2>
+            <p>Houve uma falha ao tentar sincronizar o catálogo com a sua loja <strong>@Model.PlatformName</strong>.</p>
+            
+            <p style="font-weight: 600; color: #f87171; margin-bottom: 4px;">Detalhe do erro retornado:</p>
+            <div class="error-card">
+                @Model.ErrorMessage
+            </div>
+
+            <div class="btn-wrapper">
+                <a href="@Model.ReconnectUrl" class="btn" target="_blank">Reconectar Integração</a>
+            </div>
+
+            <p style="font-size: 14px; color: #94a3b8;">Geralmente esse erro ocorre quando o token de acesso à loja expirou ou as permissões foram revogadas no painel da sua loja.</p>
+        </div>
+        <div class="footer">
+            <p>&copy; @Model.Year E-commerce Bot. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>

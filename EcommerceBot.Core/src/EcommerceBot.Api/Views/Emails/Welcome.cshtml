@@ -1,0 +1,52 @@
+@model EcommerceBot.Application.ViewModels.Emails.WelcomeEmailViewModel
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bem-vindo ao E-commerce Bot</title>
+    <style>
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .container { max-width: 600px; margin: 40px auto; background-color: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #334155; }
+        .header { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 32px; text-align: center; }
+        .header h1 { margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+        .content { padding: 32px; line-height: 1.6; color: #cbd5e1; }
+        .content h2 { color: #ffffff; font-size: 20px; margin-top: 0; }
+        .card { background-color: #0f172a; border-radius: 8px; padding: 20px; margin: 24px 0; border: 1px solid #334155; }
+        .btn-wrapper { text-align: center; margin: 32px 0; }
+        .btn { display: inline-block; background-color: #3b82f6; color: #ffffff !important; font-weight: 600; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 16px; }
+        .footer { padding: 24px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #334155; background-color: #0f172a; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 E-commerce Bot</h1>
+        </div>
+        <div class="content">
+            <h2>Olá, @Model.RecipientName!</h2>
+            <p>Seja muito bem-vindo à nossa plataforma de automação e enriquecimento de e-commerces com Inteligência Artificial.</p>
+            <p>Sua conta foi criada com sucesso com o e-mail: <strong>@Model.Email</strong>.</p>
+            
+            <div class="card">
+                <p style="margin:0 0 8px 0; font-weight: 600; color: #93c5fd;">⚡ O que você pode fazer agora:</p>
+                <ul style="margin: 0; padding-left: 20px; color: #94a3b8;">
+                    <li>Integrar com Shopify ou Nuvemshop em 1 clique</li>
+                    <li>Extrair e enriquecer produtos de concorrentes via Scrapling</li>
+                    <li>Gerar copy SEO e precificação com modelos DeepSeek/Llama 3</li>
+                </ul>
+            </div>
+
+            <div class="btn-wrapper">
+                <a href="@Model.LoginUrl" class="btn" target="_blank">Acessar Meu Painel</a>
+            </div>
+
+            <p style="font-size: 14px; color: #94a3b8;">Se você tiver qualquer dúvida, basta responder diretamente a este e-mail.</p>
+        </div>
+        <div class="footer">
+            <p>&copy; @Model.Year E-commerce Bot. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>
