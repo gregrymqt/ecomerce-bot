@@ -40,4 +40,4 @@ else
 fi
 
 echo -e "${GREEN}🟢 VENV ativo. Executando API FastAPI (app.main)...${NC}"
-python -m app.main
+py -m app.main

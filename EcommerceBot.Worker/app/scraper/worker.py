@@ -4,12 +4,17 @@ import logging
 import aio_pika
 from .parser import ScraperAndLLMParser
 from app.core.config.settings import settings
+from app.core.config.rabbitmq import (
+    QUEUE_ECOMMERCE,
+    QUEUE_ECOMMERCE_PROCESSED,
+    QUEUE_LLM_USAGE,
+    ECOMMERCE_QUEUE_ARGS
+)
 
 logger = logging.getLogger(__name__)
 
-QUEUE_INPUT = "ecommerce"
-QUEUE_OUTPUT = "ecommerce_processed_queue"
-QUEUE_LLM_USAGE = "llm_usage_queue"
+QUEUE_INPUT = QUEUE_ECOMMERCE
+QUEUE_OUTPUT = QUEUE_ECOMMERCE_PROCESSED
 
 async def _process_single_message(message: aio_pika.IncomingMessage, channel: aio_pika.Channel, parser: ScraperAndLLMParser):
     async with message.process():
@@ -106,11 +111,6 @@ async def start_scraper_worker():
     logger.info(f"📡 Inicializando ScraperWorker conectado a {settings.RABBITMQ_URL}...")
     parser = ScraperAndLLMParser()
 
-    dlq_args = {
-        "x-dead-letter-exchange": "ecommerce_dlx",
-        "x-dead-letter-routing-key": "ecommerce_failed"
-    }
-
     while True:
         try:
             connection = await aio_pika.connect_robust(settings.RABBITMQ_URL)
@@ -118,8 +118,8 @@ async def start_scraper_worker():
                 channel = await connection.channel()
                 await channel.set_qos(prefetch_count=5)
 
-                # Declaração das filas com DLQ
-                queue = await channel.declare_queue(QUEUE_INPUT, durable=True, arguments=dlq_args)
+                # Declaração das filas com os mesmos argumentos canônicos da topologia
+                queue = await channel.declare_queue(QUEUE_INPUT, durable=True, arguments=ECOMMERCE_QUEUE_ARGS)
                 await channel.declare_queue(QUEUE_OUTPUT, durable=True)
                 await channel.declare_queue(QUEUE_LLM_USAGE, durable=True)
 

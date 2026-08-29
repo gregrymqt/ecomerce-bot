@@ -7,6 +7,42 @@ from app.core.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
+# Exchanges e Routing Keys Canônicos
+DLX_EXCHANGE = "ecommerce_dlx"
+DLX_ROUTING_KEY = "ecommerce_failed"
+
+# Nomes Canônicos de Filas
+QUEUE_ECOMMERCE = "ecommerce"
+QUEUE_DEMO_ECOMMERCE = "demo_ecommerce"
+QUEUE_ANALYTICS_ML = "analytics_ml_queue"
+
+QUEUE_ECOMMERCE_PROCESSED = "ecommerce_processed_queue"
+QUEUE_ANALYTICS_PROCESSED = "analytics_processed_queue"
+QUEUE_LLM_USAGE = "llm_usage_queue"
+QUEUE_DLQ_ECOMMERCE = "dlq_ecommerce"
+
+# Argumentos Canônicos de Filas (Garante correspondência exata em todos os workers)
+DLQ_ARGS = {"x-message-ttl": 604800000}
+
+ECOMMERCE_QUEUE_ARGS = {
+    "x-dead-letter-exchange": DLX_EXCHANGE,
+    "x-dead-letter-routing-key": DLX_ROUTING_KEY,
+    "x-max-length": 10000
+}
+
+DEMO_ECOMMERCE_QUEUE_ARGS = {
+    "x-dead-letter-exchange": DLX_EXCHANGE,
+    "x-dead-letter-routing-key": DLX_ROUTING_KEY,
+    "x-max-priority": 10,
+    "x-max-length": 100
+}
+
+ANALYTICS_ML_QUEUE_ARGS = {
+    "x-dead-letter-exchange": DLX_EXCHANGE,
+    "x-dead-letter-routing-key": DLX_ROUTING_KEY,
+    "x-max-length": 1000
+}
+
 
 async def get_rabbitmq_connection() -> aio_pika.RobustConnection:
     """
@@ -49,70 +85,55 @@ async def configure_rabbitmq_topology(
         # 1. EXCHANGES DE DEAD LETTER (DLX) & DLQs
         # ------------------------------------------------------------------
         ecommerce_dlx = await channel.declare_exchange(
-            "ecommerce_dlx",
+            DLX_EXCHANGE,
             ExchangeType.DIRECT,
             durable=True
         )
 
         # DLQs guardam mensagens com falha por no máximo 7 dias (604.800.000 ms)
-        dlq_args = {"x-message-ttl": 604800000}
-
         dlq_ecommerce = await channel.declare_queue(
-            "dlq_ecommerce",
+            QUEUE_DLQ_ECOMMERCE,
             durable=True,
-            arguments=dlq_args
+            arguments=DLQ_ARGS
         )
-        await dlq_ecommerce.bind(ecommerce_dlx, routing_key="ecommerce_failed")
+        await dlq_ecommerce.bind(ecommerce_dlx, routing_key=DLX_ROUTING_KEY)
 
         # ------------------------------------------------------------------
         # 2. FILAS DE ENTRADA DO WORKER (Consumidas pelo Python)
         # ------------------------------------------------------------------
         demo_ecommerce = await channel.declare_queue(
-            "demo_ecommerce",
+            QUEUE_DEMO_ECOMMERCE,
             durable=True,
-            arguments={
-                "x-dead-letter-exchange": "ecommerce_dlx",
-                "x-dead-letter-routing-key": "ecommerce_failed",
-                "x-max-priority": 10,
-                "x-max-length": 100
-            }
+            arguments=DEMO_ECOMMERCE_QUEUE_ARGS
         )
 
         ecommerce = await channel.declare_queue(
-            "ecommerce",
+            QUEUE_ECOMMERCE,
             durable=True,
-            arguments={
-                "x-dead-letter-exchange": "ecommerce_dlx",
-                "x-dead-letter-routing-key": "ecommerce_failed",
-                "x-max-length": 10000
-            }
+            arguments=ECOMMERCE_QUEUE_ARGS
         )
 
         analytics_ml_queue = await channel.declare_queue(
-            "analytics_ml_queue",
+            QUEUE_ANALYTICS_ML,
             durable=True,
-            arguments={
-                "x-dead-letter-exchange": "ecommerce_dlx",
-                "x-dead-letter-routing-key": "ecommerce_failed",
-                "x-max-length": 1000
-            }
+            arguments=ANALYTICS_ML_QUEUE_ARGS
         )
 
         # ------------------------------------------------------------------
         # 3. FILAS DE SAÍDA DO WORKER (Consumidas pelo Core .NET)
         # ------------------------------------------------------------------
         ecommerce_processed_queue = await channel.declare_queue(
-            "ecommerce_processed_queue",
+            QUEUE_ECOMMERCE_PROCESSED,
             durable=True
         )
 
         llm_usage_queue = await channel.declare_queue(
-            "llm_usage_queue",
+            QUEUE_LLM_USAGE,
             durable=True
         )
 
         analytics_processed_queue = await channel.declare_queue(
-            "analytics_processed_queue",
+            QUEUE_ANALYTICS_PROCESSED,
             durable=True
         )
 

@@ -26,8 +26,8 @@ BEGIN
         CONSTRAINT PK_TrafficAttributions PRIMARY KEY CLUSTERED (Id),
         CONSTRAINT FK_TrafficAttributions_Tenants FOREIGN KEY (TenantId) 
             REFERENCES dbo.Tenants(Id) ON DELETE CASCADE,
-        CONSTRAINT FK_TrafficAttributions_Orders FOREIGN KEY (OrderId) 
-            REFERENCES dbo.Orders(Id) ON DELETE SET NULL
+        CONSTRAINT FK_TrafficAttributions_Orders FOREIGN KEY (OrderId)
+            REFERENCES dbo.Orders(Id) ON DELETE NO ACTION 
     );
 END
 GO

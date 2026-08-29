@@ -1,18 +1,23 @@
-﻿import asyncio
+import asyncio
 import json
 import logging
 from typing import Dict, Any
 import aio_pika
 
 from app.core.config.settings import settings
+from app.core.config.rabbitmq import (
+    QUEUE_ANALYTICS_ML,
+    QUEUE_ANALYTICS_PROCESSED,
+    ANALYTICS_ML_QUEUE_ARGS
+)
 from .rfm_segmentation import RFMSegmentation
 from .churn_predictor import ChurnPredictor
 from .ltv_forecaster import LTVForecaster
 
 logger = logging.getLogger(__name__)
 
-QUEUE_ML_INPUT = "analytics_ml_queue"
-QUEUE_ML_OUTPUT = "analytics_processed_queue"
+QUEUE_ML_INPUT = QUEUE_ANALYTICS_ML
+QUEUE_ML_OUTPUT = QUEUE_ANALYTICS_PROCESSED
 
 class AnalyticsMLEngine:
     def __init__(self):
@@ -103,8 +108,12 @@ async def consume_ml_queue():
                 channel = await connection.channel()
                 await channel.set_qos(prefetch_count=2)
 
-                # Declaração das filas de ML
-                input_q = await channel.declare_queue(QUEUE_ML_INPUT, durable=True)
+                # Declaração das filas de ML com argumentos canônicos idênticos à topologia
+                input_q = await channel.declare_queue(
+                    QUEUE_ML_INPUT,
+                    durable=True,
+                    arguments=ANALYTICS_ML_QUEUE_ARGS
+                )
                 await channel.declare_queue(QUEUE_ML_OUTPUT, durable=True)
 
                 logger.info(f"🚀 MLWorker operacional e escutando em '{QUEUE_ML_INPUT}'...")
