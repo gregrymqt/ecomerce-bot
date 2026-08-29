@@ -1,3 +1,9 @@
+/**
+ * src/features/catalog/components/BulkSyncModal.tsx
+ *
+ * Modal de disparo e acompanhamento em tempo real (SSE) da sincronização em massa.
+ */
+
 import React, { useState, useEffect } from 'react';
 import {
   RefreshCw,
@@ -8,10 +14,15 @@ import {
   Layers,
   Sparkles,
 } from 'lucide-react';
-import { Modal, Button, Badge, Checkbox, Select } from '@/components/ui';
+import { Modal } from '@/components/ui/overlay/Modal';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/feedback/Badge';
+import { Checkbox } from '@/components/ui/form/Checkbox';
+import { Select } from '@/components/ui/form/Select';
 import { useBulkPlatformSync, type PlatformTarget } from '../hooks/useBulkPlatformSync';
 import { SSEClient } from '@/lib/sseClient';
 import type { NuvemshopVisibility } from '@/features/integrations';
+import { cn } from '@/lib/utils';
 
 export interface BulkSyncModalProps {
   isOpen: boolean;
@@ -90,7 +101,12 @@ export const BulkSyncModal: React.FC<BulkSyncModalProps> = ({
 
   const footerActions = (
     <div className="flex items-center justify-end gap-3 w-full">
-      <Button variant="secondary" onClick={onClose} disabled={isSyncing}>
+      <Button
+        variant="secondary"
+        onClick={onClose}
+        disabled={isSyncing}
+        className="min-h-[44px]"
+      >
         {lastResult?.success ? 'Concluir' : 'Cancelar'}
       </Button>
       <Button
@@ -139,11 +155,12 @@ export const BulkSyncModal: React.FC<BulkSyncModalProps> = ({
                 setPlatform('SHOPIFY');
                 setSyncError(null);
               }}
-              className={`flex flex-col items-center justify-center p-3.5 rounded-xl border transition-all cursor-pointer ${
+              className={cn(
+                'min-h-[44px] flex flex-col items-center justify-center p-3.5 rounded-xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500',
                 platform === 'SHOPIFY'
                   ? 'bg-emerald-500/10 border-emerald-500 text-emerald-300 shadow-lg shadow-emerald-500/15 scale-[1.02]'
                   : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
-              }`}
+              )}
             >
               <ShoppingBag className="w-5 h-5 mb-1.5 text-emerald-400" />
               <span className="text-xs font-bold">Shopify</span>
@@ -157,11 +174,12 @@ export const BulkSyncModal: React.FC<BulkSyncModalProps> = ({
                 setPlatform('NUVEMSHOP');
                 setSyncError(null);
               }}
-              className={`flex flex-col items-center justify-center p-3.5 rounded-xl border transition-all cursor-pointer ${
+              className={cn(
+                'min-h-[44px] flex flex-col items-center justify-center p-3.5 rounded-xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500',
                 platform === 'NUVEMSHOP'
                   ? 'bg-purple-500/10 border-purple-500 text-purple-300 shadow-lg shadow-purple-500/15 scale-[1.02]'
                   : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
-              }`}
+              )}
             >
               <Store className="w-5 h-5 mb-1.5 text-purple-400" />
               <span className="text-xs font-bold">Nuvemshop</span>
@@ -175,11 +193,12 @@ export const BulkSyncModal: React.FC<BulkSyncModalProps> = ({
                 setPlatform('ALL');
                 setSyncError(null);
               }}
-              className={`flex flex-col items-center justify-center p-3.5 rounded-xl border transition-all cursor-pointer ${
+              className={cn(
+                'min-h-[44px] flex flex-col items-center justify-center p-3.5 rounded-xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-500',
                 platform === 'ALL'
                   ? 'bg-violet-600/15 border-violet-500 text-violet-300 shadow-lg shadow-violet-500/15 scale-[1.02]'
                   : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
-              }`}
+              )}
             >
               <Layers className="w-5 h-5 mb-1.5 text-violet-400" />
               <span className="text-xs font-bold">Todas as Lojas</span>
@@ -202,6 +221,7 @@ export const BulkSyncModal: React.FC<BulkSyncModalProps> = ({
                 { label: 'Não listado (Apenas via link direto)', value: 'unlisted' },
                 { label: 'Oculto (Rascunho)', value: 'hidden' },
               ]}
+              className="text-base min-h-[44px] bg-slate-950/60 border-slate-800 text-slate-100"
             />
           </div>
         )}
@@ -267,3 +287,5 @@ export const BulkSyncModal: React.FC<BulkSyncModalProps> = ({
     </Modal>
   );
 };
+
+export default BulkSyncModal;

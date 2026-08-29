@@ -1,10 +1,19 @@
+/**
+ * src/features/catalog/components/EditCopyDrawer.tsx
+ *
+ * Drawer lateral para refinamento e edição de títulos e copy de vendas com IA.
+ */
+
 import React from 'react';
 import { Zap, Sparkles, Save } from 'lucide-react';
 import { Drawer } from '@/components/ui/overlay/Drawer';
-import { Input, Textarea, Button, Badge } from '@/components/ui';
-import { cn } from '@/utils/cn';
-import type { CatalogProduct, AITone } from '@/features/catalog';
-import { useEditCopyDrawer } from '@/features/catalog';
+import { Input } from '@/components/ui/form/Input';
+import { Textarea } from '@/components/ui/form/Textarea';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/feedback/Badge';
+import { cn } from '@/lib/utils';
+import type { CatalogProduct, AITone } from '../types';
+import { useEditCopyDrawer } from '../hooks/useEditCopyDrawer';
 
 export interface EditCopyDrawerProps {
   isOpen: boolean;
@@ -41,12 +50,13 @@ export const EditCopyDrawer: React.FC<EditCopyDrawerProps> = (props) => {
   const toneOptions: AITone[] = ['Persuasivo', 'Direto', 'Premium'];
 
   const footer = (
-    <div className="flex items-center justify-end gap-3">
+    <div className="flex items-center justify-end gap-3 w-full">
       <Button
         type="button"
         variant="secondary"
         onClick={onClose}
         disabled={isLoading}
+        className="min-h-[44px]"
       >
         Cancelar
       </Button>
@@ -58,6 +68,7 @@ export const EditCopyDrawer: React.FC<EditCopyDrawerProps> = (props) => {
         disabled={isLoading || isGenerating}
         isLoading={isLoading}
         iconLeft={!isLoading ? <Save className="w-4 h-4" /> : undefined}
+        className="min-h-[44px] bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
       >
         Salvar & Sincronizar
       </Button>
@@ -83,7 +94,7 @@ export const EditCopyDrawer: React.FC<EditCopyDrawerProps> = (props) => {
           </Badge>
         </div>
 
-        {/* 1. Título Original (Extraído) - Readonly Itálico */}
+        {/* 1. Título Original (Extraído) */}
         <div className="space-y-2">
           <label className="block text-xs font-semibold uppercase tracking-wider font-mono text-slate-400">
             Título Original (Extraído)
@@ -93,7 +104,7 @@ export const EditCopyDrawer: React.FC<EditCopyDrawerProps> = (props) => {
           </div>
         </div>
 
-        {/* 2. Seletor de Tom de Voz (Pills Grid) */}
+        {/* 2. Seletor de Tom de Voz */}
         <div className="space-y-2.5">
           <label className="block text-xs font-semibold uppercase tracking-wider font-mono text-slate-400">
             Tom de Voz da IA
@@ -121,7 +132,7 @@ export const EditCopyDrawer: React.FC<EditCopyDrawerProps> = (props) => {
           </div>
         </div>
 
-        {/* 3. Título Magnético IA + Botão "Nova Sugestão" */}
+        {/* 3. Título Magnético IA */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="block text-xs font-semibold uppercase tracking-wider font-mono text-slate-400">
@@ -136,7 +147,7 @@ export const EditCopyDrawer: React.FC<EditCopyDrawerProps> = (props) => {
                 disabled={isGenerating}
                 isLoading={isGenerating}
                 iconLeft={!isGenerating ? <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" /> : undefined}
-                className="text-violet-400 hover:text-violet-300"
+                className="text-violet-400 hover:text-violet-300 min-h-[44px]"
               >
                 Nova Sugestão
               </Button>
@@ -148,6 +159,7 @@ export const EditCopyDrawer: React.FC<EditCopyDrawerProps> = (props) => {
             onChange={(e) => setTitleAi(e.target.value)}
             placeholder="Insira o título otimizado por IA..."
             required
+            className="min-h-[44px] text-base bg-slate-900/60 border-slate-800 focus:ring-2 focus:ring-violet-500"
           />
         </div>
 
@@ -161,6 +173,7 @@ export const EditCopyDrawer: React.FC<EditCopyDrawerProps> = (props) => {
             onChange={(e) => setDescriptionAi(e.target.value)}
             rows={7}
             placeholder="Insira a copy de vendas persuasiva gerada pela IA..."
+            className="text-base bg-slate-900/60 border-slate-800 focus:ring-2 focus:ring-violet-500 leading-relaxed"
           />
         </div>
       </form>
@@ -168,3 +181,4 @@ export const EditCopyDrawer: React.FC<EditCopyDrawerProps> = (props) => {
   );
 };
 
+export default EditCopyDrawer;

@@ -1,3 +1,9 @@
+/**
+ * src/features/catalog/hooks/useBulkPlatformSync.ts
+ *
+ * Hook para disparo e controle da sincronização em lote de produtos com Shopify e Nuvemshop.
+ */
+
 import { useState, useCallback } from 'react';
 import { productService } from '../services/product.service';
 import type { NuvemshopVisibility } from '@/features/integrations';
@@ -90,3 +96,5 @@ export function useBulkPlatformSync() {
     executeBulkSync,
   };
 }
+
+export default useBulkPlatformSync;

@@ -1,3 +1,9 @@
+/**
+ * src/features/catalog/components/ProductCatalogTable.tsx
+ *
+ * Tabela de visualização e edição rápida dos produtos do catálogo.
+ */
+
 import React from 'react';
 import {
   Sparkles,
@@ -7,9 +13,11 @@ import {
   Loader2,
   Zap,
 } from 'lucide-react';
-import { Badge, Button, Checkbox } from '@/components/ui';
-import { cn } from '@/utils/cn';
-import type { CatalogProduct, ProductStatus } from '@/features/catalog';
+import { Badge } from '@/components/ui/feedback/Badge';
+import { Button } from '@/components/ui/Button';
+import { Checkbox } from '@/components/ui/form/Checkbox';
+import { cn } from '@/lib/utils';
+import type { CatalogProduct, ProductStatus } from '../types';
 import { sanitizeImageUrl } from '@/utils/security';
 
 export interface ProductCatalogTableProps {
@@ -248,7 +256,7 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
                       </div>
                     </td>
 
-                    {/* Coluna 5: Ações Rápida (Editar, Sincronizar, Excluir) */}
+                    {/* Coluna 5: Ações Rápidas (Editar, Sincronizar, Excluir) */}
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         {onEditProduct && (
@@ -312,3 +320,4 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
   );
 };
 
+export default ProductCatalogTable;

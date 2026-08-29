@@ -1,8 +1,16 @@
+/**
+ * src/features/catalog/components/CatalogToolbar.tsx
+ *
+ * Barra de ferramentas com busca em tempo real, filtros por status e ações em lote.
+ */
+
 import React from 'react';
 import { Search, Plus, Download, Package, RefreshCw } from 'lucide-react';
-import { Button, Input, Badge } from '@/components/ui';
-import { cn } from '@/utils/cn';
-import type { FilterStatus } from '@/features/catalog';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/form/Input';
+import { Badge } from '@/components/ui/feedback/Badge';
+import { cn } from '@/lib/utils';
+import type { FilterStatus } from '../types';
 
 export interface CatalogToolbarProps {
   searchTerm: string;
@@ -20,7 +28,6 @@ interface FilterOption {
   key: FilterStatus;
   label: string;
   activeClass: string;
-  badgeClass?: string;
   count?: number;
 }
 
@@ -53,7 +60,7 @@ export const CatalogToolbar: React.FC<CatalogToolbarProps> = ({
     },
     {
       key: 'RAW',
-      label: 'Brutos/RAW',
+      label: 'Brutos / RAW',
       activeClass: 'bg-slate-700/60 text-slate-200 border-slate-600 shadow-sm',
     },
     {
@@ -94,7 +101,10 @@ export const CatalogToolbar: React.FC<CatalogToolbarProps> = ({
               onClick={onBulkSyncClick}
               disabled={selectedCount === 0}
               iconLeft={<RefreshCw className="w-4 h-4 text-violet-400" />}
-              className={selectedCount > 0 ? 'border-violet-500/50 text-violet-300 bg-violet-600/10' : ''}
+              className={cn(
+                'min-h-[44px] h-11 text-sm font-semibold',
+                selectedCount > 0 ? 'border-violet-500/50 text-violet-300 bg-violet-600/10' : ''
+              )}
             >
               Sincronizar em Lote {selectedCount > 0 ? `(${selectedCount})` : ''}
             </Button>
@@ -105,6 +115,7 @@ export const CatalogToolbar: React.FC<CatalogToolbarProps> = ({
               variant="secondary"
               onClick={onExportBatchClick}
               iconLeft={<Download className="w-4 h-4 text-slate-400" />}
+              className="min-h-[44px] h-11 text-sm font-semibold"
             >
               Exportar Lote
             </Button>
@@ -115,6 +126,7 @@ export const CatalogToolbar: React.FC<CatalogToolbarProps> = ({
               variant="primary"
               onClick={onNewIngestionClick}
               iconLeft={<Plus className="w-4 h-4 stroke-[2.5]" />}
+              className="min-h-[44px] h-11 text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white"
             >
               Nova Ingestão
             </Button>
@@ -132,6 +144,7 @@ export const CatalogToolbar: React.FC<CatalogToolbarProps> = ({
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Buscar por título, SKU ou marca..."
             iconLeft={<Search className="w-4 h-4 text-slate-400" />}
+            className="min-h-[44px] text-base bg-slate-900/60 border-slate-800 focus:ring-2 focus:ring-violet-500"
           />
         </div>
 
@@ -142,6 +155,7 @@ export const CatalogToolbar: React.FC<CatalogToolbarProps> = ({
             return (
               <button
                 key={filter.key}
+                type="button"
                 onClick={() => onStatusFilterChange(filter.key)}
                 className={cn(
                   'min-h-[44px] h-11 px-3.5 py-2 rounded-xl text-xs font-medium border whitespace-nowrap transition-all flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-violet-500 cursor-pointer',
@@ -163,3 +177,4 @@ export const CatalogToolbar: React.FC<CatalogToolbarProps> = ({
   );
 };
 
+export default CatalogToolbar;

@@ -1,8 +1,15 @@
-import { useState, useMemo, useEffect } from 'react';
-import type { CatalogProduct, FilterStatus, AITone, ProductStatus, EcomPlatform } from '@/features/catalog';
+/**
+ * src/features/catalog/hooks/useCatalogPage.ts
+ *
+ * Hook orquestrador do ciclo de vida, filtros, seleções e ações da página de Catálogo.
+ */
+
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import type { CatalogProduct, FilterStatus, AITone, ProductStatus, EcomPlatform, SyncProductResponse } from '../types';
 import type { AlertVariant } from '@/components/ui/feedback/Alert';
 import { useProducts } from './useProducts';
-import { productService } from '@/features/catalog';
+import { productService } from '../services/product.service';
+import { getErrorMessage } from '@/utils/errors';
 
 export interface CatalogAlert {
   variant: AlertVariant;
@@ -39,7 +46,7 @@ export function useCatalogPage() {
 
   const clearAlert = () => setAlertInfo(null);
 
-  // Sincroniza produtos vindos da API FastAPI (`/api/v1/products`) quando retornados do backend
+  // Sincroniza produtos vindos da Core API (/api/v1/products) quando retornados do backend
   useEffect(() => {
     if (apiProducts) {
       const mapped: CatalogProduct[] = apiProducts.map((p, idx) => {
@@ -74,11 +81,11 @@ export function useCatalogPage() {
   const [editingProduct, setEditingProduct] = useState<CatalogProduct | null>(null);
   const [isIngestionModalOpen, setIsIngestionModalOpen] = useState(false);
   const [isBulkSyncModalOpen, setIsBulkSyncModalOpen] = useState(false);
+  const [deletingProductSku, setDeletingProductSku] = useState<string | null>(null);
 
   // Estados de Loading por ação de linha
   const [regeneratingSku, setRegeneratingSku] = useState<string | null>(null);
   const [syncingSku, setSyncingSku] = useState<string | null>(null);
-  const [deletingSku, setDeletingSku] = useState<string | null>(null);
   const [isSavingDrawer, setIsSavingDrawer] = useState(false);
 
   // Filtragem Reativa de Produtos
@@ -124,7 +131,7 @@ export function useCatalogPage() {
     setRegeneratingSku(product.sku);
     try {
       const newTitleAi = `${product.titleOriginal} — Otimizado IA (${new Date().toLocaleTimeString('pt-BR', { minute: '2-digit', second: '2-digit' })})`;
-      
+
       // Persiste no backend via PATCH /api/v1/products/{sku}
       await apiUpdateProduct(product.sku, {
         title: product.titleOriginal,
@@ -171,7 +178,7 @@ export function useCatalogPage() {
         ? await productService.syncToNuvemshop(payload)
         : await productService.syncToShopify(payload);
 
-      const syncRes = res as Record<string, any>;
+      const syncRes = res as SyncProductResponse;
       if (syncRes.status === 'fallback_csv') {
         const reasonText = syncRes.reason || syncRes.error_detail || syncRes.message || 'Falha de comunicação com a plataforma externa.';
         setAlertInfo({
@@ -195,8 +202,8 @@ export function useCatalogPage() {
           return p;
         })
       );
-    } catch (err: any) {
-      const errorDetail = err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Erro desconhecido de sincronização.';
+    } catch (err: unknown) {
+      const errorDetail = getErrorMessage(err, 'Erro desconhecido de sincronização.');
       setAlertInfo({
         variant: 'error',
         title: 'Erro de Sincronização',
@@ -207,25 +214,31 @@ export function useCatalogPage() {
     }
   };
 
-  // Excluir Produto no Backend
-  const handleDeleteProduct = async (sku: string) => {
-    if (window.confirm(`Tem certeza que deseja remover o produto SKU ${sku}?`)) {
-      setDeletingSku(sku);
-      try {
-        await apiDeleteProduct(sku);
-        setLocalCatalogProducts((prev) => prev.filter((p) => p.sku !== sku));
-        setSelectedSkus((prev) => prev.filter((item) => item !== sku));
-      } catch {
-        setAlertInfo({
-          variant: 'error',
-          title: 'Erro ao Remover',
-          message: `Falha ao remover o produto SKU ${sku} no servidor.`,
-        });
-      } finally {
-        setDeletingSku(null);
-      }
-    }
+  // Solicitar Exclusão de Produto (abre modal acessível)
+  const promptDeleteProduct = (sku: string) => {
+    setDeletingProductSku(sku);
   };
+
+  // Confirmar Exclusão de Produto no Backend
+  const confirmDeleteProduct = useCallback(async (sku: string) => {
+    try {
+      await apiDeleteProduct(sku);
+      setLocalCatalogProducts((prev) => prev.filter((p) => p.sku !== sku));
+      setSelectedSkus((prev) => prev.filter((item) => item !== sku));
+      setDeletingProductSku(null);
+      setAlertInfo({
+        variant: 'success',
+        title: 'Produto Removido',
+        message: `O produto SKU ${sku} foi excluído com sucesso do catálogo.`,
+      });
+    } catch {
+      setAlertInfo({
+        variant: 'error',
+        title: 'Erro ao Remover',
+        message: `Falha ao remover o produto SKU ${sku} no servidor.`,
+      });
+    }
+  }, [apiDeleteProduct]);
 
   // Salvar alterações vindas do Drawer no Backend via PATCH
   const handleSaveDrawer = async (
@@ -315,18 +328,22 @@ export function useCatalogPage() {
     isBulkSyncModalOpen,
     openBulkSyncModal: () => setIsBulkSyncModalOpen(true),
     closeBulkSyncModal: () => setIsBulkSyncModalOpen(false),
+    deletingProductSku,
+    promptDeleteProduct,
+    confirmDeleteProduct,
+    cancelDeleteProduct: () => setDeletingProductSku(null),
     regeneratingSku,
     syncingSku,
-    deletingSku,
     isSavingDrawer,
     isApiLoading,
     alertInfo,
     clearAlert,
     handleRegenerateAiTitle,
     handleSyncProduct,
-    handleDeleteProduct,
     handleSaveDrawer,
     handleExportBatch,
     refetchCatalog: refetch,
   };
 }
+
+export default useCatalogPage;

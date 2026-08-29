@@ -1,7 +1,20 @@
+/**
+ * src/features/catalog/pages/CatalogPage.tsx
+ *
+ * Página principal do Catálogo de Produtos com gerenciamento de IA, scraping e exportação.
+ */
+
 import React from 'react';
-import { CatalogToolbar, ProductCatalogTable, EditCopyDrawer, BulkSyncModal, useCatalogPage } from '@/features/catalog';
+import {
+  CatalogToolbar,
+  ProductCatalogTable,
+  EditCopyDrawer,
+  BulkSyncModal,
+  DeleteProductModal,
+} from '../components';
+import { useCatalogPage } from '../hooks/useCatalogPage';
 import { ScraperForm } from '@/features/scraper';
-import { X, Sparkles } from 'lucide-react';
+import { Modal } from '@/components/ui/overlay/Modal';
 import { Alert } from '@/components/ui/feedback/Alert';
 import { SEO } from '@/components/common/SEO';
 
@@ -24,16 +37,18 @@ export const CatalogPage: React.FC = () => {
     isBulkSyncModalOpen,
     openBulkSyncModal,
     closeBulkSyncModal,
+    deletingProductSku,
+    promptDeleteProduct,
+    confirmDeleteProduct,
+    cancelDeleteProduct,
     regeneratingSku,
     syncingSku,
-    deletingSku,
     isSavingDrawer,
     isApiLoading,
     alertInfo,
     clearAlert,
     handleRegenerateAiTitle,
     handleSyncProduct,
-    handleDeleteProduct,
     handleSaveDrawer,
     handleExportBatch,
   } = useCatalogPage();
@@ -44,6 +59,7 @@ export const CatalogPage: React.FC = () => {
         title="Catálogo de Produtos Enriquecidos"
         description="Gerencie, edite e exporte seus produtos de e-commerce enriquecidos por inteligência artificial."
       />
+
       {/* Alerta de Feedback Customizado */}
       {alertInfo && (
         <Alert
@@ -77,11 +93,10 @@ export const CatalogPage: React.FC = () => {
         onEditProduct={(product) => setEditingProduct(product)}
         onRegenerateAiTitle={handleRegenerateAiTitle}
         onSyncProduct={handleSyncProduct}
-        onDeleteProduct={handleDeleteProduct}
+        onDeleteProduct={promptDeleteProduct}
         isLoading={isApiLoading}
         regeneratingSku={regeneratingSku}
         syncingSku={syncingSku}
-        deletingSku={deletingSku}
       />
 
       {/* 3. Side Drawer de Edição Fina por IA */}
@@ -100,29 +115,24 @@ export const CatalogPage: React.FC = () => {
         selectedSkus={selectedSkus}
       />
 
-      {/* 5. Modal de "Nova Ingestão" (Scraper Form) */}
-      {isIngestionModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="relative w-full max-w-2xl bg-[#15121B] rounded-2xl border border-slate-800 shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-violet-400" />
-                <h2 className="text-lg font-bold text-slate-100">
-                  Nova Ingestão de Produto
-                </h2>
-              </div>
-              <button
-                onClick={closeIngestionModal}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
-               aria-label="Fechar modal">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {/* 5. Modal Acessível de Confirmação de Exclusão */}
+      <DeleteProductModal
+        sku={deletingProductSku}
+        isOpen={!!deletingProductSku}
+        onClose={cancelDeleteProduct}
+        onConfirm={confirmDeleteProduct}
+      />
 
-            <ScraperForm />
-          </div>
-        </div>
-      )}
+      {/* 6. Modal Acessível de "Nova Ingestão" (Scraper Form) */}
+      <Modal
+        isOpen={isIngestionModalOpen}
+        onClose={closeIngestionModal}
+        title="Nova Ingestão de Produto"
+        description="Informe a URL da página de produto para extração e enriquecimento automático por IA."
+        size="lg"
+      >
+        <ScraperForm />
+      </Modal>
     </div>
   );
 };

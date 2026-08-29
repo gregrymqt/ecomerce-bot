@@ -1,7 +1,23 @@
 /**
+ * src/features/catalog/types/product.types.ts
+ *
+ * Contratos e interfaces canônicas de produtos do catálogo e sincronização.
+ */
+
+/**
  * Status possíveis de um produto no ciclo de vida do bot.
  */
-export type ProductStatus = 'RAW' | 'PROCESSING' | 'PROCESSED' | 'FAILED' | 'EXPORTED' | 'Raw' | 'Processing' | 'Processed' | 'Failed' | 'Exported';
+export type ProductStatus =
+  | 'RAW'
+  | 'PROCESSING'
+  | 'PROCESSED'
+  | 'FAILED'
+  | 'EXPORTED'
+  | 'Raw'
+  | 'Processing'
+  | 'Processed'
+  | 'Failed'
+  | 'Exported';
 
 /**
  * Metadados de extração capturados pelo ScraperWorker.
@@ -87,4 +103,3 @@ export interface PaginatedProductsResponse {
   limit: number;
   pages: number;
 }
-

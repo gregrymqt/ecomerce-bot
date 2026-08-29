@@ -1,3 +1,9 @@
+/**
+ * src/features/catalog/services/product.service.ts
+ *
+ * Serviço de comunicação HTTP com a Core API (.NET 9) para Produtos e Sincronização.
+ */
+
 import { apiClient } from '@/lib/apiClient';
 import { getErrorMessage } from '@/utils/errors';
 import type {
@@ -6,7 +12,7 @@ import type {
   PaginatedProductsResponse,
   ProductUpdatePayload,
   SyncProductResponse,
-} from '@/features/catalog';
+} from '../types';
 import type {
   ShopifySyncRequest,
   ShopifyProductResponse,
@@ -117,3 +123,5 @@ export const productService = {
     }
   },
 };
+
+export default productService;

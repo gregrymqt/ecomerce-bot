@@ -1,4 +1,10 @@
-import type { ProductStatus } from './product.type';
+/**
+ * src/features/catalog/types/catalog.types.ts
+ *
+ * Contratos de tipos específicos para controle de UI, filtros e visualização do Catálogo.
+ */
+
+import type { ProductStatus } from './product.types';
 
 export type { ProductStatus };
 export type EcomPlatform = 'Shopify' | 'Nuvemshop' | 'WooCommerce';

@@ -125,4 +125,5 @@ O **E-commerce Bot** é uma plataforma SaaS monorepo dividida em 4 pilares:
 Nenhuma tarefa é considerada concluída sem validação de compilação sem erros:
 - **Backend Core:** `dotnet build EcommerceBot.Core\EcommerceBot.Core.sln`
 - **Migrações:** `dotnet build Database.Migrations\Database.Migrations.csproj`
-- **Frontend Web:** `npm run build` (em `EcommerceBot.Web`)
+- **Frontend Web:** `npm run build` (em `EcommerceBot.Web`) 
+- **Verificação de Segurança:**  `# Windows (Executar isolado no .venv do Worker) & "EcommerceBot.Worker\.venv\Scripts\semgrep.exe" scan --config auto --exclude="**/bin" --exclude="**/obj" --exclude="**/dist" --exclude="**/node_modules" --exclude="**/.venv" EcommerceBot.Core EcommerceBot.Web/src Database.Migrations`

@@ -1,5 +1,11 @@
+/**
+ * src/features/catalog/hooks/useEditCopyDrawer.ts
+ *
+ * Hook de controle do Drawer de edição fina de copy e tom de voz por IA.
+ */
+
 import React, { useState, useEffect } from 'react';
-import type { CatalogProduct, AITone } from '@/features/catalog';
+import type { CatalogProduct, AITone } from '../types';
 
 export interface UseEditCopyDrawerProps {
   isOpen: boolean;
@@ -85,3 +91,5 @@ export function useEditCopyDrawer({
     handleSubmit,
   };
 }
+
+export default useEditCopyDrawer;

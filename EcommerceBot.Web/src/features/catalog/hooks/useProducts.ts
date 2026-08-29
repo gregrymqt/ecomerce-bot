@@ -1,9 +1,12 @@
+/**
+ * src/features/catalog/hooks/useProducts.ts
+ *
+ * Hook para consulta paginada, filtros e mutações de produtos no catálogo.
+ */
+
 import { useState, useCallback, useEffect } from 'react';
-import { productService } from '@/features/catalog';
-import type {
-  Product,
-  ProductUpdatePayload,
-} from '@/features/catalog';
+import { productService } from '../services/product.service';
+import type { Product, ProductUpdatePayload } from '../types';
 import { getErrorMessage } from '@/utils/errors';
 
 export function useProducts(initialLimit = 20) {
@@ -131,3 +134,5 @@ export function useProducts(initialLimit = 20) {
     },
   };
 }
+
+export default useProducts;
