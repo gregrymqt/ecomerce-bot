@@ -1,9 +1,16 @@
+/**
+ * src/features/live-demo/components/ResultPreviewCard.tsx
+ *
+ * Exibição do produto enriquecido por IA com abas de Preview Visual e JSON Bruto.
+ * Em conformidade com acessibilidade WCAG 2.1 AA, touch targets >= 44px e ARIA tablist.
+ */
+
 import React from 'react';
 import { Eye, Code, Sparkles, CheckCircle2, Copy, Check, Tag, Award } from 'lucide-react';
 import { Card, Badge, Button } from '@/components/ui';
-import type { ScrapedProductResult } from '@/features/live-demo';
-import { useResultPreviewCard } from '@/features/live-demo';
-import { cn } from '@/utils/cn';
+import type { ScrapedProductResult } from '../types';
+import { useResultPreviewCard } from '../hooks/useResultPreviewCard';
+import { cn } from '@/lib/utils';
 
 export interface ResultPreviewCardProps {
   result: ScrapedProductResult | null;
@@ -26,18 +33,26 @@ export const ResultPreviewCard: React.FC<ResultPreviewCardProps> = ({
       )}
     >
       {/* Header com Abas */}
-      <div className="flex items-center justify-between px-6 py-4 bg-slate-950/80 border-b border-slate-800">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-4 bg-slate-950/80 border-b border-slate-800 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-purple-400" />
           <h3 className="text-base font-bold text-white">Resultado Enriquecido por IA</h3>
         </div>
 
-        <div className="flex items-center gap-1 p-1 bg-slate-900 rounded-xl border border-slate-800">
+        <div
+          role="tablist"
+          aria-label="Opções de visualização do resultado"
+          className="flex items-center gap-1 p-1 bg-slate-900 rounded-xl border border-slate-800"
+        >
           <button
             type="button"
+            role="tab"
+            id="tab-visual-preview"
+            aria-selected={activeTab === 'visual'}
+            aria-controls="panel-visual-preview"
             onClick={() => setActiveTab('visual')}
             className={cn(
-              'min-h-[40px] px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 font-mono cursor-pointer',
+              'min-h-[44px] px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 font-mono cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-none',
               activeTab === 'visual'
                 ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
@@ -49,9 +64,13 @@ export const ResultPreviewCard: React.FC<ResultPreviewCardProps> = ({
 
           <button
             type="button"
+            role="tab"
+            id="tab-json-raw"
+            aria-selected={activeTab === 'json'}
+            aria-controls="panel-json-raw"
             onClick={() => setActiveTab('json')}
             className={cn(
-              'min-h-[40px] px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 font-mono cursor-pointer',
+              'min-h-[44px] px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 font-mono cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-none',
               activeTab === 'json'
                 ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
@@ -65,7 +84,12 @@ export const ResultPreviewCard: React.FC<ResultPreviewCardProps> = ({
 
       {/* Conteúdo Aba Preview Visual */}
       {activeTab === 'visual' && (
-        <div className="p-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+        <div
+          role="tabpanel"
+          id="panel-visual-preview"
+          aria-labelledby="tab-visual-preview"
+          className="p-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-start animate-fade-in"
+        >
           {/* Imagem do Produto */}
           <div className="md:col-span-5 relative group rounded-2xl overflow-hidden border border-slate-800 bg-slate-950">
             <img
@@ -117,7 +141,7 @@ export const ResultPreviewCard: React.FC<ResultPreviewCardProps> = ({
               </h4>
               <ul className="space-y-2">
                 {result.bulletPoints.map((bullet, idx) => (
-                  <li key={idx} className="flex items-start gap-2 text-xs text-slate-300 leading-relaxed">
+                  <li key={idx} className="flex items-start gap-2 text-xs sm:text-sm text-slate-300 leading-relaxed">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                     <span>{bullet}</span>
                   </li>
@@ -130,16 +154,23 @@ export const ResultPreviewCard: React.FC<ResultPreviewCardProps> = ({
 
       {/* Conteúdo Aba JSON Bruto */}
       {activeTab === 'json' && (
-        <div className="p-6 relative bg-slate-950">
-          <div className="absolute top-8 right-8">
+        <div
+          role="tabpanel"
+          id="panel-json-raw"
+          aria-labelledby="tab-json-raw"
+          className="p-6 relative bg-slate-950 animate-fade-in"
+        >
+          <div className="flex justify-end mb-3">
             <Button
               type="button"
               variant="secondary"
               size="sm"
               onClick={handleCopyJson}
+              aria-label="Copiar JSON Bruto para Área de Transferência"
               iconLeft={copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+              className="min-h-[44px] px-4"
             >
-              {copied ? 'Copiado!' : 'Copiar JSON'}
+              {copied ? 'Copiado com Sucesso!' : 'Copiar JSON'}
             </Button>
           </div>
 
@@ -152,3 +183,4 @@ export const ResultPreviewCard: React.FC<ResultPreviewCardProps> = ({
   );
 };
 
+export default ResultPreviewCard;

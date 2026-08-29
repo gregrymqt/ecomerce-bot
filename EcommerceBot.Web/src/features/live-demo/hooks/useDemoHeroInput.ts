@@ -1,5 +1,11 @@
+/**
+ * src/features/live-demo/hooks/useDemoHeroInput.ts
+ *
+ * Hook de controle de estado para formulário de entrada de URL e seleção de testes rápidos.
+ */
+
 import { useState } from 'react';
-import type { SampleUrlItem } from '@/features/live-demo';
+import type { SampleUrlItem } from '../types';
 
 export interface UseDemoHeroInputProps {
   onSubmit: (url: string) => void;
@@ -48,3 +54,5 @@ export function useDemoHeroInput({
     handleSubmit,
   };
 }
+
+export default useDemoHeroInput;

@@ -1,9 +1,16 @@
+/**
+ * src/features/live-demo/components/LiveSseTerminal.tsx
+ *
+ * Terminal retroiluminado com transmissão ao vivo dos logs de processamento via SSE.
+ * Em conformidade com acessibilidade WCAG 2.1 AA e badges com alto contraste.
+ */
+
 import React from 'react';
 import { Terminal, Cpu, CheckCircle2, AlertTriangle, Radio } from 'lucide-react';
 import { Badge, ProgressBar } from '@/components/ui';
-import type { ConnectionStatus, DemoLogEvent, LogLevel } from '@/features/live-demo';
-import { useLiveSseTerminal } from '@/features/live-demo';
-import { cn } from '@/utils/cn';
+import type { ConnectionStatus, DemoLogEvent, LogLevel } from '../types';
+import { useLiveSseTerminal } from '../hooks/useLiveSseTerminal';
+import { cn } from '@/lib/utils';
 
 export interface LiveSseTerminalProps {
   status: ConnectionStatus;
@@ -90,6 +97,8 @@ export const LiveSseTerminal: React.FC<LiveSseTerminalProps> = ({
 
   return (
     <div
+      role="region"
+      aria-label="Terminal de Transmissão SSE em Tempo Real"
       className={cn(
         'w-full rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl flex flex-col',
         className
@@ -98,7 +107,7 @@ export const LiveSseTerminal: React.FC<LiveSseTerminalProps> = ({
       {/* Header do Terminal */}
       <div className="flex items-center justify-between px-4 py-3 bg-slate-900/90 border-b border-slate-800 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5" aria-hidden="true">
             <span className="w-3 h-3 rounded-full bg-rose-500/80" />
             <span className="w-3 h-3 rounded-full bg-amber-500/80" />
             <span className="w-3 h-3 rounded-full bg-emerald-500/80" />
@@ -113,11 +122,15 @@ export const LiveSseTerminal: React.FC<LiveSseTerminalProps> = ({
       </div>
 
       {/* Feed de Logs */}
-      <div className="p-4 font-mono text-xs overflow-y-auto max-h-[320px] min-h-[220px] space-y-2.5 scrollbar-thin scrollbar-thumb-purple-900 scrollbar-track-slate-950">
+      <div
+        role="log"
+        aria-live="polite"
+        className="p-4 font-mono text-xs overflow-y-auto max-h-[320px] min-h-[220px] space-y-2.5 scrollbar-thin scrollbar-thumb-purple-900 scrollbar-track-slate-950"
+      >
         {logs.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-slate-600 gap-2 py-12">
             <Terminal className="w-8 h-8 text-slate-700 animate-pulse" />
-            <p className="text-center font-sans text-xs">
+            <p className="text-center font-sans text-xs text-slate-400">
               Aguardando início da demonstração... Cole uma URL acima e clique em "Iniciar".
             </p>
           </div>
@@ -161,3 +174,4 @@ export const LiveSseTerminal: React.FC<LiveSseTerminalProps> = ({
   );
 };
 
+export default LiveSseTerminal;

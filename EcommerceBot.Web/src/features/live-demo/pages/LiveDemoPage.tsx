@@ -1,3 +1,10 @@
+/**
+ * src/features/live-demo/pages/LiveDemoPage.tsx
+ *
+ * Página de Demonstração em Tempo Real da extração e enriquecimento de produtos com IA.
+ * Consome o hook useLiveDemoSSE e apresenta o terminal SSE e visualizador de resultados.
+ */
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -6,11 +13,13 @@ import {
   RotateCcw,
   Cpu,
 } from 'lucide-react';
-import { useLiveDemoSSE } from '@/features/live-demo';
-import { DemoHeroInput } from '@/features/live-demo';
-import { LiveSseTerminal } from '@/features/live-demo';
-import { ResultPreviewCard } from '@/features/live-demo';
-import { BottomCtaBanner } from '@/features/live-demo';
+import { useLiveDemoSSE } from '../hooks';
+import {
+  DemoHeroInput,
+  LiveSseTerminal,
+  ResultPreviewCard,
+  BottomCtaBanner,
+} from '../components';
 import { SEO } from '@/components/common/SEO';
 
 export const LiveDemoPage: React.FC = () => {
@@ -18,22 +27,30 @@ export const LiveDemoPage: React.FC = () => {
   const { status, logs, progress, result, targetUrl, startExtraction, resetDemo } =
     useLiveDemoSSE();
 
-  const isWorking = status === 'connecting' || status === 'simulating';
+  const isWorking = status === 'connecting' || status === 'simulating' || status === 'connected';
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-12 animate-in fade-in duration-300 pb-12">
+    <div
+      role="main"
+      aria-label="Demonstração em Tempo Real de Enriquecimento de Produtos"
+      className="w-full max-w-7xl mx-auto space-y-12 animate-in fade-in duration-300 pb-12"
+    >
       <SEO
         title="Demonstração em Tempo Real"
         description="Assista ao robô extraindo e enriquecendo títulos e descrições de e-commerce ao vivo via Server-Sent Events."
       />
+
       {/* Hero Section */}
-      <section className="text-center space-y-4 max-w-4xl mx-auto">
+      <section aria-labelledby="live-demo-hero-title" className="text-center space-y-4 max-w-4xl mx-auto">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-indigo-950/60 text-indigo-300 border border-indigo-500/30 shadow-lg backdrop-blur-md">
           <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
           <span>ENGENHO DE AUTOMAÇÃO EM TEMPO REAL</span>
         </div>
 
-        <h1 className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-indigo-300 tracking-tight leading-tight">
+        <h1
+          id="live-demo-hero-title"
+          className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-indigo-300 tracking-tight leading-tight"
+        >
           Veja a IA Extraindo e Enriquecendo Produtos em Tempo Real
         </h1>
 
@@ -47,7 +64,7 @@ export const LiveDemoPage: React.FC = () => {
       </section>
 
       {/* Workspace de 2 Colunas (Terminal SSE + Preview Card) */}
-      <section className="space-y-4">
+      <section aria-label="Área de Trabalho da Transmissão" className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Zap className="w-5 h-5 text-indigo-400" />
@@ -72,47 +89,47 @@ export const LiveDemoPage: React.FC = () => {
           )}
         </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Terminal SSE à Esquerda */}
-            <div className="lg:col-span-6">
-              <LiveSseTerminal
-                status={status}
-                logs={logs}
-                progress={progress}
-              />
-            </div>
-
-            {/* Resultado Enriquecido à Direita */}
-            <div className="lg:col-span-6">
-              {result ? (
-                <ResultPreviewCard result={result} />
-              ) : (
-                <div className="w-full rounded-2xl bg-slate-950/60 border border-slate-800/80 p-8 flex flex-col items-center justify-center text-center min-h-[360px] gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-purple-950/40 border border-purple-500/20 flex items-center justify-center shadow-inner">
-                    <Cpu className="w-7 h-7 text-purple-400 animate-pulse" />
-                  </div>
-                  <div className="space-y-1.5 max-w-md">
-                    <h3 className="text-base font-bold text-white">
-                      {isWorking
-                        ? 'Processando com LLM...'
-                        : 'Aguardando Ingestão de Produto'}
-                    </h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      {isWorking
-                        ? 'O robô está extraindo o JSON-LD e aplicando os algoritmos de copywriting magnético. Os resultados aparecerão aqui em instantes.'
-                        : 'Escolha uma das URLs de teste acima ou cole um link de e-commerce para visualizar o catálogo enriquecido em tempo real.'}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Terminal SSE à Esquerda */}
+          <div className="lg:col-span-6">
+            <LiveSseTerminal
+              status={status}
+              logs={logs}
+              progress={progress}
+            />
           </div>
-        </section>
+
+          {/* Resultado Enriquecido à Direita */}
+          <div className="lg:col-span-6">
+            {result ? (
+              <ResultPreviewCard result={result} />
+            ) : (
+              <div className="w-full rounded-2xl bg-slate-950/60 border border-slate-800/80 p-8 flex flex-col items-center justify-center text-center min-h-[360px] gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-purple-950/40 border border-purple-500/20 flex items-center justify-center shadow-inner">
+                  <Cpu className="w-7 h-7 text-purple-400 animate-pulse" />
+                </div>
+                <div className="space-y-1.5 max-w-md">
+                  <h3 className="text-base font-bold text-white">
+                    {isWorking
+                      ? 'Processando com LLM...'
+                      : 'Aguardando Ingestão de Produto'}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                    {isWorking
+                      ? 'O robô está extraindo o JSON-LD e aplicando os algoritmos de copywriting magnético. Os resultados aparecerão aqui em instantes.'
+                      : 'Escolha uma das URLs de teste acima ou cole um link de e-commerce para visualizar o catálogo enriquecido em tempo real.'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
       {/* Banner CTA Flutuante no Rodapé */}
       <BottomCtaBanner
         onStartFreeTrial={() => navigate('/auth')}
-        onViewDocs={() => window.open('https://github.com', '_blank')}
+        onViewDocs={() => window.open('https://github.com', '_blank', 'noopener,noreferrer')}
       />
     </div>
   );

@@ -1,20 +1,13 @@
+/**
+ * src/features/live-demo/services/liveDemoService.ts
+ *
+ * Camada de serviços HTTP e SSE para a demonstração em tempo real.
+ * Utiliza o apiClient do projeto e a classe SSEClient para streaming de eventos.
+ */
+
 import { apiClient } from '@/lib/apiClient';
 import { SSEClient } from '@/lib/sseClient';
-import type { DemoLogEvent, ScrapedProductResult } from '@/features/live-demo';
-
-export interface DemoStreamPayload {
-  log?: DemoLogEvent;
-  progress?: number;
-  result?: ScrapedProductResult;
-}
-
-export interface StreamCallbacks {
-  onOpen?: () => void;
-  onLog?: (log: DemoLogEvent) => void;
-  onProgress?: (progress: number) => void;
-  onResult?: (result: ScrapedProductResult) => void;
-  onError?: (error: Event) => void;
-}
+import type { DemoStreamPayload, StreamCallbacks } from '../types';
 
 export class LiveDemoService {
   private sseClient: SSEClient<DemoStreamPayload>;
@@ -24,11 +17,26 @@ export class LiveDemoService {
   }
 
   /**
-   * Dispara a requisição POST para o backend solicitando a ingestão da demo.
+   * Dispara a requisição POST para o backend solicitando a extração da URL.
+   * Endpoint primário: POST /api/v1/scraper/extract
+   * Endpoint de compatibilidade: POST /api/v1/demo
    */
-  public async requestDemoIngestion(urls: string[]): Promise<{ status: string }> {
-    const response = await apiClient.post<{ status: string }>('/api/v1/demo', { urls });
-    return response.data;
+  public async requestDemoIngestion(urls: string[]): Promise<{ status: string; task_id?: string }> {
+    const targetUrl = urls[0] || '';
+    try {
+      const response = await apiClient.post<{ status: string; task_id?: string }>(
+        '/api/v1/scraper/extract',
+        { url: targetUrl }
+      );
+      return response.data;
+    } catch {
+      // Fallback para rota legada se existir
+      const response = await apiClient.post<{ status: string; task_id?: string }>(
+        '/api/v1/demo',
+        { urls }
+      );
+      return response.data;
+    }
   }
 
   /**
@@ -64,3 +72,4 @@ export class LiveDemoService {
 }
 
 export const liveDemoService = new LiveDemoService();
+export default liveDemoService;

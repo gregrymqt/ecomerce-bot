@@ -1,7 +1,14 @@
+/**
+ * src/features/live-demo/components/BottomCtaBanner.tsx
+ *
+ * Banner flutuante no rodapé para conversão e redirecionamento de usuários para cadastro/teste grátis.
+ * Em conformidade com acessibilidade WCAG 2.1 AA e touch targets mínimos de 44px.
+ */
+
 import React from 'react';
 import { Sparkles, ArrowRight, ExternalLink, ShieldCheck } from 'lucide-react';
 import { Badge, Button } from '@/components/ui';
-import { cn } from '@/utils/cn';
+import { cn } from '@/lib/utils';
 
 export interface BottomCtaBannerProps {
   onStartFreeTrial?: () => void;
@@ -15,7 +22,8 @@ export const BottomCtaBanner: React.FC<BottomCtaBannerProps> = ({
   className,
 }) => {
   return (
-    <div
+    <aside
+      aria-label="Chamada para Ação de Teste Grátis"
       className={cn(
         'sticky bottom-6 z-30 w-[calc(100%-2rem)] max-w-5xl mx-auto rounded-2xl p-4 sm:p-5 bg-slate-900/95 border border-purple-500/40 shadow-2xl shadow-purple-950/60 backdrop-blur-xl flex flex-col sm:flex-row items-center justify-between gap-4 transition-all',
         className
@@ -37,7 +45,7 @@ export const BottomCtaBanner: React.FC<BottomCtaBannerProps> = ({
               </Badge>
             </span>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs sm:text-sm text-slate-400">
             Extraia catálogos inteiros, sincronize com a Shopify e multiplique suas vendas.
           </p>
         </div>
@@ -50,8 +58,9 @@ export const BottomCtaBanner: React.FC<BottomCtaBannerProps> = ({
             type="button"
             variant="secondary"
             onClick={onViewDocs}
+            aria-label="Ver Documentação da API"
             iconRight={<ExternalLink className="w-3.5 h-3.5" />}
-            className="flex-1 sm:flex-initial"
+            className="flex-1 sm:flex-initial min-h-[44px] px-4 font-semibold"
           >
             Docs da API
           </Button>
@@ -61,13 +70,15 @@ export const BottomCtaBanner: React.FC<BottomCtaBannerProps> = ({
           type="button"
           variant="primary"
           onClick={onStartFreeTrial}
+          aria-label="Testar Grátis por 7 Dias"
           iconRight={<ArrowRight className="w-4 h-4" />}
-          className="flex-1 sm:flex-initial"
+          className="flex-1 sm:flex-initial min-h-[44px] px-5 bg-purple-600 hover:bg-purple-500 font-bold text-white shadow-lg shadow-purple-600/25"
         >
           Testar Grátis 7 Dias
         </Button>
       </div>
-    </div>
+    </aside>
   );
 };
 
+export default BottomCtaBanner;

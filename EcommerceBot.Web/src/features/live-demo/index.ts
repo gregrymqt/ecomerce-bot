@@ -1,12 +1,12 @@
-export * from './types/live-demo.types';
-export * from './constants/mock-demo-data';
-export * from './components/DemoHeroInput';
-export * from './components/LiveSseTerminal';
-export * from './components/ResultPreviewCard';
-export * from './components/BottomCtaBanner';
+/**
+ * src/features/live-demo/index.ts
+ *
+ * Barrel export canônico da Feature Live Demo.
+ */
+
+export * from './types';
+export * from './constants';
+export * from './services';
+export * from './hooks';
+export * from './components';
 export * from './pages/LiveDemoPage';
-export * from './hooks/useLiveDemoSSE';
-export * from './hooks/useDemoHeroInput';
-export * from './hooks/useLiveSseTerminal';
-export * from './hooks/useResultPreviewCard';
-export * from './services/liveDemoService';

@@ -1,5 +1,11 @@
+/**
+ * src/features/live-demo/hooks/useLiveSseTerminal.ts
+ *
+ * Hook para auto-scroll suave e rastreamento do final da lista de logs no terminal.
+ */
+
 import { useEffect, useRef, type RefObject } from 'react';
-import type { DemoLogEvent } from '@/features/live-demo';
+import type { DemoLogEvent } from '../types';
 
 export interface UseLiveSseTerminalReturn {
   terminalEndRef: RefObject<HTMLDivElement | null>;
@@ -18,3 +24,5 @@ export function useLiveSseTerminal(
     terminalEndRef,
   };
 }
+
+export default useLiveSseTerminal;

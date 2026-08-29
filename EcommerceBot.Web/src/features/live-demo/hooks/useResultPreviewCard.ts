@@ -1,5 +1,11 @@
+/**
+ * src/features/live-demo/hooks/useResultPreviewCard.ts
+ *
+ * Hook de controle de estado para abas de visualização e cópia do JSON bruto no clipboard.
+ */
+
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { ScrapedProductResult } from '@/features/live-demo';
+import type { ScrapedProductResult } from '../types';
 
 export interface UseResultPreviewCardReturn {
   activeTab: 'visual' | 'json';
@@ -43,3 +49,5 @@ export function useResultPreviewCard(
     handleCopyJson,
   };
 }
+
+export default useResultPreviewCard;
