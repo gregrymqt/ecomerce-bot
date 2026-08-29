@@ -20,7 +20,7 @@ export const CampaignPerformanceTable: React.FC<CampaignPerformanceTableProps> =
           <h2 className="text-lg font-bold text-white">Desempenho por Origem & Campanha</h2>
           <p className="text-xs text-slate-400">
             Cruzamento de cadastros, faturamento, consumo de IA e margem real por canal.
-          </p>
+          </p> 
         </div>
       </div>
 
