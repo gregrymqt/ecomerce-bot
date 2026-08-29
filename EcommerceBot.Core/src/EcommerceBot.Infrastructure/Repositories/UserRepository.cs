@@ -34,9 +34,20 @@ namespace EcommerceBot.Infrastructure.Repositories
         {
             using var connection = await _connectionFactory.CreateConnectionAsync();
             var sql = @"
-                INSERT INTO dbo.Users (Id, TenantId, Email, PasswordHash, FullName, Role, IsActive, CreatedAt, UpdatedAt)
+                INSERT INTO dbo.Users (Id, TenantId, RoleId, Email, PasswordHash, FullName, Role, IsActive, CreatedAt, UpdatedAt)
                 OUTPUT INSERTED.*
-                VALUES (@Id, @TenantId, @Email, @PasswordHash, @FullName, @Role, @IsActive, SYSDATETIMEOFFSET(), SYSDATETIMEOFFSET());
+                VALUES (
+                    @Id, 
+                    @TenantId, 
+                    COALESCE(@RoleId, (SELECT TOP 1 Id FROM dbo.Roles WHERE Name = @Role), '44444444-4444-4444-4444-444444444444'), 
+                    @Email, 
+                    @PasswordHash, 
+                    @FullName, 
+                    @Role, 
+                    @IsActive, 
+                    SYSDATETIMEOFFSET(), 
+                    SYSDATETIMEOFFSET()
+                );
             ";
             
             if (user.Id == Guid.Empty) user.Id = Guid.NewGuid();
@@ -53,6 +64,7 @@ namespace EcommerceBot.Infrastructure.Repositories
                     PasswordHash = @PasswordHash,
                     FullName = @FullName,
                     Role = @Role,
+                    RoleId = COALESCE(@RoleId, (SELECT TOP 1 Id FROM dbo.Roles WHERE Name = @Role), RoleId),
                     IsActive = @IsActive,
                     UpdatedAt = SYSDATETIMEOFFSET()
                 WHERE Id = @Id;

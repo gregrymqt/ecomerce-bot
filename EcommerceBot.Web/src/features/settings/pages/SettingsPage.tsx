@@ -21,6 +21,7 @@ import { useSettings } from '@/features/settings';
 import { AiRulesTab } from '@/features/settings';
 import { StoreProfileTab } from '@/features/settings';
 import { BillingProfileTab } from '@/features/settings';
+import { TenantSsoTab } from '@/features/settings';
 import { SettingsSuccessToast } from '@/features/settings';
 import type { SettingsTab } from '@/features/settings';
 import { Button } from '@/components/ui/Button';
@@ -60,6 +61,11 @@ export const SettingsPage: React.FC = () => {
       id: 'BILLING_DATA',
       label: 'Dados Fiscais & Cobrança',
       icon: <Receipt className="h-4 w-4 text-emerald-400" />,
+    },
+    {
+      id: 'SSO_MAPPINGS',
+      label: 'SSO & Grupos IdP',
+      icon: <ShieldCheck className="h-4 w-4 text-violet-400" />,
     },
   ];
 
@@ -179,6 +185,10 @@ export const SettingsPage: React.FC = () => {
               data={formData.billing}
               onChange={handleBillingSettingChange}
             />
+          )}
+
+          {activeTab === 'SSO_MAPPINGS' && (
+            <TenantSsoTab />
           )}
         </section>
       )}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Zap, User, Bot, ShoppingBag, LogOut, ShieldCheck, Store, Settings, Activity, Wallet, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Zap, User, Bot, ShoppingBag, LogOut, ShieldCheck, Store, Settings, Activity, Wallet, TrendingUp, Building } from 'lucide-react';
 import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar';
 import { useAuth, useFeatureGate } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
@@ -12,7 +12,7 @@ export const MainLayout: React.FC = () => {
   const { user, currentTenant, logout } = useAuth();
   const { isFeatureLocked, getPlanName } = useFeatureGate();
 
-  const isAdmin = Boolean(user && (user.is_admin === true || user.role === 'admin'));
+  const isAdmin = Boolean(user && (user.is_admin === true || user.role === 'admin' || user.role === 'ADMIN'));
   const isDashboardLocked = isFeatureLocked('dashboard');
   const isCatalogLocked = isFeatureLocked('catalog');
   const isIntegrationsLocked = isFeatureLocked('integrations');
@@ -95,6 +95,15 @@ export const MainLayout: React.FC = () => {
     },
     ...(isAdmin
       ? [
+          {
+            id: 'admin-leads',
+            label: 'Leads Enterprise (CRM)',
+            icon: <Building className="w-5 h-5 text-sky-400" />,
+            badge: 'CRM',
+            badgeVariant: 'indigo' as const,
+            active: location.pathname === '/admin/leads',
+            onClick: () => navigate('/admin/leads'),
+          },
           {
             id: 'admin-growth',
             label: 'Growth & CAC (Admin)',

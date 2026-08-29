@@ -9,5 +9,7 @@ export * from './hooks/useSettings';
 export * from './components/AiRulesTab';
 export * from './components/StoreProfileTab';
 export * from './components/BillingProfileTab';
+export * from './components/TenantSsoTab';
 export * from './components/SettingsSuccessToast';
+export * from './services/tenantSso.service';
 export * from './pages/SettingsPage';

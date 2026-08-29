@@ -8,7 +8,7 @@
 /**
  * Abas ativas no painel de configurações.
  */
-export type SettingsTab = 'AI_RULES' | 'STORE_PROFILE' | 'BILLING_DATA';
+export type SettingsTab = 'AI_RULES' | 'STORE_PROFILE' | 'BILLING_DATA' | 'SSO_MAPPINGS';
 
 /**
  * Tons de voz suportados pela IA durante a geração de copywriting magnético.

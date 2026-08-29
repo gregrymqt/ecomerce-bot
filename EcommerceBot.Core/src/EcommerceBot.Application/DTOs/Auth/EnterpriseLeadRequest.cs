@@ -6,5 +6,8 @@ namespace EcommerceBot.Application.DTOs.Auth
         public string? CompanyName { get; set; }
         public string? JobTitle { get; set; }
         public string? ExpectedVolume { get; set; }
+        public string? Phone { get; set; }
+        public string? TeamSize { get; set; }
+        public string? Notes { get; set; }
     }
 }

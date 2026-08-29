@@ -26,7 +26,7 @@ O **E-commerce Bot** é uma plataforma SaaS monorepo escalável dividida em 4 pi
                                │    EcommerceBot.Core (API .NET 8)      │
                                │  • Auth JWT & Multi-Tenancy Estrito    │
                                │  • Dapper + SQL Server 2022            │
-                               │  • Mercado Pago (PIX / CC / Preapproval│
+                               │  • Mercado Pago (PIX / CC / Preapproval)│
                                │  • Shopify (GraphQL) & Nuvemshop (REST)│
                                │  • MassTransit Producer & Consumers    │
                                │  • Redis Cache, RateLimit & SSE Stream │
@@ -38,7 +38,7 @@ O **E-commerce Bot** é uma plataforma SaaS monorepo escalável dividida em 4 pi
                                ┌────────────────────────────────────────┐
                                │  EcommerceBot.Worker (Python AI Engine)│
                                │  • ScraperWorker (JSON-LD + Markdown)  │
-                               │  • LLMEngineRouter (OpenRouter Fallback│
+                               │  • LLMEngineRouter (OpenRouter Fallback)│
                                │  • Scikit-Learn (RFM, Churn, LTV)      │
                                │  • Telemetria de Tokens e Latência     │
                                └────────────────────────────────────────┘

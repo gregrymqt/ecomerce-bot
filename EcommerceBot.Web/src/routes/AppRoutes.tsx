@@ -18,6 +18,7 @@ const MeteringDashboardPage = lazy(() => import('@/features/metering/pages/Meter
 const WalletPage = lazy(() => import('@/features/wallet/pages/WalletPage'));
 const TrafficAnalyticsPage = lazy(() => import('@/features/analytics/pages/TrafficAnalyticsPage'));
 const AdminGrowthPage = lazy(() => import('@/features/admin/pages/AdminGrowthPage'));
+const AdminEnterpriseLeadsPage = lazy(() => import('@/features/admin/pages/AdminEnterpriseLeadsPage'));
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -118,6 +119,14 @@ export const AppRoutes: React.FC = () => {
               element={
                 <AdminRouteGuard>
                   <AdminGrowthPage />
+                </AdminRouteGuard>
+              }
+            />
+            <Route
+              path="/admin/leads"
+              element={
+                <AdminRouteGuard>
+                  <AdminEnterpriseLeadsPage />
                 </AdminRouteGuard>
               }
             />
