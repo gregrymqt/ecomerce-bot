@@ -36,9 +36,9 @@
 - *... e mais 11 controllers catalogados no graph.json.*
 
 ## 🎨 5. Módulos Frontend (`EcommerceBot.Web`)
-- **admin**: [pages, services]
-- **analytics**: [components, pages, services]
-- **auth**: [components, context, hooks, pages, services, types, utils]
+- **admin**: [components, hooks, pages, services, types]
+- **analytics**: [components, hooks, pages, services, types]
+- **auth**: [components, context, hooks, pages, services, types]
 - **catalog**: [components, hooks, pages, services, types]
 - **checkout**: [components, hooks, pages, services, types]
 - **dashboard**: [components, hooks, pages, services, types]

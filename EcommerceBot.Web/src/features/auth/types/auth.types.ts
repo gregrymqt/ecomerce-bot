@@ -3,6 +3,7 @@
  *
  * Contratos de tipos para a feature de Autenticação e Multi-Tenancy.
  * Alinhado com a Core API (.NET 9).
+ * Camada 1: Contratos e Interfaces Canônicas.
  */
 
 // --- RESPOSTAS DA API ---

@@ -731,8 +731,11 @@
       "file": "EcommerceBot.Web/src/features/admin",
       "metadata": {
         "layers": [
+          "components",
+          "hooks",
           "pages",
-          "services"
+          "services",
+          "types"
         ]
       }
     },
@@ -744,8 +747,10 @@
       "metadata": {
         "layers": [
           "components",
+          "hooks",
           "pages",
-          "services"
+          "services",
+          "types"
         ]
       }
     },
@@ -761,8 +766,7 @@
           "hooks",
           "pages",
           "services",
-          "types",
-          "utils"
+          "types"
         ]
       }
     },
