@@ -1,3 +1,10 @@
+/**
+ * src/features/metering/components/UsageHistoryTable.tsx
+ *
+ * Tabela detalhada de extrato de consumo de LLM com filtros por data e paginação.
+ * Em conformidade com acessibilidade WCAG 2.1 AA, inputs >= 16px e touch targets >= 44px.
+ */
+
 import React, { useState } from 'react';
 import {
   ChevronLeft,
@@ -10,11 +17,11 @@ import {
   Cpu,
   FileSpreadsheet,
 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui';
 import type {
   PaginatedLLMUsageResponse,
   LLMUsageFilterParams,
-} from '@/features/metering';
+} from '../types';
 
 export interface UsageHistoryTableProps {
   usageLogs: PaginatedLLMUsageResponse | null;
@@ -22,6 +29,7 @@ export interface UsageHistoryTableProps {
   page: number;
   changePage: (newPage: number) => void;
   applyFilters: (filters: Omit<LLMUsageFilterParams, 'page' | 'limit'>) => void;
+  className?: string;
 }
 
 export const UsageHistoryTable: React.FC<UsageHistoryTableProps> = ({
@@ -68,7 +76,11 @@ export const UsageHistoryTable: React.FC<UsageHistoryTableProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden transition-all">
+    <div
+      role="region"
+      aria-label="Extrato de Consumo de IA"
+      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden transition-all"
+    >
       {/* Header & Filtros */}
       <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
@@ -87,8 +99,8 @@ export const UsageHistoryTable: React.FC<UsageHistoryTableProps> = ({
 
         {/* Formulário de Filtros de Data */}
         <form onSubmit={handleFilterSubmit} className="flex flex-wrap items-end gap-3">
-          <div className="flex-1 min-w-[140px]">
-            <label htmlFor="start-date-input" className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+          <div className="flex-1 min-w-[150px]">
+            <label htmlFor="start-date-input" className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
               Data Inicial
             </label>
             <input
@@ -96,12 +108,12 @@ export const UsageHistoryTable: React.FC<UsageHistoryTableProps> = ({
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full h-11 sm:h-9 px-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm sm:text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full h-11 px-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-base focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[44px]"
             />
           </div>
 
-          <div className="flex-1 min-w-[140px]">
-            <label htmlFor="end-date-input" className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+          <div className="flex-1 min-w-[150px]">
+            <label htmlFor="end-date-input" className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
               Data Final
             </label>
             <input
@@ -109,7 +121,7 @@ export const UsageHistoryTable: React.FC<UsageHistoryTableProps> = ({
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full h-11 sm:h-9 px-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm sm:text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full h-11 px-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-base focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[44px]"
             />
           </div>
 
@@ -117,9 +129,10 @@ export const UsageHistoryTable: React.FC<UsageHistoryTableProps> = ({
             <Button
               type="submit"
               variant="primary"
-              size="sm"
-              iconLeft={<Filter className="w-3.5 h-3.5" />}
-              className="min-h-[44px] sm:min-h-0"
+              size="md"
+              aria-label="Aplicar Filtros"
+              iconLeft={<Filter className="w-4 h-4" />}
+              className="min-h-[44px] font-semibold"
             >
               Filtrar
             </Button>
@@ -127,10 +140,11 @@ export const UsageHistoryTable: React.FC<UsageHistoryTableProps> = ({
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
+                size="md"
                 onClick={handleResetFilters}
-                iconLeft={<RefreshCw className="w-3.5 h-3.5" />}
-                className="min-h-[44px] sm:min-h-0"
+                aria-label="Limpar Filtros"
+                iconLeft={<RefreshCw className="w-4 h-4" />}
+                className="min-h-[44px] font-semibold"
               >
                 Limpar
               </Button>
@@ -144,12 +158,12 @@ export const UsageHistoryTable: React.FC<UsageHistoryTableProps> = ({
         <table className="w-full text-left border-collapse min-w-[650px]">
           <thead>
             <tr className="bg-slate-100/70 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
-              <th className="py-3 px-4">Data / Hora</th>
-              <th className="py-3 px-4">Modelo / Provedor</th>
-              <th className="py-3 px-4">Tokens (Prompt / Comp / Total)</th>
-              <th className="py-3 px-4">Custo Est. (USD)</th>
-              <th className="py-3 px-4">Tempo</th>
-              <th className="py-3 px-4 text-right">Origem</th>
+              <th scope="col" className="py-3.5 px-4">Data / Hora</th>
+              <th scope="col" className="py-3.5 px-4">Modelo / Provedor</th>
+              <th scope="col" className="py-3.5 px-4">Tokens (Prompt / Comp / Total)</th>
+              <th scope="col" className="py-3.5 px-4">Custo Est. (USD)</th>
+              <th scope="col" className="py-3.5 px-4">Tempo</th>
+              <th scope="col" className="py-3.5 px-4 text-right">Origem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
@@ -194,7 +208,7 @@ export const UsageHistoryTable: React.FC<UsageHistoryTableProps> = ({
                     <div className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
                       {log.model_used}
                     </div>
-                    <div className="text-[11px] text-slate-400 dark:text-slate-500 uppercase">
+                    <div className="text-[11px] text-slate-400 dark:text-slate-500 uppercase font-mono">
                       {log.provider}
                     </div>
                   </td>
@@ -219,11 +233,11 @@ export const UsageHistoryTable: React.FC<UsageHistoryTableProps> = ({
                   </td>
                   <td className="py-3 px-4 text-right whitespace-nowrap">
                     {log.is_byok ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                         <Key className="w-3 h-3 text-emerald-600" /> BYOK
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                         <Cpu className="w-3 h-3 text-indigo-600" /> SaaS
                       </span>
                     )}
@@ -249,8 +263,9 @@ export const UsageHistoryTable: React.FC<UsageHistoryTableProps> = ({
             size="sm"
             disabled={page <= 1 || isLoading}
             onClick={() => changePage(page - 1)}
+            aria-label="Página Anterior"
             iconLeft={<ChevronLeft className="w-4 h-4" />}
-            className="min-h-[44px] sm:min-h-0"
+            className="min-h-[44px] px-4 font-semibold"
           >
             Anterior
           </Button>
@@ -261,8 +276,9 @@ export const UsageHistoryTable: React.FC<UsageHistoryTableProps> = ({
             size="sm"
             disabled={page >= totalPages || isLoading}
             onClick={() => changePage(page + 1)}
+            aria-label="Próxima Página"
             iconRight={<ChevronRight className="w-4 h-4" />}
-            className="min-h-[44px] sm:min-h-0"
+            className="min-h-[44px] px-4 font-semibold"
           >
             Próximo
           </Button>
@@ -271,3 +287,5 @@ export const UsageHistoryTable: React.FC<UsageHistoryTableProps> = ({
     </div>
   );
 };
+
+export default UsageHistoryTable;

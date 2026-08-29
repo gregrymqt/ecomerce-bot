@@ -1,11 +1,17 @@
+/**
+ * src/features/metering/__tests__/useMetering.test.ts
+ *
+ * Testes unitários para o hook useMetering.
+ */
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useMetering } from '@/features/metering';
-import { meteringService } from '@/features/metering';
+import { useMetering } from '../hooks/useMetering';
+import { meteringService } from '../services/metering.service';
 import type {
   TenantCreditBalanceResponse,
   PaginatedLLMUsageResponse,
-} from '@/features/metering';
+} from '../types';
 
 vi.mock('../services/metering.service', () => ({
   meteringService: {
@@ -54,7 +60,6 @@ describe('useMetering hook', () => {
 
     const { result } = renderHook(() => useMetering());
 
-    // Aguarda a resolução dos useEffects de montagem
     await act(async () => {
       await Promise.resolve();
     });

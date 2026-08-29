@@ -1,6 +1,12 @@
+/**
+ * src/features/metering/components/EngineStatusBadge.tsx
+ *
+ * Badge de identificação do motor de inferência de IA ativo (BYOK vs SaaS Gerenciado).
+ */
+
 import React from 'react';
 import { Key, Cpu } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { cn } from '@/lib/utils';
 
 export interface EngineStatusBadgeProps {
   isByokActive: boolean;
@@ -35,3 +41,5 @@ export const EngineStatusBadge: React.FC<EngineStatusBadgeProps> = ({
     </span>
   );
 };
+
+export default EngineStatusBadge;

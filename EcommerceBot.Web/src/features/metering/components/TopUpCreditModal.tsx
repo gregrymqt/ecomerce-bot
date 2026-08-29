@@ -1,20 +1,19 @@
-import React, { useEffect, useState } from 'react';
+/**
+ * src/features/metering/components/TopUpCreditModal.tsx
+ *
+ * Modal padronizado de seleção de pacotes para recarga de créditos de IA.
+ * Em conformidade com acessibilidade WCAG 2.1 AA e touch targets mínimos de 44px.
+ */
+
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, DollarSign, Zap, CheckCircle2, ShieldCheck } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { DollarSign, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Modal, Button } from '@/components/ui';
+import type { CreditOption } from '../types';
 
 export interface TopUpCreditModalProps {
   isOpen: boolean;
   onClose: () => void;
-}
-
-interface CreditOption {
-  id: string;
-  amountBrl: number;
-  estimatedUsd: number;
-  label: string;
-  badge?: string;
-  popular?: boolean;
 }
 
 const CREDIT_OPTIONS: CreditOption[] = [
@@ -49,17 +48,6 @@ export const TopUpCreditModal: React.FC<TopUpCreditModalProps> = ({
   const navigate = useNavigate();
   const [selectedOption, setSelectedOption] = useState<string>('pack_50');
 
-  // Fechar no teclado ESC
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
   if (!isOpen) return null;
 
   const activePack = CREDIT_OPTIONS.find((opt) => opt.id === selectedOption) || CREDIT_OPTIONS[1];
@@ -70,58 +58,65 @@ export const TopUpCreditModal: React.FC<TopUpCreditModalProps> = ({
     navigate(`/checkout?type=topup&pack=${activePack.id}&amount=${activePack.amountBrl}`);
   };
 
-  return (
-    <div
-      className="fixed inset-[#0] z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="topup-modal-title"
-      onClick={onClose}
-    >
-      <div
-        className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+  const footerActions = (
+    <div className="flex flex-col sm:flex-row items-center justify-end gap-3 w-full">
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={onClose}
+        className="w-full sm:w-auto min-h-[44px]"
       >
-        {/* Header do Modal */}
-        <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-xl">
-              <Zap className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 id="topup-modal-title" className="text-lg font-bold text-slate-900 dark:text-white">
-                Recarregar Créditos de IA
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Escolha o pacote ideal para processar seus produtos
-              </p>
-            </div>
-          </div>
+        Cancelar
+      </Button>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar Modal"
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+      <Button
+        type="button"
+        variant="primary"
+        onClick={handleProceedCheckout}
+        iconLeft={<DollarSign className="w-4 h-4" />}
+        className="w-full sm:w-auto min-h-[44px] bg-indigo-600 hover:bg-indigo-500 font-bold text-white shadow-lg shadow-indigo-600/25"
+      >
+        Ir para Pagamento (R$ {activePack.amountBrl})
+      </Button>
+    </div>
+  );
 
-        {/* Corpo do Modal - Lista de Pacotes */}
-        <div className="p-5 sm:p-6 space-y-3">
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
-            Selecione o Pacote de Créditos
-          </label>
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Recarregar Créditos de IA"
+      description="Escolha o pacote ideal para processar e enriquecer seus produtos via infraestrutura gerenciada."
+      size="md"
+      footer={footerActions}
+    >
+      <div className="space-y-4">
+        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+          Selecione o Pacote de Créditos
+        </label>
 
+        <div
+          role="radiogroup"
+          aria-label="Pacotes de créditos disponíveis"
+          className="space-y-3"
+        >
           {CREDIT_OPTIONS.map((option) => {
             const isSelected = option.id === selectedOption;
 
             return (
               <div
                 key={option.id}
+                role="radio"
+                aria-checked={isSelected}
+                tabIndex={0}
                 onClick={() => setSelectedOption(option.id)}
-                className={`relative flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                onKeyDown={(e) => {
+                  if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    setSelectedOption(option.id);
+                  }
+                }}
+                className={`relative flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all min-h-[44px] focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none ${
                   isSelected
                     ? 'border-indigo-600 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 shadow-xs'
                     : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
@@ -135,7 +130,7 @@ export const TopUpCreditModal: React.FC<TopUpCreditModalProps> = ({
 
                 <div className="flex items-center gap-3">
                   <div
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${
                       isSelected
                         ? 'border-indigo-600 bg-indigo-600 text-white'
                         : 'border-slate-300 dark:border-slate-700'
@@ -165,37 +160,15 @@ export const TopUpCreditModal: React.FC<TopUpCreditModalProps> = ({
               </div>
             );
           })}
-
-          <div className="flex items-center gap-2 pt-2 text-xs text-slate-500 dark:text-slate-400">
-            <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-            <span>Pagamento 100% seguro via Mercado Pago (PIX ou Cartão).</span>
-          </div>
         </div>
 
-        {/* Footer com Botões */}
-        <div className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row items-center justify-end gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="md"
-            onClick={onClose}
-            className="w-full sm:w-auto min-h-[44px]"
-          >
-            Cancelar
-          </Button>
-
-          <Button
-            type="button"
-            variant="primary"
-            size="md"
-            onClick={handleProceedCheckout}
-            iconLeft={<DollarSign className="w-4 h-4" />}
-            className="w-full sm:w-auto min-h-[44px]"
-          >
-            Ir para Pagamento (R$ {activePack.amountBrl})
-          </Button>
+        <div className="flex items-center gap-2 pt-2 text-xs text-slate-400">
+          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>Pagamento 100% seguro via Mercado Pago (PIX ou Cartão).</span>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
+
+export default TopUpCreditModal;

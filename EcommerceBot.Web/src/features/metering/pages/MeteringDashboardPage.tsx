@@ -1,11 +1,20 @@
+/**
+ * src/features/metering/pages/MeteringDashboardPage.tsx
+ *
+ * Página Principal do Dashboard de Telemetria e Consumo de Créditos de IA.
+ * Consome o hook useMetering e exibe o balanço de créditos, gráficos de tokens e extrato.
+ */
+
 import React, { useState } from 'react';
 import { Cpu, DollarSign, Activity, RefreshCw, Sparkles, Key } from 'lucide-react';
-import { useMetering } from '@/features/metering';
-import { CreditBalanceWidget } from '@/features/metering';
-import { EngineStatusBadge } from '@/features/metering';
-import { UsageHistoryTable } from '@/features/metering';
-import { TopUpCreditModal } from '@/features/metering';
-import { Button } from '@/components/ui/Button';
+import { useMetering } from '../hooks';
+import {
+  CreditBalanceWidget,
+  EngineStatusBadge,
+  UsageHistoryTable,
+  TopUpCreditModal,
+} from '../components';
+import { Button, Alert } from '@/components/ui';
 
 export const MeteringDashboardPage: React.FC = () => {
   const {
@@ -27,48 +36,62 @@ export const MeteringDashboardPage: React.FC = () => {
   const totalCost30d = balance?.estimated_cost_usd_30d ?? 0;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto animate-fadeIn">
+    <div
+      role="main"
+      aria-label="Painel de Consumo e Telemetria de IA"
+      className="space-y-6 max-w-7xl mx-auto animate-fade-in pb-12"
+    >
       {/* Header Principal da Página */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
               Consumo & Telemetria de IA
             </h1>
             <EngineStatusBadge isByokActive={isByokActive} />
           </div>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-3xl">
             Acompanhe o saldo de créditos gerenciados, o motor ativo (BYOK vs SaaS) e o extrato em tempo real de tokens consumidos pelas chamadas de LLM.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             variant="outline"
             size="md"
             onClick={() => refetchAll()}
             isLoading={isLoadingBalance || isLoadingUsage}
+            aria-label="Atualizar Dados de Consumo"
             iconLeft={<RefreshCw className="w-4 h-4" />}
-            className="min-h-[44px]"
+            className="min-h-[44px] font-semibold"
           >
             Atualizar Dados
           </Button>
         </div>
-      </div>
+      </header>
 
       {/* Alerta de Erro Global */}
       {error && (
-        <div className="p-4 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-800 dark:text-rose-300 text-sm flex items-center justify-between">
-          <span>{error}</span>
-          <Button variant="ghost" size="sm" onClick={() => refetchAll()}>
-            Tentar Novamente
-          </Button>
+        <div className="animate-fade-in">
+          <Alert variant="error" title="Erro de Telemetria">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <span>{error}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetchAll()}
+                className="min-h-[36px]"
+              >
+                Tentar Novamente
+              </Button>
+            </div>
+          </Alert>
         </div>
       )}
 
       {/* Grid Superior: Widget de Saldo + Cards Estatísticos */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Coluna 1 & 2: Widget Principal de Créditos */}
+      <section aria-label="Resumo de Créditos e Volume de Tokens" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Coluna 1: Widget Principal de Créditos */}
         <div className="lg:col-span-1">
           <CreditBalanceWidget
             balance={balance}
@@ -144,16 +167,18 @@ export const MeteringDashboardPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Seção Inferior: Tabela de Extrato Detalhado */}
-      <UsageHistoryTable
-        usageLogs={usageLogs}
-        isLoading={isLoadingUsage}
-        page={page}
-        changePage={changePage}
-        applyFilters={applyFilters}
-      />
+      <section aria-label="Histórico Detalhado de Requisições">
+        <UsageHistoryTable
+          usageLogs={usageLogs}
+          isLoading={isLoadingUsage}
+          page={page}
+          changePage={changePage}
+          applyFilters={applyFilters}
+        />
+      </section>
 
       {/* Modal de Recarga de Créditos */}
       <TopUpCreditModal

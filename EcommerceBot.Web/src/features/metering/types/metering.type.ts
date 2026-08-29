@@ -1,3 +1,10 @@
+/**
+ * src/features/metering/types/metering.type.ts
+ *
+ * Contratos de tipos e DTOs canônicos para a feature Metering (Telemetria & Consumo de IA).
+ * Alinhado estritamente com os padrões de arquitetura em 4 camadas e WCAG 2.1 AA.
+ */
+
 export interface TenantCreditBalanceResponse {
   tenant_id: string;
   managed_credit_balance: number;
@@ -33,4 +40,13 @@ export interface PaginatedLLMUsageResponse {
   total: number;
   page: number;
   limit: number;
+}
+
+export interface CreditOption {
+  id: string;
+  amountBrl: number;
+  estimatedUsd: number;
+  label: string;
+  badge?: string;
+  popular?: boolean;
 }

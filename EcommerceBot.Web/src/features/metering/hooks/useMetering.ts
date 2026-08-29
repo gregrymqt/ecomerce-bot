@@ -1,11 +1,17 @@
+/**
+ * src/features/metering/hooks/useMetering.ts
+ *
+ * Custom Hook reativo para gerenciamento do estado de telemetria, saldo de créditos e extrato de LLM.
+ */
+
 import { useState, useEffect, useCallback } from 'react';
-import { meteringService } from '@/features/metering';
+import { meteringService } from '../services/metering.service';
 import { getErrorMessage } from '@/utils/errors';
 import type {
   TenantCreditBalanceResponse,
   PaginatedLLMUsageResponse,
   LLMUsageFilterParams,
-} from '@/features/metering';
+} from '../types';
 
 export interface UseMeteringReturn {
   balance: TenantCreditBalanceResponse | null;
@@ -42,7 +48,7 @@ export const useMetering = (
     try {
       const data = await meteringService.getCreditBalance();
       setBalance(data);
-    } catch (err) {
+    } catch (err: unknown) {
       const msg = getErrorMessage(err, 'Falha ao consultar saldo de créditos.');
       setError(msg);
     } finally {
@@ -63,7 +69,7 @@ export const useMetering = (
         };
         const data = await meteringService.getUsageLogs(mergedParams);
         setUsageLogs(data);
-      } catch (err) {
+      } catch (err: unknown) {
         const msg = getErrorMessage(err, 'Falha ao buscar extrato de consumo de LLM.');
         setError(msg);
       } finally {
@@ -110,3 +116,5 @@ export const useMetering = (
     applyFilters,
   };
 };
+
+export default useMetering;

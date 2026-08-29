@@ -1,7 +1,13 @@
+/**
+ * src/features/metering/__tests__/CreditBalanceWidget.test.tsx
+ *
+ * Testes unitários para o componente CreditBalanceWidget.
+ */
+
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { CreditBalanceWidget } from '@/features/metering';
-import type { TenantCreditBalanceResponse } from '@/features/metering';
+import { CreditBalanceWidget } from '../components/CreditBalanceWidget';
+import type { TenantCreditBalanceResponse } from '../types';
 
 describe('CreditBalanceWidget component', () => {
   const mockBalance: TenantCreditBalanceResponse = {

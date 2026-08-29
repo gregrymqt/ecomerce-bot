@@ -1,6 +1,12 @@
+/**
+ * src/features/metering/__tests__/EngineStatusBadge.test.tsx
+ *
+ * Testes unitários para o componente EngineStatusBadge.
+ */
+
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { EngineStatusBadge } from '@/features/metering';
+import { EngineStatusBadge } from '../components/EngineStatusBadge';
 
 describe('EngineStatusBadge component', () => {
   it('deve renderizar o texto "Sua Chave OpenRouter (BYOK)" quando isByokActive for true', () => {

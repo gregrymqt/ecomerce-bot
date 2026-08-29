@@ -1,8 +1,11 @@
-export * from './types/metering.type';
-export * from './services/metering.service';
-export * from './hooks/useMetering';
-export * from './components/CreditBalanceWidget';
-export * from './components/EngineStatusBadge';
-export * from './components/UsageHistoryTable';
-export * from './components/TopUpCreditModal';
+/**
+ * src/features/metering/index.ts
+ *
+ * Barrel export canônico da Feature Metering (Telemetria & Consumo de IA).
+ */
+
+export * from './types';
+export * from './services';
+export * from './hooks';
+export * from './components';
 export * from './pages/MeteringDashboardPage';
