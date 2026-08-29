@@ -1,7 +1,13 @@
+/**
+ * src/features/auth/pages/GoogleCallbackPage.tsx
+ *
+ * Processamento assíncrono do Callback de Autorização Google OAuth 2.0.
+ */
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building, Loader2, AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '../hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/display/Card';
 import { Alert } from '@/components/ui/feedback/Alert';
@@ -144,7 +150,7 @@ export const GoogleCallbackPage: React.FC = () => {
                 onChange={(e) => setTenantNameInput(e.target.value)}
                 error={tenantError || undefined}
                 iconLeft={<Building className="w-5 h-5 shrink-0" />}
-                className="min-h-[44px] text-sm sm:text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500"
+                className="min-h-[44px] text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500"
               />
 
               <Button

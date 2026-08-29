@@ -1,5 +1,11 @@
+/**
+ * src/features/auth/components/sso/GoogleAuthButton.tsx
+ *
+ * Botão para acionar o fluxo de OAuth 2.0 com Google.
+ */
+
 import React, { useState } from 'react';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '../../hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 
@@ -86,3 +92,5 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
     </Button>
   );
 };
+
+export default GoogleAuthButton;

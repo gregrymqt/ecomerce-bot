@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { AuthContext } from '@/features/auth';
+import { AuthContext } from '../context/AuthContext';
 
 /**
  * Hook customizado para consumir o AuthContext com validação e utilitários derivados.
@@ -16,3 +16,5 @@ export const useAuth = () => {
     hasTenants: Boolean(context.user?.tenants && context.user.tenants.length > 0),
   };
 };
+
+export default useAuth;

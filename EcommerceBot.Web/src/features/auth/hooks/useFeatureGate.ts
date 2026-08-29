@@ -7,7 +7,7 @@
  */
 
 import { useMemo } from 'react';
-import { useAuth } from '@/features/auth';
+import { useAuth } from './useAuth';
 import { useWallet } from '@/features/wallet/hooks/useWallet';
 
 export type PlanType = 'free' | 'pro' | 'enterprise';
@@ -36,7 +36,9 @@ export function useFeatureGate() {
   const { balance, loadingBalance } = useWallet();
 
   const isAdmin = useMemo(() => {
-    return Boolean(user && (user.is_admin === true || user.role === 'admin'));
+    return Boolean(
+      user && (user.is_admin === true || user.role?.toUpperCase() === 'ADMIN')
+    );
   }, [user]);
 
   /**

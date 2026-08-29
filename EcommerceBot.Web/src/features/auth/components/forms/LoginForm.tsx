@@ -1,12 +1,17 @@
+/**
+ * src/features/auth/components/forms/LoginForm.tsx
+ *
+ * Formulário acessível de Login de Usuário.
+ */
+
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, Building, LogIn } from 'lucide-react';
-import type { LoginFormData } from '@/features/auth';
-import { useAuth } from '@/features/auth';
-import { GoogleAuthButton } from './GoogleAuthButton';
-import { EnterpriseSsoButton } from './EnterpriseSsoButton';
-import { EnterpriseSsoModal } from './EnterpriseSsoModal';
+import type { LoginFormData } from '../../types/auth.types';
+import { useAuth } from '../../hooks/useAuth';
+import { GoogleAuthButton } from '../sso/GoogleAuthButton';
+import { EnterpriseSsoButton } from '../sso/EnterpriseSsoButton';
+import { EnterpriseSsoModal } from '../sso/EnterpriseSsoModal';
 import { Button } from '@/components/ui/Button';
-
 import { Card } from '@/components/ui/display/Card';
 import { Alert } from '@/components/ui/feedback/Alert';
 import { FormField } from '@/components/ui/form/FormField';
@@ -123,7 +128,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         });
         onSuccess?.();
       } catch {
-        // Trato no AuthContext
+        // Tratado no AuthContext
       }
     }
   };
@@ -162,7 +167,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           iconLeft={<Building className="w-5 h-5 shrink-0" />}
           autoComplete="organization"
           disabled={isLoading}
-          className="min-h-[44px] text-sm sm:text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="min-h-[44px] text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
         />
 
         {/* Campo E-mail */}
@@ -178,7 +183,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           iconLeft={<Mail className="w-5 h-5 shrink-0" />}
           autoComplete="email"
           disabled={isLoading}
-          className="min-h-[44px] text-sm sm:text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="min-h-[44px] text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
         />
 
         {/* Campo Senha */}
@@ -209,7 +214,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             }
             autoComplete="current-password"
             disabled={isLoading}
-            className="min-h-[44px] text-sm sm:text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="min-h-[44px] text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           />
 
           <div className="flex justify-end pt-1">
@@ -217,7 +222,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               href="#"
               onClick={(e) => {
                 e.preventDefault();
-                console.log('[LoginForm] Esqueceu a senha clicado');
               }}
               className="text-xs sm:text-sm font-medium text-indigo-400 hover:text-indigo-300 hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-md"
             >
@@ -262,13 +266,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         />
       </div>
 
-      {/* Modal SSO Enterprise (Fake Door) */}
+      {/* Modal SSO Enterprise */}
       <EnterpriseSsoModal
         isOpen={isSsoModalOpen}
         onClose={() => setIsSsoModalOpen(false)}
         initialEmail={formData.email}
       />
-
 
       {/* Link de Alternância para Cadastro */}
       {onSwitchToRegister && (
@@ -299,3 +302,5 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
   return <div className={className}>{formContent}</div>;
 };
+
+export default LoginForm;

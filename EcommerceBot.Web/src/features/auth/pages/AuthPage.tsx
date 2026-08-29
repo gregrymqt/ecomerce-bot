@@ -1,19 +1,20 @@
+/**
+ * src/features/auth/pages/AuthPage.tsx
+ *
+ * Página principal de Autenticação (Login / Cadastro) com layout Split-Screen SaaS.
+ */
+
 import React from 'react';
-import { AuthLeftPanel } from '@/features/auth';
-import { LoginForm } from '@/features/auth';
-import { RegisterForm } from '@/features/auth';
-import { cn } from '@/lib/utils';
-import { useAuthForm } from '@/features/auth';
+import { AuthLeftPanel, LoginForm, RegisterForm } from '../components';
+import { useAuthForm } from '../hooks/useAuthForm';
 import { SEO } from '@/components/common/SEO';
+import { cn } from '@/lib/utils';
 
 export interface AuthPageProps {
   initialMode?: 'login' | 'register';
   className?: string;
 }
 
-/**
- * Página principal de Autenticação (Login / Cadastro) com layout Split-Screen SaaS.
- */
 export const AuthPage: React.FC<AuthPageProps> = ({
   initialMode = 'login',
   className,
@@ -112,7 +113,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               onSwitchToLogin={() => setMode('login')}
             />
           )}
-
         </div>
 
         {/* Rodapé com Termos e Privacidade */}
@@ -122,7 +122,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             <a
               href="#"
               onClick={(e) => e.preventDefault()}
-              className="hover:text-indigo-400 underline-offset-4 hover:underline transition-colors"
+              className="hover:text-indigo-400 underline-offset-4 hover:underline transition-colors min-h-[44px] inline-flex items-center"
             >
               Termos de Serviço
             </a>
@@ -130,7 +130,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             <a
               href="#"
               onClick={(e) => e.preventDefault()}
-              className="hover:text-indigo-400 underline-offset-4 hover:underline transition-colors"
+              className="hover:text-indigo-400 underline-offset-4 hover:underline transition-colors min-h-[44px] inline-flex items-center"
             >
               Política de Privacidade
             </a>

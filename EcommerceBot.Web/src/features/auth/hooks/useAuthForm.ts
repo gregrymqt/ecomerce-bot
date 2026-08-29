@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './useAuth';
-import type { AuthMode, LoginFormData, RegisterFormData } from '@/features/auth';
+import type { AuthMode, LoginFormData, RegisterFormData } from '../types/auth.types';
 import { getErrorMessage } from '@/utils/errors';
 
 export interface UseAuthFormReturn {
@@ -20,8 +20,7 @@ export interface UseAuthFormReturn {
 
 /**
  * Custom hook para gerenciamento dos formulários de login e cadastro.
- * Integra a UI local (alternância de abas e visibilidade de senha) com as funções
- * reais de autenticação do AuthContext (login, registro e redirecionamento).
+ * Integra a UI local com as funções de autenticação do AuthContext.
  */
 export function useAuthForm(initialMode: AuthMode = 'login'): UseAuthFormReturn {
   const [mode, setMode] = useState<AuthMode>(initialMode);
@@ -47,7 +46,7 @@ export function useAuthForm(initialMode: AuthMode = 'login'): UseAuthFormReturn 
           tenant_id: data.tenant?.trim() || undefined,
         });
         const plan = userResp?.plan?.toLowerCase() || 'free';
-        const isAdmin = userResp?.is_admin === true || userResp?.role === 'admin';
+        const isAdmin = userResp?.is_admin === true || userResp?.role?.toUpperCase() === 'ADMIN';
         const isPaidUser = isAdmin || plan === 'pro' || plan === 'enterprise';
         navigate(isPaidUser ? '/catalog' : '/demo');
       } catch (err) {
@@ -63,7 +62,10 @@ export function useAuthForm(initialMode: AuthMode = 'login'): UseAuthFormReturn 
     async (data: RegisterFormData): Promise<void> => {
       setLocalLoading(true);
       try {
-        const storedUtms = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('_saas_utm_attribution') || '{}') : {};
+        const storedUtms =
+          typeof window !== 'undefined'
+            ? JSON.parse(localStorage.getItem('_saas_utm_attribution') || '{}')
+            : {};
         const userResp = await register({
           name: data.name,
           email: data.email,
@@ -75,7 +77,7 @@ export function useAuthForm(initialMode: AuthMode = 'login'): UseAuthFormReturn 
           ad_id: storedUtms.ad_id,
         });
         const plan = userResp?.plan?.toLowerCase() || 'free';
-        const isAdmin = userResp?.is_admin === true || userResp?.role === 'admin';
+        const isAdmin = userResp?.is_admin === true || userResp?.role?.toUpperCase() === 'ADMIN';
         const isPaidUser = isAdmin || plan === 'pro' || plan === 'enterprise';
         navigate(isPaidUser ? '/catalog' : '/demo');
       } catch (err) {
@@ -101,3 +103,5 @@ export function useAuthForm(initialMode: AuthMode = 'login'): UseAuthFormReturn 
     isAuthenticated,
   };
 }
+
+export default useAuthForm;

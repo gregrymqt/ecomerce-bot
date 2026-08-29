@@ -1,12 +1,17 @@
+/**
+ * src/features/auth/components/forms/RegisterForm.tsx
+ *
+ * Formulário acessível de Cadastro de Usuário e Criação de Loja/Tenant.
+ */
+
 import React, { useState } from 'react';
 import { User, Mail, Lock, Eye, EyeOff, Building, UserPlus } from 'lucide-react';
-import type { RegisterFormData } from '@/features/auth';
-import { useAuth } from '@/features/auth';
-import { GoogleAuthButton } from './GoogleAuthButton';
-import { EnterpriseSsoButton } from './EnterpriseSsoButton';
-import { EnterpriseSsoModal } from './EnterpriseSsoModal';
+import type { RegisterFormData } from '../../types/auth.types';
+import { useAuth } from '../../hooks/useAuth';
+import { GoogleAuthButton } from '../sso/GoogleAuthButton';
+import { EnterpriseSsoButton } from '../sso/EnterpriseSsoButton';
+import { EnterpriseSsoModal } from '../sso/EnterpriseSsoModal';
 import { Button } from '@/components/ui/Button';
-
 import { Card } from '@/components/ui/display/Card';
 import { Alert } from '@/components/ui/feedback/Alert';
 import { FormField } from '@/components/ui/form/FormField';
@@ -141,7 +146,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         });
         onSuccess?.();
       } catch {
-        // Trato no AuthContext
+        // Tratado no AuthContext
       }
     }
   };
@@ -167,7 +172,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
 
       {/* Formulário Principal em Grid */}
       <form onSubmit={handleSubmitForm} noValidate className="space-y-4">
-        {/* Linha 1: Nome (User) e E-mail (Mail) em Grid */}
+        {/* Linha 1: Nome e E-mail */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField
             label="Nome Completo"
@@ -181,7 +186,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             iconLeft={<User className="w-5 h-5 shrink-0" />}
             autoComplete="name"
             disabled={isLoading}
-            className="min-h-[44px] text-sm sm:text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="min-h-[44px] text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           />
 
           <FormField
@@ -196,11 +201,11 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             iconLeft={<Mail className="w-5 h-5 shrink-0" />}
             autoComplete="email"
             disabled={isLoading}
-            className="min-h-[44px] text-sm sm:text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="min-h-[44px] text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           />
         </div>
 
-        {/* Linha 2: Nome da Loja (Building) Inteiro */}
+        {/* Linha 2: Nome da Loja */}
         <div className="w-full">
           <FormField
             label="Nome da Sua Loja"
@@ -213,11 +218,11 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             helperText="Defina o nome da sua organização/tenant inicial"
             iconLeft={<Building className="w-5 h-5 shrink-0" />}
             disabled={isLoading}
-            className="min-h-[44px] text-sm sm:text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="min-h-[44px] text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           />
         </div>
 
-        {/* Linha 3: Senha (Lock) e Confirmar Senha (Lock) em Grid */}
+        {/* Linha 3: Senha e Confirmar Senha */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField
             label="Senha"
@@ -245,7 +250,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             }
             autoComplete="new-password"
             disabled={isLoading}
-            className="min-h-[44px] text-sm sm:text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="min-h-[44px] text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           />
 
           <FormField
@@ -274,7 +279,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             }
             autoComplete="new-password"
             disabled={isLoading}
-            className="min-h-[44px] text-sm sm:text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="min-h-[44px] text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           />
         </div>
 
@@ -314,13 +319,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         />
       </div>
 
-      {/* Modal SSO Enterprise (Fake Door) */}
+      {/* Modal SSO Enterprise */}
       <EnterpriseSsoModal
         isOpen={isSsoModalOpen}
         onClose={() => setIsSsoModalOpen(false)}
         initialEmail={formData.email}
       />
-
 
       {/* Link de Alternância para Login */}
       {onSwitchToLogin && (
@@ -351,3 +355,5 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
 
   return <div className={className}>{formContent}</div>;
 };
+
+export default RegisterForm;

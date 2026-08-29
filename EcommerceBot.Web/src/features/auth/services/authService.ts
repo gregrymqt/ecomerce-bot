@@ -1,3 +1,9 @@
+/**
+ * src/features/auth/services/authService.ts
+ *
+ * Serviço de comunicação HTTP com a Core API (.NET 9) para Autenticação.
+ */
+
 import { apiClient } from '@/lib/apiClient';
 import type {
   LoginCredentials,
@@ -11,11 +17,8 @@ import type {
   AuthTokenResponse,
   EnterpriseLeadPayload,
   EnterpriseLeadResponse,
-} from '@/features/auth';
+} from '../types/auth.types';
 
-/**
- * Serviço de comunicação HTTP com a API FastAPI de Autenticação.
- */
 export const authService = {
   /**
    * Realiza login do usuário e estabelece o cookie JWT de sessão.
@@ -83,4 +86,4 @@ export const authService = {
   },
 };
 
-
+export default authService;

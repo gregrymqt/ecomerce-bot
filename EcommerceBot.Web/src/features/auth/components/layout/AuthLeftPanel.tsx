@@ -1,3 +1,10 @@
+/**
+ * src/features/auth/components/layout/AuthLeftPanel.tsx
+ *
+ * Painel de branding lateral (Esquerda) para a tela de Autenticação.
+ * Exibe logo, manifesto Bento Grid com efeito glassmorphic e badge de segurança.
+ */
+
 import React from 'react';
 import { Bot, Zap, Sparkles, Network, ShieldCheck } from 'lucide-react';
 
@@ -5,10 +12,6 @@ export interface AuthLeftPanelProps {
   className?: string;
 }
 
-/**
- * Painel de branding lateral (Esquerda) para a tela de Autenticação.
- * Exibe logo, manifesto Bento Grid com efeito glassmorphic e badge de segurança.
- */
 export const AuthLeftPanel: React.FC<AuthLeftPanelProps> = ({ className = '' }) => {
   return (
     <div
@@ -103,3 +106,5 @@ export const AuthLeftPanel: React.FC<AuthLeftPanelProps> = ({ className = '' }) 
     </div>
   );
 };
+
+export default AuthLeftPanel;

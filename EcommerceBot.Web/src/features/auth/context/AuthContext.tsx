@@ -1,5 +1,11 @@
+/**
+ * src/features/auth/context/AuthContext.tsx
+ *
+ * Contexto e Provider de Autenticação, Gerenciamento de Sessão JWT e Multi-Tenancy.
+ */
+
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import { authService } from '@/features/auth';
+import { authService } from '../services/authService';
 import { getTenantId, saveTenantId, clearTenantId } from '@/utils/storage';
 import { getErrorMessage } from '@/utils/errors';
 import type {
@@ -12,7 +18,7 @@ import type {
   AuthState,
   GoogleCallbackRequest,
   AuthTokenResponse,
-} from '@/features/auth';
+} from '../types/auth.types';
 
 export interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<UserResponse>;
@@ -267,3 +273,5 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     </AuthContext.Provider>
   );
 };
+
+export default AuthProvider;

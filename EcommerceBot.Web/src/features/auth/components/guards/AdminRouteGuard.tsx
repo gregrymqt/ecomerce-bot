@@ -1,12 +1,13 @@
 /**
- * src/features/auth/components/AdminRouteGuard.tsx
+ * src/features/auth/components/guards/AdminRouteGuard.tsx
+ *
  * Componente de Guarda de Rota para proteger páginas exclusivas de Administradores.
  * Redireciona usuários comuns ou não autenticados para o Dashboard (/).
  */
 
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '../../hooks/useAuth';
 import { RefreshCw } from 'lucide-react';
 
 interface AdminRouteGuardProps {
@@ -26,9 +27,9 @@ export const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({ children }) =>
     );
   }
 
-  // 2. Validação de privilégios de administrador
+  // 2. Validação de privilégios de administrador (case-insensitive)
   const isAdmin = Boolean(
-    user && (user.is_admin === true || user.role === 'admin')
+    user && (user.is_admin === true || user.role?.toUpperCase() === 'ADMIN')
   );
 
   if (status === 'unauthenticated' || !user || !isAdmin) {

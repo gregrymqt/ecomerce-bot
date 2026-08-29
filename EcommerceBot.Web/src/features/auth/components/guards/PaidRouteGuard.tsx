@@ -1,5 +1,5 @@
 /**
- * src/features/auth/components/PaidRouteGuard.tsx
+ * src/features/auth/components/guards/PaidRouteGuard.tsx
  *
  * Componente de Guarda de Rota para proteger páginas funcionais e de execução de extração/robô.
  * Valida o saldo ativo de créditos do tenant (hasActiveCredits / balance_credits > 0).
@@ -8,7 +8,8 @@
 
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth, useFeatureGate } from '@/features/auth';
+import { useAuth } from '../../hooks/useAuth';
+import { useFeatureGate } from '../../hooks/useFeatureGate';
 import { RefreshCw } from 'lucide-react';
 
 interface PaidRouteGuardProps {

@@ -1,3 +1,9 @@
+/**
+ * src/features/auth/components/sso/EnterpriseSsoButton.tsx
+ *
+ * Botão para acionar o fluxo de SSO Enterprise (SAML / Okta).
+ */
+
 import React from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -36,3 +42,5 @@ export const EnterpriseSsoButton: React.FC<EnterpriseSsoButtonProps> = ({
     </Button>
   );
 };
+
+export default EnterpriseSsoButton;

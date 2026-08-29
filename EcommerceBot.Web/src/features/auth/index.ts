@@ -1,21 +1,23 @@
-export * from './types/auth.type';
-export * from './types/auth.types';
-export * from './services/authService';
-export * from './context/AuthContext';
-export * from './hooks/useAuth';
-export * from './hooks/useAuthForm';
-export * from './hooks/useFeatureGate';
-export * from './utils/storage';
-export * from './components/LoginForm';
-export * from './components/RegisterForm';
-export * from './components/GoogleAuthButton';
-export * from './components/EnterpriseSsoButton';
-export * from './components/EnterpriseSsoModal';
-export * from './components/AuthLeftPanel';
-export * from './components/AdminRouteGuard';
-export * from './components/PaidRouteGuard';
-export * from './components/ProtectedRoute';
+/**
+ * src/features/auth/index.ts
+ *
+ * Ponto de entrada público do módulo de Autenticação, Multi-Tenancy e Controle de Acesso.
+ */
 
+// Types
+export * from './types';
 
+// Services
+export * from './services';
 
+// Context
+export * from './context';
 
+// Hooks
+export * from './hooks';
+
+// Components (Guards, Forms, SSO, Layout)
+export * from './components';
+
+// Page Props / Types (Páginas são lazy-loaded via @/features/auth/pages/* para otimização de bundle)
+export type { AuthPageProps } from './pages/AuthPage';

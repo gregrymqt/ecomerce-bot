@@ -1,12 +1,13 @@
 /**
- * src/features/auth/components/ProtectedRoute.tsx
+ * src/features/auth/components/guards/ProtectedRoute.tsx
+ *
  * Componente de Guarda de Rota para proteger páginas privadas da aplicação.
  * Redireciona usuários não autenticados para a tela de login (/auth).
  */
 
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '../../hooks/useAuth';
 import { RefreshCw } from 'lucide-react';
 
 interface ProtectedRouteProps {
