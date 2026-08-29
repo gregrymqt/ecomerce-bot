@@ -7,12 +7,12 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { dashboardService } from '@/features/dashboard';
+import { dashboardService } from '../services/dashboard.service';
 import type {
   DashboardTelemetryResponse,
   PeriodFilter,
   RobotActivity,
-} from '@/features/dashboard';
+} from '../types';
 import { getErrorMessage } from '@/utils/errors';
 
 export function useDashboard(initialPeriod: PeriodFilter = 'WEEK') {
@@ -108,3 +108,5 @@ export function useDashboard(initialPeriod: PeriodFilter = 'WEEK') {
     formatLastUpdated,
   };
 }
+
+export default useDashboard;

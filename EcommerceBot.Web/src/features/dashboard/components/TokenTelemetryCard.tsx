@@ -7,10 +7,10 @@
 
 import React from 'react';
 import { Brain, ShieldCheck, Activity, Key } from 'lucide-react';
-import { cn } from '@/utils/cn';
-import type { TokenProviderUsage } from '@/features/dashboard';
+import { cn } from '@/lib/utils';
+import type { TokenProviderUsage } from '../types';
 
-interface TokenTelemetryCardProps {
+export interface TokenTelemetryCardProps {
   providers?: TokenProviderUsage[];
   averageLatencyMs?: number;
   className?: string;
@@ -112,3 +112,5 @@ export const TokenTelemetryCard: React.FC<TokenTelemetryCardProps> = ({
     </div>
   );
 };
+
+export default TokenTelemetryCard;

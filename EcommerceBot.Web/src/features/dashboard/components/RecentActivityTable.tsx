@@ -7,10 +7,10 @@
 
 import React from 'react';
 import { History, RefreshCw, Cpu, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
-import { cn } from '@/utils/cn';
-import type { RobotActivity } from '@/features/dashboard';
+import { cn } from '@/lib/utils';
+import type { RobotActivity } from '../types';
 
-interface RecentActivityTableProps {
+export interface RecentActivityTableProps {
   activities?: RobotActivity[];
   loading?: boolean;
   onRefresh?: () => void;
@@ -93,7 +93,7 @@ export const RecentActivityTable: React.FC<RecentActivityTableProps> = ({
             onClick={onRefresh}
             disabled={loading}
             aria-label="Atualizar lista de atividades"
-            className="min-h-[44px] h-11 px-3 text-xs text-slate-300 hover:text-white flex items-center gap-2 transition-colors border border-[#1E293B] rounded-xl bg-[#090D16] cursor-pointer disabled:opacity-50"
+            className="min-h-[44px] h-11 px-3 text-xs text-slate-300 hover:text-white flex items-center gap-2 transition-colors border border-[#1E293B] rounded-xl bg-[#090D16] cursor-pointer disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-violet-500"
           >
             <RefreshCw className={cn('h-4 w-4 text-violet-400', loading && 'animate-spin')} />
             <span className="hidden sm:inline">Atualizar</span>
@@ -154,3 +154,5 @@ export const RecentActivityTable: React.FC<RecentActivityTableProps> = ({
     </div>
   );
 };
+
+export default RecentActivityTable;

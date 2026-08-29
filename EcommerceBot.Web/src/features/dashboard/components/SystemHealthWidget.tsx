@@ -7,10 +7,10 @@
 
 import React from 'react';
 import { Server, Activity } from 'lucide-react';
-import { cn } from '@/utils/cn';
-import type { SystemHealthItem } from '@/features/dashboard';
+import { cn } from '@/lib/utils';
+import type { SystemHealthItem } from '../types';
 
-interface SystemHealthWidgetProps {
+export interface SystemHealthWidgetProps {
   healthItems?: SystemHealthItem[];
   className?: string;
 }
@@ -43,7 +43,7 @@ export const SystemHealthWidget: React.FC<SystemHealthWidgetProps> = ({
           </div>
           <div>
             <h3 className="text-lg font-bold text-white">Saúde dos Microsserviços</h3>
-            <p className="text-xs text-slate-400">Status da infraestrutura FastAPI & Workers</p>
+            <p className="text-xs text-slate-400">Status da infraestrutura Core API & Workers</p>
           </div>
         </div>
 
@@ -91,3 +91,5 @@ export const SystemHealthWidget: React.FC<SystemHealthWidgetProps> = ({
     </div>
   );
 };
+
+export default SystemHealthWidget;

@@ -1,8 +1,8 @@
 /**
- * src/features/dashboard/types/dashboard.type.ts
+ * src/features/dashboard/types/dashboard.types.ts
  *
  * Contratos de tipos e DTOs para a feature de Dashboard Principal e Telemetria.
- * Alinhado estritamente com a arquitetura DDD e os schemas da API FastAPI (ecom-autobot-api).
+ * Alinhado com a arquitetura DDD da Core API (.NET 9).
  */
 
 /**
@@ -11,12 +11,12 @@
 export type PeriodFilter = 'DAY' | 'WEEK' | 'MONTH';
 
 /**
- * Status das atividades de raspagem e IA executadas pelos workers.
+ * Status das atividades de extração e processamento por IA executadas pelos workers.
  */
 export type RobotActivityStatus = 'SUCCESS' | 'PROCESSING' | 'FAILED';
 
 /**
- * Status de operacionalidade e saúde de microsserviços do sistema.
+ * Status de operacionalidade e saúde dos serviços do sistema.
  */
 export type SystemHealthStatus = 'ONLINE' | 'DEGRADED' | 'OFFLINE';
 
@@ -88,7 +88,7 @@ export interface TokenProviderUsage {
  * Item de diagnóstico da saúde de um serviço/infraestrutura.
  */
 export interface SystemHealthItem {
-  /** Nome do serviço monitorado (ex: "PostgreSQL Database", "Redis Cache", "RabbitMQ Workers") */
+  /** Nome do serviço monitorado (ex: "SQL Server 2022", "Redis Cache", "RabbitMQ Workers") */
   service_name: string;
   /** Estado de saúde do serviço */
   status: SystemHealthStatus;

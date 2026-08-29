@@ -7,10 +7,10 @@
 
 import React from 'react';
 import { BarChart2, Calendar } from 'lucide-react';
-import { cn } from '@/utils/cn';
-import type { PeriodFilter, VolumeChartItem } from '@/features/dashboard';
+import { cn } from '@/lib/utils';
+import type { PeriodFilter, VolumeChartItem } from '../types';
 
-interface VolumePerformanceChartProps {
+export interface VolumePerformanceChartProps {
   items?: VolumeChartItem[];
   period: PeriodFilter;
   onPeriodChange: (period: PeriodFilter) => void;
@@ -65,7 +65,7 @@ export const VolumePerformanceChart: React.FC<VolumePerformanceChartProps> = ({
               type="button"
               onClick={() => onPeriodChange(p)}
               className={cn(
-                'min-h-[44px] h-11 px-4 rounded-lg text-xs font-bold transition-all cursor-pointer font-mono',
+                'min-h-[44px] h-11 px-4 rounded-lg text-xs font-bold transition-all cursor-pointer font-mono focus:outline-none focus:ring-2 focus:ring-violet-500',
                 period === p
                   ? 'bg-violet-600 text-white shadow-md shadow-violet-600/20'
                   : 'text-slate-400 hover:text-white'
@@ -135,3 +135,5 @@ export const VolumePerformanceChart: React.FC<VolumePerformanceChartProps> = ({
     </div>
   );
 };
+
+export default VolumePerformanceChart;

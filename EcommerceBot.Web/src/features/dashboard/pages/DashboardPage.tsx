@@ -15,12 +15,14 @@ import {
   AlertCircle,
   RefreshCw,
 } from 'lucide-react';
-import { useDashboard } from '@/features/dashboard';
-import { DashboardKpiGrid } from '@/features/dashboard';
-import { VolumePerformanceChart } from '@/features/dashboard';
-import { RecentActivityTable } from '@/features/dashboard';
-import { TokenTelemetryCard } from '@/features/dashboard';
-import { SystemHealthWidget } from '@/features/dashboard';
+import { useDashboard } from '../hooks/useDashboard';
+import {
+  DashboardKpiGrid,
+  VolumePerformanceChart,
+  RecentActivityTable,
+  TokenTelemetryCard,
+  SystemHealthWidget,
+} from '../components';
 import { Button } from '@/components/ui/Button';
 import { SEO } from '@/components/common/SEO';
 
@@ -44,6 +46,7 @@ export const DashboardPage: React.FC = () => {
         title="Dashboard & Telemetria"
         description="Painel de controle do E-Commerce AutoBot. Acompanhe métricas de ingestão, uso de tokens de IA e saúde do sistema."
       />
+
       {/* Cabeçalho da Página */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
@@ -67,7 +70,7 @@ export const DashboardPage: React.FC = () => {
             size="md"
             onClick={() => navigate('/demo')}
             iconLeft={<Zap className="h-4 w-4" />}
-            className="min-h-[44px]"
+            className="min-h-[44px] bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
           >
             Novo Scraping
           </Button>
@@ -78,7 +81,7 @@ export const DashboardPage: React.FC = () => {
             size="md"
             onClick={() => navigate('/catalog')}
             iconLeft={<Download className="h-4 w-4 text-emerald-400" />}
-            className="min-h-[44px] border-slate-800 text-slate-200 hover:bg-slate-800/80"
+            className="min-h-[44px] border-slate-800 text-slate-200 hover:bg-slate-800/80 font-semibold"
           >
             Exportar Catálogo
           </Button>
@@ -95,7 +98,7 @@ export const DashboardPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setError(null)}
-            className="text-xs font-bold underline hover:text-white cursor-pointer"
+            className="text-xs font-bold underline hover:text-white cursor-pointer min-h-[44px] inline-flex items-center"
           >
             Fechar
           </button>

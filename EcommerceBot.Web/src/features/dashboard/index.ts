@@ -1,14 +1,20 @@
 /**
  * src/features/dashboard/index.ts
- * Exportação pública centralizada da Feature de Dashboard & Telemetria.
+ *
+ * Ponto de entrada público do módulo de Dashboard Principal e Telemetria.
  */
 
-export * from './types/dashboard.type';
-export * from './services/dashboard.service';
-export * from './hooks/useDashboard';
-export * from './components/DashboardKpiGrid';
-export * from './components/VolumePerformanceChart';
-export * from './components/RecentActivityTable';
-export * from './components/TokenTelemetryCard';
-export * from './components/SystemHealthWidget';
+// Types
+export * from './types';
+
+// Services
+export * from './services';
+
+// Hooks
+export * from './hooks';
+
+// Components
+export * from './components';
+
+// Pages (Exportação direta para compatibilidade e lazy loading no AppRoutes)
 export * from './pages/DashboardPage';

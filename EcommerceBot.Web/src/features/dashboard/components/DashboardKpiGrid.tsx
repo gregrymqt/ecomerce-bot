@@ -7,10 +7,10 @@
 
 import React from 'react';
 import { Package, TrendingUp, CheckCircle, Clock, Zap } from 'lucide-react';
-import { cn } from '@/utils/cn';
-import type { DashboardKpiMetrics } from '@/features/dashboard';
+import { cn } from '@/lib/utils';
+import type { DashboardKpiMetrics } from '../types';
 
-interface DashboardKpiGridProps {
+export interface DashboardKpiGridProps {
   metrics?: DashboardKpiMetrics | null;
   loading?: boolean;
   className?: string;
@@ -121,3 +121,5 @@ export const DashboardKpiGrid: React.FC<DashboardKpiGridProps> = ({
     </div>
   );
 };
+
+export default DashboardKpiGrid;
