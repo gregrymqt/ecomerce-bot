@@ -33,12 +33,10 @@ services:
       timeout: 5s
       retries: 5
 
-
-
   mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: dev-mssql-bot
-    user: root # 👈 ADICIONE ESTA LINHA AQUI
+    user: root
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-YourStrong@Passw0rdDev}"

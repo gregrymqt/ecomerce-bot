@@ -1,121 +1,7 @@
 services:
-  # Banco de Dados PostgreSQL 16 local na VPS
-  postgres:
-    image: postgres:16-alpine
-    container_name: prod-postgres-bot
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-prod_postgres_password_secure}
-      POSTGRES_DB: ${POSTGRES_DB:-ecommerce_bot_db}
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1024M
-    volumes:
-      - postgres-prod-data:/var/lib/postgresql/data
-    networks:
-      - internal-net
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ecommerce_bot_db}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  # Redis de Alta Performance local na VPS
-  redis:
-    image: redis:7-alpine
-    container_name: prod-redis-bot
-    restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-prod_redis_password_secure}
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-    volumes:
-      - redis-prod-data:/data
-    networks:
-      - internal-net
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-prod_redis_password_secure}", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  # Broker de Mensageria RabbitMQ local na VPS
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    container_name: prod-rabbitmq-bot
-    restart: unless-stopped
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-prod_rabbitmq_password_secure}
-    ports:
-      - "127.0.0.1:15672:15672" # Painel Web de Gestão protegido no localhost da VPS
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-    volumes:
-      - rabbitmq-prod-data:/var/lib/rabbitmq
-    networks:
-      - internal-net
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  # AI/ML Engine & Worker Pool (Python)
-  worker:
-    build:
-      context: ../../EcommerceBot.Worker
-      dockerfile: Dockerfile
-    container_name: prod-worker-bot
-    restart: unless-stopped
-    env_file:
-      - .env.prod
-    environment:
-      - ENVIRONMENT=${ENVIRONMENT:-production}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - CORS_ORIGINS=${CORS_ORIGINS:-["*"]}
-      - POSTGRES_URI=${POSTGRES_URI:-postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-prod_postgres_password_secure}@postgres:5432/${POSTGRES_DB:-ecommerce_bot_db}}
-      - POSTGRES_URI_TRANSACTION=${POSTGRES_URI_TRANSACTION}
-      - POSTGRES_URI_SESSION=${POSTGRES_URI_SESSION}
-      - DB_SSL_CERT_PATH=${DB_SSL_CERT_PATH}
-      - RABBITMQ_URL=${RABBITMQ_URL:-amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-prod_rabbitmq_password_secure}@rabbitmq:5672/}
-      - REDIS_URL=${REDIS_URL:-redis://:${REDIS_PASSWORD:-prod_redis_password_secure}@redis:6379/0}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-prod_redis_password_secure}
-      - AES_MASTER_KEY=${AES_MASTER_KEY}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN}
-      - MERCADOPAGO_WEBHOOK_SECRET=${MERCADOPAGO_WEBHOOK_SECRET}
-      - RESEND_API_KEY=${RESEND_API_KEY}
-      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
-      - LOW_BALANCE_THRESHOLD=${LOW_BALANCE_THRESHOLD:-10}
-      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
-    deploy:
-      resources:
-        limits:
-          cpus: '1.5'
-          memory: 2048M
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - internal-net
+  # ==============================================================================
+  # 1. BANCO DE DADOS & INFRAESTRUTURA BASE
+  # ==============================================================================
 
   # Banco de Dados Microsoft SQL Server 2022 em Docker/Linux
   mssql:
@@ -146,7 +32,188 @@ services:
       retries: 5
       start_period: 20s
 
-  # Reverse Proxy Nginx com suporte a SSL e SSE
+  # Redis de Alta Performance (Cache & SSE Pub/Sub)
+  redis:
+    image: redis:7-alpine
+    container_name: prod-redis-bot
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-prod_redis_password_secure}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    volumes:
+      - redis-prod-data:/data
+    networks:
+      - internal-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-prod_redis_password_secure}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Broker de Mensageria RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: prod-rabbitmq-bot
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-prod_rabbitmq_password_secure}
+    ports:
+      - "127.0.0.1:15672:15672" # Painel Web de Gestão protegido no localhost da VPS
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    volumes:
+      - rabbitmq-prod-data:/var/lib/rabbitmq
+    networks:
+      - internal-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ==============================================================================
+  # 2. RUNNER DE MIGRAÇÕES DETERMINÍSTICAS (DbUp .NET 9)
+  # ==============================================================================
+  migrations:
+    build:
+      context: ../../Database.Migrations
+      dockerfile: Dockerfile
+    container_name: prod-migrations-bot
+    environment:
+      - MSSQL_CONNECTION_STRING=${MSSQL_CONNECTION_STRING:-Server=mssql,1433;Database=EcommerceBotDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:-prod_mssql_password_secure};TrustServerCertificate=True;Encrypt=False;}
+    depends_on:
+      mssql:
+        condition: service_healthy
+    networks:
+      - internal-net
+    profiles:
+      - tools
+      - migration
+
+  # ==============================================================================
+  # 3. API CENTRAL (.NET 9 C# - Clean Architecture & Dapper)
+  # ==============================================================================
+  api:
+    build:
+      context: ../../EcommerceBot.Core
+      dockerfile: Dockerfile
+    container_name: prod-api-bot
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=${MSSQL_CONNECTION_STRING:-Server=mssql,1433;Database=EcommerceBotDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:-prod_mssql_password_secure};TrustServerCertificate=True;Encrypt=False;}
+      - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD:-prod_redis_password_secure},abortConnect=false
+      - Redis__ConnectionString=redis:6379,password=${REDIS_PASSWORD:-prod_redis_password_secure},abortConnect=false
+      - Redis__Password=${REDIS_PASSWORD:-prod_redis_password_secure}
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=${RABBITMQ_USER:-guest}
+      - RabbitMQ__Password=${RABBITMQ_PASS:-prod_rabbitmq_password_secure}
+      - RabbitMQ__Port=5672
+      - Jwt__Key=${JWT_SECRET_KEY}
+      - Security__AesMasterKey=${AES_MASTER_KEY}
+      - Security__InternalServiceKey=${INTERNAL_SERVICE_KEY:-}
+      - MercadoPago__AccessToken=${MERCADOPAGO_ACCESS_TOKEN}
+      - MercadoPago__WebhookSecret=${MERCADOPAGO_WEBHOOK_SECRET}
+      - Resend__ApiKey=${RESEND_API_KEY}
+      - Resend__DeliveryMode=${RESEND_DELIVERY_MODE:-Live}
+      - Resend__FromEmail=${DEFAULT_FROM_EMAIL:-ECom AutoBot <notificacoes@ecommercebot.com>}
+      - Discord__WebhookUrl=${DISCORD_WEBHOOK_URL}
+      - Discord__Enabled=true
+      - Shopify__ClientId=${SHOPIFY_CLIENT_ID}
+      - Shopify__ClientSecret=${SHOPIFY_CLIENT_SECRET}
+      - Shopify__WebhookSecret=${SHOPIFY_WEBHOOK_SECRET}
+      - Nuvemshop__ClientId=${NUVEMSHOP_CLIENT_ID}
+      - Nuvemshop__ClientSecret=${NUVEMSHOP_CLIENT_SECRET}
+      - Nuvemshop__WebhookSecret=${NUVEMSHOP_WEBHOOK_SECRET}
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1536M
+    depends_on:
+      mssql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - internal-net
+
+  # ==============================================================================
+  # 4. AI/ML ENGINE & WORKER POOL (Python - Sem acesso a DB)
+  # ==============================================================================
+  worker:
+    build:
+      context: ../../EcommerceBot.Worker
+      dockerfile: Dockerfile
+    container_name: prod-worker-bot
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - CORS_ORIGINS=${CORS_ORIGINS:-["*"]}
+      - RABBITMQ_URL=${RABBITMQ_URL:-amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-prod_rabbitmq_password_secure}@rabbitmq:5672/}
+      - REDIS_URL=${REDIS_URL:-redis://:${REDIS_PASSWORD:-prod_redis_password_secure}@redis:6379/0}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-prod_redis_password_secure}
+      - AES_MASTER_KEY=${AES_MASTER_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN}
+      - MERCADOPAGO_WEBHOOK_SECRET=${MERCADOPAGO_WEBHOOK_SECRET}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
+      - LOW_BALANCE_THRESHOLD=${LOW_BALANCE_THRESHOLD:-10}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2048M
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - internal-net
+
+  # ==============================================================================
+  # 5. FRONTEND WEB SPA (React 18 + Vite + Nginx)
+  # ==============================================================================
+  web:
+    build:
+      context: ../../EcommerceBot.Web
+      dockerfile: Dockerfile
+    container_name: prod-web-bot
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    networks:
+      - internal-net
+
+  # ==============================================================================
+  # 6. REVERSE PROXY & GATEWAY DE BORDA (Nginx + SSL + SSE)
+  # ==============================================================================
   nginx:
     image: nginx:alpine
     container_name: prod-nginx-bot
@@ -165,11 +232,15 @@ services:
       - certbot-var:/var/lib/letsencrypt
       - certbot-www:/var/www/certbot
     depends_on:
+      - api
+      - web
       - worker
     networks:
       - internal-net
 
-  # Certbot - Automação de Renovação de SSL
+  # ==============================================================================
+  # 7. CERTBOT (Renovação Automática de Certificados SSL Let's Encrypt)
+  # ==============================================================================
   certbot:
     image: certbot/certbot
     container_name: prod-certbot-bot
@@ -185,11 +256,10 @@ networks:
     driver: bridge
 
 volumes:
-  postgres-prod-data:
-  redis-prod-data:
-  rabbitmq-prod-data:
   mssql-prod-data:
   mssql-prod-backup:
+  redis-prod-data:
+  rabbitmq-prod-data:
   certbot-etc:
   certbot-var:
   certbot-www:
