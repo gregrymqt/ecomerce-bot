@@ -20,11 +20,10 @@ import {
   ArrowRight,
   Sparkles,
 } from 'lucide-react';
-import { cn } from '@/utils/cn';
-import { useCheckout } from '@/features/checkout';
-import { OrderSummaryCard } from '@/features/checkout';
-import { PixPaymentTab } from '@/features/checkout';
-import { CreditCardPaymentTab } from '@/features/checkout';
+import { cn } from '@/lib/utils';
+import { useCheckout } from '../hooks/useCheckout';
+import { OrderSummaryCard, PixPaymentTab, CreditCardPaymentTab } from '../components';
+import { SEO } from '@/components/common/SEO';
 
 export const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
@@ -95,6 +94,11 @@ export const CheckoutPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#090D16] text-white flex flex-col justify-between selection:bg-emerald-500 selection:text-black">
+      <SEO
+        title={isTopup ? 'Recarga de Créditos de IA' : `Checkout Seguro - ${planName}`}
+        description="Finalize seu pagamento seguro com PIX ou Cartão de Crédito com ativação imediata."
+      />
+
       {/* Header Superior Compacto */}
       <header className="border-b border-[#1E293B] bg-[#15121B]/80 backdrop-blur-md sticky top-0 z-50 px-4 sm:px-8 py-3.5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -126,7 +130,7 @@ export const CheckoutPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate(isTopup ? '/wallet' : '/plans')}
-              className="min-h-[44px] h-11 px-4 rounded-xl bg-[#15121B] hover:bg-[#1E293B] border border-[#1E293B] text-slate-300 hover:text-white text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer"
+              className="min-h-[44px] h-11 px-4 rounded-xl bg-[#15121B] hover:bg-[#1E293B] border border-[#1E293B] text-slate-300 hover:text-white text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <ArrowLeft className="h-4 w-4" />
               <span>{isTopup ? 'Voltar para Carteira' : 'Voltar para Planos'}</span>
@@ -144,7 +148,7 @@ export const CheckoutPage: React.FC = () => {
             <button
               type="button"
               onClick={() => handleGeneratePix(rawPlanId)}
-              className="text-xs underline font-semibold text-red-300 hover:text-white ml-4 cursor-pointer"
+              className="text-xs underline font-semibold text-red-300 hover:text-white ml-4 cursor-pointer min-h-[44px] inline-flex items-center"
             >
               Tentar Novamente
             </button>
@@ -153,7 +157,7 @@ export const CheckoutPage: React.FC = () => {
 
         {/* TELA DE SUCESSO TRIUNFANTE APÓS APROVAÇÃO */}
         {paymentStatus === 'APPROVED' ? (
-          <div className="max-w-2xl mx-auto rounded-3xl bg-[#15121B] border border-emerald-500/30 p-8 sm:p-12 shadow-2xl text-center space-y-6 animate-fadeIn relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r before:from-emerald-500 before:via-teal-400 before:to-indigo-500">
+          <div className="max-w-2xl mx-auto rounded-3xl bg-[#15121B] border border-emerald-500/30 p-8 sm:p-12 shadow-2xl text-center space-y-6 animate-in fade-in duration-300 relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r before:from-emerald-500 before:via-teal-400 before:to-indigo-500">
             <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20 transition-transform duration-500 scale-105">
               <CheckCircle2 className="h-10 w-10" />
             </div>
@@ -181,7 +185,7 @@ export const CheckoutPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/dashboard')}
-              className="w-full min-h-[48px] h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 cursor-pointer"
+              className="w-full min-h-[48px] h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <span>Acessar Painel Agora</span>
               <ArrowRight className="h-4 w-4" />
@@ -211,13 +215,15 @@ export const CheckoutPage: React.FC = () => {
                 </p>
               </div>
 
-              {/* Alternador de Abas PIX / Cartão */}
-              <div className="grid grid-cols-2 gap-2 bg-[#090D16] p-1.5 rounded-xl border border-[#1E293B]">
+              {/* Alternador de Abas PIX / Cartão com A11y role=tablist */}
+              <div role="tablist" aria-label="Forma de Pagamento" className="grid grid-cols-2 gap-2 bg-[#090D16] p-1.5 rounded-xl border border-[#1E293B]">
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={activeTab === 'PIX'}
                   onClick={() => setActiveTab('PIX')}
                   className={cn(
-                    'min-h-[44px] h-11 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer',
+                    'min-h-[44px] h-11 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500',
                     activeTab === 'PIX'
                       ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                       : 'text-slate-400 hover:text-white hover:bg-[#15121B]'
@@ -229,9 +235,11 @@ export const CheckoutPage: React.FC = () => {
 
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={activeTab === 'CREDIT_CARD'}
                   onClick={() => setActiveTab('CREDIT_CARD')}
                   className={cn(
-                    'min-h-[44px] h-11 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer',
+                    'min-h-[44px] h-11 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500',
                     activeTab === 'CREDIT_CARD'
                       ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                       : 'text-slate-400 hover:text-white hover:bg-[#15121B]'

@@ -1,8 +1,8 @@
 /**
- * src/features/checkout/types/checkout.type.ts
+ * src/features/checkout/types/checkout.types.ts
  *
  * Contratos de tipos e DTOs para o fluxo de Checkout Transparente (PIX e Cartão de Crédito).
- * Alinhado estritamente com a arquitetura DDD e os schemas do backend (ecom-autobot-api).
+ * Alinhado com a arquitetura DDD da Core API (.NET 9).
  */
 
 /**
@@ -14,6 +14,17 @@ export type PaymentMethod = 'PIX' | 'CREDIT_CARD';
  * Status possíveis de uma transação de pagamento.
  */
 export type PaymentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+
+/**
+ * Evento de SSE recebido durante o streaming de aprovação de pagamento.
+ */
+export interface PaymentSseEvent {
+  type?: string;
+  status?: string;
+  event?: string;
+  payment_id?: string;
+  timestamp?: string;
+}
 
 /**
  * Payload para requisição de criação de pagamento via PIX.

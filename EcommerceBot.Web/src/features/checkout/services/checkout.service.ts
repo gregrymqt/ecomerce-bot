@@ -12,7 +12,7 @@ import type {
   CreditCardPaymentResponse,
   OrderStatusSyncResponse,
   PixPaymentResponse,
-} from '@/features/checkout';
+} from '../types';
 
 export const checkoutService = {
   /**
@@ -84,3 +84,5 @@ export const checkoutService = {
     }
   },
 };
+
+export default checkoutService;

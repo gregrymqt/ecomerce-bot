@@ -9,12 +9,18 @@
 import React from 'react';
 import { initMercadoPago, createCardToken } from '@mercadopago/sdk-react';
 import { CreditCardPaymentForm, type CreditCardFormData } from '@/components/ui/payment/CreditCardPaymentForm';
-import type { CreditCardPaymentPayload } from '@/features/checkout';
+import type { CreditCardPaymentPayload } from '../types';
 
 const MP_PUBLIC_KEY = import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY;
 
 if (MP_PUBLIC_KEY) {
   initMercadoPago(MP_PUBLIC_KEY, { locale: 'pt-BR' });
+}
+
+interface MercadoPagoCardTokenResponse {
+  id?: string;
+  status?: string;
+  [key: string]: unknown;
 }
 
 export interface CreditCardPaymentTabProps {
@@ -50,7 +56,8 @@ export const CreditCardPaymentTab: React.FC<CreditCardPaymentTabProps> = ({
     let cardTokenId = '';
 
     try {
-      const tokenResponse = await (createCardToken as any)({
+      const tokenFunction = createCardToken as (params: Record<string, unknown>) => Promise<MercadoPagoCardTokenResponse>;
+      const tokenResponse = await tokenFunction({
         cardNumber: cleanCardNumber,
         cardholderName: formData.cardholderName.trim(),
         cardExpirationMonth: formData.expirationMonth,
@@ -63,7 +70,7 @@ export const CreditCardPaymentTab: React.FC<CreditCardPaymentTabProps> = ({
       if (tokenResponse && tokenResponse.id) {
         cardTokenId = tokenResponse.id;
       }
-    } catch (sdkErr: any) {
+    } catch (sdkErr: unknown) {
       console.warn('Erro na tokenização Mercado Pago no checkout, gerando token seguro de contingência:', sdkErr);
     }
 

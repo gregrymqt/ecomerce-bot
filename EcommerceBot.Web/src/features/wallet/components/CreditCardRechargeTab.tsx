@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/display/Card';
 import { CreditCardPaymentTab } from '@/features/checkout/components/CreditCardPaymentTab';
 import { walletService } from '../services/wallet.service';
 import type { CreditCardRechargePayload, CardPaymentPayer } from '../types/wallet.type';
-import type { CreditCardPaymentPayload } from '@/features/checkout/types/checkout.type';
+import type { CreditCardPaymentPayload } from '@/features/checkout';
 
 export interface CreditCardRechargeTabProps {
   packageId?: string;

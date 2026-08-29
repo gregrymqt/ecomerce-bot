@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { CheckCircle, Sparkles, ShieldCheck, Zap } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { cn } from '@/lib/utils';
 
 export interface OrderSummaryCardProps {
   isTopup?: boolean;

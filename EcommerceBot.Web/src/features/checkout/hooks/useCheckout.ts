@@ -7,16 +7,17 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { checkoutService } from '@/features/checkout';
+import { checkoutService } from '../services/checkout.service';
 import { SSEClient } from '@/lib/sseClient';
 import type {
   PaymentMethod,
   PaymentStatus,
+  PaymentSseEvent,
   PixPaymentResponse,
   CreditCardPaymentPayload,
   CreditCardPaymentResponse,
   OrderStatusSyncResponse,
-} from '@/features/checkout';
+} from '../types';
 import { getErrorMessage } from '@/utils/errors';
 
 export function useCheckout(initialPlanId?: string) {
@@ -31,7 +32,7 @@ export function useCheckout(initialPlanId?: string) {
 
   // Ref para o timer de reset do botão de cópia
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sseClientRef = useRef<SSEClient | null>(null);
+  const sseClientRef = useRef<SSEClient<PaymentSseEvent> | null>(null);
 
   /**
    * Formata os segundos em uma string MM:SS (ex: 15:00 ou 04:32).
@@ -75,11 +76,11 @@ export function useCheckout(initialPlanId?: string) {
       return;
     }
 
-    const sse = new SSEClient<any>();
+    const sse = new SSEClient<PaymentSseEvent>();
     sseClientRef.current = sse;
 
     sse.connect({
-      endpoint: '/api/v1/demo/stream',
+      endpoint: '/api/v1/stream',
       onMessage: (eventData) => {
         if (
           eventData?.type === 'payment_approved' ||
@@ -267,3 +268,5 @@ export function useCheckout(initialPlanId?: string) {
     setError,
   };
 }
+
+export default useCheckout;

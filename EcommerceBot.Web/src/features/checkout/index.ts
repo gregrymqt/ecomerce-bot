@@ -1,12 +1,20 @@
 /**
  * src/features/checkout/index.ts
- * Exportação pública da feature de Checkout Transparente.
+ *
+ * Ponto de entrada público do módulo de Checkout Transparente.
  */
 
-export * from './types/checkout.type';
-export * from './services/checkout.service';
-export * from './hooks/useCheckout';
-export * from './components/OrderSummaryCard';
-export * from './components/PixPaymentTab';
-export * from './components/CreditCardPaymentTab';
+// Types
+export * from './types';
+
+// Services
+export * from './services';
+
+// Hooks
+export * from './hooks';
+
+// Components
+export * from './components';
+
+// Pages (Exportação direta para compatibilidade e lazy loading no AppRoutes)
 export * from './pages/CheckoutPage';

@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { PixPaymentDisplay } from '@/components/ui/payment/PixPaymentDisplay';
-import type { PixPaymentResponse, PaymentStatus } from '@/features/checkout';
+import type { PixPaymentResponse, PaymentStatus } from '../types';
 
 export interface PixPaymentTabProps {
   pixData: PixPaymentResponse | null;

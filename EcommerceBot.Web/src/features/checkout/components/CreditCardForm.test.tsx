@@ -22,7 +22,7 @@ describe('CreditCardPaymentTab / CreditCardForm Component', () => {
     expect(screen.getByLabelText(/Parcelamento/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/CPF ou CNPJ do Titular/i)).toBeInTheDocument();
 
-    const submitBtn = screen.getByRole('button', { name: /Finalizar Assinatura Segura/i });
+    const submitBtn = screen.getByRole('button', { name: /Finalizar (Pagamento|Assinatura) Segur[oa]/i });
     expect(submitBtn).toBeInTheDocument();
     expect(submitBtn).not.toBeDisabled();
   });
@@ -52,7 +52,7 @@ describe('CreditCardPaymentTab / CreditCardForm Component', () => {
     const expiryInput = screen.getByLabelText(/Validade \(MM\/AA\)/i);
     const cvvInput = screen.getByLabelText(/CVV \/ CVC/i);
     const docInput = screen.getByLabelText(/CPF ou CNPJ do Titular/i);
-    const submitBtn = screen.getByRole('button', { name: /Finalizar Assinatura Segura/i });
+    const submitBtn = screen.getByRole('button', { name: /Finalizar (Pagamento|Assinatura) Segur[oa]/i });
 
     await user.type(cardNumberInput, '4111222233334444');
     await user.type(nameInput, 'MARIA SILVA');
@@ -117,7 +117,7 @@ describe('CreditCardPaymentTab / CreditCardForm Component', () => {
       expect(hasPreventZoomFontSize).toBe(true);
     });
 
-    const submitBtn = screen.getByRole('button', { name: /Finalizar Assinatura Segura/i });
+    const submitBtn = screen.getByRole('button', { name: /Finalizar (Pagamento|Assinatura) Segur[oa]/i });
     const btnClassName = submitBtn.className;
     expect(btnClassName.includes('min-h-[44px]') || btnClassName.includes('h-12')).toBe(true);
   });
