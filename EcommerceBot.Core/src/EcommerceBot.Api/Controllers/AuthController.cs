@@ -34,8 +34,9 @@ public class AuthController : BaseApiController
     {
         try
         {
-            var response = await _authService.RegisterUserAsync(request);
-            return Created("", response);
+            var (user, token) = await _authService.RegisterUserAsync(request);
+            AppendAuthCookie(token);
+            return Created("", user);
         }
         catch (Exception ex)
         {
@@ -51,16 +52,7 @@ public class AuthController : BaseApiController
         try
         {
             var (user, token) = await _authService.AuthenticateUserAsync(request);
-
-            var cookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None,
-                MaxAge = TimeSpan.FromHours(2)
-            };
-            Response.Cookies.Append("access_token", token, cookieOptions);
-
+            AppendAuthCookie(token);
             return Ok(user);
         }
         catch (Exception ex)
@@ -79,13 +71,7 @@ public class AuthController : BaseApiController
             await _authService.RevokeTokenAsync(token);
         }
 
-        Response.Cookies.Delete("access_token", new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.None
-        });
-
+        DeleteAuthCookie();
         return Ok(new { Message = "Logout realizado com sucesso." });
     }
 
@@ -133,6 +119,10 @@ public class AuthController : BaseApiController
         try
         {
             var response = await _googleAuthService.AuthenticateGoogleUserAsync(request);
+            if (!string.IsNullOrEmpty(response.AccessToken))
+            {
+                AppendAuthCookie(response.AccessToken);
+            }
             return Ok(response);
         }
         catch (Exception ex)
@@ -149,5 +139,31 @@ public class AuthController : BaseApiController
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
         var response = await _enterpriseLeadService.RegisterLeadAsync(request, ip);
         return Created("", response);
+    }
+
+    private void AppendAuthCookie(string token)
+    {
+        var isHttps = Request.IsHttps;
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = isHttps,
+            SameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax,
+            MaxAge = TimeSpan.FromHours(2),
+            Path = "/"
+        };
+        Response.Cookies.Append("access_token", token, cookieOptions);
+    }
+
+    private void DeleteAuthCookie()
+    {
+        var isHttps = Request.IsHttps;
+        Response.Cookies.Delete("access_token", new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = isHttps,
+            SameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax,
+            Path = "/"
+        });
     }
 }

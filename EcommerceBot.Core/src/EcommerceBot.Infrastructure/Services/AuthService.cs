@@ -31,7 +31,7 @@ namespace EcommerceBot.Infrastructure.Services
             _jwtOptions = jwtOptions.Value;
         }
 
-        public async Task<UserResponse> RegisterUserAsync(CreateUserRequest request)
+        public async Task<(UserResponse User, string AccessToken)> RegisterUserAsync(CreateUserRequest request)
         {
             var existing = await _userRepository.GetByEmailAsync(request.Email);
             if (existing != null)
@@ -74,8 +74,9 @@ namespace EcommerceBot.Infrastructure.Services
             };
 
             var created = await _userRepository.CreateAsync(newUser);
+            var jwt = GenerateJwtToken(created);
 
-            return new UserResponse
+            var resp = new UserResponse
             {
                 Id = created.Id,
                 Email = created.Email,
@@ -84,6 +85,8 @@ namespace EcommerceBot.Infrastructure.Services
                 Tenants = new List<string> { created.TenantId.ToString() },
                 CreatedAt = created.CreatedAt
             };
+
+            return (resp, jwt);
         }
 
         public async Task<(UserResponse User, string AccessToken)> AuthenticateUserAsync(LoginRequest request)
@@ -94,6 +97,23 @@ namespace EcommerceBot.Infrastructure.Services
                 throw new Exception("Credenciais inválidas.");
             }
 
+            var jwt = GenerateJwtToken(user);
+
+            var resp = new UserResponse
+            {
+                Id = user.Id,
+                Email = user.Email,
+                Name = user.FullName,
+                Role = user.Role,
+                Tenants = new List<string> { user.TenantId.ToString() },
+                CreatedAt = user.CreatedAt
+            };
+
+            return (resp, jwt);
+        }
+
+        private string GenerateJwtToken(User user)
+        {
             var tokenHandler = new JwtSecurityTokenHandler();
             var keyStr = _jwtOptions.Key;
             if (string.IsNullOrWhiteSpace(keyStr))
@@ -108,7 +128,10 @@ namespace EcommerceBot.Infrastructure.Services
                 Subject = new ClaimsIdentity(new[]
                 {
                     new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                     new Claim(JwtRegisteredClaimNames.Email, user.Email),
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.Name, user.FullName ?? string.Empty),
                     new Claim("tenantId", user.TenantId.ToString()),
                     new Claim(ClaimTypes.Role, user.Role)
                 }),
@@ -118,19 +141,7 @@ namespace EcommerceBot.Infrastructure.Services
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
             var token = tokenHandler.CreateToken(descriptor);
-            var jwt = tokenHandler.WriteToken(token);
-
-            var resp = new UserResponse
-            {
-                Id = user.Id,
-                Email = user.Email,
-                Name = user.FullName,
-                Role = user.Role,
-                Tenants = new List<string> { user.TenantId.ToString() },
-                CreatedAt = user.CreatedAt
-            };
-
-            return (resp, jwt);
+            return tokenHandler.WriteToken(token);
         }
 
         public async Task<UserResponse> UpdateProfileAsync(Guid userId, UpdateUserRequest request)
@@ -161,10 +172,38 @@ namespace EcommerceBot.Infrastructure.Services
             return Task.CompletedTask;
         }
 
-        public Task<AuthenticatedUser> ResolveUserActivePlanAsync(AuthenticatedUser currentUser, string? tenantId)
+        public async Task<AuthenticatedUser> ResolveUserActivePlanAsync(AuthenticatedUser currentUser, string? tenantId)
         {
-            currentUser.Plan = currentUser.Role == "ADMIN" ? "admin" : "free";
-            return Task.FromResult(currentUser);
+            if (Guid.TryParse(currentUser.UserId, out var userId))
+            {
+                var user = await _userRepository.GetByIdAsync(userId);
+                if (user != null)
+                {
+                    currentUser.Name = user.FullName;
+                    currentUser.Email = user.Email;
+                    currentUser.Role = user.Role;
+                    currentUser.Tenants = new List<string> { user.TenantId.ToString() };
+
+                    var targetTenantId = user.TenantId;
+                    if (!string.IsNullOrEmpty(tenantId) && Guid.TryParse(tenantId, out var parsedTenantId))
+                    {
+                        targetTenantId = parsedTenantId;
+                    }
+
+                    var tenant = await _tenantRepository.GetByIdAsync(targetTenantId);
+                    if (tenant != null)
+                    {
+                        currentUser.Plan = user.Role == "ADMIN" ? "admin" : (tenant.PlanTier?.ToLowerInvariant() ?? "free");
+                    }
+                }
+            }
+
+            if (string.IsNullOrEmpty(currentUser.Plan))
+            {
+                currentUser.Plan = currentUser.Role == "ADMIN" ? "admin" : "free";
+            }
+
+            return currentUser;
         }
     }
 }

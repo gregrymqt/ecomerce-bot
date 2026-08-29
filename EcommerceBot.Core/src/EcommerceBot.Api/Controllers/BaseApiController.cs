@@ -44,7 +44,7 @@ public abstract class BaseApiController : ControllerBase
     {
         get
         {
-            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub")?.Value;
             return Guid.TryParse(userIdStr, out var userId) ? userId : Guid.Empty;
         }
     }
