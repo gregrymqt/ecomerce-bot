@@ -18,7 +18,7 @@ import type {
   NuvemshopBatchStockPriceItem,
   NuvemshopBatchStockPriceResponse,
   NuvemshopCategory,
-} from '@/features/integrations';
+} from '../types';
 
 export const integrationService = {
   /**
@@ -277,3 +277,5 @@ export const integrationService = {
     }
   },
 };
+
+export default integrationService;

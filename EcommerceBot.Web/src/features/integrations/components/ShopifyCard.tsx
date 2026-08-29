@@ -3,6 +3,7 @@
  *
  * Card de Integração da plataforma Shopify.
  * Exibe status de conexão, domínio, token mascarado, latência e ações contextuais.
+ * Em conformidade com acessibilidade WCAG 2.1 AA e touch targets mínimos de 44px.
  */
 
 import React from 'react';
@@ -18,10 +19,11 @@ import {
   Plus,
   ShieldCheck,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Card, Button, Badge } from '@/components/ui';
-import type { StoreIntegration } from '@/features/integrations';
+import type { StoreIntegration } from '../types';
 
-interface ShopifyCardProps {
+export interface ShopifyCardProps {
   integration?: StoreIntegration | null;
   loadingTest?: boolean;
   loadingDisconnect?: boolean;
@@ -47,9 +49,10 @@ export const ShopifyCard: React.FC<ShopifyCardProps> = ({
 
   return (
     <Card
-      className={`bg-[#15121B] border-[#1E293B] hover:border-slate-700 transition-all text-slate-100 space-y-6 flex flex-col justify-between shadow-xl ${
-        className || ''
-      }`}
+      className={cn(
+        'bg-[#15121B] border-[#1E293B] hover:border-slate-700 transition-all text-slate-100 space-y-6 flex flex-col justify-between shadow-xl',
+        className
+      )}
     >
       <div>
         {/* Cabeçalho do Card da Shopify */}
@@ -70,12 +73,12 @@ export const ShopifyCard: React.FC<ShopifyCardProps> = ({
           {/* Badge Conectado / Desconectado */}
           <div>
             {isConnected ? (
-              <Badge variant="success" dot className="px-3 py-1 font-semibold">
+              <Badge variant="success" dot className="px-3 py-1 font-semibold min-h-[32px]">
                 <CheckCircle className="h-3.5 w-3.5 mr-1" />
                 Conectado
               </Badge>
             ) : (
-              <Badge variant="error" dot className="px-3 py-1 font-semibold">
+              <Badge variant="error" dot className="px-3 py-1 font-semibold min-h-[32px]">
                 <AlertCircle className="h-3.5 w-3.5 mr-1" />
                 Desconectado
               </Badge>
@@ -132,7 +135,7 @@ export const ShopifyCard: React.FC<ShopifyCardProps> = ({
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
               Conecte sua loja Shopify para catalogar produtos com IA, sincronizar variações, preços e atualizar estoques automaticamente via Webhooks.
             </p>
-            <div className="rounded-xl bg-[#090D16] border border-[#1E293B] p-3 flex items-center gap-2.5 text-xs text-slate-400">
+            <div className="rounded-xl bg-[#090D16] border border-[#1E293B] p-3.5 flex items-center gap-2.5 text-xs text-slate-400">
               <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
               <span>Token privado criptografado com chave mestra AES-256 GCM (BYOK).</span>
             </div>
@@ -192,6 +195,7 @@ export const ShopifyCard: React.FC<ShopifyCardProps> = ({
           <Button
             variant="primary"
             onClick={onEditCredentials}
+            aria-label="Conectar Loja Shopify"
             iconLeft={<Plus className="h-4 w-4" />}
             className="w-full h-12 bg-emerald-600 hover:bg-emerald-500 font-bold shadow-lg shadow-emerald-600/20 text-white min-h-[44px]"
           >
@@ -202,3 +206,5 @@ export const ShopifyCard: React.FC<ShopifyCardProps> = ({
     </Card>
   );
 };
+
+export default ShopifyCard;

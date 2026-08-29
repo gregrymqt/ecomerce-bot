@@ -1,11 +1,19 @@
+/**
+ * src/features/integrations/hooks/useShopifyIntegration.ts
+ *
+ * Hook especializado para mutações atômicas da Shopify (estoque, status e credenciais).
+ */
+
 import { useState, useCallback } from 'react';
 import { integrationService } from '../services/integration.service';
 import type {
   ShopifyInventoryUpdateInput,
   ShopifyProductStatus,
   ShopifyProductResponse,
-} from '../types/shopify.type';
-import type { StoreIntegration, ShopifyCredentialsPayload } from '../types/integration.type';
+  StoreIntegration,
+  ShopifyCredentialsPayload,
+} from '../types';
+import { getErrorMessage } from '@/utils/errors';
 
 export function useShopifyIntegration() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,7 +30,7 @@ export function useShopifyIntegration() {
         const result = await integrationService.saveShopifyCredentials(payload);
         return result;
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Erro ao salvar credenciais Shopify.';
+        const message = getErrorMessage(err, 'Erro ao salvar credenciais Shopify.');
         setError(message);
         return null;
       } finally {
@@ -46,7 +54,7 @@ export function useShopifyIntegration() {
       }
       throw new Error('URL de autorização não retornada pelo servidor.');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Erro ao iniciar OAuth da Shopify.';
+      const message = getErrorMessage(err, 'Erro ao iniciar OAuth da Shopify.');
       setError(message);
       return false;
     } finally {
@@ -65,7 +73,7 @@ export function useShopifyIntegration() {
         const result = await integrationService.updateShopifyInventory(sku, payload);
         return result;
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Erro ao atualizar estoque na Shopify.';
+        const message = getErrorMessage(err, 'Erro ao atualizar estoque na Shopify.');
         setError(message);
         return null;
       } finally {
@@ -86,7 +94,7 @@ export function useShopifyIntegration() {
         const result = await integrationService.updateShopifyStatus(sku, status);
         return result;
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Erro ao alterar status na Shopify.';
+        const message = getErrorMessage(err, 'Erro ao alterar status na Shopify.');
         setError(message);
         return null;
       } finally {
@@ -106,3 +114,5 @@ export function useShopifyIntegration() {
     updateStatus,
   };
 }
+
+export default useShopifyIntegration;

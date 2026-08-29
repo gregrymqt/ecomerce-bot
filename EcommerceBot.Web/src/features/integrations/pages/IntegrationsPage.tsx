@@ -3,7 +3,7 @@
  *
  * Página Principal da Central de Integrações.
  * Exibe grid de KPIs, cards de plataformas conectadas (Shopify, Nuvemshop),
- * banner de segurança e modal de credenciais.
+ * banner de segurança e modais de credenciais.
  */
 
 import React from 'react';
@@ -11,18 +11,18 @@ import {
   Link as LinkIcon,
   Plus,
   ShieldCheck,
-  AlertCircle,
-  CheckCircle,
   Sparkles,
   ArrowRight,
 } from 'lucide-react';
-import { useIntegrations } from '@/features/integrations';
-import { IntegrationKpiGrid } from '@/features/integrations';
-import { ShopifyCard } from '@/features/integrations';
-import { NuvemshopCard } from '@/features/integrations';
-import { ShopifyCredentialsModal } from '@/features/integrations';
-import { NuvemshopCredentialsModal } from '@/features/integrations';
-import { Button } from '@/components/ui/Button';
+import { useIntegrations } from '../hooks';
+import {
+  IntegrationKpiGrid,
+  ShopifyCard,
+  NuvemshopCard,
+  ShopifyCredentialsModal,
+  NuvemshopCredentialsModal,
+} from '../components';
+import { Button, Alert } from '@/components/ui';
 
 export const IntegrationsPage: React.FC = () => {
   const {
@@ -50,9 +50,13 @@ export const IntegrationsPage: React.FC = () => {
   const hasConnectedStore = Boolean(shopifyIntegration || nuvemshopIntegration);
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-16 px-4 sm:px-6">
+    <div
+      role="main"
+      aria-label="Central de Integrações de E-commerce"
+      className="space-y-8 max-w-7xl mx-auto pb-16 px-4 sm:px-6"
+    >
       {/* Cabeçalho da Página */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-400 mb-1">
             <LinkIcon className="h-4 w-4" />
@@ -72,55 +76,43 @@ export const IntegrationsPage: React.FC = () => {
             variant="primary"
             size="md"
             onClick={() => setIsShopifyModalOpen(true)}
+            aria-label="Adicionar Nova Loja"
             iconLeft={<Plus className="h-4 w-4" />}
             className="min-h-[44px] bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-600/25"
           >
             Adicionar Nova Loja
           </Button>
         </div>
-      </div>
+      </header>
 
       {/* Alertas de Erro ou Sucesso */}
       {error && (
-        <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-400 flex items-center justify-between shadow-lg">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 shrink-0 text-red-400" />
-            <span>{error}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setError(null)}
-            className="text-xs font-bold underline hover:text-white ml-4 cursor-pointer"
-          >
-            Fechar
-          </button>
+        <div className="animate-fade-in">
+          <Alert variant="error" title="Erro de Integração" onClose={() => setError(null)}>
+            {error}
+          </Alert>
         </div>
       )}
 
       {successMessage && (
-        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4 text-sm text-emerald-400 flex items-center justify-between shadow-lg">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 shrink-0 text-emerald-400" />
-            <span>{successMessage}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSuccessMessage(null)}
-            className="text-xs font-bold underline hover:text-white ml-4 cursor-pointer"
-          >
-            Fechar
-          </button>
+        <div className="animate-fade-in">
+          <Alert variant="success" title="Sucesso" onClose={() => setSuccessMessage(null)}>
+            {successMessage}
+          </Alert>
         </div>
       )}
 
       {/* Seção 1: Grid de KPIs */}
-      <section>
+      <section aria-label="Métricas de Integração">
         <IntegrationKpiGrid summary={summary} loading={loading} />
       </section>
 
       {/* Empty State Banner (quando nenhuma loja conectada) */}
       {!loading && !hasConnectedStore && (
-        <section className="rounded-2xl bg-[#15121B] border border-slate-800 p-6 sm:p-8 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl">
+        <section
+          aria-label="Primeiros Passos de Integração"
+          className="rounded-2xl bg-[#15121B] border border-slate-800 p-6 sm:p-8 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl"
+        >
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-bold">
               <Sparkles className="h-3.5 w-3.5" />
@@ -138,6 +130,7 @@ export const IntegrationsPage: React.FC = () => {
             variant="primary"
             size="md"
             onClick={() => setIsShopifyModalOpen(true)}
+            aria-label="Conectar Shopify Agora"
             iconRight={<ArrowRight className="h-4 w-4" />}
             className="shrink-0 bg-indigo-600 hover:bg-indigo-500 font-bold text-white shadow-xl shadow-indigo-600/25 min-h-[44px]"
           >
@@ -147,7 +140,10 @@ export const IntegrationsPage: React.FC = () => {
       )}
 
       {/* Seção 2: Grid de Cards das Plataformas */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <section
+        aria-label="Plataformas Disponíveis para Integração"
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+      >
         <ShopifyCard
           integration={shopifyIntegration}
           loadingTest={Boolean(actionLoading[`test_${shopifyIntegration?.id}`])}
@@ -170,7 +166,10 @@ export const IntegrationsPage: React.FC = () => {
       </section>
 
       {/* Banner Informativo de Segurança */}
-      <section className="rounded-2xl bg-[#15121B] border border-[#1E293B] p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+      <section
+        aria-label="Segurança e Criptografia"
+        className="rounded-2xl bg-[#15121B] border border-[#1E293B] p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl"
+      >
         <div className="flex items-center gap-3.5">
           <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
             <ShieldCheck className="h-6 w-6" />

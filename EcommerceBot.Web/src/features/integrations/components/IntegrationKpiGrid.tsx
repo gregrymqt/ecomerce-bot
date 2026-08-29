@@ -7,10 +7,10 @@
 
 import React from 'react';
 import { Store, Activity, RefreshCw } from 'lucide-react';
-import { cn } from '@/utils/cn';
-import type { IntegrationSummary } from '@/features/integrations';
+import { cn } from '@/lib/utils';
+import type { IntegrationSummary } from '../types';
 
-interface IntegrationKpiGridProps {
+export interface IntegrationKpiGridProps {
   summary: IntegrationSummary | null;
   loading?: boolean;
   className?: string;
@@ -24,7 +24,7 @@ export const IntegrationKpiGrid: React.FC<IntegrationKpiGridProps> = ({
   const connectedCount = summary?.connected_stores_count ?? 0;
   const maxAllowed = summary?.max_stores_allowed ?? 3;
   const apiStatus = summary?.api_status_percentage ?? 100;
-  
+
   const formattedLastSync = summary?.last_sync_timestamp
     ? new Date(summary.last_sync_timestamp).toLocaleDateString('pt-BR', {
         day: '2-digit',
@@ -38,7 +38,11 @@ export const IntegrationKpiGrid: React.FC<IntegrationKpiGridProps> = ({
   const isWarning = apiStatus >= 50 && apiStatus < 90;
 
   return (
-    <div className={cn('grid grid-cols-1 md:grid-cols-3 gap-4 text-slate-100', className)}>
+    <div
+      role="region"
+      aria-label="Métricas Principais de Integrações"
+      className={cn('grid grid-cols-1 md:grid-cols-3 gap-4 text-slate-100', className)}
+    >
       {/* Card 1: Lojas Conectadas */}
       <div className="rounded-2xl bg-[#15121B] border border-[#1E293B] p-5 shadow-lg flex items-center justify-between hover:border-slate-700 transition-all">
         <div>
@@ -64,7 +68,7 @@ export const IntegrationKpiGrid: React.FC<IntegrationKpiGridProps> = ({
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
               Saúde das Conexões
             </span>
-            <span className="relative flex h-2.5 w-2.5">
+            <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
               <span
                 className={cn(
                   'animate-ping absolute inline-flex h-full w-full rounded-full opacity-75',
@@ -127,3 +131,5 @@ export const IntegrationKpiGrid: React.FC<IntegrationKpiGridProps> = ({
     </div>
   );
 };
+
+export default IntegrationKpiGrid;

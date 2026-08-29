@@ -1,3 +1,10 @@
+/**
+ * src/features/integrations/components/ShopifyCredentialsModal.tsx
+ *
+ * Modal para configuração e validação das credenciais da Admin API da Shopify.
+ * Em conformidade com acessibilidade WCAG 2.1 AA, inputs >= 16px e touch targets >= 44px.
+ */
+
 import React, { useState } from 'react';
 import {
   Globe,
@@ -12,9 +19,9 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Modal, Button, Input } from '@/components/ui';
-import type { ShopifyCredentialsPayload } from '@/features/integrations';
+import type { ShopifyCredentialsPayload } from '../types';
 
-interface ShopifyCredentialsModalProps {
+export interface ShopifyCredentialsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (payload: ShopifyCredentialsPayload) => Promise<boolean>;
@@ -81,7 +88,13 @@ export const ShopifyCredentialsModal: React.FC<ShopifyCredentialsModalProps> = (
 
   const footerActions = (
     <div className="flex items-center justify-end gap-3 w-full">
-      <Button variant="secondary" onClick={onClose} type="button" disabled={loading}>
+      <Button
+        variant="secondary"
+        onClick={onClose}
+        type="button"
+        disabled={loading}
+        className="min-h-[44px]"
+      >
         Cancelar
       </Button>
       <Button
@@ -113,7 +126,10 @@ export const ShopifyCredentialsModal: React.FC<ShopifyCredentialsModalProps> = (
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {formError && (
-          <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3.5 text-xs text-red-400">
+          <div
+            role="alert"
+            className="rounded-xl bg-red-500/10 border border-red-500/20 p-3.5 text-xs sm:text-sm text-red-400 font-medium"
+          >
             {formError}
           </div>
         )}
@@ -123,7 +139,8 @@ export const ShopifyCredentialsModal: React.FC<ShopifyCredentialsModalProps> = (
           <button
             type="button"
             onClick={() => setShowGuide(!showGuide)}
-            className="w-full p-3.5 flex items-center justify-between text-xs font-semibold text-violet-300 hover:text-white transition-colors cursor-pointer"
+            aria-expanded={showGuide}
+            className="w-full min-h-[44px] p-3.5 flex items-center justify-between text-xs sm:text-sm font-semibold text-violet-300 hover:text-white transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-2">
               <HelpCircle className="h-4 w-4 text-violet-400 shrink-0" />
@@ -133,7 +150,7 @@ export const ShopifyCredentialsModal: React.FC<ShopifyCredentialsModalProps> = (
           </button>
 
           {showGuide && (
-            <div className="p-4 pt-1 border-t border-slate-800/80 text-xs text-slate-300 space-y-2.5 bg-slate-950/40">
+            <div className="p-4 pt-1 border-t border-slate-800/80 text-xs sm:text-sm text-slate-300 space-y-2.5 bg-slate-950/40">
               <div className="flex items-start gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
                 <span>
@@ -159,14 +176,14 @@ export const ShopifyCredentialsModal: React.FC<ShopifyCredentialsModalProps> = (
         {/* Domínio da Loja */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label htmlFor="modal-store-domain" className="text-xs font-semibold text-slate-300 block">
+            <label htmlFor="modal-store-domain" className="text-xs sm:text-sm font-semibold text-slate-300 block">
               Domínio da Loja Shopify
             </label>
             {storeDomain && !storeDomain.includes('.') && (
               <button
                 type="button"
                 onClick={handleAutocompleteDomain}
-                className="text-[11px] text-emerald-400 hover:underline cursor-pointer"
+                className="text-xs text-emerald-400 hover:underline min-h-[44px] flex items-center cursor-pointer"
               >
                 Completar com .myshopify.com
               </button>
@@ -180,12 +197,13 @@ export const ShopifyCredentialsModal: React.FC<ShopifyCredentialsModalProps> = (
             placeholder="minhaloja.myshopify.com"
             required
             iconLeft={<Globe className="h-4 w-4 text-slate-400" />}
+            className="text-base min-h-[44px]"
           />
         </div>
 
         {/* Admin Access Token com Toggle Eye/EyeOff */}
         <div className="space-y-1.5">
-          <label htmlFor="modal-access-token" className="text-xs font-semibold text-slate-300 block">
+          <label htmlFor="modal-access-token" className="text-xs sm:text-sm font-semibold text-slate-300 block">
             Admin Access Token (shpat_...)
           </label>
           <div className="relative">
@@ -197,13 +215,13 @@ export const ShopifyCredentialsModal: React.FC<ShopifyCredentialsModalProps> = (
               placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxx"
               required
               iconLeft={<Key className="h-4 w-4 text-slate-400" />}
-              className="pr-12 font-mono"
+              className="pr-12 font-mono text-base min-h-[44px]"
             />
             <button
               type="button"
               onClick={() => setShowToken(!showToken)}
               aria-label={showToken ? 'Ocultar token' : 'Mostrar token'}
-              className="absolute right-3 top-3.5 text-slate-400 hover:text-white transition-colors cursor-pointer z-10"
+              className="absolute right-2 top-1.5 h-9 w-9 min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer z-10"
             >
               {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -211,7 +229,7 @@ export const ShopifyCredentialsModal: React.FC<ShopifyCredentialsModalProps> = (
         </div>
 
         {/* Aviso Criptografia AES-256 GCM */}
-        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3.5 flex items-center gap-3 text-xs text-emerald-300">
+        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3.5 flex items-center gap-3 text-xs sm:text-sm text-emerald-300">
           <ShieldCheck className="h-5 w-5 text-emerald-400 shrink-0" />
           <span>
             Chave criptografada com <strong>AES-256 GCM (BYOK)</strong> e persistida com isolamento estrito no banco SQL Server 2022.
@@ -221,3 +239,5 @@ export const ShopifyCredentialsModal: React.FC<ShopifyCredentialsModalProps> = (
     </Modal>
   );
 };
+
+export default ShopifyCredentialsModal;

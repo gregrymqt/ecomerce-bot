@@ -1,10 +1,17 @@
+/**
+ * src/features/integrations/hooks/useNuvemshopIntegration.ts
+ *
+ * Hook especializado para mutações atômicas da Nuvemshop (OAuth, categorias e lote de estoque/preço).
+ */
+
 import { useState, useCallback } from 'react';
 import { integrationService } from '../services/integration.service';
 import type {
   NuvemshopBatchStockPriceItem,
   NuvemshopBatchStockPriceResponse,
   NuvemshopCategory,
-} from '../types/nuvemshop.type';
+} from '../types';
+import { getErrorMessage } from '@/utils/errors';
 
 export function useNuvemshopIntegration() {
   const [isLoading, setIsLoading] = useState(false);
@@ -25,7 +32,7 @@ export function useNuvemshopIntegration() {
       }
       throw new Error('URL OAuth não gerada pela Nuvemshop.');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Erro ao iniciar autorização da Nuvemshop.';
+      const message = getErrorMessage(err, 'Erro ao iniciar autorização da Nuvemshop.');
       setError(message);
       return false;
     } finally {
@@ -44,7 +51,7 @@ export function useNuvemshopIntegration() {
       setCategories(data);
       return data;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Erro ao carregar categorias da Nuvemshop.';
+      const message = getErrorMessage(err, 'Erro ao carregar categorias da Nuvemshop.');
       setError(message);
       return [];
     } finally {
@@ -63,7 +70,7 @@ export function useNuvemshopIntegration() {
         const result = await integrationService.updateNuvemshopStockPriceBatch(items);
         return result;
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Erro ao atualizar lote de estoque na Nuvemshop.';
+        const message = getErrorMessage(err, 'Erro ao atualizar lote de estoque na Nuvemshop.');
         setError(message);
         return null;
       } finally {
@@ -83,3 +90,5 @@ export function useNuvemshopIntegration() {
     updateBatchStockPrice,
   };
 }
+
+export default useNuvemshopIntegration;
