@@ -16,26 +16,6 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 // Configuração modular de Infraestrutura (Scrutor DIP, Redis, JWT, RabbitMQ, Gateways, Discord, Razor)
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 
-// Configuração de CORS com suporte a credenciais (cookies HttpOnly) e Multi-Tenancy
-var allowedOrigins = new List<string> { "http://localhost:5173", "http://localhost:3000" };
-var frontendUrl = builder.Configuration["App:FrontendUrl"];
-if (!string.IsNullOrWhiteSpace(frontendUrl) && !allowedOrigins.Contains(frontendUrl.TrimEnd('/')))
-{
-    allowedOrigins.Add(frontendUrl.TrimEnd('/'));
-}
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("DefaultCorsPolicy", policy =>
-    {
-        policy.WithOrigins(allowedOrigins.ToArray())
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials()
-              .WithExposedHeaders("X-Tenant-ID", "Content-Disposition");
-    });
-});
-
 // TenantContext (Scoped por requisição HTTP da WebAPI)
 builder.Services.AddScoped<ITenantContext, TenantContext>();
 

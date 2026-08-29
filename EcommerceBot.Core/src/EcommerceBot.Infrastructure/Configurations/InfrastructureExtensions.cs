@@ -21,6 +21,7 @@ public static class InfrastructureExtensions
         services.AddJwtAuthentication(configuration, environment);
         services.AddMessagingInfrastructure(configuration);
         services.AddGateways();
+        services.AddCorsConfiguration(configuration);
 
         return services;
     }
