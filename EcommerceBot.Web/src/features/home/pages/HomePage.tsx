@@ -1,97 +1,36 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/features/auth';
-import { HomeHeader, KpiMetricsGrid, RecentJobsTable, IntegrationsStatus, type ExtractionJob, type HomeMetrics, type JobStatus } from '@/features/home';
+/**
+ * src/features/home/pages/HomePage.tsx
+ *
+ * Página principal da Home / Visão Geral da Plataforma.
+ * Consome o hook useHome e exibe métricas, ingestão rápida, jobs e integrações.
+ */
+
+import React from 'react';
+import {
+  HomeHeader,
+  KpiMetricsGrid,
+  RecentJobsTable,
+  IntegrationsStatus,
+} from '../components';
 import { ScraperForm } from '@/features/scraper';
-import { useProducts } from '@/features/catalog';
 import { Alert } from '@/components/ui';
+import { useHome } from '../hooks/useHome';
 
 export const HomePage: React.FC = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const { products } = useProducts(50);
-
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (toastTimeoutRef.current) {
-        clearTimeout(toastTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Mapeia os produtos reais do catálogo para jobs na tabela da Home
-  const jobs: ExtractionJob[] = useMemo(() => {
-    return products.slice(0, 10).map((p, idx) => {
-      let status: JobStatus = 'Processando';
-      const st = String(p.status).toUpperCase();
-      if (st === 'PROCESSED' || st === 'EXPORTED') status = 'Sucesso';
-      else if (st === 'FAILED') status = 'Erro';
-
-      let sourceDomain = 'e-commerce';
-      const productUrl = (p.attributes?.url as string) || (p.attributes?.source_url as string) || '';
-      if (productUrl) {
-        try {
-          sourceDomain = new URL(productUrl).hostname;
-        } catch {
-          // fallback silencioso
-        }
-      } else if (p.sku.startsWith('SHP')) {
-        sourceDomain = 'shopify';
-      } else if (p.sku.startsWith('NUV')) {
-        sourceDomain = 'nuvemshop';
-      }
-
-      return {
-        id: `job-${p.sku}-${idx}`,
-        productName: p.title || p.sku,
-        sourceDomain,
-        aiModel: 'DeepSeek V3',
-        status,
-        createdAt: p.created_at || new Date().toISOString(),
-      };
-    });
-  }, [products]);
-
-  // Métricas dinâmicas calculadas a partir dos produtos do catálogo
-  const metrics: HomeMetrics = useMemo(() => {
-    const total = products.length;
-    const processed = products.filter((p) => ['PROCESSED', 'EXPORTED'].includes(String(p.status).toUpperCase())).length;
-    const active = products.filter((p) => String(p.status).toUpperCase() === 'PROCESSING' || String(p.status).toUpperCase() === 'RAW').length;
-    const failed = products.filter((p) => String(p.status).toUpperCase() === 'FAILED').length;
-    const successRate = total > 0 ? ((processed / (processed + failed || 1)) * 100) : 100;
-
-    return {
-      aiCreditsUsed: processed * 5,
-      aiCreditsTotal: 5000,
-      productsProcessedMonth: processed,
-      activeJobsCount: active,
-      successRate,
-    };
-  }, [products]);
-
-  const handleViewJob = (_job: ExtractionJob) => {
-    navigate('/catalog');
-  };
-
-  const handleExportJob = (job: ExtractionJob) => {
-    setToastMessage(`Iniciando download para "${job.productName}"...`);
-    if (toastTimeoutRef.current) {
-      clearTimeout(toastTimeoutRef.current);
-    }
-    toastTimeoutRef.current = setTimeout(() => {
-      setToastMessage(null);
-      toastTimeoutRef.current = null;
-    }, 3500);
-  };
-
-  const handleOpenSupport = () => {
-    window.open('https://discord.gg', '_blank', 'noopener,noreferrer');
-  };
-
-  const userName = user?.name || (user?.email ? user.email.split('@')[0] : 'Usuário');
+  const {
+    userName,
+    planName,
+    isApiOnline,
+    jobs,
+    metrics,
+    integrationsSummary,
+    toastMessage,
+    handleViewJob,
+    handleExportJob,
+    handleConfigureKeys,
+    handleOpenSupport,
+    handleDismissToast,
+  } = useHome();
 
   return (
     <div
@@ -102,7 +41,11 @@ export const HomePage: React.FC = () => {
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-6 right-6 z-50 max-w-md animate-fade-in">
-          <Alert variant="info" title="Notificação de Sistema" onClose={() => setToastMessage(null)}>
+          <Alert
+            variant="info"
+            title="Notificação de Sistema"
+            onClose={handleDismissToast}
+          >
             {toastMessage}
           </Alert>
         </div>
@@ -111,8 +54,8 @@ export const HomePage: React.FC = () => {
       {/* 1. Componente Superior - Header */}
       <HomeHeader
         userName={userName}
-        planName="Plano Pro"
-        isApiOnline={true}
+        planName={planName}
+        isApiOnline={isApiOnline}
       />
 
       {/* 2. Formulário Oficial de Ingestão de Produtos (Scraper) */}
@@ -139,7 +82,8 @@ export const HomePage: React.FC = () => {
         {/* Sidebar Lateral (1/3): Status de Integrações & Suporte */}
         <aside aria-label="Status de Integrações e Suporte" className="lg:col-span-1">
           <IntegrationsStatus
-            onConfigureKeys={() => navigate('/settings')}
+            summary={integrationsSummary}
+            onConfigureKeys={handleConfigureKeys}
             onOpenSupport={handleOpenSupport}
           />
         </aside>

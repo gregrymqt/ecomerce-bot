@@ -1,8 +1,15 @@
+/**
+ * src/features/home/components/RecentJobsTable.tsx
+ *
+ * Tabela de extrações recentes com status de processamento e ações de detalhe e exportação.
+ * Em conformidade com acessibilidade WCAG 2.1 AA e touch targets mínimos de 44px.
+ */
+
 import React from 'react';
 import { Eye, Download, CheckCircle2, Clock, XCircle, Globe, Cpu } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { cn } from '@/lib/utils';
 import { Card, Badge, Table, Button, type TableColumn } from '@/components/ui';
-import { type ExtractionJob, type JobStatus } from '@/features/home';
+import type { ExtractionJob, JobStatus } from '../types/home.types';
 
 export interface RecentJobsTableProps {
   jobs?: ExtractionJob[];
@@ -89,8 +96,8 @@ export const RecentJobsTable: React.FC<RecentJobsTableProps> = ({
               e.stopPropagation();
               onViewJob?.(job);
             }}
-            title="Ver Detalhes do Produto"
-            aria-label="Ver Detalhes"
+            title="Ver Detalhes do Produto no Catálogo"
+            aria-label={`Ver Detalhes de ${job.productName}`}
             iconLeft={<Eye className="w-4 h-4 text-slate-400" />}
             className="h-11 w-11 min-h-[44px] min-w-[44px] p-0 text-slate-400 hover:text-white"
           />
@@ -104,10 +111,10 @@ export const RecentJobsTable: React.FC<RecentJobsTableProps> = ({
             disabled={job.status !== 'Sucesso'}
             title={
               job.status === 'Sucesso'
-                ? 'Exportar CSV / Shopify'
+                ? 'Exportar CSV do Produto'
                 : 'Exportação indisponível para este status'
             }
-            aria-label="Exportar Produto"
+            aria-label={`Exportar Produto ${job.productName}`}
             iconLeft={<Download className="w-4 h-4" />}
             className="h-11 w-11 min-h-[44px] min-w-[44px] p-0 text-slate-400 hover:text-purple-300 disabled:opacity-30"
           />
@@ -132,7 +139,7 @@ export const RecentJobsTable: React.FC<RecentJobsTableProps> = ({
           </p>
         </div>
         <Badge variant="default" className="bg-slate-800 text-slate-300 border-slate-700">
-          {jobs.length} itens
+          {jobs.length} {jobs.length === 1 ? 'item' : 'itens'}
         </Badge>
       </div>
 

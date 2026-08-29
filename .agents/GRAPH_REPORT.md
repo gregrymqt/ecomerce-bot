@@ -42,7 +42,7 @@
 - **catalog**: [components, hooks, pages, services, types]
 - **checkout**: [components, hooks, pages, services, types]
 - **dashboard**: [components, hooks, pages, services, types]
-- **home**: [components, pages, types]
+- **home**: [components, hooks, pages, services, types]
 - **integrations**: [components, hooks, pages, services, types]
 - **live-demo**: [components, constants, hooks, pages, services, types]
 - **metering**: [components, hooks, pages, services, types, __tests__]

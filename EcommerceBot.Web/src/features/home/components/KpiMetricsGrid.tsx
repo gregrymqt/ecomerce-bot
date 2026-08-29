@@ -1,8 +1,14 @@
+/**
+ * src/features/home/components/KpiMetricsGrid.tsx
+ *
+ * Grid de KPIs e métricas consolidadas de processamento com IA, produtos e fila.
+ */
+
 import React from 'react';
 import { Zap, PackageCheck, Activity, TrendingUp } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { cn } from '@/lib/utils';
 import { Card, StatCard, ProgressBar, Badge } from '@/components/ui';
-import { type HomeMetrics } from '@/features/home';
+import type { HomeMetrics } from '../types/home.types';
 
 const DEFAULT_METRICS: HomeMetrics = {
   aiCreditsUsed: 0,

@@ -1,6 +1,11 @@
-export * from './types/home.types';
-export * from './components/HomeHeader';
-export * from './components/KpiMetricsGrid';
-export * from './components/RecentJobsTable';
-export * from './components/IntegrationsStatus';
+/**
+ * src/features/home/index.ts
+ *
+ * Barrel export canônico da feature Home.
+ */
+
+export * from './types';
+export * from './services';
+export * from './hooks';
+export * from './components';
 export * from './pages/HomePage';

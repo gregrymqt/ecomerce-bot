@@ -1,3 +1,10 @@
+/**
+ * src/features/home/components/IntegrationsStatus.tsx
+ *
+ * Visualização do status das integrações ativas e canal de suporte prioritário AI.
+ * Em conformidade com acessibilidade WCAG 2.1 AA e touch targets mínimos de 44px.
+ */
+
 import React from 'react';
 import {
   CheckCircle2,
@@ -7,17 +14,30 @@ import {
   Headphones,
   ExternalLink,
   ChevronRight,
+  AlertCircle,
 } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { cn } from '@/lib/utils';
 import { Card, Badge, Button } from '@/components/ui';
+import type { HomeIntegrationsSummary } from '../types/home.types';
 
 export interface IntegrationsStatusProps {
+  summary?: HomeIntegrationsSummary;
   onConfigureKeys?: () => void;
   onOpenSupport?: () => void;
   className?: string;
 }
 
+const DEFAULT_SUMMARY: HomeIntegrationsSummary = {
+  connectedCount: 2,
+  totalIntegrations: 4,
+  hasShopify: false,
+  hasNuvemshop: false,
+  hasMercadoPago: true,
+  hasByokKeys: true,
+};
+
 export const IntegrationsStatus: React.FC<IntegrationsStatusProps> = ({
+  summary = DEFAULT_SUMMARY,
   onConfigureKeys,
   onOpenSupport,
   className,
@@ -31,7 +51,9 @@ export const IntegrationsStatus: React.FC<IntegrationsStatusProps> = ({
       >
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold text-white">Integrações Ativas</h3>
-          <span className="text-xs text-purple-400 font-medium">3 de 3 conectadas</span>
+          <span className="text-xs text-purple-400 font-medium">
+            {summary.connectedCount} de {summary.totalIntegrations} conectadas
+          </span>
         </div>
 
         <div className="space-y-3">
@@ -43,12 +65,20 @@ export const IntegrationsStatus: React.FC<IntegrationsStatusProps> = ({
               </div>
               <div>
                 <h4 className="text-sm font-semibold text-white">Shopify API</h4>
-                <p className="text-xs text-slate-400">Sincronização de catálogo ativa</p>
+                <p className="text-xs text-slate-400">
+                  {summary.hasShopify ? 'Sincronização de catálogo ativa' : 'Pronto para conectar'}
+                </p>
               </div>
             </div>
-            <Badge variant="success" icon={<CheckCircle2 className="w-3.5 h-3.5" />}>
-              Conectado
-            </Badge>
+            {summary.hasShopify ? (
+              <Badge variant="success" icon={<CheckCircle2 className="w-3.5 h-3.5" />}>
+                Conectado
+              </Badge>
+            ) : (
+              <Badge variant="default" className="bg-slate-800 text-slate-400 border-slate-700">
+                Disponível
+              </Badge>
+            )}
           </div>
 
           {/* Mercado Pago Card */}
@@ -62,9 +92,15 @@ export const IntegrationsStatus: React.FC<IntegrationsStatusProps> = ({
                 <p className="text-xs text-slate-400">Checkout Transparente e PIX</p>
               </div>
             </div>
-            <Badge variant="success" icon={<CheckCircle2 className="w-3.5 h-3.5" />}>
-              Conectado
-            </Badge>
+            {summary.hasMercadoPago ? (
+              <Badge variant="success" icon={<CheckCircle2 className="w-3.5 h-3.5" />}>
+                Conectado
+              </Badge>
+            ) : (
+              <Badge variant="warning" icon={<AlertCircle className="w-3.5 h-3.5" />}>
+                Pendente
+              </Badge>
+            )}
           </div>
 
           {/* BYOK Custom Card */}
@@ -83,7 +119,7 @@ export const IntegrationsStatus: React.FC<IntegrationsStatusProps> = ({
               size="sm"
               onClick={onConfigureKeys}
               iconRight={<ChevronRight className="w-3.5 h-3.5" />}
-              className="bg-purple-600/20 hover:bg-purple-600/30 border-purple-500/40 text-purple-300 text-xs font-semibold"
+              className="min-h-[44px] px-3.5 bg-purple-600/20 hover:bg-purple-600/30 border-purple-500/40 text-purple-300 text-xs font-semibold"
             >
               Configurar
             </Button>
@@ -120,7 +156,7 @@ export const IntegrationsStatus: React.FC<IntegrationsStatusProps> = ({
             onClick={onOpenSupport}
             iconLeft={<Headphones className="w-4 h-4" />}
             iconRight={<ExternalLink className="w-3.5 h-3.5 opacity-70" />}
-            className="w-full bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/25 text-xs sm:text-sm"
+            className="w-full min-h-[44px] bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/25 text-xs sm:text-sm font-semibold"
           >
             Abrir Canal de Atendimento
           </Button>

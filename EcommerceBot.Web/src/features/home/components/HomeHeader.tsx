@@ -1,6 +1,13 @@
+/**
+ * src/features/home/components/HomeHeader.tsx
+ *
+ * Cabeçalho principal da Home com boas-vindas ao usuário, status da API e plano ativo.
+ * Em conformidade com acessibilidade WCAG 2.1 AA e touch targets mínimos de 44px.
+ */
+
 import React from 'react';
 import { ShieldCheck, Crown, Activity } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui';
 
 export interface HomeHeaderProps {
@@ -11,7 +18,7 @@ export interface HomeHeaderProps {
 }
 
 export const HomeHeader: React.FC<HomeHeaderProps> = ({
-  userName = 'Lucas',
+  userName = 'Usuário',
   planName = 'Plano Pro',
   isApiOnline = true,
   className,
