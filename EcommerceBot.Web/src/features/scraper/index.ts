@@ -1,5 +1,10 @@
-export * from './types/scrapper.type';
-export * from './services/scrapper.service';
-export * from './hooks/useScraper';
-export * from './hooks/useScraperStream';
-export * from './components/ScraperForm';
+/**
+ * src/features/scraper/index.ts
+ *
+ * Barrel export canônico da Feature Scraper (Extração e Enriquecimento Web).
+ */
+
+export * from './types';
+export * from './services';
+export * from './hooks';
+export * from './components';

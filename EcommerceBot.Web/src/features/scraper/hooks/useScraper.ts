@@ -1,7 +1,13 @@
+/**
+ * src/features/scraper/hooks/useScraper.ts
+ *
+ * Custom hook para validação e disparo de extração de URL única.
+ */
+
 import { useState, useCallback } from 'react';
-import { scrapperService } from '@/features/scraper';
+import { scraperService } from '../services/scraper.service';
 import { getErrorMessage } from '@/utils/errors';
-import type { UseScraperReturn } from '@/features/scraper';
+import type { UseScraperReturn } from '../types';
 
 export const useScraper = (): UseScraperReturn => {
   const [url, setUrl] = useState<string>('');
@@ -18,7 +24,11 @@ export const useScraper = (): UseScraperReturn => {
     }
 
     try {
-      new URL(trimmed);
+      const parsed = new URL(trimmed);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        setError('Apenas links HTTP ou HTTPS são suportados.');
+        return;
+      }
     } catch {
       setError('URL inválida. Ex: https://sualoja.com.br/produto');
       return;
@@ -29,7 +39,7 @@ export const useScraper = (): UseScraperReturn => {
     setTaskId(null);
 
     try {
-      const response = await scrapperService.extractUrl({ url: trimmed });
+      const response = await scraperService.extractUrl({ url: trimmed });
       setTaskId(response.task_id);
     } catch (err: unknown) {
       const detail = getErrorMessage(err, 'Falha ao iniciar a extração.');
@@ -56,3 +66,5 @@ export const useScraper = (): UseScraperReturn => {
     reset,
   };
 };
+
+export default useScraper;

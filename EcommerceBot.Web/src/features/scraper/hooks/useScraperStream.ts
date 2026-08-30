@@ -1,6 +1,12 @@
+/**
+ * src/features/scraper/hooks/useScraperStream.ts
+ *
+ * Custom hook para conexão ao streaming de logs SSE em tempo real (/api/v1/demo/stream).
+ */
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { SSEClient } from '@/lib/sseClient';
-import type { ScraperStreamEvent, UseScraperStreamReturn } from '@/features/scraper';
+import type { ScraperStreamEvent, UseScraperStreamReturn } from '../types';
 
 export const useScraperStream = (): UseScraperStreamReturn => {
   const [events, setEvents] = useState<ScraperStreamEvent[]>([]);
@@ -67,3 +73,5 @@ export const useScraperStream = (): UseScraperStreamReturn => {
     disconnect,
   };
 };
+
+export default useScraperStream;
