@@ -3,6 +3,7 @@
  *
  * Aba de Gestão de Mapeamentos de Grupos SSO (IdP -> Roles) para o TENANT_ADMIN.
  * Permite associar grupos do Okta, Azure AD ou SAML às Roles canônicas do sistema.
+ * Em conformidade com acessibilidade WCAG 2.1 AA, inputs >= 16px e touch targets >= 44px.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -15,16 +16,9 @@ import {
   HelpCircle,
   RefreshCw,
 } from 'lucide-react';
-import {
-  tenantSsoService,
-  type Role,
-  type TenantSsoMapping,
-} from '../services/tenantSso.service';
-import { Card } from '@/components/ui/display/Card';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/feedback/Badge';
-import { Alert } from '@/components/ui/feedback/Alert';
-import { FormField } from '@/components/ui/form/FormField';
+import { tenantSsoService } from '../services/tenantSso.service';
+import type { Role, TenantSsoMapping } from '../types';
+import { Card, Button, Badge, Alert, FormField } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/utils/errors';
 
@@ -109,7 +103,7 @@ export const TenantSsoTab: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-8 animate-fade-in">
       {/* Header da Aba */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -129,7 +123,7 @@ export const TenantSsoTab: React.FC = () => {
           onClick={fetchData}
           disabled={loading}
           iconLeft={<RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />}
-          className="min-h-[38px] bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800"
+          className="min-h-[44px] bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800"
         >
           Recarregar
         </Button>
@@ -165,18 +159,19 @@ export const TenantSsoTab: React.FC = () => {
                 required
                 value={groupNameInput}
                 onChange={(e) => setGroupNameInput(e.target.value)}
-                className="bg-slate-950 border-slate-800 min-h-[44px]"
+                className="bg-slate-950 border-slate-800 min-h-[44px] text-base"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label htmlFor="sso-role-select" className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
                 Papel de Destino (Role)
               </label>
               <select
+                id="sso-role-select"
                 value={selectedRoleId}
                 onChange={(e) => setSelectedRoleId(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[44px]"
+                className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-base text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[44px] cursor-pointer font-sans"
               >
                 {roles.map((r) => (
                   <option key={r.id} value={r.id}>
@@ -228,10 +223,10 @@ export const TenantSsoTab: React.FC = () => {
           <table className="w-full text-left text-sm text-slate-300">
             <thead className="bg-slate-950/50 text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800">
               <tr>
-                <th className="px-6 py-3.5">Grupo no IdP</th>
-                <th className="px-6 py-3.5">Papel Atribuído</th>
-                <th className="px-6 py-3.5">Tipo</th>
-                <th className="px-6 py-3.5 text-right">Ações</th>
+                <th scope="col" className="px-6 py-3.5">Grupo no IdP</th>
+                <th scope="col" className="px-6 py-3.5">Papel Atribuído</th>
+                <th scope="col" className="px-6 py-3.5">Tipo</th>
+                <th scope="col" className="px-6 py-3.5 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
@@ -265,8 +260,9 @@ export const TenantSsoTab: React.FC = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeleteMapping(m.id, m.idpGroupName)}
-                        className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 h-8 px-2"
+                        className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 min-h-[44px] px-3"
                         title="Remover Mapeamento"
+                        aria-label={`Remover mapeamento do grupo ${m.idpGroupName}`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>

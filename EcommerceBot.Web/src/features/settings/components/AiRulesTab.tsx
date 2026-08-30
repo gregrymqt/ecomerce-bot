@@ -2,6 +2,7 @@
  * src/features/settings/components/AiRulesTab.tsx
  *
  * Aba de Configurações das Regras de IA, Tom de Voz, Tags de SEO e Precificação.
+ * Em conformidade com acessibilidade WCAG 2.1 AA, inputs >= 16px e touch targets >= 44px.
  */
 
 import React, { useState } from 'react';
@@ -17,15 +18,15 @@ import {
   X,
   DollarSign,
 } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { cn } from '@/lib/utils';
 import type {
   AiSettingsPayload,
   DefaultLanguage,
   RoundingRule,
   ToneOfVoice,
-} from '@/features/settings';
+} from '../types';
 
-interface AiRulesTabProps {
+export interface AiRulesTabProps {
   data: AiSettingsPayload;
   onChange: <K extends keyof AiSettingsPayload>(field: K, value: AiSettingsPayload[K]) => void;
   onAddTag: (tag: string) => void;
@@ -92,13 +93,14 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
         </div>
 
         <div className="max-w-md">
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+          <label htmlFor="ai-language-select" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
             Idioma de Destino
           </label>
           <select
+            id="ai-language-select"
             value={data.default_language}
             onChange={(e) => onChange('default_language', e.target.value as DefaultLanguage)}
-            className="w-full min-h-[44px] h-11 px-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-all cursor-pointer"
+            className="w-full min-h-[44px] h-11 px-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-all cursor-pointer font-sans"
           >
             <option value="PT_BR">Português (Brasil)</option>
             <option value="EN_US">Inglês (Estados Unidos)</option>
@@ -119,16 +121,22 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+        <div
+          role="radiogroup"
+          aria-label="Tom de voz da inteligência artificial"
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2"
+        >
           {tones.map((t) => {
             const isSelected = data.tone_of_voice === t.id;
             return (
               <button
                 key={t.id}
                 type="button"
+                role="radio"
+                aria-checked={isSelected}
                 onClick={() => onChange('tone_of_voice', t.id)}
                 className={cn(
-                  'min-h-[44px] p-4 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-3 relative',
+                  'min-h-[44px] p-4 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-3 relative focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none',
                   isSelected
                     ? 'bg-violet-950/40 border-violet-500 shadow-lg shadow-violet-500/10 ring-1 ring-violet-500'
                     : 'bg-[#090D16] border-[#1E293B] hover:border-slate-700'
@@ -172,7 +180,7 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
           />
           <button
             type="submit"
-            className="min-h-[44px] h-11 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shrink-0"
+            className="min-h-[44px] h-11 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none"
           >
             <Plus className="h-4 w-4" />
             Adicionar
@@ -184,16 +192,16 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
           {data.seo_tags.map((tag, idx) => (
             <span
               key={idx}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-violet-500/10 border border-violet-500/20 text-xs font-mono text-violet-300"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-violet-500/10 border border-violet-500/20 text-xs font-mono text-violet-300 min-h-[32px]"
             >
               #{tag}
               <button
                 type="button"
                 onClick={() => onRemoveTag(tag)}
-                className="hover:text-red-400 transition-colors p-0.5 cursor-pointer"
+                className="hover:text-red-400 transition-colors p-1 cursor-pointer focus-visible:ring-1 focus-visible:ring-red-400 focus-visible:outline-none rounded"
                 aria-label={`Remover tag ${tag}`}
               >
-                <X className="h-3 w-3" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </span>
           ))}
@@ -215,17 +223,18 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
           {/* Markup % */}
           <div className="space-y-2">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <label htmlFor="markup-percentage-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
               Margem de Lucro / Markup (%)
             </label>
             <div className="relative">
               <input
+                id="markup-percentage-input"
                 type="number"
                 min="0"
                 max="500"
                 value={data.price_markup_percentage}
                 onChange={(e) => onChange('price_markup_percentage', Number(e.target.value) || 0)}
-                className="w-full min-h-[44px] h-11 px-4 pr-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all"
+                className="w-full min-h-[44px] h-11 px-4 pr-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all font-mono"
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">
                 %
@@ -236,13 +245,14 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
 
           {/* Arredondamento */}
           <div className="space-y-2">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <label htmlFor="rounding-rule-select" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
               Regra de Arredondamento
             </label>
             <select
+              id="rounding-rule-select"
               value={data.rounding_rule}
               onChange={(e) => onChange('rounding_rule', e.target.value as RoundingRule)}
-              className="w-full min-h-[44px] h-11 px-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all cursor-pointer"
+              className="w-full min-h-[44px] h-11 px-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all cursor-pointer font-sans"
             >
               <option value="ENDING_99">Final .99 (ex: R$ 99,99)</option>
               <option value="ENDING_90">Final .90 (ex: R$ 99,90)</option>
@@ -255,3 +265,5 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
     </div>
   );
 };
+
+export default AiRulesTab;

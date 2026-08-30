@@ -6,14 +6,14 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { settingsService } from '@/features/settings';
+import { settingsService } from '../services/settings.service';
 import type {
   SettingsTab,
   TenantSettingsResponse,
   AiSettingsPayload,
   StoreProfilePayload,
   BillingProfilePayload,
-} from '@/features/settings';
+} from '../types';
 import { getErrorMessage } from '@/utils/errors';
 
 const DEFAULT_SETTINGS: TenantSettingsResponse = {
@@ -39,8 +39,26 @@ const DEFAULT_SETTINGS: TenantSettingsResponse = {
   },
 };
 
-export function useSettings(initialTab: SettingsTab = 'AI_RULES') {
-  // 1. Estados Reativos
+export interface UseSettingsReturn {
+  activeTab: SettingsTab;
+  formData: TenantSettingsResponse;
+  loading: boolean;
+  saving: boolean;
+  showToast: boolean;
+  error: string | null;
+  setError: (error: string | null) => void;
+  setShowToast: (show: boolean) => void;
+  fetchSettings: () => Promise<void>;
+  handleTabChange: (tab: SettingsTab) => void;
+  handleAiSettingChange: <K extends keyof AiSettingsPayload>(field: K, value: AiSettingsPayload[K]) => void;
+  handleAddSeoTag: (tag: string) => void;
+  handleRemoveSeoTag: (tag: string) => void;
+  handleProfileSettingChange: <K extends keyof StoreProfilePayload>(field: K, value: StoreProfilePayload[K]) => void;
+  handleBillingSettingChange: <K extends keyof BillingProfilePayload>(field: K, value: BillingProfilePayload[K]) => void;
+  handleSaveSettings: () => Promise<void>;
+}
+
+export function useSettings(initialTab: SettingsTab = 'AI_RULES'): UseSettingsReturn {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [formData, setFormData] = useState<TenantSettingsResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -50,7 +68,6 @@ export function useSettings(initialTab: SettingsTab = 'AI_RULES') {
 
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 2. Busca inicial das configurações
   const fetchSettings = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -58,7 +75,7 @@ export function useSettings(initialTab: SettingsTab = 'AI_RULES') {
       const data = await settingsService.getSettings();
       setFormData(data || DEFAULT_SETTINGS);
     } catch {
-      // Fallback para exibir a UI com valores default se o endpoint não estiver rodando localmente
+      // Fallback para exibir a UI com valores default se o endpoint não responder
       setFormData(DEFAULT_SETTINGS);
     } finally {
       setLoading(false);
@@ -69,12 +86,10 @@ export function useSettings(initialTab: SettingsTab = 'AI_RULES') {
     fetchSettings();
   }, [fetchSettings]);
 
-  // 3. Troca de Abas
   const handleTabChange = useCallback((tab: SettingsTab) => {
     setActiveTab(tab);
   }, []);
 
-  // 4. Alteração de Configurações de IA
   const handleAiSettingChange = useCallback(
     <K extends keyof AiSettingsPayload>(field: K, value: AiSettingsPayload[K]) => {
       setFormData((prev) => {
@@ -91,7 +106,6 @@ export function useSettings(initialTab: SettingsTab = 'AI_RULES') {
     []
   );
 
-  // 5. Adicionar / Remover Tags de SEO
   const handleAddSeoTag = useCallback((tag: string) => {
     const trimmed = tag.trim().toLowerCase();
     if (!trimmed) return;
@@ -122,7 +136,6 @@ export function useSettings(initialTab: SettingsTab = 'AI_RULES') {
     });
   }, []);
 
-  // 6. Alteração de Configurações do Perfil da Loja
   const handleProfileSettingChange = useCallback(
     <K extends keyof StoreProfilePayload>(field: K, value: StoreProfilePayload[K]) => {
       setFormData((prev) => {
@@ -139,7 +152,6 @@ export function useSettings(initialTab: SettingsTab = 'AI_RULES') {
     []
   );
 
-  // 7. Alteração de Configurações de Faturamento
   const handleBillingSettingChange = useCallback(
     <K extends keyof BillingProfilePayload>(field: K, value: BillingProfilePayload[K]) => {
       setFormData((prev) => {
@@ -156,7 +168,6 @@ export function useSettings(initialTab: SettingsTab = 'AI_RULES') {
     []
   );
 
-  // 8. Salvar Alterações no Backend
   const handleSaveSettings = useCallback(async () => {
     if (!formData) return;
 
@@ -181,7 +192,6 @@ export function useSettings(initialTab: SettingsTab = 'AI_RULES') {
     }
   }, [formData]);
 
-  // Limpeza de timers ao desmontar
   useEffect(() => {
     return () => {
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -189,7 +199,6 @@ export function useSettings(initialTab: SettingsTab = 'AI_RULES') {
   }, []);
 
   return {
-    // Estados
     activeTab,
     formData: formData || DEFAULT_SETTINGS,
     loading,
@@ -198,8 +207,6 @@ export function useSettings(initialTab: SettingsTab = 'AI_RULES') {
     error,
     setError,
     setShowToast,
-
-    // Handlers
     fetchSettings,
     handleTabChange,
     handleAiSettingChange,
@@ -210,3 +217,5 @@ export function useSettings(initialTab: SettingsTab = 'AI_RULES') {
     handleSaveSettings,
   };
 }
+
+export default useSettings;

@@ -2,14 +2,15 @@
  * src/features/settings/components/BillingProfileTab.tsx
  *
  * Aba de Configurações de Faturamento e Dados Fiscais.
+ * Em conformidade com acessibilidade WCAG 2.1 AA, inputs >= 16px e touch targets >= 44px.
  */
 
 import React from 'react';
 import { Receipt, Building, FileText, Mail, MapPin } from 'lucide-react';
-import { cn } from '@/utils/cn';
-import type { BillingProfilePayload } from '@/features/settings';
+import { cn } from '@/lib/utils';
+import type { BillingProfilePayload } from '../types';
 
-interface BillingProfileTabProps {
+export interface BillingProfileTabProps {
   data: BillingProfilePayload;
   onChange: <K extends keyof BillingProfilePayload>(field: K, value: BillingProfilePayload[K]) => void;
   className?: string;
@@ -36,11 +37,12 @@ export const BillingProfileTab: React.FC<BillingProfileTabProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* Razão Social / Nome Completo */}
           <div className="space-y-2">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <label htmlFor="company-name-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
               Razão Social / Nome Completo
             </label>
             <div className="relative">
               <input
+                id="company-name-input"
                 type="text"
                 value={data.company_name}
                 onChange={(e) => onChange('company_name', e.target.value)}
@@ -53,11 +55,12 @@ export const BillingProfileTab: React.FC<BillingProfileTabProps> = ({
 
           {/* CNPJ / CPF */}
           <div className="space-y-2">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <label htmlFor="tax-id-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
               CNPJ / CPF (Documento Fiscal)
             </label>
             <div className="relative">
               <input
+                id="tax-id-input"
                 type="text"
                 value={data.tax_id}
                 onChange={(e) => onChange('tax_id', e.target.value)}
@@ -70,11 +73,12 @@ export const BillingProfileTab: React.FC<BillingProfileTabProps> = ({
 
           {/* E-mail de Faturamento */}
           <div className="space-y-2">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <label htmlFor="billing-email-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
               E-mail de Faturamento (Recibos / NFs)
             </label>
             <div className="relative">
               <input
+                id="billing-email-input"
                 type="email"
                 value={data.billing_email}
                 onChange={(e) => onChange('billing_email', e.target.value)}
@@ -87,11 +91,12 @@ export const BillingProfileTab: React.FC<BillingProfileTabProps> = ({
 
           {/* Endereço Comercial */}
           <div className="space-y-2 sm:col-span-2">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <label htmlFor="commercial-address-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
               Endereço Comercial Completo
             </label>
             <div className="relative">
               <input
+                id="commercial-address-input"
                 type="text"
                 value={data.commercial_address}
                 onChange={(e) => onChange('commercial_address', e.target.value)}
@@ -106,3 +111,5 @@ export const BillingProfileTab: React.FC<BillingProfileTabProps> = ({
     </div>
   );
 };
+
+export default BillingProfileTab;

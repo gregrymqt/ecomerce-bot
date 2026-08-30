@@ -7,7 +7,7 @@
 
 import { apiClient } from '@/lib/apiClient';
 import { getErrorMessage } from '@/utils/errors';
-import type { TenantSettingsResponse } from '@/features/settings';
+import type { TenantSettingsResponse } from '../types';
 
 export const settingsService = {
   /**
@@ -30,8 +30,6 @@ export const settingsService = {
   /**
    * Atualiza as configurações do Tenant (parcial ou total).
    * Endpoint: PUT /api/v1/settings
-   *
-   * @param payload Objeto contendo ai, profile e/ou billing a serem atualizados
    */
   updateSettings: async (
     payload: Partial<TenantSettingsResponse>
@@ -48,3 +46,5 @@ export const settingsService = {
     }
   },
 };
+
+export default settingsService;

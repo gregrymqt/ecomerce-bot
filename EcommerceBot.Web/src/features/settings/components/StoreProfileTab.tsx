@@ -2,14 +2,15 @@
  * src/features/settings/components/StoreProfileTab.tsx
  *
  * Aba de Configurações do Perfil da Loja e Tenant.
+ * Em conformidade com acessibilidade WCAG 2.1 AA, inputs >= 16px e touch targets >= 44px.
  */
 
 import React from 'react';
 import { Store, Mail, Clock, DollarSign, Shield } from 'lucide-react';
-import { cn } from '@/utils/cn';
-import type { StoreProfilePayload } from '@/features/settings';
+import { cn } from '@/lib/utils';
+import type { StoreProfilePayload } from '../types';
 
-interface StoreProfileTabProps {
+export interface StoreProfileTabProps {
   data: StoreProfilePayload;
   onChange: <K extends keyof StoreProfilePayload>(field: K, value: StoreProfilePayload[K]) => void;
   className?: string;
@@ -36,11 +37,12 @@ export const StoreProfileTab: React.FC<StoreProfileTabProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* Nome da Loja */}
           <div className="space-y-2">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <label htmlFor="store-name-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
               Nome da Loja
             </label>
             <div className="relative">
               <input
+                id="store-name-input"
                 type="text"
                 value={data.store_name}
                 onChange={(e) => onChange('store_name', e.target.value)}
@@ -53,11 +55,12 @@ export const StoreProfileTab: React.FC<StoreProfileTabProps> = ({
 
           {/* Tenant ID (Readonly) */}
           <div className="space-y-2">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <label htmlFor="tenant-id-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
               Tenant ID (Identificador do Sistema)
             </label>
             <div className="relative">
               <input
+                id="tenant-id-input"
                 type="text"
                 value={data.tenant_id}
                 readOnly
@@ -69,11 +72,12 @@ export const StoreProfileTab: React.FC<StoreProfileTabProps> = ({
 
           {/* E-mail Admin */}
           <div className="space-y-2">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <label htmlFor="admin-email-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
               E-mail do Administrador
             </label>
             <div className="relative">
               <input
+                id="admin-email-input"
                 type="email"
                 value={data.admin_email}
                 onChange={(e) => onChange('admin_email', e.target.value)}
@@ -86,14 +90,15 @@ export const StoreProfileTab: React.FC<StoreProfileTabProps> = ({
 
           {/* Fuso Horário */}
           <div className="space-y-2">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <label htmlFor="timezone-select" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
               Fuso Horário (Timezone)
             </label>
             <div className="relative">
               <select
+                id="timezone-select"
                 value={data.timezone}
                 onChange={(e) => onChange('timezone', e.target.value)}
-                className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all cursor-pointer"
+                className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all cursor-pointer font-sans"
               >
                 <option value="America/Sao_Paulo">América / São Paulo (GMT-3)</option>
                 <option value="America/Manaus">América / Manaus (GMT-4)</option>
@@ -106,14 +111,15 @@ export const StoreProfileTab: React.FC<StoreProfileTabProps> = ({
 
           {/* Moeda Base */}
           <div className="space-y-2 sm:col-span-2 max-w-md">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <label htmlFor="base-currency-select" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
               Moeda Base da Loja
             </label>
             <div className="relative">
               <select
+                id="base-currency-select"
                 value={data.base_currency}
                 onChange={(e) => onChange('base_currency', e.target.value)}
-                className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all cursor-pointer"
+                className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all cursor-pointer font-sans"
               >
                 <option value="BRL">Real Brasileiro (R$ - BRL)</option>
                 <option value="USD">Dólar Americano ($ - USD)</option>
@@ -127,3 +133,5 @@ export const StoreProfileTab: React.FC<StoreProfileTabProps> = ({
     </div>
   );
 };
+
+export default StoreProfileTab;

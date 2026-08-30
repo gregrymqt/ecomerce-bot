@@ -3,6 +3,7 @@
  *
  * Página Principal de Configurações & Preferências do Tenant.
  * Tema Synthetica Dark (#090D16), navegação por abas com min-h-[44px] e salvamento assíncrono.
+ * Em conformidade estrita com acessibilidade WCAG 2.1 AA e arquitetura em 4 camadas.
  */
 
 import React from 'react';
@@ -14,17 +15,18 @@ import {
   Save,
   Loader2,
   ShieldCheck,
-  AlertCircle,
 } from 'lucide-react';
-import { cn } from '@/utils/cn';
-import { useSettings } from '@/features/settings';
-import { AiRulesTab } from '@/features/settings';
-import { StoreProfileTab } from '@/features/settings';
-import { BillingProfileTab } from '@/features/settings';
-import { TenantSsoTab } from '@/features/settings';
-import { SettingsSuccessToast } from '@/features/settings';
-import type { SettingsTab } from '@/features/settings';
-import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
+import { useSettings } from '../hooks/useSettings';
+import {
+  AiRulesTab,
+  StoreProfileTab,
+  BillingProfileTab,
+  TenantSsoTab,
+  SettingsSuccessToast,
+} from '../components';
+import type { SettingsTab } from '../types';
+import { Button, Alert } from '@/components/ui';
 
 export const SettingsPage: React.FC = () => {
   const {
@@ -70,7 +72,11 @@ export const SettingsPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-16 px-4 sm:px-6 text-slate-100 animate-in fade-in duration-300">
+    <div
+      role="main"
+      aria-label="Configurações e Preferências do Tenant"
+      className="space-y-8 max-w-7xl mx-auto pb-16 px-4 sm:px-6 text-slate-100 animate-fade-in"
+    >
       {/* Cabeçalho da Página */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
@@ -107,7 +113,7 @@ export const SettingsPage: React.FC = () => {
             disabled={saving}
             isLoading={saving}
             iconLeft={!saving ? <Save className="h-4 w-4" /> : undefined}
-            className="min-h-[44px]"
+            className="min-h-[44px] font-bold"
           >
             Salvar Configurações
           </Button>
@@ -116,23 +122,23 @@ export const SettingsPage: React.FC = () => {
 
       {/* Alerta de Erro */}
       {error && (
-        <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-400 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 shrink-0" />
-            <span>{error}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setError(null)}
-            className="text-xs font-bold underline hover:text-white cursor-pointer"
+        <div className="animate-fade-in">
+          <Alert
+            variant="error"
+            title="Erro ao salvar configurações"
+            onClose={() => setError(null)}
           >
-            Fechar
-          </button>
+            {error}
+          </Alert>
         </div>
       )}
 
       {/* Navegação por Abas (min-h-[44px] com suporte a A11y role=tablist) */}
-      <div role="tablist" aria-label="Abas de configuração" className="flex border-b border-slate-800 overflow-x-auto gap-2 scrollbar-none">
+      <div
+        role="tablist"
+        aria-label="Abas de configuração"
+        className="flex border-b border-slate-800 overflow-x-auto gap-2 scrollbar-none"
+      >
         {tabs.map((t) => {
           const isActive = activeTab === t.id;
           return (
@@ -140,7 +146,9 @@ export const SettingsPage: React.FC = () => {
               key={t.id}
               type="button"
               role="tab"
+              id={`tab-${t.id}`}
               aria-selected={isActive}
+              aria-controls={`panel-${t.id}`}
               onClick={() => handleTabChange(t.id)}
               className={cn(
                 'min-h-[44px] h-11 px-5 font-bold text-xs sm:text-sm flex items-center gap-2 border-b-2 transition-all whitespace-nowrap cursor-pointer focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none',
@@ -165,30 +173,58 @@ export const SettingsPage: React.FC = () => {
       ) : (
         <section>
           {activeTab === 'AI_RULES' && (
-            <AiRulesTab
-              data={formData.ai}
-              onChange={handleAiSettingChange}
-              onAddTag={handleAddSeoTag}
-              onRemoveTag={handleRemoveSeoTag}
-            />
+            <div
+              role="tabpanel"
+              id="panel-AI_RULES"
+              aria-labelledby="tab-AI_RULES"
+              className="animate-fade-in"
+            >
+              <AiRulesTab
+                data={formData.ai}
+                onChange={handleAiSettingChange}
+                onAddTag={handleAddSeoTag}
+                onRemoveTag={handleRemoveSeoTag}
+              />
+            </div>
           )}
 
           {activeTab === 'STORE_PROFILE' && (
-            <StoreProfileTab
-              data={formData.profile}
-              onChange={handleProfileSettingChange}
-            />
+            <div
+              role="tabpanel"
+              id="panel-STORE_PROFILE"
+              aria-labelledby="tab-STORE_PROFILE"
+              className="animate-fade-in"
+            >
+              <StoreProfileTab
+                data={formData.profile}
+                onChange={handleProfileSettingChange}
+              />
+            </div>
           )}
 
           {activeTab === 'BILLING_DATA' && (
-            <BillingProfileTab
-              data={formData.billing}
-              onChange={handleBillingSettingChange}
-            />
+            <div
+              role="tabpanel"
+              id="panel-BILLING_DATA"
+              aria-labelledby="tab-BILLING_DATA"
+              className="animate-fade-in"
+            >
+              <BillingProfileTab
+                data={formData.billing}
+                onChange={handleBillingSettingChange}
+              />
+            </div>
           )}
 
           {activeTab === 'SSO_MAPPINGS' && (
-            <TenantSsoTab />
+            <div
+              role="tabpanel"
+              id="panel-SSO_MAPPINGS"
+              aria-labelledby="tab-SSO_MAPPINGS"
+              className="animate-fade-in"
+            >
+              <TenantSsoTab />
+            </div>
           )}
         </section>
       )}

@@ -1,15 +1,12 @@
 /**
  * src/features/settings/index.ts
- * Exportação pública unificada da feature de Configurações & Preferências.
+ *
+ * Barrel export canônico da Feature Settings (Configurações do Tenant & SSO).
  */
 
-export * from './types/settings.type';
-export * from './services/settings.service';
-export * from './hooks/useSettings';
-export * from './components/AiRulesTab';
-export * from './components/StoreProfileTab';
-export * from './components/BillingProfileTab';
-export * from './components/TenantSsoTab';
-export * from './components/SettingsSuccessToast';
-export * from './services/tenantSso.service';
+export * from './types';
+export * from './services';
+export * from './hooks';
+export * from './components';
 export * from './pages/SettingsPage';
+export { default as SettingsPage } from './pages/SettingsPage';

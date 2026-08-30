@@ -1,8 +1,8 @@
 /**
  * src/features/settings/types/settings.type.ts
  *
- * Contratos de tipos e DTOs para a feature de Configurações do Tenant.
- * Alinhado estritamente com a arquitetura DDD e os Schemas da API FastAPI (ecom-autobot-api).
+ * Contratos de tipos e DTOs canônicos para a feature Settings (Configurações do Tenant & SSO).
+ * Alinhado estritamente com os padrões de arquitetura em 4 camadas e WCAG 2.1 AA.
  */
 
 /**
@@ -81,4 +81,46 @@ export interface TenantSettingsResponse {
   profile: StoreProfilePayload;
   /** Dados de Faturamento e Nota Fiscal */
   billing: BillingProfilePayload;
+}
+
+/**
+ * Papéis de usuário canônicos no sistema para mapeamento SSO.
+ */
+export interface Role {
+  id: string;
+  name: string;
+  description: string;
+  isSystemRole: boolean;
+}
+
+/**
+ * Registro de mapeamento de grupo do IdP para uma Role do sistema.
+ */
+export interface TenantSsoMapping {
+  id: string;
+  tenantId: string;
+  idpGroupName: string;
+  roleId: string;
+  roleName: string;
+  isDefaultRole: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Payload para criação de mapeamento SSO.
+ */
+export interface CreateTenantSsoMappingPayload {
+  idpGroupName: string;
+  roleId: string;
+  isDefaultRole?: boolean;
+}
+
+/**
+ * Payload para atualização de mapeamento SSO.
+ */
+export interface UpdateTenantSsoMappingPayload {
+  idpGroupName: string;
+  roleId: string;
+  isDefaultRole?: boolean;
 }

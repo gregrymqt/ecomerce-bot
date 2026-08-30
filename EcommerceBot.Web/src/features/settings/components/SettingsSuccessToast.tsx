@@ -2,13 +2,14 @@
  * src/features/settings/components/SettingsSuccessToast.tsx
  *
  * Toast Flutuante de Sucesso ao Salvar Configurações.
+ * Em conformidade com acessibilidade WCAG 2.1 AA (role="status", aria-live="polite").
  */
 
 import React from 'react';
 import { CheckCircle2, X } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { cn } from '@/lib/utils';
 
-interface SettingsSuccessToastProps {
+export interface SettingsSuccessToastProps {
   show: boolean;
   onClose: () => void;
   message?: string;
@@ -25,6 +26,8 @@ export const SettingsSuccessToast: React.FC<SettingsSuccessToastProps> = ({
 
   return (
     <div
+      role="status"
+      aria-live="polite"
       className={cn(
         'fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300 max-w-md',
         className
@@ -45,7 +48,7 @@ export const SettingsSuccessToast: React.FC<SettingsSuccessToastProps> = ({
           type="button"
           onClick={onClose}
           aria-label="Fechar notificação"
-          className="text-slate-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-[#090D16] cursor-pointer"
+          className="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-[#090D16] cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
         >
           <X className="h-4 w-4" />
         </button>
@@ -53,3 +56,5 @@ export const SettingsSuccessToast: React.FC<SettingsSuccessToastProps> = ({
     </div>
   );
 };
+
+export default SettingsSuccessToast;
