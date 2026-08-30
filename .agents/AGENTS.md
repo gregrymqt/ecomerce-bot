@@ -16,9 +16,9 @@ A violação de qualquer uma das regras abaixo invalida a entrega e interrompe a
 
 ---
 
-## 🏛️ 1. Hierarquia de Contexto Cognitivo (4 Camadas)
+## 🏛️ 1. Hierarquia Cognitiva & Roteador de Skills (Sob Demanda)
 
-Para evitar alucinações e perda de atenção (*Lost in the Middle*), opere estritamente sob a seguinte precedência de regras:
+Para evitar alucinações e perda de atenção (*Lost in the Middle*), opere estritamente sob a seguinte ordem de precedência:
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
@@ -26,13 +26,27 @@ Para evitar alucinações e perda de atenção (*Lost in the Middle*), opere est
 ├──────────────────────────────────────────────────────────────┤
 │  NÍVEL 1: AGENTS.md (Constituição Inviolável do Monorepo)    │
 ├──────────────────────────────────────────────────────────────┤
-│  NÍVEL 2: SKILL ESPECÍFICA DO DOMÍNIO (Backend OU Frontend)  │
+│  NÍVEL 2: SKILL ESPECÍFICA DO DOMÍNIO (Carregamento Único)   │
 ├──────────────────────────────────────────────────────────────┤
 │  NÍVEL 3: GRAFO DE TOPOLOGIA (GRAPH_REPORT.md / graph.json)  │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-**Regra de Isolamento de Skills:** Em tarefas de backend/banco, ative apenas `sqlserver-dba` e `production-security`. Em tarefas de interface, ative apenas `impeccable`. NUNCA injete skills de UI em tarefas de infraestrutura ou persistência.
+### 🧰 Catálogo de Skills (Ativação Exclusiva por Escopo)
+
+NUNCA carregue todas as skills simultaneamente. Inspecione e ative estritamente o arquivo correspondente ao domínio da tarefa:
+
+| Domínio | Arquivo da Skill | Quando Inspecionar |
+|---|---|---|
+| **Persistência / SQL** | `.agents/skills/sqlserver-dba/SKILL.md` | Ao criar scripts DbUp, índices, views ou investigar queries Dapper. |
+| **Segurança / Core** | `.agents/skills/production-security/SKILL.md` | Ao mexer em webhooks, HMAC, AES-256 BYOK, SSRF ou isolamento de tenant. |
+| **Interface / Web** | `.agents/skills/impeccable/SKILL.md` | Ao desenvolver páginas React, Tailwind, formulários, A11y e SSE. |
+| **Comandos / Terminal** | `.agents/skills/token-density/SKILL.md` | Padrão obrigatório para execuções concisas no terminal (RTK pattern). |
+
+### 🧭 Navegação via Grafo (Zero Busca Cega)
+
+- **Antes de planejar alterações entre múltiplos arquivos:** Consulte `.agents/GRAPH_REPORT.md` para identificar Controllers, Filas e Tabelas envolvidas sem fazer varredura em massa.
+- **Para checar dependências diretas de um símbolo:** Consulte `.agents/graph.json`.
 
 ---
 
