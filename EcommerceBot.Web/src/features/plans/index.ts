@@ -1,11 +1,11 @@
 /**
  * src/features/plans/index.ts
- * Ponto de exportação público do módulo de planos (DDD Architecture).
+ *
+ * Barrel export canônico da Feature Plans (Planos de Assinatura).
  */
 
-export * from './types/plans.type';
-export * from './services/plans.service';
-export * from './hooks/useAdminPlans';
-export * from './components/AdminPlanTable';
-export * from './components/AdminPlanModal';
+export * from './types';
+export * from './services';
+export * from './hooks';
+export * from './components';
 export * from './pages/AdminPlansPage';

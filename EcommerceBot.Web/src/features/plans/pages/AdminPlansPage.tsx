@@ -1,14 +1,15 @@
 /**
  * src/features/plans/pages/AdminPlansPage.tsx
- * Painel Administrativo de Gestão de Planos de Assinatura (Mercado Pago REST API & PostgreSQL/Redis - Synthetica Dark).
+ *
+ * Painel Administrativo de Gestão de Planos de Assinatura.
+ * Consome o hook useAdminPlans e exibe métricas, filtros e tabela de planos.
  */
 
 import React from 'react';
 import { Plus, Search, ShieldCheck, Database, Cloud, RefreshCw, Filter } from 'lucide-react';
-import { useAdminPlans } from '@/features/plans';
-import { AdminPlanTable } from '@/features/plans';
-import { AdminPlanModal } from '@/features/plans';
-import { Alert } from '@/components/ui/feedback/Alert';
+import { useAdminPlans } from '../hooks';
+import { AdminPlanTable, AdminPlanModal } from '../components';
+import { Alert, Button } from '@/components/ui';
 
 export const AdminPlansPage: React.FC = () => {
   const {
@@ -34,10 +35,14 @@ export const AdminPlansPage: React.FC = () => {
     refreshPlans,
   } = useAdminPlans();
 
-  const activePlansCount = plans.filter((p) => p.status === 'active').length;
+  const activePlansCount = plans.filter((p) => p.isActive ?? p.status === 'active').length;
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+    <div
+      role="main"
+      aria-label="Gestão de Planos de Assinatura"
+      className="min-h-screen p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto animate-fade-in pb-12"
+    >
       {/* Alerta de Feedback Customizado */}
       {alertInfo && (
         <Alert
@@ -50,7 +55,7 @@ export const AdminPlansPage: React.FC = () => {
       )}
 
       {/* Top Header & Page Title */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#15121B]/90 p-6 rounded-3xl border border-slate-800 shadow-xl backdrop-blur-md">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/90 p-6 rounded-3xl border border-slate-800 shadow-xl backdrop-blur-md">
         <div>
           <div className="flex items-center gap-3">
             <span className="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-2xl border border-indigo-500/20">
@@ -61,22 +66,25 @@ export const AdminPlansPage: React.FC = () => {
             </h1>
           </div>
           <p className="text-sm text-slate-400 mt-1 font-mono">
-            Sincronização com Mercado Pago Preapproval
+            Sincronização e cadastro de planos da plataforma
           </p>
         </div>
 
-        <button
+        <Button
+          type="button"
+          variant="primary"
           onClick={openCreateModal}
-          className="min-h-[44px] min-w-[44px] px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/25 transition-all flex items-center justify-center gap-2 border border-indigo-400/20"
+          iconLeft={<Plus className="w-5 h-5" />}
+          className="min-h-[44px] px-5 bg-indigo-600 hover:bg-indigo-500 font-bold text-white shadow-lg shadow-indigo-600/25"
         >
-          <Plus className="w-5 h-5" /> Criar Novo Plano
-        </button>
-      </div>
+          Criar Novo Plano
+        </Button>
+      </header>
 
       {/* Metrics Bar - 3 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Card 1: Infraestrutura - Total de Planos */}
-        <div className="bg-[#15121B]/90 border border-slate-800 p-5 rounded-2xl shadow-lg backdrop-blur-md flex items-center gap-4">
+      <section aria-label="Métricas de Planos" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Card 1: Total de Planos */}
+        <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-lg backdrop-blur-md flex items-center gap-4">
           <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
             <Database className="w-5 h-5" />
           </div>
@@ -88,8 +96,8 @@ export const AdminPlansPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Card 2: Operacional - Planos Ativos */}
-        <div className="bg-[#15121B]/90 border border-slate-800 p-5 rounded-2xl shadow-lg backdrop-blur-md flex items-center gap-4">
+        {/* Card 2: Planos Ativos */}
+        <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-lg backdrop-blur-md flex items-center gap-4">
           <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
             <ShieldCheck className="w-5 h-5" />
           </div>
@@ -101,8 +109,8 @@ export const AdminPlansPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Card 3: AI Sincronização - Modo de Consulta */}
-        <div className="bg-[#15121B]/90 border border-slate-800 p-5 rounded-2xl shadow-lg backdrop-blur-md flex items-center gap-4">
+        {/* Card 3: Modo de Consulta */}
+        <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-lg backdrop-blur-md flex items-center gap-4">
           <div className="p-3 bg-purple-500/10 text-purple-400 rounded-xl border border-purple-500/20">
             <Cloud className="w-5 h-5" />
           </div>
@@ -111,20 +119,21 @@ export const AdminPlansPage: React.FC = () => {
               Modo de Consulta
             </span>
             <div className="text-sm font-bold text-slate-200 mt-0.5 font-mono">
-              {sourceMode === 'local' ? 'Cache Local & Banco' : 'API Mercado Pago Direct'}
+              {sourceMode === 'local' ? 'Banco de Dados Core' : 'API Mercado Pago Direct'}
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Toolbar: Filters, Source Mode & Search */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 bg-[#15121B]/90 p-4 rounded-2xl border border-slate-800/80 shadow-lg backdrop-blur-md">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 bg-slate-900/90 p-4 rounded-2xl border border-slate-800/80 shadow-lg backdrop-blur-md">
         <div className="flex flex-wrap items-center gap-3">
           {/* Source Toggle Pills */}
-          <div className="bg-[#100D14] p-1 rounded-xl border border-slate-800 flex items-center">
+          <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 flex items-center">
             <button
+              type="button"
               onClick={() => setSourceMode('local')}
-              className={`min-h-[44px] px-4 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all flex items-center gap-2 ${
+              className={`min-h-[44px] px-4 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all flex items-center gap-2 cursor-pointer ${
                 sourceMode === 'local'
                   ? 'bg-indigo-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-slate-200'
@@ -133,8 +142,9 @@ export const AdminPlansPage: React.FC = () => {
               <Database className="w-3.5 h-3.5" /> Banco Local
             </button>
             <button
+              type="button"
               onClick={() => setSourceMode('mp')}
-              className={`min-h-[44px] px-4 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all flex items-center gap-2 ${
+              className={`min-h-[44px] px-4 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all flex items-center gap-2 cursor-pointer ${
                 sourceMode === 'mp'
                   ? 'bg-purple-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-slate-200'
@@ -145,7 +155,7 @@ export const AdminPlansPage: React.FC = () => {
           </div>
 
           {/* Status Filter Dropdown */}
-          <div className="flex items-center gap-2 bg-[#100D14] px-3 py-1 rounded-xl border border-slate-800 min-h-[44px]">
+          <div className="flex items-center gap-2 bg-slate-950 px-3 py-1 rounded-xl border border-slate-800 min-h-[44px]">
             <Filter className="w-4 h-4 text-slate-400" />
             <select
               value={statusFilter}
@@ -159,7 +169,7 @@ export const AdminPlansPage: React.FC = () => {
                 Somente Ativos
               </option>
               <option value="canceled" className="bg-slate-900 text-slate-200">
-                Somente Cancelados
+                Somente Inativos / Cancelados
               </option>
             </select>
           </div>
@@ -174,15 +184,17 @@ export const AdminPlansPage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar por nome ou ID..."
-              className="w-full min-h-[44px] pl-10 pr-4 bg-[#100D14] border border-slate-800 rounded-xl text-slate-100 text-base sm:text-sm focus:border-indigo-500 outline-none transition-colors"
+              className="w-full min-h-[44px] pl-10 pr-4 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-base sm:text-sm focus:border-indigo-500 outline-none transition-colors"
             />
           </div>
 
           <button
+            type="button"
             onClick={refreshPlans}
             title="Atualizar Lista"
-            className="min-h-[44px] min-w-[44px] p-2.5 bg-[#100D14] border border-slate-800 hover:bg-slate-800 text-slate-300 rounded-xl transition-colors flex items-center justify-center"
-           aria-label="Atualizar planos">
+            aria-label="Atualizar planos"
+            className="min-h-[44px] min-w-[44px] p-2.5 bg-slate-950 border border-slate-800 hover:bg-slate-800 text-slate-300 rounded-xl transition-colors flex items-center justify-center cursor-pointer focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+          >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
           </button>
         </div>
@@ -190,19 +202,23 @@ export const AdminPlansPage: React.FC = () => {
 
       {/* Error Feedback */}
       {error && (
-        <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-rose-300 text-sm">
-          {error}
+        <div className="animate-fade-in">
+          <Alert variant="error" title="Erro ao Carregar Planos">
+            {error}
+          </Alert>
         </div>
       )}
 
       {/* Main Data Table */}
-      <AdminPlanTable
-        plans={plans}
-        loading={loading}
-        onEdit={openEditModal}
-        onToggleStatus={handleToggleStatus}
-        onRefresh={refreshPlans}
-      />
+      <section aria-label="Tabela de Planos">
+        <AdminPlanTable
+          plans={plans}
+          loading={loading}
+          onEdit={openEditModal}
+          onToggleStatus={handleToggleStatus}
+          onRefresh={refreshPlans}
+        />
+      </section>
 
       {/* Admin Plan Modal */}
       <AdminPlanModal
@@ -217,4 +233,3 @@ export const AdminPlansPage: React.FC = () => {
 };
 
 export default AdminPlansPage;
-

@@ -1,84 +1,61 @@
 /**
  * src/features/plans/types/plans.type.ts
- * Contratos de tipos para a feature Admin de Planos de Assinatura.
- * Alinhado estritamente com os Schemas Pydantic da API FastAPI (PlanResponse, CreatePlanRequest, etc).
+ *
+ * Contratos de tipos e DTOs canônicos para a feature Planos de Assinatura.
+ * Alinhado estritamente com a API ASP.NET Core (EcommerceBot.Application.DTOs.Plans)
+ * com compatibilidade para o ecossistema Mercado Pago Preapproval.
  */
 
-export interface FreeTrialDTO {
-  frequency: number;
-  frequency_type: 'days' | 'months';
-}
-
-export interface AutoRecurringCreateDTO {
-  frequency: number;
-  frequency_type: 'days' | 'months';
-  repetitions?: number;
-  billing_day?: number;
-  billing_day_proportional?: boolean;
-  free_trial?: FreeTrialDTO;
-  transaction_amount: number;
-  currency_id?: string;
-}
-
-export interface PaymentMethodItemDTO {
-  id: string;
-}
-
-export interface PaymentMethodsAllowedDTO {
-  payment_types?: PaymentMethodItemDTO[];
-  payment_methods?: PaymentMethodItemDTO[];
-}
-
 export interface CreatePlanRequest {
-  reason: string;
-  auto_recurring: AutoRecurringCreateDTO;
-  payment_methods_allowed?: PaymentMethodsAllowedDTO;
-  back_url?: string;
-  external_id?: string;
-}
-
-export interface AutoRecurringUpdateDTO {
-  frequency?: number;
-  frequency_type?: 'days' | 'months';
-  repetitions?: number;
-  billing_day?: number;
-  billing_day_proportional?: boolean;
-  free_trial?: FreeTrialDTO;
-  transaction_amount?: number;
-  currency_id?: string;
+  name: string;
+  description?: string;
+  price: number;
+  creditsIncluded: number;
+  billingInterval: string;
+  mpPreapprovalPlanId?: string;
+  trialDays: number;
+  isActive: boolean;
 }
 
 export interface UpdatePlanRequest {
-  reason?: string;
-  auto_recurring?: AutoRecurringUpdateDTO;
-  payment_methods_allowed?: PaymentMethodsAllowedDTO;
-  back_url?: string;
-  status?: 'active' | 'canceled';
-  external_id?: string;
+  name?: string;
+  description?: string;
+  price?: number;
+  creditsIncluded?: number;
+  billingInterval?: string;
+  mpPreapprovalPlanId?: string;
+  trialDays?: number;
+  isActive?: boolean;
 }
 
 export interface PlanResponse {
   id: string;
+  name: string;
+  description?: string;
+  price: number;
+  creditsIncluded: number;
+  billingInterval: string;
+  mpPreapprovalPlanId?: string;
+  trialDays: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  // Campos de compatibilidade com interfaces legadas / Mercado Pago
+  reason?: string;
   external_id?: string;
-  application_id?: number | string;
-  collector_id?: number | string;
-  reason: string;
-  auto_recurring: {
+  status?: string;
+  init_point?: string;
+  auto_recurring?: {
     frequency?: number;
     frequency_type?: string;
     transaction_amount?: number;
     currency_id?: string;
-    free_trial?: FreeTrialDTO;
+    free_trial?: {
+      frequency: number;
+      frequency_type: string;
+    };
     [key: string]: unknown;
   };
-  payment_methods_allowed?: Record<string, unknown>;
-  back_url?: string;
-  external_reference?: number | string;
-  init_point?: string;
-  date_created?: string;
-  last_modified?: string;
-  status: 'active' | 'canceled' | string;
-  subscribed?: number;
 }
 
 export interface SearchPlansQueryParams {
