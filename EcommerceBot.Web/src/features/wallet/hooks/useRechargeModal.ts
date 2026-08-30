@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { RechargePackage, RechargeResponse } from '../types/wallet.type';
+import type { RechargePackage, RechargeResponse, UseRechargeModalProps } from '../types';
 import { walletService } from '../services/wallet.service';
 import { checkoutService } from '@/features/checkout/services/checkout.service';
 import { useAuth } from '@/features/auth';
@@ -18,12 +18,6 @@ export const RECHARGE_PACKAGES: RechargePackage[] = [
   { id: 'pkg_500', credits: 500, price_brl: 80, discount_badge: '20% OFF', is_popular: true },
   { id: 'pkg_1000', credits: 1000, price_brl: 150 },
 ];
-
-export interface UseRechargeModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccessPayment?: () => void;
-}
 
 export function useRechargeModal({
   isOpen,

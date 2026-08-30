@@ -6,19 +6,7 @@
  */
 
 import { useState, useMemo } from 'react';
-
-export interface CreditCardFormData {
-  cardNumber: string;
-  cardholderName: string;
-  expirationDate: string;
-  securityCode: string;
-  installments: number;
-}
-
-export interface UseCreditCardFormProps {
-  onSubmitCard: (cardData: CreditCardFormData) => Promise<void>;
-  amountBrl?: number;
-}
+import type { CreditCardFormData, UseCreditCardFormProps } from '../types';
 
 export function useCreditCardForm({ onSubmitCard, amountBrl = 80 }: UseCreditCardFormProps) {
   const [formData, setFormData] = useState<CreditCardFormData>({

@@ -8,11 +8,7 @@
 import React from 'react';
 import { TrendingUp, BarChart3, Activity } from 'lucide-react';
 import { Card } from '@/components/ui/display/Card';
-
-export interface UsageInsightsCardProps {
-  monthlyUsage: number;
-  successRate?: number;
-}
+import type { UsageInsightsCardProps } from '../types';
 
 export const UsageInsightsCard: React.FC<UsageInsightsCardProps> = ({
   monthlyUsage,
@@ -25,7 +21,7 @@ export const UsageInsightsCard: React.FC<UsageInsightsCardProps> = ({
   return (
     <Card
       glass
-      className="bg-slate-900/70 backdrop-blur-xl border-slate-800 rounded-xl p-6 relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-indigo-500/50 before:to-transparent flex flex-col justify-between shadow-xl"
+      className="bg-slate-900/70 backdrop-blur-xl border-slate-800 rounded-xl p-6 relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-indigo-500/50 before:to-transparent flex flex-col justify-between shadow-xl h-full"
     >
       {/* Header do Card com Ícone e Título */}
       <div className="flex items-center gap-2 mb-6">
@@ -80,4 +76,3 @@ export const UsageInsightsCard: React.FC<UsageInsightsCardProps> = ({
 };
 
 export default UsageInsightsCard;
-

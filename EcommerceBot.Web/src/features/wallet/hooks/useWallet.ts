@@ -11,22 +11,9 @@ import type {
   CreditTransaction,
   StatementFilters,
   TransactionType,
-} from '../types/wallet.type';
+  UseWalletReturn,
+} from '../types';
 import { getErrorMessage } from '@/utils/errors';
-
-export interface UseWalletReturn {
-  balance: number | null;
-  transactions: CreditTransaction[];
-  totalCount: number;
-  loadingBalance: boolean;
-  loadingStatement: boolean;
-  error: string | null;
-  page: number;
-  typeFilter: TransactionType | 'ALL';
-  setPage: React.Dispatch<React.SetStateAction<number>>;
-  setTypeFilter: React.Dispatch<React.SetStateAction<TransactionType | 'ALL'>>;
-  refetchWallet: () => Promise<[void, void]>;
-}
 
 export function useWallet(initialPage = 1, limit = 10): UseWalletReturn {
   const [balance, setBalance] = useState<number | null>(null);

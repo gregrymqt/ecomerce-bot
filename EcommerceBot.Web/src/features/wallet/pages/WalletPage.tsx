@@ -4,16 +4,19 @@
  * Página container principal do módulo de Carteira & Créditos.
  * Integra o custom hook useWallet, os cards de resumo/insights, a tabela de extrato
  * e o modal de recargas em uma interface Synthetica Dark de alta performance.
+ * Em conformidade estrita com acessibilidade WCAG 2.1 AA e arquitetura em 4 camadas.
  */
 
 import React, { useState, useMemo } from 'react';
 import { Wallet, Sparkles, RefreshCw } from 'lucide-react';
 import { useWallet } from '../hooks/useWallet';
-import { WalletBalanceCard } from '../components/WalletBalanceCard';
-import { UsageInsightsCard } from '../components/UsageInsightsCard';
-import { TransactionHistoryTable } from '../components/TransactionHistoryTable';
-import { RechargeModal } from '../components/RechargeModal';
-import { Button } from '@/components/ui/Button';
+import {
+  WalletBalanceCard,
+  UsageInsightsCard,
+  TransactionHistoryTable,
+  RechargeModal,
+} from '../components';
+import { Button, Alert } from '@/components/ui';
 
 export const WalletPage: React.FC = () => {
   // 1. Hook de Estado da Carteira
@@ -42,7 +45,11 @@ export const WalletPage: React.FC = () => {
   }, [transactions]);
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 animate-fadeIn text-slate-100">
+    <div
+      role="main"
+      aria-label="Painel de Carteira e Créditos"
+      className="space-y-8 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 animate-fade-in text-slate-100"
+    >
       {/* Cabeçalho da Página */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
         <div className="space-y-1">
@@ -84,21 +91,26 @@ export const WalletPage: React.FC = () => {
 
       {/* Alerta de Erro Global */}
       {error && (
-        <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-sm flex items-center justify-between">
-          <span>{error}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => refetchWallet()}
-            className="text-rose-300 hover:text-white"
-          >
-            Tentar Novamente
-          </Button>
+        <div className="animate-fade-in">
+          <Alert variant="error" title="Erro de Carregamento">
+            <div className="flex items-center justify-between gap-4">
+              <span>{error}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => refetchWallet()}
+                className="text-rose-300 hover:text-white min-h-[36px] px-3"
+              >
+                Tentar Novamente
+              </Button>
+            </div>
+          </Alert>
         </div>
       )}
 
       {/* Grid de Cards Superiores (12 Colunas) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* WalletBalanceCard (7 Colunas) */}
         <div className="lg:col-span-7">
           <WalletBalanceCard

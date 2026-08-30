@@ -9,17 +9,8 @@ import React from 'react';
 import { Card } from '@/components/ui/display/Card';
 import { CreditCardPaymentTab } from '@/features/checkout/components/CreditCardPaymentTab';
 import { walletService } from '../services/wallet.service';
-import type { CreditCardRechargePayload, CardPaymentPayer } from '../types/wallet.type';
+import type { CreditCardRechargeTabProps, CreditCardRechargePayload, CardPaymentPayer } from '../types';
 import type { CreditCardPaymentPayload } from '@/features/checkout';
-
-export interface CreditCardRechargeTabProps {
-  packageId?: string;
-  amountBrl?: number;
-  loading?: boolean;
-  onSuccessPayment?: () => void;
-  onSubmitCard?: (payload: CreditCardRechargePayload) => Promise<void>;
-  className?: string;
-}
 
 export const CreditCardRechargeTab: React.FC<CreditCardRechargeTabProps> = ({
   packageId = 'default-package',

@@ -2,19 +2,14 @@
  * src/features/wallet/components/WalletBalanceCard.tsx
  *
  * Componente visual de resumo de saldo com estética Glassmorphism,
- * badge de status de garantia e botão de ação para recargas.
+ * badge de status de garantia e botão de ação para recargas (min-h-[44px]).
  */
 
 import React from 'react';
 import { Zap, ShieldCheck, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/display/Card';
-
-export interface WalletBalanceCardProps {
-  balance: number | null;
-  loading: boolean;
-  onOpenRechargeModal: () => void;
-}
+import type { WalletBalanceCardProps } from '../types';
 
 export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
   balance,
@@ -26,7 +21,7 @@ export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
   return (
     <Card
       glass
-      className="bg-slate-900/70 backdrop-blur-xl border-slate-800 rounded-xl p-6 relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-indigo-500/50 before:to-transparent flex flex-col justify-between shadow-xl"
+      className="bg-slate-900/70 backdrop-blur-xl border-slate-800 rounded-xl p-6 relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-indigo-500/50 before:to-transparent flex flex-col justify-between shadow-xl h-full"
     >
       {/* Header do Card com Título e Badge */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
@@ -85,4 +80,3 @@ export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
 };
 
 export default WalletBalanceCard;
-

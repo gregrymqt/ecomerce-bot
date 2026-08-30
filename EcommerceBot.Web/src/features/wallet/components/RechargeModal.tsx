@@ -4,18 +4,18 @@
  * Componente visual de apresentação (UI Pura) do Modal de Recargas.
  * Consome o hook customizado useRechargeModal para gerenciar toda a lógica de negócio,
  * chamadas HTTP, seleções de pacotes e polling de confirmação de pagamento.
+ * Em conformidade com acessibilidade WCAG 2.1 AA e touch targets >= 44px.
  */
 
 import React from 'react';
 import { Zap, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
-import { useRechargeModal, type UseRechargeModalProps } from '../hooks/useRechargeModal';
+import { useRechargeModal } from '../hooks/useRechargeModal';
+import type { RechargeModalProps } from '../types';
 import { Modal } from '@/components/ui/overlay/Modal';
 import { Card } from '@/components/ui/display/Card';
 import { Button } from '@/components/ui/Button';
 import { PixRechargeTab } from './PixRechargeTab';
 import { CreditCardRechargeTab } from './CreditCardRechargeTab';
-
-export type RechargeModalProps = UseRechargeModalProps;
 
 export const RechargeModal: React.FC<RechargeModalProps> = ({
   isOpen,
@@ -110,7 +110,11 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
             1. Escolha o Pacote de Créditos
           </label>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div
+            role="radiogroup"
+            aria-label="Pacotes de créditos disponíveis"
+            className="grid grid-cols-1 md:grid-cols-3 gap-4"
+          >
             {packages.map((pkg) => {
               const isSelected = pkg.id === selectedPackage;
 
@@ -119,8 +123,17 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
                   key={pkg.id}
                   glass
                   hoverable
+                  role="radio"
+                  aria-checked={isSelected}
+                  tabIndex={0}
                   onClick={() => setSelectedPackage(pkg.id)}
-                  className={`relative p-4 rounded-xl cursor-pointer transition-all flex flex-col justify-between ${
+                  onKeyDown={(e) => {
+                    if (e.key === ' ' || e.key === 'Enter') {
+                      e.preventDefault();
+                      setSelectedPackage(pkg.id);
+                    }
+                  }}
+                  className={`relative p-4 rounded-xl cursor-pointer transition-all flex flex-col justify-between min-h-[44px] focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none ${
                     isSelected
                       ? 'border-2 border-[#d0bcff] bg-[#a078ff]/15 shadow-lg shadow-[#6d3bd7]/20'
                       : 'border-[#494454] bg-[#221e2c] hover:border-[#6d3bd7]/50'
@@ -168,9 +181,15 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
             2. Forma de Pagamento
           </label>
 
-          <div className="grid grid-cols-2 gap-3 p-1.5 bg-[#201c27] border border-[#3c3647] rounded-xl mb-4">
+          <div
+            role="tablist"
+            aria-label="Métodos de Pagamento"
+            className="grid grid-cols-2 gap-3 p-1.5 bg-[#201c27] border border-[#3c3647] rounded-xl mb-4"
+          >
             <Button
               type="button"
+              role="tab"
+              aria-selected={paymentMethod === 'pix'}
               variant={paymentMethod === 'pix' ? 'primary' : 'ghost'}
               onClick={() => setPaymentMethod('pix')}
               className={`w-full min-h-[44px] ${
@@ -184,6 +203,8 @@ export const RechargeModal: React.FC<RechargeModalProps> = ({
 
             <Button
               type="button"
+              role="tab"
+              aria-selected={paymentMethod === 'credit_card'}
               variant={paymentMethod === 'credit_card' ? 'primary' : 'ghost'}
               onClick={() => setPaymentMethod('credit_card')}
               className={`w-full min-h-[44px] ${

@@ -9,14 +9,7 @@ import React from 'react';
 import { Card } from '@/components/ui/display/Card';
 import { PixPaymentDisplay } from '@/components/ui/payment/PixPaymentDisplay';
 import { usePixRecharge } from '../hooks/usePixRecharge';
-
-export interface PixRechargeTabProps {
-  pixQrCode?: string;
-  pixCopiaECola?: string;
-  expirationDate?: string;
-  loading: boolean;
-  onGeneratePix?: () => void;
-}
+import type { PixRechargeTabProps } from '../types';
 
 export const PixRechargeTab: React.FC<PixRechargeTabProps> = ({
   pixQrCode,

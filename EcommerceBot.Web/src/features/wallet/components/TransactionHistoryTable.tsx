@@ -3,6 +3,7 @@
  *
  * Componente de tabela de extrato e histórico de movimentações da carteira.
  * Utiliza os componentes genéricos de UI Card e Table de @/components/ui/display.
+ * Em conformidade com acessibilidade WCAG 2.1 AA e touch targets >= 44px.
  */
 
 import React, { useMemo } from 'react';
@@ -15,20 +16,9 @@ import {
   ChevronRight,
   Inbox,
 } from 'lucide-react';
-import type { CreditTransaction, TransactionType } from '../types/wallet.type';
+import type { CreditTransaction, TransactionHistoryTableProps } from '../types';
 import { Card } from '@/components/ui/display/Card';
 import { Table, type TableColumn } from '@/components/ui/display/Table';
-
-export interface TransactionHistoryTableProps {
-  transactions: CreditTransaction[];
-  loading: boolean;
-  activeFilter: 'ALL' | TransactionType;
-  onFilterChange: (filter: 'ALL' | TransactionType) => void;
-  totalCount: number;
-  currentPage: number;
-  onPageChange: (page: number) => void;
-  itemsPerPage?: number;
-}
 
 export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = ({
   transactions,
@@ -175,8 +165,12 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
           </div>
         </div>
 
-        {/* Filtros em formato de Pills */}
-        <div role="tablist" aria-label="Filtros de transação" className="flex items-center gap-1.5 p-1 bg-slate-900 border border-slate-800 rounded-lg self-start sm:self-auto">
+        {/* Filtros em formato de Pills com A11y */}
+        <div
+          role="tablist"
+          aria-label="Filtros de transação"
+          className="flex items-center gap-1.5 p-1 bg-slate-900 border border-slate-800 rounded-lg self-start sm:self-auto"
+        >
           <button
             type="button"
             role="tab"
@@ -233,7 +227,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
       </div>
 
       {/* Paginação */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-800/60">
         <span className="text-xs text-slate-400">{getPaginationInfo()}</span>
 
         <div className="flex items-center gap-2">
