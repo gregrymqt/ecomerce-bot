@@ -1,42 +1,31 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Threading.Tasks;
 using Dapper;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
-using EcommerceBot.Infrastructure.Options;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Repositories;
 
 public class PlanRepository : IPlanRepository
 {
-    private readonly string _connectionString;
+    private readonly IDbConnectionFactory _connectionFactory;
 
-    public PlanRepository(IOptions<DatabaseOptions> databaseOptions)
+    public PlanRepository(IDbConnectionFactory connectionFactory)
     {
-        _connectionString = databaseOptions.Value.DefaultConnection;
-
-        if (string.IsNullOrWhiteSpace(_connectionString))
-        {
-            throw new ArgumentNullException(nameof(databaseOptions), "DefaultConnection string is required for PlanRepository.");
-        }
+        _connectionFactory = connectionFactory;
     }
-
-    private IDbConnection CreateConnection() => new SqlConnection(_connectionString);
 
     public async Task<Plan?> GetByIdAsync(Guid id)
     {
-        using var connection = CreateConnection();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         const string sql = "SELECT * FROM dbo.Plans WHERE Id = @Id;";
         return await connection.QuerySingleOrDefaultAsync<Plan>(sql, new { Id = id });
     }
 
     public async Task<IEnumerable<Plan>> GetAllAsync(bool onlyActive = false)
     {
-        using var connection = CreateConnection();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         string sql = "SELECT * FROM dbo.Plans";
         
         if (onlyActive)
@@ -49,7 +38,7 @@ public class PlanRepository : IPlanRepository
 
     public async Task<Guid> CreateAsync(Plan plan)
     {
-        using var connection = CreateConnection();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         const string sql = @"
             INSERT INTO dbo.Plans (
                 Name, Description, Price, CreditsIncluded, BillingInterval, 
@@ -66,7 +55,7 @@ public class PlanRepository : IPlanRepository
 
     public async Task UpdateAsync(Plan plan)
     {
-        using var connection = CreateConnection();
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         const string sql = @"
             UPDATE dbo.Plans SET
                 Name = @Name,

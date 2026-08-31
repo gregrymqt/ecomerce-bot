@@ -7,20 +7,22 @@ using Dapper;
 using EcommerceBot.Application.DTOs.Analytics;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
+using EcommerceBot.Domain.Interfaces;
 
 namespace EcommerceBot.Infrastructure.Repositories;
 
 public class TrafficAttributionRepository : ITrafficAttributionRepository
 {
-    private readonly IDbConnection _db;
+    private readonly IDbConnectionFactory _connectionFactory;
 
-    public TrafficAttributionRepository(IDbConnection db)
+    public TrafficAttributionRepository(IDbConnectionFactory connectionFactory)
     {
-        _db = db;
+        _connectionFactory = connectionFactory;
     }
 
     public async Task<Guid> RecordTenantVisitAsync(TrafficAttribution attribution)
     {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         const string sql = @"
             INSERT INTO dbo.TrafficAttributions (
                 Id, TenantId, OrderId, SessionId, UtmSource, UtmMedium, UtmCampaign,
@@ -33,12 +35,13 @@ public class TrafficAttributionRepository : ITrafficAttributionRepository
         if (attribution.Id == Guid.Empty) attribution.Id = Guid.NewGuid();
         if (attribution.CreatedAt == default) attribution.CreatedAt = DateTimeOffset.UtcNow;
 
-        await _db.ExecuteAsync(sql, attribution);
+        await connection.ExecuteAsync(sql, attribution);
         return attribution.Id;
     }
 
     public async Task<TenantTrafficOverviewDto> GetTenantTrafficOverviewAsync(Guid tenantId, int days, string? sourceFilter = null)
     {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         var since = DateTimeOffset.UtcNow.AddDays(-days);
 
         // 1. Resumo Geral de Faturamento e Pedidos Atribuídos
@@ -53,7 +56,7 @@ public class TrafficAttributionRepository : ITrafficAttributionRepository
               AND (@SourceFilter IS NULL OR t.UtmSource = @SourceFilter);
         ";
 
-        var summary = await _db.QueryFirstOrDefaultAsync<dynamic>(summarySql, new 
+        var summary = await connection.QueryFirstOrDefaultAsync<dynamic>(summarySql, new 
         { 
             TenantId = tenantId, 
             Since = since,
@@ -79,7 +82,7 @@ public class TrafficAttributionRepository : ITrafficAttributionRepository
             ORDER BY RevenueBrl DESC;
         ";
 
-        var sourceRows = (await _db.QueryAsync<dynamic>(sourcesSql, new { TenantId = tenantId, Since = since })).ToList();
+        var sourceRows = (await connection.QueryAsync<dynamic>(sourcesSql, new { TenantId = tenantId, Since = since })).ToList();
         var sourcesList = sourceRows.Select(r => 
         {
             int visits = (int)r.VisitsCount;
@@ -112,7 +115,7 @@ public class TrafficAttributionRepository : ITrafficAttributionRepository
             ORDER BY TotalRevenueBrl DESC;
         ";
 
-        var creativeRows = (await _db.QueryAsync<dynamic>(creativesSql, new { TenantId = tenantId, Since = since })).ToList();
+        var creativeRows = (await connection.QueryAsync<dynamic>(creativesSql, new { TenantId = tenantId, Since = since })).ToList();
         var creativesList = creativeRows.Select(r => 
         {
             int orders = (int)r.OrdersCount;
@@ -147,6 +150,7 @@ public class TrafficAttributionRepository : ITrafficAttributionRepository
 
     public async Task<int> LinkOrderToTrafficSessionAsync(Guid tenantId, Guid orderId, string sessionId, string? utmSource, string? utmCampaign, string? adId)
     {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         const string sql = @"
             UPDATE dbo.TrafficAttributions
             SET OrderId = @OrderId
@@ -155,7 +159,7 @@ public class TrafficAttributionRepository : ITrafficAttributionRepository
               AND OrderId IS NULL;
         ";
 
-        return await _db.ExecuteAsync(sql, new 
+        return await connection.ExecuteAsync(sql, new 
         { 
             TenantId = tenantId, 
             OrderId = orderId, 

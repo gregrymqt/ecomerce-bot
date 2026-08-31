@@ -14,15 +14,15 @@ public static class DependencyInjectionExtensions
 {
     public static IServiceCollection AddDependencyInjection(this IServiceCollection services)
     {
-        // 1. Singletons de Infraestrutura
+        // 1. Singletons e Serviços Especiais de Infraestrutura
         services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
         services.AddSingleton<IAesGcmCryptoService, AesGcmCryptoService>();
-        services.AddSingleton<IEcommerceGatewayFactory, EcommerceGatewayFactory>();
+        services.AddScoped<IEcommerceGatewayFactory, EcommerceGatewayFactory>();
         services.AddScoped<IRazorTemplateRenderer, RazorViewToStringRenderer>();
 
-        // 2. Escaneamento automático por convenção via Scrutor
+        // 2. Escaneamento automático por convenção via Scrutor (Infrastructure + Application)
         services.Scan(scan => scan
-            .FromAssemblyOf<DbConnectionFactory>()
+            .FromAssembliesOf(typeof(DbConnectionFactory), typeof(IAuthService))
             // Repositórios Dapper (*Repository -> I*Repository)
             .AddClasses(classes => classes.Where(type =>
                 type.Name.EndsWith("Repository") &&
@@ -36,6 +36,7 @@ public static class DependencyInjectionExtensions
                 type.Name.EndsWith("Service") &&
                 !type.Name.Equals("RedisService") && // Gerenciado no RedisExtensions como Singleton
                 !type.Name.Equals("AesGcmCryptoService") && // Gerenciado como Singleton
+                !type.Name.Equals("DiscordAlertService") && // Gerenciado no GatewayExtensions via AddHttpClient
                 !type.IsAbstract &&
                 !type.IsInterface))
             .AsMatchingInterface()

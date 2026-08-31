@@ -7,20 +7,22 @@ using Dapper;
 using EcommerceBot.Application.DTOs.Admin;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
+using EcommerceBot.Domain.Interfaces;
 
 namespace EcommerceBot.Infrastructure.Repositories;
 
 public class SaasAnalyticsRepository : ISaasAnalyticsRepository
 {
-    private readonly IDbConnection _db;
+    private readonly IDbConnectionFactory _connectionFactory;
 
-    public SaasAnalyticsRepository(IDbConnection db)
+    public SaasAnalyticsRepository(IDbConnectionFactory connectionFactory)
     {
-        _db = db;
+        _connectionFactory = connectionFactory;
     }
 
     public async Task<Guid> RecordVisitAsync(SaasTrafficVisit visit)
     {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         const string sql = @"
             INSERT INTO dbo.SaasTrafficVisits (
                 Id, SessionId, Path, UtmSource, UtmMedium, UtmCampaign, UtmContent, UtmTerm,
@@ -33,12 +35,13 @@ public class SaasAnalyticsRepository : ISaasAnalyticsRepository
         if (visit.Id == Guid.Empty) visit.Id = Guid.NewGuid();
         if (visit.CreatedAt == default) visit.CreatedAt = DateTimeOffset.UtcNow;
 
-        await _db.ExecuteAsync(sql, visit);
+        await connection.ExecuteAsync(sql, visit);
         return visit.Id;
     }
 
     public async Task<AcquisitionFunnelResponseDto> GetAcquisitionFunnelAsync(int days)
     {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         var since = DateTimeOffset.UtcNow.AddDays(-days);
 
         const string sql = @"
@@ -58,7 +61,7 @@ public class SaasAnalyticsRepository : ISaasAnalyticsRepository
             WHERE Status = 'approved' AND CreatedAt >= @Since;
         ";
 
-        using var multi = await _db.QueryMultipleAsync(sql, new { Since = since });
+        using var multi = await connection.QueryMultipleAsync(sql, new { Since = since });
         var totalVisitors = await multi.ReadSingleAsync<int>();
         var totalSignups = await multi.ReadSingleAsync<int>();
         var totalPaying = await multi.ReadSingleAsync<int>();
@@ -82,6 +85,7 @@ public class SaasAnalyticsRepository : ISaasAnalyticsRepository
 
     public async Task<UnitEconomicsResponseDto> GetUnitEconomicsAsync(int days)
     {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         var since = DateTimeOffset.UtcNow.AddDays(-days);
 
         // 1. Total Ad Spend
@@ -90,7 +94,7 @@ public class SaasAnalyticsRepository : ISaasAnalyticsRepository
             FROM dbo.SaasAdSpends
             WHERE PeriodStart >= @Since;
         ";
-        var totalAdSpend = await _db.ExecuteScalarAsync<decimal>(spendSql, new { Since = since });
+        var totalAdSpend = await connection.ExecuteScalarAsync<decimal>(spendSql, new { Since = since });
 
         // 2. Receita Bruta Total e Custo de IA Total
         const string revenueSql = @"
@@ -98,14 +102,14 @@ public class SaasAnalyticsRepository : ISaasAnalyticsRepository
             FROM dbo.Orders
             WHERE Status = 'approved' AND CreatedAt >= @Since;
         ";
-        var totalRevenue = await _db.ExecuteScalarAsync<decimal>(revenueSql, new { Since = since });
+        var totalRevenue = await connection.ExecuteScalarAsync<decimal>(revenueSql, new { Since = since });
 
         const string llmCostSql = @"
             SELECT ISNULL(SUM(EstimatedCostUsd * 5.70), 0.00) -- Conversão estimada USD para BRL
             FROM dbo.LLMUsageLogs
             WHERE CreatedAt >= @Since;
         ";
-        var totalLlmCost = await _db.ExecuteScalarAsync<decimal>(llmCostSql, new { Since = since });
+        var totalLlmCost = await connection.ExecuteScalarAsync<decimal>(llmCostSql, new { Since = since });
 
         // 3. Performance agrupada por Campanha / UTM Source
         const string campaignsSql = @"
@@ -122,7 +126,7 @@ public class SaasAnalyticsRepository : ISaasAnalyticsRepository
             GROUP BY t.FirstUtmSource, t.FirstUtmCampaign, t.FirstAdId;
         ";
 
-        var campaignRows = (await _db.QueryAsync<dynamic>(campaignsSql, new { Since = since })).ToList();
+        var campaignRows = (await connection.QueryAsync<dynamic>(campaignsSql, new { Since = since })).ToList();
 
         var campaignsList = new List<CampaignPerformanceRowDto>();
         foreach (var row in campaignRows)
@@ -143,7 +147,7 @@ public class SaasAnalyticsRepository : ISaasAnalyticsRepository
                   AND (t.FirstUtmCampaign = @Campaign OR (@Campaign = 'Sem Campanha' AND t.FirstUtmCampaign IS NULL))
                   AND l.CreatedAt >= @Since;
             ";
-            var campaignLlmCost = await _db.ExecuteScalarAsync<decimal>(campaignLlmSql, new { Source = source, Campaign = campaign, Since = since });
+            var campaignLlmCost = await connection.ExecuteScalarAsync<decimal>(campaignLlmSql, new { Source = source, Campaign = campaign, Since = since });
 
             // Busca gasto em ads para essa campanha específica
             const string campaignSpendSql = @"
@@ -151,7 +155,7 @@ public class SaasAnalyticsRepository : ISaasAnalyticsRepository
                 FROM dbo.SaasAdSpends
                 WHERE UtmSource = @Source AND CampaignName = @Campaign AND PeriodStart >= @Since;
             ";
-            var campaignSpend = await _db.ExecuteScalarAsync<decimal>(campaignSpendSql, new { Source = source, Campaign = campaign, Since = since });
+            var campaignSpend = await connection.ExecuteScalarAsync<decimal>(campaignSpendSql, new { Source = source, Campaign = campaign, Since = since });
 
             var netMargin = grossRev - campaignLlmCost - campaignSpend;
             var roas = campaignSpend > 0 ? Math.Round(grossRev / campaignSpend, 2) : 0m;
@@ -175,7 +179,7 @@ public class SaasAnalyticsRepository : ISaasAnalyticsRepository
 
         // Totais agregados
         const string payingCountSql = "SELECT COUNT(DISTINCT TenantId) FROM dbo.Orders WHERE Status = 'approved' AND CreatedAt >= @Since;";
-        var totalPayingCustomers = await _db.ExecuteScalarAsync<int>(payingCountSql, new { Since = since });
+        var totalPayingCustomers = await connection.ExecuteScalarAsync<int>(payingCountSql, new { Since = since });
 
         var avgCac = totalPayingCustomers > 0 ? Math.Round(totalAdSpend / totalPayingCustomers, 2) : 0m;
         var avgLtv = totalPayingCustomers > 0 ? Math.Round(totalRevenue / totalPayingCustomers, 2) : 0m;
@@ -198,6 +202,7 @@ public class SaasAnalyticsRepository : ISaasAnalyticsRepository
 
     public async Task<Guid> CreateAdSpendAsync(SaasAdSpend adSpend)
     {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         const string sql = @"
             INSERT INTO dbo.SaasAdSpends (
                 Id, CampaignName, UtmSource, AdId, AmountSpentBrl, PeriodStart, PeriodEnd, Notes, CreatedAt
@@ -208,18 +213,19 @@ public class SaasAnalyticsRepository : ISaasAnalyticsRepository
         if (adSpend.Id == Guid.Empty) adSpend.Id = Guid.NewGuid();
         if (adSpend.CreatedAt == default) adSpend.CreatedAt = DateTimeOffset.UtcNow;
 
-        await _db.ExecuteAsync(sql, adSpend);
+        await connection.ExecuteAsync(sql, adSpend);
         return adSpend.Id;
     }
 
     public async Task<IEnumerable<SaasAdSpend>> GetAdSpendsAsync(int days)
     {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
         var since = DateTimeOffset.UtcNow.AddDays(-days);
         const string sql = @"
             SELECT * FROM dbo.SaasAdSpends
             WHERE PeriodStart >= @Since
             ORDER BY PeriodStart DESC;
         ";
-        return await _db.QueryAsync<SaasAdSpend>(sql, new { Since = since });
+        return await connection.QueryAsync<SaasAdSpend>(sql, new { Since = since });
     }
 }

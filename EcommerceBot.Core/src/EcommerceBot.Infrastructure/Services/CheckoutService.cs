@@ -415,7 +415,7 @@ public class CheckoutService : ICheckoutService
         return new CheckoutResponse
         {
             Id = savedOrder.Id,
-            ExternalReference = savedOrder.ExternalReference,
+            ExternalReference = savedOrder.ExternalReference ?? string.Empty,
             TotalAmount = savedOrder.TotalAmount,
             Status = savedOrder.Status,
             PaymentMethod = savedOrder.PaymentMethod,
