@@ -1,5 +1,6 @@
 // src/lib/sseClient.ts
 import { getTenantId } from '@/utils/storage';
+import { env } from '@/config/env';
 
 export interface SSEClientOptions<T> {
   /** Caminho relativo da rota (ex: '/demo/stream') */
@@ -17,7 +18,7 @@ export class SSEClient<T = unknown> {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    this.baseUrl = env.apiUrl;
   }
 
   /**

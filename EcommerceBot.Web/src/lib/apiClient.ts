@@ -1,9 +1,10 @@
 // src/lib/apiClient.ts
 import { getTenantId, clearTenantId } from '@/utils/storage';
+import { env } from '@/config/env';
 import axios from 'axios';
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  baseURL: env.apiUrl,
   headers: {
     'Content-Type': 'application/json',
     'ngrok-skip-browser-warning': 'true',

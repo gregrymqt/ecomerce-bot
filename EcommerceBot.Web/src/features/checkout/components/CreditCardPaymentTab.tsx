@@ -9,9 +9,10 @@
 import React from 'react';
 import { initMercadoPago, createCardToken } from '@mercadopago/sdk-react';
 import { CreditCardPaymentForm, type CreditCardFormData } from '@/components/ui/payment/CreditCardPaymentForm';
+import { env } from '@/config/env';
 import type { CreditCardPaymentPayload } from '../types';
 
-const MP_PUBLIC_KEY = import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY;
+const MP_PUBLIC_KEY = env.mercadoPagoPublicKey;
 
 if (MP_PUBLIC_KEY) {
   initMercadoPago(MP_PUBLIC_KEY, { locale: 'pt-BR' });

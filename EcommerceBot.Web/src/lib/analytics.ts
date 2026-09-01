@@ -1,6 +1,7 @@
 import ReactGA from 'react-ga4';
+import { env } from '@/config/env';
 
-const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
+const GA_MEASUREMENT_ID = env.gaMeasurementId;
 
 /**
  * Inicializa o Google Analytics 4 se a chave VITE_GA_MEASUREMENT_ID estiver presente.

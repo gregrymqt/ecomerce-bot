@@ -5,6 +5,8 @@ import path from 'path';
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Lê o arquivo .env mestre a partir da raiz do monorepo
+  envDir: path.resolve(__dirname, '../'),
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

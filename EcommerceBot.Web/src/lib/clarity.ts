@@ -1,6 +1,7 @@
 import clarity from '@microsoft/clarity';
+import { env } from '@/config/env';
 
-const CLARITY_PROJECT_ID = import.meta.env.VITE_CLARITY_PROJECT_ID;
+const CLARITY_PROJECT_ID = env.clarityProjectId;
 
 /**
  * Inicializa o Microsoft Clarity se a chave VITE_CLARITY_PROJECT_ID estiver presente.
