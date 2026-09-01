@@ -15,7 +15,7 @@ public class TenantHeaderMiddleware
         _next = next;
     }
 
-    private static readonly string[] PublicPathPrefixes = new[]
+    private static readonly string[] ExemptPathPrefixes = new[]
     {
         "/health",
         "/openapi",
@@ -31,7 +31,8 @@ public class TenantHeaderMiddleware
         "/api/v1/nuvemshop/oauth",
         "/api/v1/checkout/pix",
         "/api/v1/checkout/status",
-        "/api/v1/admin/traffic/visit",
+        "/api/v1/admin",
+        "/api/v1/plans",
         "/api/v1/analytics/traffic/visit"
     };
 
@@ -39,11 +40,10 @@ public class TenantHeaderMiddleware
     {
         var path = context.Request.Path.Value ?? string.Empty;
 
-        // Isenção para rotas públicas e webhooks externos
-        if (PublicPathPrefixes.Any(p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase)) ||
-            (path.Equals("/api/v1/plans", StringComparison.OrdinalIgnoreCase) && HttpMethods.IsGet(context.Request.Method)))
+        // Isenção para rotas públicas, webhooks externos e rotas globais da plataforma/administração
+        if (ExemptPathPrefixes.Any(p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
         {
-            // Se o header foi fornecido opcionalmente na rota pública, tenta popular o contexto
+            // Se o header foi fornecido opcionalmente, tenta popular o contexto
             if (context.Request.Headers.TryGetValue("X-Tenant-ID", out var optionalTenantIdHeader) &&
                 Guid.TryParse(optionalTenantIdHeader, out var optionalTenantId))
             {

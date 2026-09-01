@@ -20,15 +20,29 @@ namespace EcommerceBot.Infrastructure.Services
         private readonly IUserRepository _userRepository;
         private readonly ITenantRepository _tenantRepository;
         private readonly JwtOptions _jwtOptions;
+        private readonly SecurityOptions _securityOptions;
 
         public AuthService(
             IUserRepository userRepository, 
             ITenantRepository tenantRepository, 
-            IOptions<JwtOptions> jwtOptions)
+            IOptions<JwtOptions> jwtOptions,
+            IOptions<SecurityOptions> securityOptions)
         {
             _userRepository = userRepository;
             _tenantRepository = tenantRepository;
             _jwtOptions = jwtOptions.Value;
+            _securityOptions = securityOptions.Value;
+        }
+
+        private bool IsSuperAdminEmail(string? email)
+        {
+            if (string.IsNullOrWhiteSpace(_securityOptions.SuperAdminEmails) || string.IsNullOrWhiteSpace(email))
+                return false;
+
+            var adminEmails = _securityOptions.SuperAdminEmails
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            return adminEmails.Any(adminEmail => adminEmail.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase));
         }
 
         public async Task<(UserResponse User, string AccessToken)> RegisterUserAsync(CreateUserRequest request)
@@ -64,12 +78,13 @@ namespace EcommerceBot.Infrastructure.Services
                 await _tenantRepository.CreateAsync(newTenant);
             }
 
+            var isSuperAdmin = IsSuperAdminEmail(request.Email);
             var newUser = new User
             {
                 Email = request.Email.ToLower(),
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                 FullName = request.Name,
-                Role = "MEMBER", // Enforce default MEMBER role to prevent privilege escalation
+                Role = isSuperAdmin ? "ADMIN" : "MEMBER", // Auto-promove se constar em SuperAdminEmails, senão força MEMBER
                 TenantId = tenantId
             };
 
@@ -95,6 +110,13 @@ namespace EcommerceBot.Infrastructure.Services
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             {
                 throw new Exception("Credenciais inválidas.");
+            }
+
+            // Sincroniza promoção automática caso o e-mail conste na variável de ambiente Security:SuperAdminEmails
+            if (IsSuperAdminEmail(user.Email) && !string.Equals(user.Role, "ADMIN", StringComparison.OrdinalIgnoreCase))
+            {
+                user.Role = "ADMIN";
+                await _userRepository.UpdateAsync(user);
             }
 
             var jwt = GenerateJwtToken(user);

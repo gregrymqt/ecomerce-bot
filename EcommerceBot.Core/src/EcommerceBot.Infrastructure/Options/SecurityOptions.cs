@@ -9,4 +9,5 @@ public class SecurityOptions
 
     public string AesMasterKey { get; set; } = string.Empty;
     public string InternalServiceKey { get; set; } = string.Empty;
+    public string SuperAdminEmails { get; set; } = string.Empty;
 }

@@ -24,6 +24,7 @@ namespace EcommerceBot.Infrastructure.Services
         private readonly ITenantRepository _tenantRepository;
         private readonly GoogleAuthOptions _googleOptions;
         private readonly JwtOptions _jwtOptions;
+        private readonly SecurityOptions _securityOptions;
         private readonly HttpClient _httpClient;
 
         public GoogleAuthService(
@@ -31,13 +32,26 @@ namespace EcommerceBot.Infrastructure.Services
             ITenantRepository tenantRepository,
             IOptions<GoogleAuthOptions> googleOptions,
             IOptions<JwtOptions> jwtOptions,
+            IOptions<SecurityOptions> securityOptions,
             HttpClient httpClient)
         {
             _userRepository = userRepository;
             _tenantRepository = tenantRepository;
             _googleOptions = googleOptions.Value;
             _jwtOptions = jwtOptions.Value;
+            _securityOptions = securityOptions.Value;
             _httpClient = httpClient;
+        }
+
+        private bool IsSuperAdminEmail(string? email)
+        {
+            if (string.IsNullOrWhiteSpace(_securityOptions.SuperAdminEmails) || string.IsNullOrWhiteSpace(email))
+                return false;
+
+            var adminEmails = _securityOptions.SuperAdminEmails
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            return adminEmails.Any(adminEmail => adminEmail.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase));
         }
 
         public string GetGoogleAuthUrl(string? state)
@@ -108,6 +122,7 @@ namespace EcommerceBot.Infrastructure.Services
             }
 
             // Localiza ou cria o usuário e tenant no banco de dados
+            var isSuperAdmin = IsSuperAdminEmail(email);
             var user = await _userRepository.GetByEmailAsync(email);
             if (user == null)
             {
@@ -130,10 +145,15 @@ namespace EcommerceBot.Infrastructure.Services
                     Email = email,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")), // Senha aleatória segura
                     FullName = name,
-                    Role = "MEMBER",
+                    Role = isSuperAdmin ? "ADMIN" : "MEMBER",
                     TenantId = tenantId
                 };
                 user = await _userRepository.CreateAsync(user);
+            }
+            else if (isSuperAdmin && !string.Equals(user.Role, "ADMIN", StringComparison.OrdinalIgnoreCase))
+            {
+                user.Role = "ADMIN";
+                await _userRepository.UpdateAsync(user);
             }
 
             var token = GenerateJwtToken(user);
