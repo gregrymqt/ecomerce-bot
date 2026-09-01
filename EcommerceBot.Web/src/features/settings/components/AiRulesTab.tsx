@@ -1,10 +1,3 @@
-/**
- * src/features/settings/components/AiRulesTab.tsx
- *
- * Aba de Configurações das Regras de IA, Tom de Voz, Tags de SEO e Precificação.
- * Em conformidade com acessibilidade WCAG 2.1 AA, inputs >= 16px e touch targets >= 44px.
- */
-
 import React, { useState } from 'react';
 import {
   Sparkles,
@@ -27,21 +20,36 @@ import type {
 } from '../types';
 
 export interface AiRulesTabProps {
-  data: AiSettingsPayload;
+  data?: AiSettingsPayload; // Permitir opcional para resiliência
   onChange: <K extends keyof AiSettingsPayload>(field: K, value: AiSettingsPayload[K]) => void;
   onAddTag: (tag: string) => void;
   onRemoveTag: (tag: string) => void;
   className?: string;
 }
 
+// Objeto de valores padrão caso data venha undefined da API
+const DEFAULT_AI_SETTINGS: AiSettingsPayload = {
+  default_language: 'PT_BR',
+  tone_of_voice: 'PERSUASIVE',
+  seo_tags: [],
+  price_markup_percentage: 20,
+  rounding_rule: 'ENDING_99',
+};
+
 export const AiRulesTab: React.FC<AiRulesTabProps> = ({
-  data,
+  data = DEFAULT_AI_SETTINGS, // Valor padrão aplicado aqui
   onChange,
   onAddTag,
   onRemoveTag,
   className,
 }) => {
   const [newTagInput, setNewTagInput] = useState('');
+
+  // Garante que mesmo que 'data' exista mas venha parcial, não quebre
+  const currentData: AiSettingsPayload = {
+    ...DEFAULT_AI_SETTINGS,
+    ...(data || {}),
+  };
 
   const handleAddTagSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +88,7 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
 
   return (
     <div className={cn('space-y-8 text-slate-100', className)}>
-      {/* Seção 1: Idioma Padrão da LLM */}
+      {/* Seção 1: Idioma Padrão */}
       <div className="rounded-2xl bg-[#15121B] border border-[#1E293B] p-6 shadow-xl space-y-4">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 shrink-0">
@@ -98,7 +106,7 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
           </label>
           <select
             id="ai-language-select"
-            value={data.default_language}
+            value={currentData.default_language}
             onChange={(e) => onChange('default_language', e.target.value as DefaultLanguage)}
             className="w-full min-h-[44px] h-11 px-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-all cursor-pointer font-sans"
           >
@@ -109,7 +117,7 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
         </div>
       </div>
 
-      {/* Seção 2: Seletor Visual de Tom de Voz (Cards de Radio) */}
+      {/* Seção 2: Tom de Voz */}
       <div className="rounded-2xl bg-[#15121B] border border-[#1E293B] p-6 shadow-xl space-y-4">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
@@ -127,7 +135,7 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
           className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2"
         >
           {tones.map((t) => {
-            const isSelected = data.tone_of_voice === t.id;
+            const isSelected = currentData.tone_of_voice === t.id;
             return (
               <button
                 key={t.id}
@@ -158,7 +166,7 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
         </div>
       </div>
 
-      {/* Seção 3: Tags de SEO Padrão (Chips) */}
+      {/* Seção 3: Tags de SEO */}
       <div className="rounded-2xl bg-[#15121B] border border-[#1E293B] p-6 shadow-xl space-y-4">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
@@ -187,9 +195,8 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
           </button>
         </form>
 
-        {/* Chips de Tags */}
         <div className="flex flex-wrap gap-2 pt-2">
-          {data.seo_tags.map((tag, idx) => (
+          {(currentData.seo_tags || []).map((tag, idx) => (
             <span
               key={idx}
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-violet-500/10 border border-violet-500/20 text-xs font-mono text-violet-300 min-h-[32px]"
@@ -208,7 +215,7 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
         </div>
       </div>
 
-      {/* Seção 4: Regras de Precificação e Arredondamento */}
+      {/* Seção 4: Precificação */}
       <div className="rounded-2xl bg-[#15121B] border border-[#1E293B] p-6 shadow-xl space-y-4">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
@@ -221,7 +228,6 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
-          {/* Markup % */}
           <div className="space-y-2">
             <label htmlFor="markup-percentage-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
               Margem de Lucro / Markup (%)
@@ -232,7 +238,7 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
                 type="number"
                 min="0"
                 max="500"
-                value={data.price_markup_percentage}
+                value={currentData.price_markup_percentage}
                 onChange={(e) => onChange('price_markup_percentage', Number(e.target.value) || 0)}
                 className="w-full min-h-[44px] h-11 px-4 pr-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all font-mono"
               />
@@ -243,14 +249,13 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
             <p className="text-[11px] text-slate-400">Ex: 20% adiciona +20% sobre o valor raspado.</p>
           </div>
 
-          {/* Arredondamento */}
           <div className="space-y-2">
             <label htmlFor="rounding-rule-select" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
               Regra de Arredondamento
             </label>
             <select
               id="rounding-rule-select"
-              value={data.rounding_rule}
+              value={currentData.rounding_rule}
               onChange={(e) => onChange('rounding_rule', e.target.value as RoundingRule)}
               className="w-full min-h-[44px] h-11 px-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all cursor-pointer font-sans"
             >

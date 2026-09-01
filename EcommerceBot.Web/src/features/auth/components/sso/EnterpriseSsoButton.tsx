@@ -14,6 +14,8 @@ export interface EnterpriseSsoButtonProps {
   onClick: () => void;
   /** Texto customizado para o botão */
   text?: string;
+  /** Desabilita o botão */
+  disabled?: boolean;
   /** Classes CSS adicionais */
   className?: string;
 }
@@ -21,6 +23,7 @@ export interface EnterpriseSsoButtonProps {
 export const EnterpriseSsoButton: React.FC<EnterpriseSsoButtonProps> = ({
   onClick,
   text = 'SSO Enterprise (Okta / SAML)',
+  disabled = false,
   className,
 }) => {
   return (
@@ -29,6 +32,7 @@ export const EnterpriseSsoButton: React.FC<EnterpriseSsoButtonProps> = ({
       variant="outline"
       size="md"
       onClick={onClick}
+      disabled={disabled}
       className={cn(
         'w-full min-h-[44px] h-11 text-sm sm:text-base font-semibold',
         'bg-slate-900/60 hover:bg-slate-800/80 text-slate-200 border-slate-700/80 hover:border-slate-600',

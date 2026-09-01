@@ -36,6 +36,12 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+// Forwarded Headers para suporte transparente a Proxies Reversos, Ngrok e SSL Termination
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+});
+
 app.UseHttpsRedirection();
 
 // Middlewares de Segurança, CORS e Multi-Tenancy

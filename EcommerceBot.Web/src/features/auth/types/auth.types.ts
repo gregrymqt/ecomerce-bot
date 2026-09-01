@@ -17,6 +17,8 @@ export interface UserResponse {
   plan?: string;
   is_admin?: boolean;
   role?: string;
+  access_token?: string;
+  accessToken?: string;
 }
 
 export interface AuthenticatedUser {

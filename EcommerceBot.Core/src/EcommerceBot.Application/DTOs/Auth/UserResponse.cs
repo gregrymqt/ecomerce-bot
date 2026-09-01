@@ -11,5 +11,6 @@ namespace EcommerceBot.Application.DTOs.Auth
         public string Role { get; set; } = string.Empty;
         public List<string> Tenants { get; set; } = new();
         public DateTimeOffset CreatedAt { get; set; }
+        public string? AccessToken { get; set; }
     }
 }

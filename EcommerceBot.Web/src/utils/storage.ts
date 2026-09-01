@@ -64,3 +64,29 @@ export const saveTenantId = (tenantId: string): void => {
 export const clearTenantId = (): void => {
   deleteLocalStorage(TENANT_KEY);
 };
+
+const AUTH_TOKEN_KEY = 'app_auth_token';
+
+/**
+ * Busca o JWT de autenticação armazenado.
+ */
+export const getAuthToken = (): string | null => {
+  const token = getLocalStorage<string>(AUTH_TOKEN_KEY);
+  if (!token || typeof token !== 'string') return null;
+  return token.trim();
+};
+
+/**
+ * Salva o JWT de autenticação no armazenamento local.
+ */
+export const saveAuthToken = (token: string): void => {
+  if (!token) return;
+  setLocalStorage(AUTH_TOKEN_KEY, token.trim());
+};
+
+/**
+ * Limpa o JWT de autenticação do armazenamento local.
+ */
+export const clearAuthToken = (): void => {
+  deleteLocalStorage(AUTH_TOKEN_KEY);
+};

@@ -16,6 +16,8 @@ export interface GoogleAuthButtonProps {
   tenantName?: string;
   /** Estado de carregamento customizado */
   isLoading?: boolean;
+  /** Desabilita o botão (ex: durante submissão de outro formulário) */
+  disabled?: boolean;
   /** Callback acionado ao clicar no botão */
   onClick?: () => void;
   /** Classes CSS adicionais para o botão */
@@ -26,13 +28,15 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
   text = 'Continuar com o Google',
   tenantName,
   isLoading: propsIsLoading,
+  disabled: propsDisabled,
   onClick,
   className,
 }) => {
-  const { initiateGoogleLogin, isLoading: authIsLoading } = useAuth();
+  const { initiateGoogleLogin } = useAuth();
   const [internalLoading, setInternalLoading] = useState(false);
 
-  const isLoading = propsIsLoading ?? authIsLoading ?? internalLoading;
+  const isLoading = propsIsLoading ?? internalLoading;
+  const isDisabled = propsDisabled || isLoading;
 
   const handleClick = async () => {
     if (onClick) {
@@ -57,7 +61,7 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
       size="md"
       isLoading={isLoading}
       onClick={handleClick}
-      disabled={isLoading}
+      disabled={isDisabled}
       className={cn(
         'w-full min-h-[44px] h-11 text-sm sm:text-base font-semibold',
         'bg-slate-900/80 hover:bg-slate-800/90 text-slate-100 border-slate-700/80 hover:border-slate-600',

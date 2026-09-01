@@ -9,9 +9,6 @@ using StackExchange.Redis;
 
 namespace EcommerceBot.Infrastructure.Configurations;
 
-/// <summary>
-/// Configuração do StackExchange.Redis e do serviço padrão IRedisService.
-/// </summary>
 public static class RedisExtensions
 {
     public static IServiceCollection AddRedisInfrastructure(this IServiceCollection services, IConfiguration configuration)
@@ -21,11 +18,36 @@ public static class RedisExtensions
             var dbOptions = sp.GetRequiredService<IOptions<DatabaseOptions>>().Value;
             var redisOptions = sp.GetRequiredService<IOptions<RedisOptions>>().Value;
 
-            var connectionString = !string.IsNullOrWhiteSpace(redisOptions.ConnectionString) && redisOptions.ConnectionString != "localhost:6379,abortConnect=false"
+            var rawConnectionString = !string.IsNullOrWhiteSpace(redisOptions.ConnectionString)
                 ? redisOptions.ConnectionString
-                : (!string.IsNullOrWhiteSpace(dbOptions.Redis) ? dbOptions.Redis : "localhost:6379,abortConnect=false");
+                : (!string.IsNullOrWhiteSpace(dbOptions.Redis) ? dbOptions.Redis : "localhost:6379");
 
-            return ConnectionMultiplexer.Connect(connectionString);
+            // Sanitiza caso venha com schema de URL (ex: redis:// ou rediss://)
+            if (rawConnectionString.StartsWith("redis://", StringComparison.OrdinalIgnoreCase))
+            {
+                rawConnectionString = rawConnectionString.Substring(8);
+            }
+            else if (rawConnectionString.StartsWith("rediss://", StringComparison.OrdinalIgnoreCase))
+            {
+                rawConnectionString = rawConnectionString.Substring(9);
+            }
+
+            var configOptions = ConfigurationOptions.Parse(rawConnectionString);
+            configOptions.AbortOnConnectFail = false;
+            
+            // Reduzir para falhar rápido em chamadas assíncronas de rate limit sem segurar requisições HTTP
+            configOptions.ConnectTimeout = 3000;
+            configOptions.SyncTimeout = 2000;
+            configOptions.AsyncTimeout = 2000;
+            configOptions.KeepAlive = 60;
+            configOptions.ReconnectRetryPolicy = new LinearRetry(2000);
+
+            if (!string.IsNullOrWhiteSpace(redisOptions.Password) && string.IsNullOrWhiteSpace(configOptions.Password))
+            {
+                configOptions.Password = redisOptions.Password;
+            }
+
+            return ConnectionMultiplexer.Connect(configOptions);
         });
 
         services.AddSingleton<IRedisService, RedisService>();

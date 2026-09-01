@@ -311,11 +311,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         <GoogleAuthButton
           text="Cadastrar com o Google"
           tenantName={formData.tenantName?.trim() || undefined}
-          isLoading={isLoading}
+          disabled={isLoading}
         />
         <EnterpriseSsoButton
           text="SSO Enterprise (Okta / SAML)"
           onClick={() => setIsSsoModalOpen(true)}
+          disabled={isLoading}
         />
       </div>
 

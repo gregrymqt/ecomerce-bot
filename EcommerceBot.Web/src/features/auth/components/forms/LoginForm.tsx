@@ -258,11 +258,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         <GoogleAuthButton
           text="Entrar com o Google"
           tenantName={formData.tenant?.trim() || undefined}
-          isLoading={isLoading}
+          disabled={isLoading}
         />
         <EnterpriseSsoButton
           text="SSO Enterprise (Okta / SAML)"
           onClick={() => setIsSsoModalOpen(true)}
+          disabled={isLoading}
         />
       </div>
 

@@ -6,7 +6,7 @@
 
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { authService } from '../services/authService';
-import { getTenantId, saveTenantId, clearTenantId } from '@/utils/storage';
+import { getTenantId, saveTenantId, clearTenantId, saveAuthToken, clearAuthToken } from '@/utils/storage';
 import { getErrorMessage } from '@/utils/errors';
 import type {
   AuthenticatedUser,
@@ -47,6 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setCurrentTenant(null);
     setStatus('unauthenticated');
+    clearAuthToken();
     clearTenantId();
   }, []);
 
@@ -112,6 +113,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     try {
       const userResp = await authService.login(credentials);
+      const token = userResp.access_token || userResp.accessToken;
+      if (token) {
+        saveAuthToken(token);
+      }
       setUser(userResp);
       setStatus('authenticated');
 
@@ -137,6 +142,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     try {
       const userResp = await authService.register(payload);
+      const token = userResp.access_token || userResp.accessToken;
+      if (token) {
+        saveAuthToken(token);
+      }
       setUser(userResp);
       setStatus('authenticated');
 
@@ -225,6 +234,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     try {
       const tokenResp = await authService.googleCallback(payload);
+      if (tokenResp.access_token) {
+        saveAuthToken(tokenResp.access_token);
+      }
       setUser({
         sub: tokenResp.user_id,
         user_id: tokenResp.user_id,

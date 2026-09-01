@@ -35,6 +35,7 @@ public class AuthController : BaseApiController
         try
         {
             var (user, token) = await _authService.RegisterUserAsync(request);
+            user.AccessToken = token;
             AppendAuthCookie(token);
             return Created("", user);
         }
@@ -52,6 +53,7 @@ public class AuthController : BaseApiController
         try
         {
             var (user, token) = await _authService.AuthenticateUserAsync(request);
+            user.AccessToken = token;
             AppendAuthCookie(token);
             return Ok(user);
         }
@@ -143,7 +145,7 @@ public class AuthController : BaseApiController
 
     private void AppendAuthCookie(string token)
     {
-        var isHttps = Request.IsHttps;
+        var isHttps = Request.IsHttps || string.Equals(Request.Headers["X-Forwarded-Proto"], "https", StringComparison.OrdinalIgnoreCase);
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
@@ -157,7 +159,7 @@ public class AuthController : BaseApiController
 
     private void DeleteAuthCookie()
     {
-        var isHttps = Request.IsHttps;
+        var isHttps = Request.IsHttps || string.Equals(Request.Headers["X-Forwarded-Proto"], "https", StringComparison.OrdinalIgnoreCase);
         Response.Cookies.Delete("access_token", new CookieOptions
         {
             HttpOnly = true,
