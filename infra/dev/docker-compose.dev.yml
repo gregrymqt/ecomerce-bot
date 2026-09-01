@@ -3,6 +3,8 @@ services:
   redis:
     image: redis:alpine
     container_name: dev-redis-bot
+    env_file:
+      - ../../.env
     ports:
       - "6379:6379"
     restart: unless-stopped
@@ -18,9 +20,11 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: dev-rabbitmq-bot
+    env_file:
+      - ../../.env
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-${RabbitMQ__Username:-guest}}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-${RabbitMQ__Password:-guest}}
     ports:
       - "5672:5672"   # AMQP protocol
       - "15672:15672" # Management Web UI
@@ -37,6 +41,8 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: dev-mssql-bot
     user: root
+    env_file:
+      - ../../.env
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-YourStrong@Passw0rdDev}"

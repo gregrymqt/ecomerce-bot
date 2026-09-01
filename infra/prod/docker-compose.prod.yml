@@ -86,8 +86,14 @@ services:
       context: ../../Database.Migrations
       dockerfile: Dockerfile
     container_name: prod-migrations-bot
+    env_file:
+      - path: .env.prod
+        required: false
+      - path: ../../.env
+        required: false
     environment:
-      - MSSQL_CONNECTION_STRING=${MSSQL_CONNECTION_STRING:-Server=mssql,1433;Database=EcommerceBotDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:-prod_mssql_password_secure};TrustServerCertificate=True;Encrypt=False;}
+      - MSSQL_CONNECTION_STRING=${MSSQL_CONNECTION_STRING:-${ConnectionStrings__DefaultConnection:-Server=mssql,1433;Database=EcommerceBotDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:-prod_mssql_password_secure};TrustServerCertificate=True;Encrypt=False;}}
+      - ConnectionStrings__DefaultConnection=${ConnectionStrings__DefaultConnection:-${MSSQL_CONNECTION_STRING:-Server=mssql,1433;Database=EcommerceBotDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:-prod_mssql_password_secure};TrustServerCertificate=True;Encrypt=False;}}
     depends_on:
       mssql:
         condition: service_healthy
@@ -107,34 +113,45 @@ services:
     container_name: prod-api-bot
     restart: unless-stopped
     env_file:
-      - .env.prod
+      - path: .env.prod
+        required: false
+      - path: ../../.env
+        required: false
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=${MSSQL_CONNECTION_STRING:-Server=mssql,1433;Database=EcommerceBotDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:-prod_mssql_password_secure};TrustServerCertificate=True;Encrypt=False;}
-      - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD:-prod_redis_password_secure},abortConnect=false
-      - Redis__ConnectionString=redis:6379,password=${REDIS_PASSWORD:-prod_redis_password_secure},abortConnect=false
+      - ConnectionStrings__DefaultConnection=${ConnectionStrings__DefaultConnection:-${MSSQL_CONNECTION_STRING:-Server=mssql,1433;Database=EcommerceBotDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:-prod_mssql_password_secure};TrustServerCertificate=True;Encrypt=False;}}
+      - MSSQL_CONNECTION_STRING=${MSSQL_CONNECTION_STRING:-${ConnectionStrings__DefaultConnection:-Server=mssql,1433;Database=EcommerceBotDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:-prod_mssql_password_secure};TrustServerCertificate=True;Encrypt=False;}}
+      - ConnectionStrings__Redis=${ConnectionStrings__Redis:-${Redis__ConnectionString:-redis:6379,password=${REDIS_PASSWORD:-prod_redis_password_secure},abortConnect=false}}
+      - Redis__ConnectionString=${Redis__ConnectionString:-${ConnectionStrings__Redis:-redis:6379,password=${REDIS_PASSWORD:-prod_redis_password_secure},abortConnect=false}}
       - Redis__Password=${REDIS_PASSWORD:-prod_redis_password_secure}
-      - RabbitMQ__Host=rabbitmq
-      - RabbitMQ__Username=${RABBITMQ_USER:-guest}
-      - RabbitMQ__Password=${RABBITMQ_PASS:-prod_rabbitmq_password_secure}
+      - RabbitMQ__Host=${RabbitMQ__Host:-rabbitmq}
+      - RabbitMQ__Username=${RabbitMQ__Username:-${RABBITMQ_USER:-guest}}
+      - RabbitMQ__Password=${RabbitMQ__Password:-${RABBITMQ_PASS:-prod_rabbitmq_password_secure}}
       - RabbitMQ__Port=5672
-      - Jwt__Key=${JWT_SECRET_KEY}
-      - Security__AesMasterKey=${AES_MASTER_KEY}
-      - Security__InternalServiceKey=${INTERNAL_SERVICE_KEY:-}
-      - MercadoPago__AccessToken=${MERCADOPAGO_ACCESS_TOKEN}
-      - MercadoPago__WebhookSecret=${MERCADOPAGO_WEBHOOK_SECRET}
-      - Resend__ApiKey=${RESEND_API_KEY}
-      - Resend__DeliveryMode=${RESEND_DELIVERY_MODE:-Live}
-      - Resend__FromEmail=${DEFAULT_FROM_EMAIL:-ECom AutoBot <notificacoes@ecommercebot.com>}
-      - Discord__WebhookUrl=${DISCORD_WEBHOOK_URL}
+      - Jwt__Key=${Jwt__Key:-${JWT_SECRET_KEY}}
+      - Jwt__Issuer=${Jwt__Issuer:-EcommerceBotApi}
+      - Jwt__Audience=${Jwt__Audience:-EcommerceBotClient}
+      - Security__AesMasterKey=${Security__AesMasterKey:-${AES_MASTER_KEY}}
+      - Security__InternalServiceKey=${Security__InternalServiceKey:-${INTERNAL_SERVICE_KEY:-}}
+      - Security__SuperAdminEmails=${ADMIN_EMAILS:-${Security__SuperAdminEmails:-admin@ecommercebot.com}}
+      - MercadoPago__AccessToken=${MercadoPago__AccessToken:-${MERCADOPAGO_ACCESS_TOKEN}}
+      - MercadoPago__WebhookSecret=${MercadoPago__WebhookSecret:-${MERCADOPAGO_WEBHOOK_SECRET}}
+      - MercadoPago__PublicKey=${MercadoPago__PublicKey:-${MERCADOPAGO_PUBLIC_KEY:-${VITE_MERCADOPAGO_PUBLIC_KEY:-}}}
+      - Resend__ApiKey=${Resend__ApiKey:-${RESEND_API_KEY}}
+      - Resend__DeliveryMode=${Resend__DeliveryMode:-${RESEND_DELIVERY_MODE:-Live}}
+      - Resend__FromEmail=${EMAIL_FROM:-${Resend__FromEmail:-${DEFAULT_FROM_EMAIL:-ECom AutoBot <notificacoes@ecommercebot.com>}}}
+      - Resend__Enabled=${Resend__Enabled:-${RESEND_ENABLED:-true}}
+      - Discord__WebhookUrl=${Discord__WebhookUrl:-${DISCORD_WEBHOOK_URL}}
       - Discord__Enabled=true
-      - Shopify__ClientId=${SHOPIFY_CLIENT_ID}
-      - Shopify__ClientSecret=${SHOPIFY_CLIENT_SECRET}
-      - Shopify__WebhookSecret=${SHOPIFY_WEBHOOK_SECRET}
-      - Nuvemshop__ClientId=${NUVEMSHOP_CLIENT_ID}
-      - Nuvemshop__ClientSecret=${NUVEMSHOP_CLIENT_SECRET}
-      - Nuvemshop__WebhookSecret=${NUVEMSHOP_WEBHOOK_SECRET}
+      - Shopify__ClientId=${Shopify__ClientId:-${SHOPIFY_CLIENT_ID}}
+      - Shopify__ClientSecret=${Shopify__ClientSecret:-${SHOPIFY_CLIENT_SECRET}}
+      - Shopify__WebhookSecret=${Shopify__WebhookSecret:-${SHOPIFY_WEBHOOK_SECRET}}
+      - Nuvemshop__ClientId=${Nuvemshop__ClientId:-${NUVEMSHOP_CLIENT_ID}}
+      - Nuvemshop__ClientSecret=${Nuvemshop__ClientSecret:-${NUVEMSHOP_CLIENT_SECRET}}
+      - Nuvemshop__WebhookSecret=${Nuvemshop__WebhookSecret:-${NUVEMSHOP_WEBHOOK_SECRET}}
+      - Google__ClientId=${Google__ClientId:-${GOOGLE_CLIENT_ID:-}}
+      - Google__ClientSecret=${Google__ClientSecret:-${GOOGLE_CLIENT_SECRET:-}}
     deploy:
       resources:
         limits:
@@ -160,7 +177,10 @@ services:
     container_name: prod-worker-bot
     restart: unless-stopped
     env_file:
-      - .env.prod
+      - path: .env.prod
+        required: false
+      - path: ../../.env
+        required: false
     environment:
       - ENVIRONMENT=${ENVIRONMENT:-production}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
@@ -168,19 +188,22 @@ services:
       - RABBITMQ_URL=${RABBITMQ_URL:-amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-prod_rabbitmq_password_secure}@rabbitmq:5672/}
       - REDIS_URL=${REDIS_URL:-redis://:${REDIS_PASSWORD:-prod_redis_password_secure}@redis:6379/0}
       - REDIS_PASSWORD=${REDIS_PASSWORD:-prod_redis_password_secure}
-      - AES_MASTER_KEY=${AES_MASTER_KEY}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - AES_MASTER_KEY=${AES_MASTER_KEY:-${Security__AesMasterKey}}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-${Jwt__Key}}
+      - INTERNAL_SERVICE_KEY=${INTERNAL_SERVICE_KEY:-${Security__InternalServiceKey:-}}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN}
-      - MERCADOPAGO_WEBHOOK_SECRET=${MERCADOPAGO_WEBHOOK_SECRET}
-      - RESEND_API_KEY=${RESEND_API_KEY}
-      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN:-${MercadoPago__AccessToken:-}}
+      - MERCADOPAGO_WEBHOOK_SECRET=${MERCADOPAGO_WEBHOOK_SECRET:-${MercadoPago__WebhookSecret:-}}
+      - RESEND_API_KEY=${RESEND_API_KEY:-${Resend__ApiKey:-}}
+      - DEFAULT_FROM_EMAIL=${EMAIL_FROM:-${Resend__FromEmail:-${DEFAULT_FROM_EMAIL:-ECom AutoBot <notificacoes@ecommercebot.com>}}}
       - LOW_BALANCE_THRESHOLD=${LOW_BALANCE_THRESHOLD:-10}
-      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-${Discord__WebhookUrl:-}}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-${App__BaseUrl:-https://api.ecommercebot.com}}
+      - FRONTEND_URL=${FRONTEND_URL:-${App__FrontendUrl:-https://app.ecommercebot.com}}
     deploy:
       resources:
         limits:

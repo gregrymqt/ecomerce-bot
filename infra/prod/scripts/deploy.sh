@@ -35,9 +35,14 @@ ENV_PROD_PATH="${REPO_ROOT}/infra/prod/.env.prod"
 COMPOSE_FILE="${REPO_ROOT}/infra/prod/docker-compose.prod.yml"
 
 if [ ! -f "${ENV_PROD_PATH}" ]; then
-    echo -e "${RED}❌ ERRO: O arquivo '${ENV_PROD_PATH}' não foi encontrado!${NC}"
-    echo -e "${YELLOW}💡 Copie '${REPO_ROOT}/infra/prod/.env.prod.example' para '${ENV_PROD_PATH}' e configure as credenciais antes de rodar o deploy.${NC}"
-    exit 1
+    if [ -f "${REPO_ROOT}/.env" ]; then
+        echo -e "${YELLOW}⚠️ Aviso: '${ENV_PROD_PATH}' não encontrado. Utilizando '${REPO_ROOT}/.env' como fallback.${NC}"
+        ENV_PROD_PATH="${REPO_ROOT}/.env"
+    else
+        echo -e "${RED}❌ ERRO: Nem '${ENV_PROD_PATH}' nem '${REPO_ROOT}/.env' foram encontrados!${NC}"
+        echo -e "${YELLOW}💡 Copie '${REPO_ROOT}/infra/prod/.env.prod.example' para '${ENV_PROD_PATH}' e configure as credenciais antes de rodar o deploy.${NC}"
+        exit 1
+    fi
 fi
 
 # 4. Inicializa os serviços de infraestrutura base (MSSQL, Redis, RabbitMQ)

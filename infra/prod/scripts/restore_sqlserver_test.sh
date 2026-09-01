@@ -20,9 +20,18 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 ENV_FILE="${REPO_ROOT}/infra/prod/.env.prod"
+if [ ! -f "${ENV_FILE}" ]; then
+    if [ -f "${REPO_ROOT}/infra/prod/.env" ]; then
+        ENV_FILE="${REPO_ROOT}/infra/prod/.env"
+    elif [ -f "${REPO_ROOT}/.env" ]; then
+        ENV_FILE="${REPO_ROOT}/.env"
+    fi
+fi
 
 if [ -f "${ENV_FILE}" ]; then
-    export $(grep -v '^#' "${ENV_FILE}" | xargs)
+    set -a
+    source "${ENV_FILE}" 2>/dev/null || export $(grep -v '^#' "${ENV_FILE}" | xargs)
+    set +a
 fi
 
 MSSQL_CONTAINER="${MSSQL_CONTAINER:-prod-mssql-bot}"

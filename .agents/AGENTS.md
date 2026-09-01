@@ -54,10 +54,10 @@ NUNCA carregue todas as skills simultaneamente. Inspecione e ative estritamente 
 
 O **E-commerce Bot** é uma plataforma SaaS monorepo dividida em 4 pilares:
 
-1. **Frontend Web SPA (`EcommerceBot.Web`):** React 18 + TypeScript + Vite + Tailwind CSS.
-2. **Core API Central (`EcommerceBot.Core`):** ASP.NET Core Web API em .NET 8/9 (C#) em Clean Architecture / DDD, Dapper + T-SQL puro, pagamentos e orquestração.
-3. **AI/ML Engine (`EcommerceBot.Worker`):** Microsserviço Python assíncrono (FastAPI + Workers) para scraping, inferência LLM (OpenRouter) e modelos Scikit-Learn. Isolado de qualquer banco de dados.
-4. **Database & Migrations (`Database.Migrations`):** Runner de migrações determinísticas em .NET com DbUp para Microsoft SQL Server 2022.
+1. **Frontend Web SPA (`EcommerceBot.Web`):** React 18 + TypeScript + Vite + Tailwind CSS. Consome variáveis públicas estritamente através do módulo centralizado `@/config/env` (lendo o `.env` da raiz via `envDir`).
+2. **Core API Central (`EcommerceBot.Core`):** ASP.NET Core Web API em .NET 8/9 (C#) em Clean Architecture / DDD, Dapper + T-SQL puro, pagamentos e orquestração. Carrega o `.env` nativamente via `builder.Configuration.AddDotEnvConfiguration()` e mapeia para classes fortemente tipadas de `Options`.
+3. **AI/ML Engine (`EcommerceBot.Worker`):** Microsserviço Python assíncrono (FastAPI + Workers) para scraping, inferência LLM (OpenRouter) e modelos Scikit-Learn. Isolado de qualquer banco de dados, com resolução dinâmica do `.env` da raiz via `resolve_root_env_files()`.
+4. **Database & Migrations (`Database.Migrations`):** Runner de migrações determinísticas em .NET com DbUp para Microsoft SQL Server 2022. Carrega a connection string automaticamente do `.env` via `DotEnvHelper.Load()`.
 
 ```text
                                ┌────────────────────────────────────────┐
@@ -94,6 +94,7 @@ O **E-commerce Bot** é uma plataforma SaaS monorepo dividida em 4 pilares:
 ### 3.1. Isolamento Multi-Tenant & Validação de Cabeçalho
 - **`TenantHeaderMiddleware`:** Toda requisição autenticada de usuário não-admin valida se o header `X-Tenant-ID` confere com a claim `tenantId` do JWT. Divergências retornam `403 Forbidden`.
 - **Rotas Isentas de Header:** Endpoints de saúde (`/health`), documentação (`/openapi`), autenticação (`/api/v1/auth/*`), catálogo público (`GET /api/v1/plans`) e webhooks públicos (`/api/v1/webhooks/*`, `/api/v1/emails/webhooks/*`, `/api/v1/shopify/*`, `/api/v1/nuvemshop/*`).
+- **Super Administradores:** E-mails configurados em `Security:SuperAdminEmails` / `ADMIN_EMAILS` (ex: `admin@ecommercebot.com`) recebem privilégio `ADMIN` automaticamente no login/registro.
 
 ### 3.2. Idempotência e Webhooks
 - **Idempotência no Redis:** Chave registrada com TTL de 24h via `SET NX` (`StringSetAsync($"webhook:idempotency:{id}", "processed", TimeSpan.FromHours(24), When.NotExists)`). Duplicidades respondem imediatamente `200 OK`.
@@ -112,6 +113,7 @@ O **E-commerce Bot** é uma plataforma SaaS monorepo dividida em 4 pilares:
 - **Datas e Timestamps:** `DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()`.
 - **Campos Criptografados (BYOK):** `VARBINARY(MAX)` para chaves AES-256 GCM, acompanhadas de `InitializationVector VARBINARY(16)` e `AuthTag VARBINARY(16)`.
 - **Índices de Cobertura:** Uso obrigatório de cláusula `INCLUDE` para eliminar Key Lookups em consultas de alta frequência.
+- **Hashes em Seeds / Migrações:** Hashes de senha temporários (seeds de Super Admin) DEVEM ser validados e gerados exclusivamente com BCrypt Work Factor 12 (`$2a$12$...`).
 
 ---
 
@@ -129,6 +131,7 @@ O **E-commerce Bot** é uma plataforma SaaS monorepo dividida em 4 pilares:
 ## 🎨 6. Frontend Canônico (EcommerceBot.Web)
 
 - **Estrutura em 4 Camadas:** `Types -> Services -> Hooks -> UI Components`.
+- **Configuração de Ambiente:** Consumo exclusivo via `@/config/env` (`env.apiUrl`, `env.mercadoPagoPublicKey`, etc.) com fallback padrão para `http://localhost:5183`.
 - **Comunicação:** Axios com envio automático de `X-Tenant-ID` via interceptors (`apiClient.ts`) e streaming SSE consumindo canais do Redis (`sseClient.ts`).
 - **Acessibilidade & Mobile:** Alvos de toque com no mínimo 44px (`min-h-[44px]`), campos de formulário com tamanho de fonte >= 16px (evita zoom no iOS) e contraste WCAG 2.1 AA.
 
@@ -140,4 +143,6 @@ Nenhuma tarefa é considerada concluída sem validação de compilação sem err
 - **Backend Core:** `dotnet build EcommerceBot.Core\EcommerceBot.Core.sln`
 - **Migrações:** `dotnet build Database.Migrations\Database.Migrations.csproj`
 - **Frontend Web:** `npm run build` (em `EcommerceBot.Web`) 
+- **Grafo de Topologia:** `& "EcommerceBot.Worker\.venv\Scripts\python.exe" .agents\scripts\generate_knowledge_graph.py`
 - **Verificação de Segurança:**  `# Windows (Executar isolado no .venv do Worker) & "EcommerceBot.Worker\.venv\Scripts\semgrep.exe" scan --config auto --exclude="**/bin" --exclude="**/obj" --exclude="**/dist" --exclude="**/node_modules" --exclude="**/.venv" EcommerceBot.Core EcommerceBot.Web/src Database.Migrations`
+

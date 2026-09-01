@@ -25,7 +25,7 @@ Em uma arquitetura SaaS Multi-Tenant, o vazamento de dados entre clientes (*Tena
 
 ---
 
-## 🔑 2. Gestão de Segredos & Criptografia (BYOK - Bring Your Own Key)
+## 🔑 2. Gestão de Segredos, Criptografia (BYOK) & Ciclo de Vida de Variáveis (.env)
 
 Chaves de API de terceiros (OpenRouter, DeepSeek, Gemini) e tokens de integração (Shopify Access Token, Nuvemshop Token) NUNCA devem trafegar ou residir em texto puro.
 
@@ -36,8 +36,14 @@ Chaves de API de terceiros (OpenRouter, DeepSeek, Gemini) e tokens de integraç�
 2. **Proibição de Logs Sensíveis:**
    - É proibido registrar em logs (ILogger/Serilog/logging) valores de senhas, JWTs completos, chaves de API ou payloads de cartão de crédito.
    - Aplique sempre mascaramento de chaves (ex: `key[..6] + "..." + key[^4..]`).
-3. **Isolamento de Variáveis e Segredos:**
-   - Arquivos `.env`, `.env.local` e secrets de produção NUNCA devem ser versionados no Git nem incorporados em imagens Docker.
+3. **Isolamento de Variáveis e Segredos (.env):**
+   - Arquivos `.env`, `.env.prod` e `.env.local` NUNCA devem ser versionados no Git nem incorporados em imagens Docker.
+   - Os arquivos canônicos de referência são estritamente `.env.example` (raiz) e `infra/prod/.env.prod.example`.
+4. **Blindagem do Frontend SPA (React / Vite):**
+   - O frontend React NUNCA deve importar ou ter acesso a segredos de backend (`Jwt:Key`, `AesMasterKey`, `InternalServiceKey`, secrets de webhooks).
+   - O consumo de variáveis de cliente é restrito a chaves públicas com prefixo `VITE_*` encapsuladas no módulo `@/config/env`.
+5. **Integridade de Senhas e Hashes em Migrações:**
+   - Todo script SQL de seed ou bootstrap que cadastre usuários (ex: Super Admin) DEVE utilizar hashes BCrypt válidos com Work Factor >= 12 (`$2a$12$...`), devidamente testados contra `BCrypt.Verify()`.
 
 ---
 
@@ -88,6 +94,9 @@ O motor de scraping recebe URLs fornecidas pelos usuários. Para impedir Server-
 Ao criar ou editar qualquer funcionalidade, valide:
 - [ ] Todas as queries Dapper contêm `WHERE TenantId = @TenantId`?
 - [ ] O Worker Python permanece 100% isolado de conexões de banco de dados?
+- [ ] As variáveis de ambiente públicas do frontend estão restritas a `VITE_*` via `@/config/env`?
+- [ ] As credenciais e seeds de migração utilizam hashes BCrypt válidos (Work Factor >= 12)?
 - [ ] A assinatura do webhook foi comparada com `CryptographicOperations.FixedTimeEquals`?
 - [ ] A chave de idempotência foi travada no Redis com TTL de 24 horas via `When.NotExists`?
 - [ ] As URLs do scraper são validadas contra faixas de IP privadas e metadados de nuvem?
+
