@@ -6,6 +6,9 @@ using EcommerceBot.Infrastructure.Configurations;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Carregamento de variáveis de ambiente nativas a partir do arquivo .env (com mapeamento de aliases e duplo underscore)
+builder.Configuration.AddDotEnvConfiguration();
+
 // Configuração do JSON Serialization
 builder.Services.ConfigureHttpJsonOptions(options =>
 {

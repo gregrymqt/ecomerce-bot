@@ -14,6 +14,9 @@ public class Program
         Console.WriteLine("====================================================================");
         Console.ResetColor();
 
+        // 0. Carrega variáveis de ambiente a partir do arquivo .env caso exista
+        DotEnvHelper.Load();
+
         // 1. Build configuration to read Environment Variables and CLI arguments
         var configuration = new ConfigurationBuilder()
             .AddEnvironmentVariables()
@@ -55,6 +58,7 @@ public class Program
             var upgrader = DeployChanges.To
                 .SqlDatabase(connectionString)
                 .WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly())
+                .WithVariablesDisabled()
                 .LogToConsole()
                 .WithTransactionPerScript()
                 .Build();
