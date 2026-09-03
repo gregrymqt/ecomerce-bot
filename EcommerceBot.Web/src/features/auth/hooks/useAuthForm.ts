@@ -47,8 +47,15 @@ export function useAuthForm(initialMode: AuthMode = 'login'): UseAuthFormReturn 
         });
         const plan = userResp?.plan?.toLowerCase() || 'free';
         const isAdmin = userResp?.is_admin === true || userResp?.role?.toUpperCase() === 'ADMIN';
-        const isPaidUser = isAdmin || plan === 'pro' || plan === 'enterprise';
-        navigate(isPaidUser ? '/catalog' : '/demo');
+        const isPaidUser = plan === 'pro' || plan === 'enterprise';
+
+        if (isAdmin) {
+          navigate('/admin/leads');
+        } else if (isPaidUser) {
+          navigate('/dashboard');
+        } else {
+          navigate('/demo');
+        }
       } catch (err) {
         getErrorMessage(err);
       } finally {
@@ -78,8 +85,15 @@ export function useAuthForm(initialMode: AuthMode = 'login'): UseAuthFormReturn 
         });
         const plan = userResp?.plan?.toLowerCase() || 'free';
         const isAdmin = userResp?.is_admin === true || userResp?.role?.toUpperCase() === 'ADMIN';
-        const isPaidUser = isAdmin || plan === 'pro' || plan === 'enterprise';
-        navigate(isPaidUser ? '/catalog' : '/demo');
+        const isPaidUser = plan === 'pro' || plan === 'enterprise';
+
+        if (isAdmin) {
+          navigate('/admin/leads');
+        } else if (isPaidUser) {
+          navigate('/dashboard');
+        } else {
+          navigate('/demo');
+        }
       } catch (err) {
         getErrorMessage(err);
       } finally {
