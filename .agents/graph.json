@@ -2,8 +2,8 @@
   "metadata": {
     "version": "1.0",
     "generator": "generate_knowledge_graph.py",
-    "total_nodes": 91,
-    "total_edges": 34
+    "total_nodes": 94,
+    "total_edges": 36
   },
   "nodes": [
     {
@@ -203,6 +203,13 @@
       }
     },
     {
+      "id": "code:AiCapacityRepository",
+      "label": "AiCapacityRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/AiCapacityRepository.cs",
+      "metadata": {}
+    },
+    {
       "id": "code:EmailRepository",
       "label": "EmailRepository",
       "type": "CoreServiceOrRepo",
@@ -343,6 +350,20 @@
       "metadata": {}
     },
     {
+      "id": "controller:AdminAiCapacityController",
+      "label": "AdminAiCapacityController",
+      "type": "ApiController",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Api/Controllers/AdminAiCapacityController.cs",
+      "metadata": {
+        "base_route": "api/v1/admin/ai-capacity",
+        "endpoints": [
+          "GET api/v1/admin/ai-capacity/overview",
+          "POST api/v1/admin/ai-capacity/topup",
+          "POST api/v1/admin/ai-capacity/trigger"
+        ]
+      }
+    },
+    {
       "id": "controller:AdminEnterpriseLeadsController",
       "label": "AdminEnterpriseLeadsController",
       "type": "ApiController",
@@ -369,6 +390,18 @@
           "GET api/v1/admin/analytics/unit-economics",
           "POST api/v1/admin/analytics/ad-spend",
           "GET api/v1/admin/analytics/ad-spend"
+        ]
+      }
+    },
+    {
+      "id": "controller:AiCreditsWebhookPayload",
+      "label": "AiCreditsWebhookPayload",
+      "type": "ApiController",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Api/Controllers/AiCreditsWebhookController.cs",
+      "metadata": {
+        "base_route": "api/v1/webhooks/ai-credits",
+        "endpoints": [
+          "POST api/v1/webhooks/ai-credits/{provider}"
         ]
       }
     },
@@ -938,6 +971,16 @@
     }
   ],
   "edges": [
+    {
+      "source": "code:AiCapacityRepository",
+      "target": "table:AiProviderCredits",
+      "relationship": "queries"
+    },
+    {
+      "source": "code:AiCapacityRepository",
+      "target": "table:LLMUsageLogs",
+      "relationship": "queries"
+    },
     {
       "source": "code:EmailRepository",
       "target": "table:EmailLogs",

@@ -19,21 +19,21 @@
 - `Filas:` **`queue:ecommerce`**
 
 ## 🗄️ 3. Tabelas Mapeadas no Banco de Dados (DbUp)
-- **Total de Tabelas Detectadas:** 19
+- **Total de Tabelas Detectadas:** 20
 - **Tabelas Core:** Tenants, Users, TenantAiCredentials, Products, Plans, Subscriptions, Orders, TrafficAttributions, EnterpriseLeads, LLMUsageLogs, OrderItems, EmailLogs...
 
 ## ⚡ 4. Controllers e Rotas da API Core
+- **AdminAiCapacityController** (`/api/v1/admin/ai-capacity`): 3 endpoints mapeados.
 - **AdminEnterpriseLeadsController** (`/api/v1/admin/enterprise-leads`): 3 endpoints mapeados.
 - **AdminGrowthController** (`/api/v1/admin`): 5 endpoints mapeados.
+- **AiCreditsWebhookPayload** (`/api/v1/webhooks/ai-credits`): 1 endpoints mapeados.
 - **AnalyticsController** (`/api/v1/[controller]`): 2 endpoints mapeados.
 - **AuthController** (`/api/v1/[controller]`): 8 endpoints mapeados.
 - **CheckoutController** (`/api/v1/[controller]`): 5 endpoints mapeados.
 - **EmailWebhookController** (`/api/v1/emails/webhooks`): 1 endpoints mapeados.
 - **IntegrationsController** (`/api/v1/integrations`): 4 endpoints mapeados.
 - **MercadoPagoWebhookController** (`/api/v1/webhooks/mercadopago`): 1 endpoints mapeados.
-- **MeteringController** (`/api/v1/[controller]`): 5 endpoints mapeados.
-- **NuvemshopIntegrationController** (`/api/v1/nuvemshop`): 8 endpoints mapeados.
-- *... e mais 11 controllers catalogados no graph.json.*
+- *... e mais 13 controllers catalogados no graph.json.*
 
 ## 🎨 5. Módulos Frontend (`EcommerceBot.Web`)
 - **admin**: [components, hooks, pages, services, types]

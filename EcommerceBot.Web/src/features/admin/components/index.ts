@@ -11,3 +11,7 @@ export * from './leads/LeadsKanbanPipeline';
 export * from './leads/LeadsDataTable';
 export * from './leads/LeadDetailModal';
 export * from './leads/LeadProvisionModal';
+
+// Capacity & FinOps components
+export * from './capacity';
+

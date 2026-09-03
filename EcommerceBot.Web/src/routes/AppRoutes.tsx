@@ -19,6 +19,7 @@ const WalletPage = lazy(() => import('@/features/wallet/pages/WalletPage'));
 const TrafficAnalyticsPage = lazy(() => import('@/features/analytics/pages/TrafficAnalyticsPage'));
 const AdminGrowthPage = lazy(() => import('@/features/admin/pages/AdminGrowthPage'));
 const AdminEnterpriseLeadsPage = lazy(() => import('@/features/admin/pages/AdminEnterpriseLeadsPage'));
+const AdminAiCapacityPage = lazy(() => import('@/features/admin/pages/AdminAiCapacityPage'));
 
 /**
  * Componente de Redirecionamento Inteligente por Perfil de Usuário
@@ -64,6 +65,7 @@ export const AppRoutes: React.FC = () => {
         <Route element={<AdminRouteGuard />}>
           <Route element={<AdminLayout />}>
             <Route path="/admin/leads" element={<AdminEnterpriseLeadsPage />} />
+            <Route path="/admin/ai-capacity" element={<AdminAiCapacityPage />} />
             <Route path="/admin/growth" element={<AdminGrowthPage />} />
             <Route path="/admin/plans" element={<AdminPlansPage />} />
             <Route path="/plans/admin" element={<Navigate to="/admin/plans" replace />} />

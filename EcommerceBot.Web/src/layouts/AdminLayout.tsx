@@ -10,6 +10,7 @@ import {
   Bot,
   Store,
   Layers,
+  Cpu,
 } from 'lucide-react';
 import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar';
 import { useAuth } from '@/features/auth';
@@ -30,6 +31,15 @@ export const AdminLayout: React.FC = () => {
       badgeVariant: 'indigo',
       active: location.pathname === '/admin/leads',
       onClick: () => navigate('/admin/leads'),
+    },
+    {
+      id: 'admin-ai-capacity',
+      label: 'Capacidade de IA (FinOps)',
+      icon: <Cpu className="w-5 h-5 text-indigo-400" />,
+      badge: 'FinOps',
+      badgeVariant: 'indigo',
+      active: location.pathname === '/admin/ai-capacity',
+      onClick: () => navigate('/admin/ai-capacity'),
     },
     {
       id: 'admin-growth',
