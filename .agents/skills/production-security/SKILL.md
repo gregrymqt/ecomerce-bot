@@ -99,4 +99,6 @@ Ao criar ou editar qualquer funcionalidade, valide:
 - [ ] A assinatura do webhook foi comparada com `CryptographicOperations.FixedTimeEquals`?
 - [ ] A chave de idempotência foi travada no Redis com TTL de 24 horas via `When.NotExists`?
 - [ ] As URLs do scraper são validadas contra faixas de IP privadas e metadados de nuvem?
+- [ ] Ferramentas MCP expostas operam em modo estritamente Read-Only via DMVs com `WITH (NOLOCK)`?
+- [ ] O Google NotebookLM permanece isolado no plano cognitivo, sem chamadas síncronas na produção?
 

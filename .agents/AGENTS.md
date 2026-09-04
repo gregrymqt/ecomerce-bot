@@ -44,6 +44,7 @@ NUNCA carregue todas as skills simultaneamente. Inspecione e ative estritamente 
 | **Segurança / Core** | `.agents/skills/production-security/SKILL.md` | Ao mexer em webhooks, HMAC, AES-256 BYOK, SSRF ou isolamento de tenant. |
 | **Interface / Web** | `.agents/skills/impeccable/SKILL.md` | Ao desenvolver páginas React, Tailwind, formulários, A11y e SSE. |
 | **Comandos / Terminal** | `.agents/skills/token-density/SKILL.md` | Padrão obrigatório para execuções concisas no terminal (RTK pattern). |
+| **Integrações / Shopify** | `.agents/skills/shopify-expert/SKILL.md` | Ao implementar ou refatorar endpoints Shopify (GraphQL 2024+, OAuth 2.0, Webhooks HMAC). |
 
 ### 🧭 Navegação via Grafo (Zero Busca Cega)
 
