@@ -20,7 +20,7 @@ export const tenantSsoService = {
       return response.data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Erro ao listar papéis de usuário.');
-      throw new Error(msg);
+      throw new Error(msg, { cause: error });
     }
   },
 
@@ -30,7 +30,7 @@ export const tenantSsoService = {
       return response.data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Erro ao consultar mapeamentos de grupos SSO.');
-      throw new Error(msg);
+      throw new Error(msg, { cause: error });
     }
   },
 
@@ -40,7 +40,7 @@ export const tenantSsoService = {
       return response.data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Erro ao criar mapeamento SSO.');
-      throw new Error(msg);
+      throw new Error(msg, { cause: error });
     }
   },
 
@@ -50,7 +50,7 @@ export const tenantSsoService = {
       return response.data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Erro ao atualizar mapeamento SSO.');
-      throw new Error(msg);
+      throw new Error(msg, { cause: error });
     }
   },
 
@@ -60,7 +60,7 @@ export const tenantSsoService = {
       return response.data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Erro ao remover mapeamento SSO.');
-      throw new Error(msg);
+      throw new Error(msg, { cause: error });
     }
   },
 };

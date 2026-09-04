@@ -36,9 +36,9 @@ export const CheckoutPage: React.FC = () => {
   const customAmountParam = searchParams.get('amount');
 
   // Resolução dinâmica de nome e valor
-  let planName = 'Plano Pro AI';
-  let amountBrl = 197.0;
-  let trialDays = 7;
+  let planName: string;
+  let amountBrl: number;
+  let trialDays: number;
 
   if (isTopup) {
     amountBrl = customAmountParam ? parseFloat(customAmountParam) : 50.0;

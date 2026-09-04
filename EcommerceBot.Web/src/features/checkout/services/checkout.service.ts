@@ -33,7 +33,7 @@ export const checkoutService = {
         error,
         'Erro ao gerar cobrança PIX. Por favor, tente novamente.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -58,7 +58,7 @@ export const checkoutService = {
         error,
         'Erro ao processar o pagamento via cartão de crédito. Verifique os dados fornecidos.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -80,7 +80,7 @@ export const checkoutService = {
         error,
         'Erro ao sincronizar o status do pagamento. Tente novamente em instantes.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 };

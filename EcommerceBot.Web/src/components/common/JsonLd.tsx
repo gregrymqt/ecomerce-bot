@@ -2,7 +2,7 @@ import React from 'react';
 
 export interface JsonLdProps {
   /** Objeto de dados estruturados Schema.org */
-  data: Record<string, any>;
+  data: Record<string, unknown>;
 }
 
 /**

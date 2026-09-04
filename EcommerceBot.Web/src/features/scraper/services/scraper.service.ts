@@ -21,7 +21,7 @@ export const scraperService = {
       return response.data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Falha ao solicitar a extração do produto.');
-      throw new Error(msg);
+      throw new Error(msg, { cause: error });
     }
   },
 };

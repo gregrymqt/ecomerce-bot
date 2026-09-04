@@ -4,7 +4,7 @@
  * Processamento assíncrono do Callback de Autorização Google OAuth 2.0.
  */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building, Loader2, AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -40,7 +40,7 @@ export const GoogleCallbackPage: React.FC = () => {
   const code = urlParams.get('code');
   const state = urlParams.get('state') || undefined;
 
-  const processCallback = async (tenantNameOverride?: string) => {
+  const processCallback = useCallback(async (tenantNameOverride?: string) => {
     if (!code) {
       setError('Código de autorização do Google não encontrado na URL.');
       setIsLoading(false);
@@ -86,14 +86,14 @@ export const GoogleCallbackPage: React.FC = () => {
         setError(msg);
       }
     }
-  };
+  }, [code, state, loginWithGoogleCallback, navigate]);
 
   useEffect(() => {
     if (hasProcessed.current) return;
     hasProcessed.current = true;
 
     processCallback();
-  }, []);
+  }, [processCallback]);
 
   const handleTenantSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

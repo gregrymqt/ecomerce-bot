@@ -17,7 +17,7 @@ export interface SEOProps {
   /** Se verdadeiro, instrui robôs a não indexarem a página */
   noIndex?: boolean;
   /** Dados estruturados Schema.org (JSON-LD) */
-  schemaData?: Record<string, any>;
+  schemaData?: Record<string, unknown>;
 }
 
 const DEFAULT_TITLE = 'E-Commerce AutoBot - Extração e Enriquecimento de Catálogos com IA';

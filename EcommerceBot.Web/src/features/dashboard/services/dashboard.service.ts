@@ -39,7 +39,7 @@ export const dashboardService = {
         error,
         'Não foi possível carregar os dados de telemetria do Dashboard.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -60,7 +60,7 @@ export const dashboardService = {
         error,
         'Erro ao obter o histórico de atividades recentes.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -78,7 +78,7 @@ export const dashboardService = {
         error,
         'Falha ao iniciar a extração rápida. Verifique a URL informada.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 };

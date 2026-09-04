@@ -34,7 +34,7 @@ export const integrationService = {
         error,
         'Não foi possível carregar o resumo das integrações.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -51,7 +51,7 @@ export const integrationService = {
         error,
         'Erro ao listar as integrações cadastradas.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -73,7 +73,7 @@ export const integrationService = {
         error,
         'Falha ao salvar as credenciais da Shopify. Verifique o domínio e o Admin Access Token.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -92,7 +92,7 @@ export const integrationService = {
         error,
         'Falha ao iniciar autorização OAuth com a Shopify.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -115,7 +115,7 @@ export const integrationService = {
         error,
         'Erro ao atualizar estoque na Shopify.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -138,7 +138,7 @@ export const integrationService = {
         error,
         'Erro ao atualizar status do produto na Shopify.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -157,7 +157,7 @@ export const integrationService = {
         error,
         'Erro ao remover produto remoto na Shopify.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -176,7 +176,7 @@ export const integrationService = {
         error,
         'Erro ao testar a conexão com a loja. Tente novamente em instantes.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -192,7 +192,7 @@ export const integrationService = {
         error,
         'Erro ao desconectar a loja. Verifique as permissões do tenant.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -215,7 +215,7 @@ export const integrationService = {
         error,
         'Falha ao salvar as credenciais da Nuvemshop. Verifique o Store ID e o Access Token.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -232,7 +232,7 @@ export const integrationService = {
         error,
         'Erro ao gerar URL de autorização OAuth da Nuvemshop.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -251,7 +251,7 @@ export const integrationService = {
         error,
         'Erro ao buscar categorias na Nuvemshop.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -273,7 +273,7 @@ export const integrationService = {
         error,
         'Erro ao atualizar lote de preços/estoque na Nuvemshop.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 };

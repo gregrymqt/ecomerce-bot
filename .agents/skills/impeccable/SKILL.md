@@ -60,3 +60,29 @@ Para evitar a degradação de contexto e acúmulo desordenado de código gerado 
    - O `apiClient` (`src/lib/apiClient.ts`) envia credenciais por cookies `HttpOnly` e injeta automaticamente o header `X-Tenant-ID`. Nunca monte cabeçalhos de autenticação manualmente em services.
 2. **Streaming em Tempo Real (SSE):**
    - O consumo do canal `/api/v1/demo/stream` deve ser encapsulado em hooks que garantem reconexão automática, limpeza de event listeners no desmonte do componente (`useEffect cleanup`) e tratamento de erros de conexão.
+
+---
+
+## 🛡️ 5. Resiliência de Runtime, Error Cause & React 19 Guardrails
+
+1. **Preservação de Erros na Camada de Services (`preserve-caught-error`):**
+   - Ao capturar erros no `try/catch` de services e relançar mensagens de erro de negócio, é obrigatório encadear a causa original através da sintaxe ES2022:
+     ```typescript
+     try {
+       const response = await apiClient.get('/endpoint');
+       return response.data;
+     } catch (error) {
+       throw new Error('Falha ao obter dados do endpoint.', { cause: error });
+     }
+     ```
+
+2. **Isolamento de React Context para Fast Refresh (`only-export-components`):**
+   - NUNCA exporte `createContext` no mesmo arquivo `.tsx` de um componente (`AuthProvider`, etc.).
+   - Isole o contexto em um arquivo TypeScript puro (ex: `AuthContextDefinition.ts`) e o provider no componente `.tsx`.
+
+3. **Prevenção de Cascading Renders (`set-state-in-effect`):**
+   - Não dispare `setState` síncrono no início de `useEffect` se o valor já puder ser inicializado no `useState` inicial.
+   - Derivação de dados e resets de formulário em modais devem ser feitos durante a renderização, via `key` de componente ou em handlers de evento (`onClose`/`onSubmit`), nunca em `useEffect` observando `isOpen`.
+
+4. **Tipagem Estrita de Metadados e JSON-LD:**
+   - Proibido o uso de `Record<string, any>`. Utilize `Record<string, unknown>` acompanhado de narrowing seguro.

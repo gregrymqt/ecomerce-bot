@@ -23,7 +23,7 @@ export const settingsService = {
         error,
         'Não foi possível carregar as configurações do tenant.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -42,7 +42,7 @@ export const settingsService = {
         error,
         'Erro ao salvar as alterações de configurações.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 };

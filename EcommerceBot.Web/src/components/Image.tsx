@@ -1,1 +1,4 @@
-export { Image, type ImageProps, default } from './common/Image';
+import { Image } from './common/Image';
+
+export { Image };
+export default Image;

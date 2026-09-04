@@ -37,7 +37,7 @@ export const productService = {
       return response.data;
     } catch (error: unknown) {
       const message = getErrorMessage(error, 'Erro ao carregar catálogo de produtos.');
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -50,7 +50,7 @@ export const productService = {
       return response.data;
     } catch (error: unknown) {
       const message = getErrorMessage(error, 'Erro ao atualizar informações do produto.');
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -63,7 +63,7 @@ export const productService = {
       return response.data;
     } catch (error: unknown) {
       const message = getErrorMessage(error, 'Erro ao remover o produto do catálogo.');
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -76,7 +76,7 @@ export const productService = {
       return response.data;
     } catch (error: unknown) {
       const message = getErrorMessage(error, 'Erro ao sincronizar produto com a Shopify.');
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -92,7 +92,7 @@ export const productService = {
       return response.data;
     } catch (error: unknown) {
       const message = getErrorMessage(error, 'Erro ao iniciar sincronização em lote na Shopify.');
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -105,7 +105,7 @@ export const productService = {
       return response.data;
     } catch (error: unknown) {
       const message = getErrorMessage(error, 'Erro ao sincronizar produto com a Nuvemshop.');
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -119,7 +119,7 @@ export const productService = {
       return response.data;
     } catch (error: unknown) {
       const message = getErrorMessage(error, 'Erro ao enfileirar sincronização em lote na Nuvemshop.');
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 };

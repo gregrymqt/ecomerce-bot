@@ -27,7 +27,7 @@ export const walletService = {
       return response.data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Falha ao obter saldo da carteira.');
-      throw new Error(msg);
+      throw new Error(msg, { cause: error });
     }
   },
 
@@ -45,7 +45,7 @@ export const walletService = {
       return response.data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Falha ao consultar o extrato de movimentações.');
-      throw new Error(msg);
+      throw new Error(msg, { cause: error });
     }
   },
 
@@ -61,7 +61,7 @@ export const walletService = {
       return response.data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Falha ao solicitar recarga de créditos.');
-      throw new Error(msg);
+      throw new Error(msg, { cause: error });
     }
   },
 
@@ -77,7 +77,7 @@ export const walletService = {
       return data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Falha ao processar pagamento com cartão de crédito.');
-      throw new Error(msg);
+      throw new Error(msg, { cause: error });
     }
   },
 };

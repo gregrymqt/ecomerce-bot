@@ -133,7 +133,7 @@ export function useAdminPlans(): UseAdminPlansReturn {
       await fetchPlans();
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'Erro ao salvar o plano.');
-      throw new Error(msg);
+      throw new Error(msg, { cause: err });
     } finally {
       setSubmitting(false);
     }

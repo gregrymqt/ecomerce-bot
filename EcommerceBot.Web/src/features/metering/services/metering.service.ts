@@ -27,7 +27,7 @@ export const meteringService = {
         error,
         'Não foi possível carregar o saldo de créditos.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 
@@ -44,7 +44,7 @@ export const meteringService = {
         error,
         'Erro ao consultar o histórico de consumo de IA.'
       );
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
   },
 };

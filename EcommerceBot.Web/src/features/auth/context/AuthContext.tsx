@@ -4,7 +4,7 @@
  * Contexto e Provider de Autenticação, Gerenciamento de Sessão JWT e Multi-Tenancy.
  */
 
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { authService } from '../services/authService';
 import { getTenantId, saveTenantId, clearTenantId, saveAuthToken, clearAuthToken } from '@/utils/storage';
 import { getErrorMessage } from '@/utils/errors';
@@ -15,23 +15,10 @@ import type {
   RegisterPayload,
   UpdateUserPayload,
   AuthStatus,
-  AuthState,
   GoogleCallbackRequest,
   AuthTokenResponse,
 } from '../types/auth.types';
-
-export interface AuthContextType extends AuthState {
-  login: (credentials: LoginCredentials) => Promise<UserResponse>;
-  register: (payload: RegisterPayload) => Promise<UserResponse>;
-  logout: () => Promise<void>;
-  updateProfile: (payload: UpdateUserPayload) => Promise<void>;
-  switchTenant: (tenantId: string) => void;
-  checkAuth: () => Promise<void>;
-  initiateGoogleLogin: (tenantName?: string) => Promise<void>;
-  loginWithGoogleCallback: (payload: GoogleCallbackRequest) => Promise<AuthTokenResponse>;
-}
-
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { AuthContext } from './AuthContextDefinition';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthenticatedUser | UserResponse | null>(null);

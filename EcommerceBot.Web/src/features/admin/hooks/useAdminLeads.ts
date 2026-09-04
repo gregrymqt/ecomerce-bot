@@ -53,7 +53,7 @@ export const useAdminLeads = () => {
 
   useEffect(() => {
     fetchLeads();
-  }, [selectedStatusFilter]);
+  }, [fetchLeads]);
 
   const filteredLeads = useMemo(() => {
     if (!searchQuery.trim()) return leads;

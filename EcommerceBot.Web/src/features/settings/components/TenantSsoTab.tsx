@@ -6,7 +6,7 @@
  * Em conformidade com acessibilidade WCAG 2.1 AA, inputs >= 16px e touch targets >= 44px.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ShieldCheck,
   Plus,
@@ -35,7 +35,7 @@ export const TenantSsoTab: React.FC = () => {
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
   const [isDefaultRoleInput, setIsDefaultRoleInput] = useState<boolean>(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -53,11 +53,11 @@ export const TenantSsoTab: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedRoleId]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleCreateMapping = async (e: React.FormEvent) => {
     e.preventDefault();

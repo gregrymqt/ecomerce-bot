@@ -28,7 +28,7 @@ export const plansService = {
       return response.data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Falha ao listar planos de assinatura.');
-      throw new Error(msg);
+      throw new Error(msg, { cause: error });
     }
   },
 
@@ -42,7 +42,7 @@ export const plansService = {
       return response.data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Erro ao consultar detalhes do plano.');
-      throw new Error(msg);
+      throw new Error(msg, { cause: error });
     }
   },
 
@@ -56,7 +56,7 @@ export const plansService = {
       return response.data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Erro ao cadastrar novo plano.');
-      throw new Error(msg);
+      throw new Error(msg, { cause: error });
     }
   },
 
@@ -70,16 +70,16 @@ export const plansService = {
       return response.data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Erro ao atualizar plano.');
-      throw new Error(msg);
+      throw new Error(msg, { cause: error });
     }
   },
 
   /**
    * Alias de compatibilidade para listagem local.
    */
-  listLocalPlans: async (limit = 100, _offset = 0): Promise<PlanResponse[]> => {
+  listLocalPlans: async (limit = 100, offset = 0): Promise<PlanResponse[]> => {
     const plans = await plansService.listPlans(false);
-    return plans.slice(0, limit);
+    return plans.slice(offset, offset + limit);
   },
 
   /**
