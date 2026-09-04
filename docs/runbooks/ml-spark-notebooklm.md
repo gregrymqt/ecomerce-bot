@@ -49,12 +49,18 @@ python -m app.ml.spark.batch_train --output-dir app/ml/models/artifacts/
   - Se não existir, ele utiliza o fallback heurístico em tempo real do Scikit-Learn.
 - **Regra Inviolável:** O worker nunca treina do zero durante uma requisição HTTP ou evento de fila. Ele faz apenas `.predict()` ou `.transform()`.
 
-### Passo 3: Ingestão de Conhecimento no Google NotebookLM
-- Faça o upload do arquivo `metrics_report_YYYYMMDD.md` gerado no passo 1 diretamente no seu caderno do **NotebookLM**.
-- Utilize os prompts padrão para estudo e tomada de decisão:
-  - *"Quais clusters de clientes apresentaram maior risco de churn na última semana?"*
-  - *"Identifique tendências anômalas no valor médio do ticket em comparação com o mês anterior."*
-  - *"Gere um resumo executivo dos segmentos de clientes para a equipe de marketing."*
+### Passo 3: Ingestão de Conhecimento e Métricas no Google NotebookLM
+1. **Relatórios Periódicos de Métricas de Vendas & RFM:**
+   - Faça o upload do arquivo `metrics_report_YYYYMMDD.md` gerado no passo 1 diretamente no seu caderno do **NotebookLM**.
+2. **Master Knowledge Pack de Engenharia & Arquitetura (Card 83):**
+   - Para alimentar o NotebookLM com as especificações de APIs externas (Shopify, Nuvemshop, Mercado Pago, OpenRouter), dicionário de dados SQL Server, modelos analíticos e topologia de filas, execute:
+     ```powershell
+     & "EcommerceBot.Worker\.venv\Scripts\python.exe" .agents\scripts\generate_notebooklm_pack.py
+     ```
+   - O comando gera:
+     - Os módulos individuais em `docs/notebooklm/pack/` (01 a 04).
+     - O **Master Bundle consolidado** em `docs/notebooklm/ecosystem_knowledge_pack.md`.
+   - Faça o upload do arquivo `ecosystem_knowledge_pack.md` no seu caderno do NotebookLM como a **Fonte Única da Verdade Técnica** para consultas de engenharia sem alucinações.
 
 ---
 

@@ -148,6 +148,7 @@ Nenhuma tarefa é considerada concluída sem validação de compilação sem err
 - **Migrações:** `dotnet build Database.Migrations\Database.Migrations.csproj`
 - **Frontend Web:** `npm run build` (em `EcommerceBot.Web`) 
 - **Grafo de Topologia:** `& "EcommerceBot.Worker\.venv\Scripts\python.exe" .agents\scripts\generate_knowledge_graph.py`
+- **Knowledge Pack (NotebookLM):** `& "EcommerceBot.Worker\.venv\Scripts\python.exe" .agents\scripts\generate_notebooklm_pack.py`
 - **Verificação de Segurança:**  `# Windows (Executar isolado no .venv do Worker) & "EcommerceBot.Worker\.venv\Scripts\semgrep.exe" scan --config auto --exclude="**/bin" --exclude="**/obj" --exclude="**/dist" --exclude="**/node_modules" --exclude="**/.venv" EcommerceBot.Core EcommerceBot.Web/src Database.Migrations`
 
 ---
@@ -180,7 +181,7 @@ O pipeline analítico e preditivo do E-commerce Bot é distribuído em três pla
    - Zero acesso direto a bancos de dados relacionais.
 
 3. **Knowledge & Research Plane (Google NotebookLM):**
-   - Ambiente de estudo, síntese e aprendizado humano e de agentes.
-   - Alimentado com relatórios periódicos de drift, métricas de acurácia, papers e runbooks operacionais.
+   - Ambiente de estudo, síntese e aprendizado humano e de agentes (Card 83).
+   - Alimentado com o **Master Knowledge Pack** consolidado (`docs/notebooklm/ecosystem_knowledge_pack.md`), relatórios de drift, métricas de acurácia e runbooks operacionais.
    - Zero acoplamento com a latência ou disponibilidade da produção.
 
