@@ -39,11 +39,51 @@ public class RunbookResourceProvider
             });
         }
 
+        // Expor relatório mais recente de ML / Spark do NotebookLM
+        var reportsDir = FindReportsDirectory();
+        if (reportsDir != null && Directory.Exists(reportsDir))
+        {
+            var latestReport = Path.Combine(reportsDir, "latest_metrics_report.md");
+            if (File.Exists(latestReport))
+            {
+                resources.Add(new McpResourceDefinition
+                {
+                    Uri = "resource://ml/latest-metrics",
+                    Name = "Último Relatório de Inteligência Analítica Spark & RFM",
+                    Description = "Relatório consolidado de segmentação RFM e saúde preditiva gerado pelo Google Spark para o NotebookLM.",
+                    MimeType = "text/markdown"
+                });
+            }
+        }
+
         return resources;
     }
 
     public McpResourceReadResult? ReadResource(string uri)
     {
+        if (string.Equals(uri, "resource://ml/latest-metrics", StringComparison.OrdinalIgnoreCase))
+        {
+            var reportsDir = FindReportsDirectory();
+            if (reportsDir == null) return null;
+
+            var target = Path.Combine(reportsDir, "latest_metrics_report.md");
+            if (!File.Exists(target)) return null;
+
+            var reportContent = File.ReadAllText(target);
+            return new McpResourceReadResult
+            {
+                Contents = new List<McpResourceContent>
+                {
+                    new()
+                    {
+                        Uri = uri,
+                        MimeType = "text/markdown",
+                        Text = reportContent
+                    }
+                }
+            };
+        }
+
         if (!uri.StartsWith(UriPrefix, StringComparison.OrdinalIgnoreCase))
         {
             return null;
@@ -103,6 +143,23 @@ public class RunbookResourceProvider
         while (current != null)
         {
             var candidate = Path.Combine(current.FullName, "docs", "runbooks");
+            if (Directory.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            current = current.Parent;
+        }
+
+        return null;
+    }
+
+    private static string? FindReportsDirectory()
+    {
+        var current = new DirectoryInfo(Directory.GetCurrentDirectory());
+        while (current != null)
+        {
+            var candidate = Path.Combine(current.FullName, "docs", "notebooklm", "reports");
             if (Directory.Exists(candidate))
             {
                 return candidate;

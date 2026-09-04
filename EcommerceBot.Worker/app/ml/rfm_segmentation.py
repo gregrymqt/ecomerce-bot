@@ -11,7 +11,7 @@ from sklearn.preprocessing import StandardScaler
 logger = logging.getLogger(__name__)
 
 DEFAULT_ARTIFACT_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "models", "artifacts", "rfm_pipeline.joblib"
+    os.path.dirname(__file__), "models", "artifacts", "rfm_pipeline.joblib"
 )
 
 class RFMSegmentation:
@@ -22,13 +22,31 @@ class RFMSegmentation:
     """
 
     def __init__(self, artifact_path: Optional[str] = DEFAULT_ARTIFACT_PATH):
+        self.artifact_path = artifact_path
+        self._last_loaded_mtime: float = 0.0
         self.precalibrated = None
-        if artifact_path and os.path.exists(artifact_path):
-            try:
-                self.precalibrated = joblib.load(artifact_path)
-                logger.info(f"⚡ [RFMSegmentation] Modelo pré-calibrado carregado de: {artifact_path}")
-            except Exception as e:
-                logger.warning(f"Falha ao carregar artefato RFM: {e}. Usando fallback em runtime.")
+        self._check_and_reload_model()
+
+    def _check_and_reload_model(self) -> None:
+        """
+        Verifica transparentemente se o arquivo de artefatos (.joblib) foi atualizado
+        no disco (ex: após sincronização do Cloudflare R2 na VPS) e recarrega os pesos em memória.
+        Garante zero downtime e atualização dinâmica sem reiniciar o container.
+        """
+        if not self.artifact_path or not os.path.exists(self.artifact_path):
+            return
+
+        try:
+            current_mtime = os.path.getmtime(self.artifact_path)
+            if current_mtime > self._last_loaded_mtime:
+                self.precalibrated = joblib.load(self.artifact_path)
+                self._last_loaded_mtime = current_mtime
+                logger.info(
+                    f"⚡ [RFMSegmentation] Artefato atualizado carregado em memória: {self.artifact_path} "
+                    f"(mtime={current_mtime})"
+                )
+        except Exception as e:
+            logger.warning(f"Falha ao carregar artefato RFM atualizado: {e}. Mantendo modelo anterior/fallback.")
 
     @staticmethod
     def _calculate_rfm_metrics(df: pd.DataFrame, reference_date: Optional[datetime] = None) -> pd.DataFrame:
@@ -62,6 +80,8 @@ class RFMSegmentation:
             "amount": 299.90
         }
         """
+        self._check_and_reload_model()
+
         if not transactions:
             return {"customers": [], "summary": {"total_customers": 0, "segments": {}}}
 

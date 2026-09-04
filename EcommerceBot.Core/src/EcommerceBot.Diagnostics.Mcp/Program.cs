@@ -58,6 +58,8 @@ services.AddSingleton<ISystemDiagnosticTool, SqlHealthTool>();
 services.AddSingleton<ISystemDiagnosticTool, RedisMetricsTool>();
 services.AddSingleton<ISystemDiagnosticTool, RabbitMqQueueTool>();
 services.AddSingleton<ISystemDiagnosticTool, ErrorLogReaderTool>();
+services.AddSingleton<ISystemDiagnosticTool, MlModelArtifactsTool>();
+services.AddSingleton<ISystemDiagnosticTool, SparkPipelineStatusTool>();
 
 // 5. Provedor de Recursos (Runbooks) & Servidor MCP
 services.AddSingleton<RunbookResourceProvider>();

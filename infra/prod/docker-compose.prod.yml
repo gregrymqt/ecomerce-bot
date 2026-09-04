@@ -209,6 +209,8 @@ services:
         limits:
           cpus: '1.5'
           memory: 2048M
+    volumes:
+      - worker-prod-artifacts:/app/app/ml/models/artifacts
     depends_on:
       redis:
         condition: service_healthy
@@ -286,3 +288,5 @@ volumes:
   certbot-etc:
   certbot-var:
   certbot-www:
+  worker-prod-artifacts:
+    name: prod-worker-artifacts

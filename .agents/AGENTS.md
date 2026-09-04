@@ -185,3 +185,10 @@ O pipeline analítico e preditivo do E-commerce Bot é distribuído em três pla
    - Alimentado com o **Master Knowledge Pack** consolidado (`docs/notebooklm/ecosystem_knowledge_pack.md`), relatórios de drift, métricas de acurácia e runbooks operacionais.
    - Zero acoplamento com a latência ou disponibilidade da produção.
 
+4. **MLOps & Governança de Artefatos (Cloudflare R2 / VPS):**
+   - **PROIBIDO versionar binários de modelos no Git:** Pesos serializados (`.joblib`, `.onnx`, `.pkl`) são gerenciados via Cloudflare R2 (S3 API). O Git rastreia apenas código, manifestos JSON de metadados e relatórios analíticos Markdown.
+   - **Armazenamento no R2:** Estrutura dupla com histórico versionado (`ml-artifacts/rfm/${TIMESTAMP}/`) e ponteiro estável (`ml-artifacts/rfm/latest/`).
+   - **Sincronização na VPS:** Script resiliente (`infra/prod/scripts/sync_ml_artifacts_r2.sh`) abastecendo o volume persistente `worker-prod-artifacts`.
+   - **Hot-Reload:** O Worker Python recarrega os pesos dinamicamente em memória baseado em `mtime`, com zero downtime e sem reiniciar o container.
+
+

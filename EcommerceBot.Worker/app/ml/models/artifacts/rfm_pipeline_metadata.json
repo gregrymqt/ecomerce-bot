@@ -1,0 +1,33 @@
+{
+  "model": "RFM_KMeans",
+  "version": "1.0",
+  "trainedAt": "2026-09-04T21:09:50.347394+00:00",
+  "sampleCount": 149,
+  "clusterCount": 4,
+  "silhouetteScore": 0.3378300426939142,
+  "totalRevenue": 95783.67,
+  "artifactPath": "C:\\Users\\digob\\Desktop\\ecommerce-bot\\EcommerceBot.Worker\\app\\ml\\models\\artifacts\\rfm_pipeline.joblib",
+  "status": "WARNING_LOW_SILHOUETTE",
+  "clusterDistribution": {
+    "0": {
+      "label": "Campeões (VIP)",
+      "count": 44,
+      "percentage": 29.53
+    },
+    "1": {
+      "label": "Inativos / Ocasionais",
+      "count": 27,
+      "percentage": 18.12
+    },
+    "2": {
+      "label": "Clientes Fiéis",
+      "count": 54,
+      "percentage": 36.24
+    },
+    "3": {
+      "label": "Em Risco",
+      "count": 24,
+      "percentage": 16.11
+    }
+  }
+}

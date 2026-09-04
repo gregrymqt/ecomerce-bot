@@ -56,8 +56,10 @@
 - **Transporte:** `stdio` (JSON-RPC 2.0 padrão v2024-11-05)
 - **Ferramentas Registradas:**
   - **`get_recent_application_errors`** (`ErrorLogReaderTool`): Lê as últimas falhas (Warning, Error, Fatal) registradas pelo Serilog nos arquivos rotativos JSON da API Core sem bloquear a aplicação.
+  - **`inspect_ml_artifacts`** (`MlModelArtifactsTool`): Inspeciona os artefatos de Machine Learning (.joblib) e o manifesto de metadados gerados pelo Google Spark / PySpark no ecossistema.
   - **`inspect_rabbitmq_queues`** (`RabbitMqQueueTool`): Inspeciona o backlog de mensagens, consumidores ativos e taxas nas filas críticas e DLQs do RabbitMQ.
   - **`check_redis_metrics`** (`RedisMetricsTool`): Inspeciona o estado do Redis: conectividade, latência de ping, uso de memória, número de clientes conectados e status de cluster/standalone.
+  - **`check_spark_pipeline_status`** (`SparkPipelineStatusTool`): Inspeciona o status e histórico de execuções do pipeline Google Spark Batch, verificando relatórios de métricas do NotebookLM e periodicidade.
   - **`check_sql_health`** (`SqlHealthTool`): Inspeciona a saúde do SQL Server 2022 via DMVs (sys.dm_*): bloqueios ativos, deadlocks em andamento, conexões e top queries lentas.
 
 ## 🔬 7. Modelos de Machine Learning & Spark (`EcommerceBot.Worker/app/ml`)

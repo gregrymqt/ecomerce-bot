@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
@@ -102,16 +103,42 @@ class SparkBatchPipeline:
 
         # Exportação determinística de artefato para o Worker de inferência
         artifact_path = os.path.join(self.artifacts_dir, "rfm_pipeline.joblib")
+        trained_at_iso = datetime.now(timezone.utc).isoformat()
         joblib.dump({
             "scaler": scaler,
             "kmeans": kmeans,
             "cluster_labels": cluster_labels,
-            "trained_at": datetime.now(timezone.utc).isoformat(),
+            "trained_at": trained_at_iso,
             "n_samples": len(rfm),
             "silhouette_score": sil_score
         }, artifact_path)
 
+        # Exportação do manifesto JSON desacoplado para telemetria via MCP
+        metadata_path = os.path.join(self.artifacts_dir, "rfm_pipeline_metadata.json")
+        metadata = {
+            "model": "RFM_KMeans",
+            "version": "1.0",
+            "trainedAt": trained_at_iso,
+            "sampleCount": len(rfm),
+            "clusterCount": n_clusters,
+            "silhouetteScore": sil_score,
+            "totalRevenue": round(float(rfm['monetary'].sum()), 2),
+            "artifactPath": artifact_path,
+            "status": "HEALTHY" if sil_score >= 0.35 else "WARNING_LOW_SILHOUETTE",
+            "clusterDistribution": {
+                str(c): {
+                    "label": p.get("label", f"Cluster {c}"),
+                    "count": p.get("count", 0),
+                    "percentage": round((p.get("count", 0) / len(rfm) * 100), 2) if len(rfm) > 0 else 0
+                }
+                for c, p in cluster_profiles.items()
+            }
+        }
+        with open(metadata_path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
+
         logger.info(f"✅ [SparkBatchPipeline] Artefato serializado salvo com sucesso em: {artifact_path}")
+        logger.info(f"📊 [SparkBatchPipeline] Manifesto de telemetria MCP salvo em: {metadata_path}")
 
         metrics = {
             "status": "CALIBRATED",

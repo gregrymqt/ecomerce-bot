@@ -117,6 +117,15 @@ logs/
 export_*.csv
 scratch/
 
+# Machine Learning Artifacts & Serialized Models (Cloudflare R2 / S3 Storage)
+*.joblib
+*.onnx
+*.pkl
+EcommerceBot.Worker/app/ml/models/artifacts/*.joblib
+EcommerceBot.Worker/app/ml/models/artifacts/*.onnx
+EcommerceBot.Worker/app/ml/models/artifacts/*.pkl
+!EcommerceBot.Worker/app/ml/models/artifacts/.gitkeep
+
 # ------------------------------------------------------------------------------
 # 🔐 Environment Variables & Secrets (Keep .example files versioned!)
 # ------------------------------------------------------------------------------

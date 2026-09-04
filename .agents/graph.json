@@ -2,8 +2,8 @@
   "metadata": {
     "version": "2.0",
     "generator": "generate_knowledge_graph.py",
-    "total_nodes": 113,
-    "total_edges": 54
+    "total_nodes": 115,
+    "total_edges": 56
   },
   "nodes": [
     {
@@ -1022,6 +1022,16 @@
       }
     },
     {
+      "id": "mcp_tool:inspect_ml_artifacts",
+      "label": "inspect_ml_artifacts",
+      "type": "McpDiagnosticTool",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Diagnostics.Mcp/Tools/MlModelArtifactsTool.cs",
+      "metadata": {
+        "className": "MlModelArtifactsTool",
+        "description": "Inspeciona os artefatos de Machine Learning (.joblib) e o manifesto de metadados gerados pelo Google Spark / PySpark no ecossistema."
+      }
+    },
+    {
       "id": "mcp_tool:inspect_rabbitmq_queues",
       "label": "inspect_rabbitmq_queues",
       "type": "McpDiagnosticTool",
@@ -1039,6 +1049,16 @@
       "metadata": {
         "className": "RedisMetricsTool",
         "description": "Inspeciona o estado do Redis: conectividade, latência de ping, uso de memória, número de clientes conectados e status de cluster/standalone."
+      }
+    },
+    {
+      "id": "mcp_tool:check_spark_pipeline_status",
+      "label": "check_spark_pipeline_status",
+      "type": "McpDiagnosticTool",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Diagnostics.Mcp/Tools/SparkPipelineStatusTool.cs",
+      "metadata": {
+        "className": "SparkPipelineStatusTool",
+        "description": "Inspeciona o status e histórico de execuções do pipeline Google Spark Batch, verificando relatórios de métricas do NotebookLM e periodicidade."
       }
     },
     {
@@ -1321,6 +1341,11 @@
     },
     {
       "source": "service:EcommerceBot.Diagnostics.Mcp",
+      "target": "mcp_tool:inspect_ml_artifacts",
+      "relationship": "registers_tool"
+    },
+    {
+      "source": "service:EcommerceBot.Diagnostics.Mcp",
       "target": "mcp_tool:inspect_rabbitmq_queues",
       "relationship": "registers_tool"
     },
@@ -1338,6 +1363,11 @@
       "source": "mcp_tool:check_redis_metrics",
       "target": "infrastructure:Redis",
       "relationship": "inspects_metrics"
+    },
+    {
+      "source": "service:EcommerceBot.Diagnostics.Mcp",
+      "target": "mcp_tool:check_spark_pipeline_status",
+      "relationship": "registers_tool"
     },
     {
       "source": "service:EcommerceBot.Diagnostics.Mcp",

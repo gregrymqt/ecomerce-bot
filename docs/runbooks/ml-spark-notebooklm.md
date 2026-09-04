@@ -64,6 +64,66 @@ python -m app.ml.spark.batch_train --output-dir app/ml/models/artifacts/
 
 ---
 
-## ⛔ Regras de Segurança
-1. **Zero PII no NotebookLM:** Dados exportados para relatórios de estudo no NotebookLM devem ser estritamente agregados ou pseudonimizados (IDs de clientes com hash SHA-256, sem nomes, CPFs ou cartões).
-2. **Zero Acesso a Banco no Python:** O Spark ou os jobs de extração leem de dumps ou réplicas de leitura, nunca através do container do Python Worker.
+## 📡 3. Observabilidade e Diagnóstico via Servidor MCP Central
+
+O servidor central de diagnósticos (`EcommerceBot.Diagnostics.Mcp`) fornece monitoramento de baixo acoplamento e zero overhead para os modelos e jobs do ecossistema:
+
+### 3.1. Arquitetura Desacoplada de Telemetria
+- O Spark Batch Pipeline grava metadados determinísticos em formato JSON (`rfm_pipeline_metadata.json`) junto aos pesos serializados (`rfm_pipeline.joblib`).
+- O servidor MCP em C# lê diretamente o manifesto em disco em **< 5ms**, sem invocar subprocessos Python ou sobrecarregar a memória do host.
+
+### 3.2. Ferramentas de Diagnóstico (MCP Tools)
+1. **`inspect_ml_artifacts` (`MlModelArtifactsTool`):**
+   - Inspeciona o diretório `EcommerceBot.Worker/app/ml/models/artifacts/`.
+   - Verifica existência, integridade, hashes SHA-256 e datas de modificação de modelos serializados (`.joblib`, `.onnx`).
+2. **`check_spark_pipeline_status` (`SparkPipelineStatusTool`):**
+   - Lê `rfm_pipeline_metadata.json`.
+   - Retorna métricas analíticas vitais: contagem de amostras, Silhouette Score, distribuição de centróides e status da execução.
+
+### 3.3. Recursos MCP (MCP Resources)
+- **`resource://ml/latest-metrics` (`RunbookResourceProvider`):**
+  - Expõe o conteúdo textual de `docs/notebooklm/reports/latest_metrics_report.md` diretamente no protocolo MCP.
+  - Permite que agentes e LLMs consultem relatórios analíticos consolidados de forma nativa e contextualizada.
+
+---
+
+## ☁️ 4. MLOps & Governança de Artefatos no Cloudflare R2
+
+Para evitar o inchaço do repositório Git (*Repository Bloat*) e viabilizar o deploy ágil em VPS, os pesos binários de Machine Learning (`.joblib`, `.onnx`, `.pkl`) são geridos externamente através do **Cloudflare R2** (S3-compatible Object Storage).
+
+### 4.1. Estrutura do Bucket no Cloudflare R2
+Os artefatos são sincronizados sob duas árvores de diretórios:
+- **Histórico Versionado:** `s3://${R2_BUCKET}/ml-artifacts/rfm/${TIMESTAMP}/` (preserva cada execução para rollback e auditoria de drift).
+- **Ponteiro de Produção:** `s3://${R2_BUCKET}/ml-artifacts/rfm/latest/` (sempre aponta para o conjunto de pesos e metadados mais recente).
+
+### 4.2. Upload dos Artefatos após Calibração (Spark -> R2)
+- **Via CLI do Spark (Python):**
+  ```powershell
+  & "EcommerceBot.Worker\.venv\Scripts\python.exe" -m app.ml.spark.run_batch --clusters 4 --upload-r2
+  ```
+- **Via Script Shell (Terminal / CI/CD):**
+  ```bash
+  chmod +x infra/prod/scripts/upload_ml_artifacts_r2.sh
+  ./infra/prod/scripts/upload_ml_artifacts_r2.sh
+  ```
+
+### 4.3. Sincronização e Hot-Reload na VPS (R2 -> Worker)
+1. **Script de Sincronização:**
+   - Execute ou agende no crontab da VPS (ex: de hora em hora):
+     ```bash
+     0 * * * * /bin/bash /caminho/infra/prod/scripts/sync_ml_artifacts_r2.sh >> /var/log/ml_artifacts_sync.log 2>&1
+     ```
+2. **Volume Docker Persistente:**
+   - O serviço `worker` no `docker-compose.prod.yml` monta o volume `worker-prod-artifacts:/app/app/ml/models/artifacts`.
+3. **Hot-Reload em Tempo Real com Zero Downtime:**
+   - O `RFMSegmentation` no Worker monitora o timestamp de modificação (`mtime`) do arquivo `rfm_pipeline.joblib`.
+   - Quando o script de sync baixa novos pesos, o Worker detecta a alteração e recarrega o pipeline em memória instantaneamente na próxima inferência, **sem reiniciar o container**.
+
+---
+
+## ⛔ Regras de Segurança & Governança
+1. **PROIBIDO versionar binários de ML no Git:** Pesos serializados (`.joblib`, `.onnx`, `.pkl`) devem permanecer estritamente no `.gitignore`. O Git versiona apenas código-fonte, manifestos JSON e relatórios analíticos Markdown.
+2. **Zero PII no NotebookLM:** Dados exportados para relatórios de estudo no NotebookLM devem ser estritamente agregados ou pseudonimizados (IDs de clientes com hash SHA-256, sem nomes, CPFs ou cartões).
+3. **Zero Acesso a Banco no Python:** O Spark ou os jobs de extração leem de dumps ou réplicas de leitura, nunca através do container do Python Worker.
+4. **Ferramentas MCP Read-Only:** Todas as ferramentas MCP de ML são estritamente de inspeção em tempo constante, sem capacidade de trigger síncrono que bloqueie threads de telemetria.
+
