@@ -1,9 +1,9 @@
 {
   "metadata": {
-    "version": "1.0",
+    "version": "2.0",
     "generator": "generate_knowledge_graph.py",
-    "total_nodes": 94,
-    "total_edges": 36
+    "total_nodes": 113,
+    "total_edges": 54
   },
   "nodes": [
     {
@@ -968,6 +968,164 @@
           "types"
         ]
       }
+    },
+    {
+      "id": "infrastructure:SqlServer",
+      "label": "SQL Server 2022",
+      "type": "InfrastructureComponent",
+      "file": "",
+      "metadata": {}
+    },
+    {
+      "id": "infrastructure:Redis",
+      "label": "Redis 7 Cache",
+      "type": "InfrastructureComponent",
+      "file": "",
+      "metadata": {}
+    },
+    {
+      "id": "infrastructure:RabbitMQ",
+      "label": "RabbitMQ 3.13 Broker",
+      "type": "InfrastructureComponent",
+      "file": "",
+      "metadata": {}
+    },
+    {
+      "id": "infrastructure:Serilog",
+      "label": "Serilog Rolling JSON Logs",
+      "type": "InfrastructureComponent",
+      "file": "",
+      "metadata": {}
+    },
+    {
+      "id": "service:EcommerceBot.Diagnostics.Mcp",
+      "label": "EcommerceBot.Diagnostics.Mcp",
+      "type": "McpServer",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Diagnostics.Mcp",
+      "metadata": {
+        "transport": "stdio",
+        "protocol": "JSON-RPC 2.0",
+        "capabilities": [
+          "tools",
+          "resources"
+        ]
+      }
+    },
+    {
+      "id": "mcp_tool:get_recent_application_errors",
+      "label": "get_recent_application_errors",
+      "type": "McpDiagnosticTool",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Diagnostics.Mcp/Tools/ErrorLogReaderTool.cs",
+      "metadata": {
+        "className": "ErrorLogReaderTool",
+        "description": "Lê as últimas falhas (Warning, Error, Fatal) registradas pelo Serilog nos arquivos rotativos JSON da API Core sem bloquear a aplicação."
+      }
+    },
+    {
+      "id": "mcp_tool:inspect_rabbitmq_queues",
+      "label": "inspect_rabbitmq_queues",
+      "type": "McpDiagnosticTool",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Diagnostics.Mcp/Tools/RabbitMqQueueTool.cs",
+      "metadata": {
+        "className": "RabbitMqQueueTool",
+        "description": "Inspeciona o backlog de mensagens, consumidores ativos e taxas nas filas críticas e DLQs do RabbitMQ."
+      }
+    },
+    {
+      "id": "mcp_tool:check_redis_metrics",
+      "label": "check_redis_metrics",
+      "type": "McpDiagnosticTool",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Diagnostics.Mcp/Tools/RedisMetricsTool.cs",
+      "metadata": {
+        "className": "RedisMetricsTool",
+        "description": "Inspeciona o estado do Redis: conectividade, latência de ping, uso de memória, número de clientes conectados e status de cluster/standalone."
+      }
+    },
+    {
+      "id": "mcp_tool:check_sql_health",
+      "label": "check_sql_health",
+      "type": "McpDiagnosticTool",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Diagnostics.Mcp/Tools/SqlHealthTool.cs",
+      "metadata": {
+        "className": "SqlHealthTool",
+        "description": "Inspeciona a saúde do SQL Server 2022 via DMVs (sys.dm_*): bloqueios ativos, deadlocks em andamento, conexões e top queries lentas."
+      }
+    },
+    {
+      "id": "ml_model:ChurnPredictor",
+      "label": "ChurnPredictor",
+      "type": "MachineLearningModel",
+      "file": "EcommerceBot.Worker/app/ml/churn_predictor.py",
+      "metadata": {}
+    },
+    {
+      "id": "ml_model:LTVForecaster",
+      "label": "LTVForecaster",
+      "type": "MachineLearningModel",
+      "file": "EcommerceBot.Worker/app/ml/ltv_forecaster.py",
+      "metadata": {}
+    },
+    {
+      "id": "ml_model:AnalyticsMLEngine",
+      "label": "AnalyticsMLEngine",
+      "type": "MachineLearningModel",
+      "file": "EcommerceBot.Worker/app/ml/ml_worker.py",
+      "metadata": {}
+    },
+    {
+      "id": "ml_model:RFMSegmentation",
+      "label": "RFMSegmentation",
+      "type": "MachineLearningModel",
+      "file": "EcommerceBot.Worker/app/ml/rfm_segmentation.py",
+      "metadata": {}
+    },
+    {
+      "id": "ml_model:TokenCapacityForecaster",
+      "label": "TokenCapacityForecaster",
+      "type": "MachineLearningModel",
+      "file": "EcommerceBot.Worker/app/ml/token_capacity_forecaster.py",
+      "metadata": {}
+    },
+    {
+      "id": "ml_model:SparkBatchPipeline",
+      "label": "SparkBatchPipeline",
+      "type": "SparkBatchPipeline",
+      "file": "EcommerceBot.Worker/app/ml/spark/batch_pipeline.py",
+      "metadata": {}
+    },
+    {
+      "id": "artifact:rfm_pipeline.joblib",
+      "label": "rfm_pipeline.joblib",
+      "type": "MLArtifact",
+      "file": "",
+      "metadata": {}
+    },
+    {
+      "id": "runbook:ml-spark-notebooklm",
+      "label": "🔬 Runbook: Pipeline Tripartite de ML (Google Spark + Python Worker + NotebookLM)",
+      "type": "KnowledgeRunbook",
+      "file": "docs/runbooks/ml-spark-notebooklm.md",
+      "metadata": {
+        "uri": "resource://runbooks/ml-spark-notebooklm"
+      }
+    },
+    {
+      "id": "runbook:rabbitmq-troubleshooting",
+      "label": "🐇 Runbook: Diagnóstico e Troubleshooting de RabbitMQ & Filas",
+      "type": "KnowledgeRunbook",
+      "file": "docs/runbooks/rabbitmq-troubleshooting.md",
+      "metadata": {
+        "uri": "resource://runbooks/rabbitmq-troubleshooting"
+      }
+    },
+    {
+      "id": "runbook:sql-server-diagnostics",
+      "label": "🗄️ Runbook: Diagnóstico de SQL Server 2022 via DMVs",
+      "type": "KnowledgeRunbook",
+      "file": "docs/runbooks/sql-server-diagnostics.md",
+      "metadata": {
+        "uri": "resource://runbooks/sql-server-diagnostics"
+      }
     }
   ],
   "edges": [
@@ -1150,6 +1308,96 @@
       "source": "worker:rabbitmq",
       "target": "queue:llm_usage_queue",
       "relationship": "interacts_with"
+    },
+    {
+      "source": "service:EcommerceBot.Diagnostics.Mcp",
+      "target": "mcp_tool:get_recent_application_errors",
+      "relationship": "registers_tool"
+    },
+    {
+      "source": "mcp_tool:get_recent_application_errors",
+      "target": "infrastructure:Serilog",
+      "relationship": "inspects_logs"
+    },
+    {
+      "source": "service:EcommerceBot.Diagnostics.Mcp",
+      "target": "mcp_tool:inspect_rabbitmq_queues",
+      "relationship": "registers_tool"
+    },
+    {
+      "source": "mcp_tool:inspect_rabbitmq_queues",
+      "target": "infrastructure:RabbitMQ",
+      "relationship": "inspects_queues"
+    },
+    {
+      "source": "service:EcommerceBot.Diagnostics.Mcp",
+      "target": "mcp_tool:check_redis_metrics",
+      "relationship": "registers_tool"
+    },
+    {
+      "source": "mcp_tool:check_redis_metrics",
+      "target": "infrastructure:Redis",
+      "relationship": "inspects_metrics"
+    },
+    {
+      "source": "service:EcommerceBot.Diagnostics.Mcp",
+      "target": "mcp_tool:check_sql_health",
+      "relationship": "registers_tool"
+    },
+    {
+      "source": "mcp_tool:check_sql_health",
+      "target": "infrastructure:SqlServer",
+      "relationship": "inspects_dmvs"
+    },
+    {
+      "source": "worker:ml_worker",
+      "target": "ml_model:ChurnPredictor",
+      "relationship": "executes"
+    },
+    {
+      "source": "worker:ml_worker",
+      "target": "ml_model:LTVForecaster",
+      "relationship": "executes"
+    },
+    {
+      "source": "worker:ml_worker",
+      "target": "ml_model:AnalyticsMLEngine",
+      "relationship": "executes"
+    },
+    {
+      "source": "worker:ml_worker",
+      "target": "ml_model:RFMSegmentation",
+      "relationship": "executes"
+    },
+    {
+      "source": "worker:ml_worker",
+      "target": "ml_model:TokenCapacityForecaster",
+      "relationship": "executes"
+    },
+    {
+      "source": "ml_model:SparkBatchPipeline",
+      "target": "artifact:rfm_pipeline.joblib",
+      "relationship": "exports"
+    },
+    {
+      "source": "artifact:rfm_pipeline.joblib",
+      "target": "ml_model:RFMSegmentation",
+      "relationship": "calibrates"
+    },
+    {
+      "source": "service:EcommerceBot.Diagnostics.Mcp",
+      "target": "runbook:ml-spark-notebooklm",
+      "relationship": "exposes_resource"
+    },
+    {
+      "source": "service:EcommerceBot.Diagnostics.Mcp",
+      "target": "runbook:rabbitmq-troubleshooting",
+      "relationship": "exposes_resource"
+    },
+    {
+      "source": "service:EcommerceBot.Diagnostics.Mcp",
+      "target": "runbook:sql-server-diagnostics",
+      "relationship": "exposes_resource"
     }
   ]
 }

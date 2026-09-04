@@ -4,19 +4,20 @@
 
 ## 🏛️ 1. Pilares e Módulos Centrais
 - **Backend Core:** ASP.NET Core (.NET 8/9), Dapper, SQL Server 2022, MassTransit.
-- **AI Worker:** Python 3.10+ (FastAPI + aio-pika + Scrapling), 100% isolado de banco.
-- **Frontend:** React 18 + Vite + Tailwind CSS em arquitetura por features.
+- **MCP Diagnostics:** C# .NET 9 Console (`EcommerceBot.Diagnostics.Mcp`) via `stdio` (JSON-RPC 2.0).
+- **AI & ML Engine:** Python 3.13 (FastAPI + aio-pika + Scrapling + Scikit-Learn + PySpark), 100% isolado de banco.
+- **Frontend:** React 18 + Vite + Tailwind CSS em arquitetura orientada a features.
 - **Database:** SQL Server 2022 com migrações versionadas via DbUp.
 
 ## 📡 2. Topologia de Filas RabbitMQ & Interoperabilidade
-- `Filas:` **`analytics_ml_queue`**
-- `Filas:` **`analytics_processed_queue`**
-- `Filas:` **`consume_ml_queue`**
-- `Filas:` **`ecommerce_processed_queue`**
-- `Filas:` **`email_notifications`**
-- `Filas:` **`llm_usage_queue`**
-- `Filas:` **`nuvemshop_bulk_sync`**
-- `Filas:` **`queue:ecommerce`**
+- `Fila:` **`analytics_ml_queue`**
+- `Fila:` **`analytics_processed_queue`**
+- `Fila:` **`consume_ml_queue`**
+- `Fila:` **`ecommerce_processed_queue`**
+- `Fila:` **`email_notifications`**
+- `Fila:` **`llm_usage_queue`**
+- `Fila:` **`nuvemshop_bulk_sync`**
+- `Fila:` **`queue:ecommerce`**
 
 ## 🗄️ 3. Tabelas Mapeadas no Banco de Dados (DbUp)
 - **Total de Tabelas Detectadas:** 20
@@ -51,7 +52,29 @@
 - **settings**: [components, hooks, pages, services, types]
 - **wallet**: [components, hooks, pages, services, types]
 
-## 🧭 6. Diretriz de Uso para Agentes
+## 🛠️ 6. Servidor MCP de Diagnóstico (`EcommerceBot.Diagnostics.Mcp`)
+- **Transporte:** `stdio` (JSON-RPC 2.0 padrão v2024-11-05)
+- **Ferramentas Registradas:**
+  - **`get_recent_application_errors`** (`ErrorLogReaderTool`): Lê as últimas falhas (Warning, Error, Fatal) registradas pelo Serilog nos arquivos rotativos JSON da API Core sem bloquear a aplicação.
+  - **`inspect_rabbitmq_queues`** (`RabbitMqQueueTool`): Inspeciona o backlog de mensagens, consumidores ativos e taxas nas filas críticas e DLQs do RabbitMQ.
+  - **`check_redis_metrics`** (`RedisMetricsTool`): Inspeciona o estado do Redis: conectividade, latência de ping, uso de memória, número de clientes conectados e status de cluster/standalone.
+  - **`check_sql_health`** (`SqlHealthTool`): Inspeciona a saúde do SQL Server 2022 via DMVs (sys.dm_*): bloqueios ativos, deadlocks em andamento, conexões e top queries lentas.
+
+## 🔬 7. Modelos de Machine Learning & Spark (`EcommerceBot.Worker/app/ml`)
+- **`ChurnPredictor`** (MachineLearningModel)
+- **`LTVForecaster`** (MachineLearningModel)
+- **`AnalyticsMLEngine`** (MachineLearningModel)
+- **`RFMSegmentation`** (MachineLearningModel)
+- **`TokenCapacityForecaster`** (MachineLearningModel)
+- **`SparkBatchPipeline`** (SparkBatchPipeline)
+
+## 📚 8. Runbooks Operacionais Catalogados (`docs/runbooks`)
+- **`resource://runbooks/ml-spark-notebooklm`**: 🔬 Runbook: Pipeline Tripartite de ML (Google Spark + Python Worker + NotebookLM)
+- **`resource://runbooks/rabbitmq-troubleshooting`**: 🐇 Runbook: Diagnóstico e Troubleshooting de RabbitMQ & Filas
+- **`resource://runbooks/sql-server-diagnostics`**: 🗄️ Runbook: Diagnóstico de SQL Server 2022 via DMVs
+
+## 🧭 9. Diretriz de Uso para Agentes
 1. Para verificar o raio de impacto de um campo ou contrato, localize o símbolo no `.agents/graph.json`.
 2. NUNCA altere assinaturas de mensageria sem verificar consumidores em C# e handlers Python simultaneamente.
 3. Mantenha queries em conformidade com as tabelas listadas na Seção 3 e isole queries por `TenantId`.
+4. Utilize as ferramentas do Servidor MCP (Seção 6) para inspeção operacional antes de qualquer alteração de infraestrutura.

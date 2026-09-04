@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 Extrator de Topologia e Grafo de Conhecimento do Ecossistema E-commerce Bot.
-Analisa padrões estruturais em .NET, Python, SQL e React sem depender de parsers externos pesados.
+Analisa padrões estruturais em .NET, Python, SQL, React, MCP e Runbooks.
 Gera:
-  - .agents/graph.json: Mapeamento completo de nós e arestas.
-  - .agents/GRAPH_REPORT.md: Sumário executivo denso (< 200 linhas) para agentes de IA.
+  - .agents/graph.json: Mapeamento completo de nós e arestas de dependência.
+  - .agents/GRAPH_REPORT.md: Sumário executivo denso (< 250 linhas) para agentes de IA.
 """
 
 import os
@@ -77,7 +77,7 @@ def scan_dotnet_core():
     dapper_table_pattern = re.compile(r'FROM\s+dbo\.(\w+)|INSERT\s+INTO\s+dbo\.(\w+)|UPDATE\s+dbo\.(\w+)', re.IGNORECASE)
 
     for cs_file in core_dir.rglob("*.cs"):
-        if any(ignored in cs_file.parts for ignored in ["bin", "obj", ".vs"]):
+        if any(ignored in cs_file.parts for ignored in ["bin", "obj", ".vs", "EcommerceBot.Diagnostics.Mcp"]):
             continue
         try:
             content = cs_file.read_text(encoding="utf-8", errors="ignore")
@@ -123,6 +123,131 @@ def scan_dotnet_core():
             continue
 
     return controllers, consumers
+
+def scan_mcp_diagnostics():
+    mcp_dir = ROOT_DIR / "EcommerceBot.Core" / "src" / "EcommerceBot.Diagnostics.Mcp"
+    if not mcp_dir.exists():
+        return []
+
+    add_node("infrastructure:SqlServer", "SQL Server 2022", "InfrastructureComponent")
+    add_node("infrastructure:Redis", "Redis 7 Cache", "InfrastructureComponent")
+    add_node("infrastructure:RabbitMQ", "RabbitMQ 3.13 Broker", "InfrastructureComponent")
+    add_node("infrastructure:Serilog", "Serilog Rolling JSON Logs", "InfrastructureComponent")
+
+    mcp_server_id = "service:EcommerceBot.Diagnostics.Mcp"
+    add_node(mcp_server_id, "EcommerceBot.Diagnostics.Mcp", "McpServer", mcp_dir.relative_to(ROOT_DIR), {
+        "transport": "stdio",
+        "protocol": "JSON-RPC 2.0",
+        "capabilities": ["tools", "resources"]
+    })
+
+    tools = []
+    tool_interface_pattern = re.compile(r'public\s+class\s+(\w+)\s*:\s*ISystemDiagnosticTool', re.MULTILINE)
+    tool_name_pattern = re.compile(r'public\s+string\s+Name\s*=>\s*["\'](\w+)["\']', re.MULTILINE)
+    tool_desc_pattern = re.compile(r'public\s+string\s+Description\s*=>\s*["\'](.*?)["\']', re.MULTILINE)
+
+    for cs_file in mcp_dir.rglob("*.cs"):
+        if any(ignored in cs_file.parts for ignored in ["bin", "obj", ".vs"]):
+            continue
+        try:
+            content = cs_file.read_text(encoding="utf-8", errors="ignore")
+            rel_path = cs_file.relative_to(ROOT_DIR)
+
+            if "ISystemDiagnosticTool" in content and "public interface" not in content:
+                class_match = tool_interface_pattern.search(content)
+                if not class_match:
+                    continue
+
+                name_match = tool_name_pattern.search(content)
+                desc_match = tool_desc_pattern.search(content)
+
+                class_name = class_match.group(1)
+                tool_name = name_match.group(1) if name_match else cs_file.stem
+                tool_desc = desc_match.group(1) if desc_match else ""
+
+                tool_id = f"mcp_tool:{tool_name}"
+                add_node(tool_id, tool_name, "McpDiagnosticTool", rel_path, {
+                    "className": class_name,
+                    "description": tool_desc
+                })
+                add_edge(mcp_server_id, tool_id, "registers_tool")
+
+                if "sql" in tool_name.lower():
+                    add_edge(tool_id, "infrastructure:SqlServer", "inspects_dmvs")
+                elif "redis" in tool_name.lower():
+                    add_edge(tool_id, "infrastructure:Redis", "inspects_metrics")
+                elif "rabbitmq" in tool_name.lower():
+                    add_edge(tool_id, "infrastructure:RabbitMQ", "inspects_queues")
+                elif "error" in tool_name.lower():
+                    add_edge(tool_id, "infrastructure:Serilog", "inspects_logs")
+
+                tools.append({"name": tool_name, "class": class_name, "description": tool_desc})
+        except Exception:
+            continue
+
+    return tools
+
+def scan_ml_engine():
+    ml_dir = ROOT_DIR / "EcommerceBot.Worker" / "app" / "ml"
+    if not ml_dir.exists():
+        return []
+
+    models = []
+    class_pattern = re.compile(r'class\s+([A-Z]\w+)\s*:', re.MULTILINE)
+
+    for py_file in ml_dir.rglob("*.py"):
+        if any(ignored in py_file.parts for ignored in [".venv", "__pycache__", "build", "dist"]):
+            continue
+        try:
+            content = py_file.read_text(encoding="utf-8", errors="ignore")
+            rel_path = py_file.relative_to(ROOT_DIR)
+
+            for match in class_pattern.finditer(content):
+                cls_name = match.group(1)
+                if cls_name in ["AnalyticsMLEngine", "RFMSegmentation", "ChurnPredictor", "LTVForecaster", "TokenCapacityForecaster", "SparkBatchPipeline"]:
+                    node_type = "SparkBatchPipeline" if "Spark" in cls_name else "MachineLearningModel"
+                    model_id = f"ml_model:{cls_name}"
+                    add_node(model_id, cls_name, node_type, rel_path)
+
+                    if "Spark" in cls_name:
+                        artifact_id = "artifact:rfm_pipeline.joblib"
+                        add_node(artifact_id, "rfm_pipeline.joblib", "MLArtifact")
+                        add_edge(model_id, artifact_id, "exports")
+                        add_edge(artifact_id, "ml_model:RFMSegmentation", "calibrates")
+                    else:
+                        add_edge("worker:ml_worker", model_id, "executes")
+
+                    models.append({"name": cls_name, "type": node_type, "file": str(rel_path)})
+        except Exception:
+            continue
+
+    return models
+
+def scan_runbooks():
+    runbooks_dir = ROOT_DIR / "docs" / "runbooks"
+    if not runbooks_dir.exists():
+        return []
+
+    runbooks = []
+    title_pattern = re.compile(r"^#\s+(.+)$", re.MULTILINE)
+
+    for md_file in sorted(runbooks_dir.glob("*.md")):
+        try:
+            content = md_file.read_text(encoding="utf-8", errors="ignore")
+            rel_path = md_file.relative_to(ROOT_DIR)
+            match = title_pattern.search(content)
+            title = match.group(1).strip() if match else md_file.stem
+
+            rb_id = f"runbook:{md_file.stem}"
+            add_node(rb_id, title, "KnowledgeRunbook", rel_path, {
+                "uri": f"resource://runbooks/{md_file.stem}"
+            })
+            add_edge("service:EcommerceBot.Diagnostics.Mcp", rb_id, "exposes_resource")
+            runbooks.append({"slug": md_file.stem, "title": title})
+        except Exception:
+            continue
+
+    return runbooks
 
 def scan_python_worker():
     worker_dir = ROOT_DIR / "EcommerceBot.Worker"
@@ -172,7 +297,7 @@ def scan_react_features():
             features.append({"name": feat_name, "layers": layers})
     return features
 
-def generate_report(tables, controllers, consumers, queues, features):
+def generate_report(tables, controllers, consumers, queues, features, mcp_tools, ml_models, runbooks):
     report_path = OUTPUT_DIR / "GRAPH_REPORT.md"
     
     lines = [
@@ -182,15 +307,16 @@ def generate_report(tables, controllers, consumers, queues, features):
         "",
         "## 🏛️ 1. Pilares e Módulos Centrais",
         "- **Backend Core:** ASP.NET Core (.NET 8/9), Dapper, SQL Server 2022, MassTransit.",
-        "- **AI Worker:** Python 3.10+ (FastAPI + aio-pika + Scrapling), 100% isolado de banco.",
-        "- **Frontend:** React 18 + Vite + Tailwind CSS em arquitetura por features.",
+        "- **MCP Diagnostics:** C# .NET 9 Console (`EcommerceBot.Diagnostics.Mcp`) via `stdio` (JSON-RPC 2.0).",
+        "- **AI & ML Engine:** Python 3.13 (FastAPI + aio-pika + Scrapling + Scikit-Learn + PySpark), 100% isolado de banco.",
+        "- **Frontend:** React 18 + Vite + Tailwind CSS em arquitetura orientada a features.",
         "- **Database:** SQL Server 2022 com migrações versionadas via DbUp.",
         "",
         "## 📡 2. Topologia de Filas RabbitMQ & Interoperabilidade",
     ]
 
     for q in queues:
-        lines.append(f"- `Filas:` **`{q}`**")
+        lines.append(f"- `Fila:` **`{q}`**")
 
     lines.extend([
         "",
@@ -219,26 +345,56 @@ def generate_report(tables, controllers, consumers, queues, features):
 
     lines.extend([
         "",
-        "## 🧭 6. Diretriz de Uso para Agentes",
+        "## 🛠️ 6. Servidor MCP de Diagnóstico (`EcommerceBot.Diagnostics.Mcp`)",
+        "- **Transporte:** `stdio` (JSON-RPC 2.0 padrão v2024-11-05)",
+        "- **Ferramentas Registradas:**"
+    ])
+
+    for tool in mcp_tools:
+        lines.append(f"  - **`{tool['name']}`** (`{tool['class']}`): {tool['description']}")
+
+    lines.extend([
+        "",
+        "## 🔬 7. Modelos de Machine Learning & Spark (`EcommerceBot.Worker/app/ml`)",
+    ])
+
+    for model in ml_models:
+        lines.append(f"- **`{model['name']}`** ({model['type']})")
+
+    lines.extend([
+        "",
+        "## 📚 8. Runbooks Operacionais Catalogados (`docs/runbooks`)",
+    ])
+
+    for rb in runbooks:
+        lines.append(f"- **`resource://runbooks/{rb['slug']}`**: {rb['title']}")
+
+    lines.extend([
+        "",
+        "## 🧭 9. Diretriz de Uso para Agentes",
         "1. Para verificar o raio de impacto de um campo ou contrato, localize o símbolo no `.agents/graph.json`.",
         "2. NUNCA altere assinaturas de mensageria sem verificar consumidores em C# e handlers Python simultaneamente.",
-        "3. Mantenha queries em conformidade com as tabelas listadas na Seção 3 e isole queries por `TenantId`."
+        "3. Mantenha queries em conformidade com as tabelas listadas na Seção 3 e isole queries por `TenantId`.",
+        "4. Utilize as ferramentas do Servidor MCP (Seção 6) para inspeção operacional antes de qualquer alteração de infraestrutura."
     ])
 
     report_path.write_text("\n".join(lines), encoding="utf-8")
 
 def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    print("🔍 Escaneando topologia do monorepo...")
+    print("🔍 Escaneando topologia ampliada do monorepo...")
     
     tables = scan_sql_migrations()
     controllers, consumers = scan_dotnet_core()
     queues = scan_python_worker()
     features = scan_react_features()
+    mcp_tools = scan_mcp_diagnostics()
+    ml_models = scan_ml_engine()
+    runbooks = scan_runbooks()
 
     graph_data = {
         "metadata": {
-            "version": "1.0",
+            "version": "2.0",
             "generator": "generate_knowledge_graph.py",
             "total_nodes": len(nodes),
             "total_edges": len(edges)
@@ -250,7 +406,7 @@ def main():
     graph_path = OUTPUT_DIR / "graph.json"
     graph_path.write_text(json.dumps(graph_data, indent=2, ensure_ascii=False), encoding="utf-8")
     
-    generate_report(tables, controllers, consumers, queues, features)
+    generate_report(tables, controllers, consumers, queues, features, mcp_tools, ml_models, runbooks)
 
     print(f"✅ Topologia gerada com sucesso:")
     print(f"   - {graph_path} ({len(nodes)} nós, {len(edges)} arestas)")
