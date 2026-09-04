@@ -18,5 +18,15 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      'max-lines': [
+        'error',
+        {
+          max: 350,
+          skipBlankLines: true,
+          skipComments: true,
+        },
+      ],
+    },
   },
 ])

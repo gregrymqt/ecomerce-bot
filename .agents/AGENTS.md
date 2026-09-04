@@ -137,6 +137,7 @@ O **E-commerce Bot** é uma plataforma SaaS monorepo dividida em 4 pilares:
 - **Configuração de Ambiente:** Consumo exclusivo via `@/config/env` (`env.apiUrl`, `env.mercadoPagoPublicKey`, etc.) com fallback padrão para `http://localhost:5183`.
 - **Comunicação:** Axios com envio automático de `X-Tenant-ID` via interceptors (`apiClient.ts`) e streaming SSE consumindo canais do Redis (`sseClient.ts`).
 - **Acessibilidade & Mobile:** Alvos de toque com no mínimo 44px (`min-h-[44px]`), campos de formulário com tamanho de fonte >= 16px (evita zoom no iOS) e contraste WCAG 2.1 AA.
+- **Prevenção de Degradação por Injeção (Quality Gate):** Limite estrito de no máximo 350 linhas de código por arquivo enforced via ESLint (`max-lines: error` com `skipBlankLines: true, skipComments: true`). Proibido acumular código dentro de arquivos além desse teto. Componentes e módulos que crescerem devem ser decompostos por suas costuras naturais (subcomponentes dedicados, hooks especializados e serviços). Proibido usar `/* eslint-disable max-lines */`.
 
 ---
 

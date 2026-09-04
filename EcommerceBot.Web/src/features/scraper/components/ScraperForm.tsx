@@ -3,53 +3,39 @@
  *
  * Formulário unificado de extração de produtos (URL Única e Ingestão em Lote) com streaming SSE.
  * Em conformidade com acessibilidade WCAG 2.1 AA, inputs >= 16px e touch targets >= 44px.
+ * Modularizado em conformidade com o limite de 350 linhas do Quality Gate (max-lines).
  */
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Globe,
   Link2,
-  Terminal,
   CheckCircle2,
   AlertCircle,
   Loader2,
   RotateCcw,
   Square,
   Layers,
-  Sparkles,
 } from 'lucide-react';
 import {
   Card,
   FormField,
   Button,
-  ProgressBar,
-  Alert,
-  Badge,
   type BadgeVariant,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useScraper } from '../hooks/useScraper';
 import { useScraperStream } from '../hooks/useScraperStream';
-import { scraperService } from '../services/scraper.service';
-import type { ScraperFormProps, BatchQueueItem } from '../types';
+import type { ScraperFormProps } from '../types';
 import { isValidHttpUrl } from '@/utils/security';
-import { getErrorMessage } from '@/utils/errors';
+import { ScraperBatchForm } from './ScraperBatchForm';
+import { ScraperStreamConsole } from './ScraperStreamConsole';
 
 export const ScraperForm: React.FC<ScraperFormProps> = ({ className }) => {
   const { url, setUrl, isLoading, error: scraperError, submitUrl, reset: resetScraper } = useScraper();
   const { events, progress, isStreaming, error: streamError, lastEvent, connect, disconnect } = useScraperStream();
 
   const [mode, setMode] = useState<'single' | 'batch'>('single');
-  const [batchRawText, setBatchRawText] = useState<string>('');
-  const [batchQueue, setBatchQueue] = useState<BatchQueueItem[]>([]);
-  const [isBatchProcessing, setIsBatchProcessing] = useState<boolean>(false);
-  const [batchProgress, setBatchProgress] = useState<number>(0);
-
-  const terminalEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [events]);
 
   const handleSubmitSingle = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,51 +50,6 @@ export const ScraperForm: React.FC<ScraperFormProps> = ({ className }) => {
     });
   };
 
-  const handleStartBatch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const urls = batchRawText
-      .split('\n')
-      .map((u) => u.trim())
-      .filter((u) => u.startsWith('http://') || u.startsWith('https://'));
-
-    if (urls.length === 0) return;
-
-    const initialQueue: BatchQueueItem[] = urls.map((u, idx) => ({
-      id: idx,
-      url: u,
-      status: 'pending',
-    }));
-
-    setBatchQueue(initialQueue);
-    setIsBatchProcessing(true);
-    setBatchProgress(0);
-
-    for (let i = 0; i < initialQueue.length; i++) {
-      setBatchQueue((prev) =>
-        prev.map((item, idx) => (idx === i ? { ...item, status: 'sending' } : item))
-      );
-
-      try {
-        await scraperService.extractUrl({ url: initialQueue[i].url });
-        setBatchQueue((prev) =>
-          prev.map((item, idx) => (idx === i ? { ...item, status: 'completed' } : item))
-        );
-      } catch (err: unknown) {
-        const errorMsg = getErrorMessage(err, 'Falha no enfileiramento');
-        setBatchQueue((prev) =>
-          prev.map((item, idx) =>
-            idx === i ? { ...item, status: 'failed', error: errorMsg } : item
-          )
-        );
-      }
-
-      const percent = Math.round(((i + 1) / initialQueue.length) * 100);
-      setBatchProgress(percent);
-    }
-
-    setIsBatchProcessing(false);
-  };
-
   const handleStop = () => {
     disconnect();
   };
@@ -116,9 +57,6 @@ export const ScraperForm: React.FC<ScraperFormProps> = ({ className }) => {
   const handleReset = () => {
     disconnect();
     resetScraper();
-    setBatchQueue([]);
-    setBatchProgress(0);
-    setIsBatchProcessing(false);
   };
 
   const error = scraperError || streamError;
@@ -130,7 +68,7 @@ export const ScraperForm: React.FC<ScraperFormProps> = ({ className }) => {
     if (lastEvent?.status === 'completed' || progress >= 100) {
       return { label: 'Concluído', variant: 'success', icon: <CheckCircle2 className="w-3.5 h-3.5" /> };
     }
-    if (isStreaming || isBatchProcessing) {
+    if (isStreaming) {
       return { label: 'Processando...', variant: 'warning', icon: <Loader2 className="w-3.5 h-3.5 animate-spin" /> };
     }
     return { label: 'Aguardando', variant: 'default' };
@@ -261,225 +199,18 @@ export const ScraperForm: React.FC<ScraperFormProps> = ({ className }) => {
         </div>
       )}
 
-      {/* Form Modo 2: Ingestão em Lote */}
-      {mode === 'batch' && (
-        <div
-          role="tabpanel"
-          id="panel-scraper-batch"
-          aria-labelledby="tab-scraper-batch"
-          className="animate-fade-in"
-        >
-          <Card>
-            <form onSubmit={handleStartBatch} className="flex flex-col gap-5" noValidate>
-              <div className="flex flex-col gap-1">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-purple-600 dark:text-purple-400 shrink-0" />
-                  Ingestão em Lote de Produtos
-                </h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Cole uma URL por linha. Cada produto será enfileirado no RabbitMQ e processado por IA.
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label
-                  htmlFor="batch-urls-input"
-                  className="text-sm font-semibold text-slate-700 dark:text-slate-300"
-                >
-                  Lista de URLs (uma por linha)
-                </label>
-                <textarea
-                  id="batch-urls-input"
-                  rows={5}
-                  disabled={isBatchProcessing}
-                  value={batchRawText}
-                  onChange={(e) => setBatchRawText(e.target.value)}
-                  placeholder={'https://loja.com/produto-1\nhttps://loja.com/produto-2\nhttps://loja.com/produto-3'}
-                  className={cn(
-                    'w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-base text-white placeholder:text-slate-500 font-mono',
-                    'focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 min-h-[120px]'
-                  )}
-                />
-              </div>
-
-              {/* Aviso e Indicador Visual de Carga Fila por Fila */}
-              {isBatchProcessing && (
-                <div
-                  role="status"
-                  className="flex items-center gap-3 p-3.5 rounded-xl border border-amber-500/30 bg-amber-950/30 text-amber-300"
-                >
-                  <Loader2 className="h-5 w-5 animate-spin shrink-0 text-amber-400" />
-                  <div className="text-xs sm:text-sm">
-                    <span className="font-bold">Processando fila em lote...</span> Mantenha este painel aberto até o envio de todas as URLs ser concluído.
-                  </div>
-                </div>
-              )}
-
-              {/* Progresso do Lote */}
-              {batchQueue.length > 0 && (
-                <div className="flex flex-col gap-3 p-4 rounded-xl border border-slate-800 bg-slate-950">
-                  <ProgressBar
-                    value={batchProgress}
-                    max={100}
-                    showPercentage
-                    label={`Fila de Envio: ${batchQueue.filter((i) => i.status === 'completed').length}/${batchQueue.length} enviadas`}
-                    color={batchProgress >= 100 ? 'emerald' : 'indigo'}
-                  />
-
-                  <div className="max-h-40 overflow-y-auto space-y-1.5 font-mono text-xs text-slate-300 pt-2 border-t border-slate-800">
-                    {batchQueue.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between gap-2 p-2 rounded bg-slate-900 min-h-[36px]">
-                        <span className="truncate flex-1 text-slate-400">{item.url}</span>
-                        {item.status === 'pending' && <span className="text-slate-500 text-xs">Aguardando</span>}
-                        {item.status === 'sending' && (
-                          <span className="text-amber-400 text-xs flex items-center gap-1 font-bold">
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Enviando...
-                          </span>
-                        )}
-                        {item.status === 'completed' && (
-                          <span className="text-emerald-400 text-xs flex items-center gap-1 font-bold">
-                            <CheckCircle2 className="h-3.5 w-3.5" /> Enviado
-                          </span>
-                        )}
-                        {item.status === 'failed' && (
-                          <span className="text-rose-400 text-xs flex items-center gap-1 font-bold">
-                            <AlertCircle className="h-3.5 w-3.5" /> Erro
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="md"
-                  isLoading={isBatchProcessing}
-                  disabled={isBatchProcessing || !batchRawText.trim()}
-                  iconLeft={<Sparkles className="w-4 h-4" />}
-                  className="w-full sm:w-auto min-h-[44px] bg-purple-600 hover:bg-purple-500 font-bold text-white shadow-lg shadow-purple-600/25"
-                >
-                  {isBatchProcessing ? 'Enfileirando Lote...' : 'Disparar Ingestão em Lote'}
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      )}
-
       {/* Terminal de Stream Log para URL Única */}
       {mode === 'single' && (events.length > 0 || isStreaming || error) && (
-        <Card>
-          <div className="flex flex-col gap-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
-                  <Terminal className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                    Console de Extração
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Acompanhe o progresso do scraping em tempo real.
-                  </p>
-                </div>
-              </div>
-
-              <div className="self-start sm:self-center">
-                <Badge variant={statusInfo.variant} dot icon={statusInfo.icon}>
-                  {statusInfo.label}
-                </Badge>
-              </div>
-            </div>
-
-            {error && (
-              <div className="animate-fade-in">
-                <Alert variant="error" title="Falha no Processamento">
-                  {error}
-                </Alert>
-              </div>
-            )}
-
-            <ProgressBar
-              value={progress}
-              max={100}
-              showPercentage
-              label="Progresso da Extração"
-              color={error ? 'rose' : progress >= 100 ? 'emerald' : 'indigo'}
-            />
-
-            <div className="relative flex flex-col rounded-xl bg-slate-950 border border-slate-800 shadow-inner overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-800 text-xs text-slate-400 font-mono">
-                <span className="flex items-center gap-2" aria-hidden="true">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-                  <span className="ml-2 font-semibold text-slate-300">scraper-stream.log</span>
-                </span>
-                <span>{events.length} evento(s)</span>
-              </div>
-
-              <div
-                role="log"
-                aria-live="polite"
-                className="p-4 font-mono text-xs text-slate-200 max-h-72 overflow-y-auto flex flex-col gap-1.5"
-              >
-                {events.length === 0 ? (
-                  <div className="text-slate-500 italic py-4 text-center">
-                    Aguardando eventos de extração...
-                  </div>
-                ) : (
-                  events.map((evt, index) => {
-                    const isErr = evt.status === 'failed';
-                    const isSuccess = evt.status === 'completed';
-
-                    return (
-                      <div
-                        key={index}
-                        className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 leading-relaxed"
-                      >
-                        <span className="text-slate-500 shrink-0 select-none">
-                          [{String(index + 1).padStart(2, '0')}]
-                        </span>
-                        <span
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider shrink-0 uppercase ${
-                            isErr
-                              ? 'bg-rose-950 text-rose-300 border border-rose-800'
-                              : isSuccess
-                                ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                                : 'bg-indigo-950 text-indigo-300 border border-indigo-800'
-                          }`}
-                        >
-                          {evt.status}
-                        </span>
-                        <span
-                          className={`flex-1 break-words ${
-                            isErr
-                              ? 'text-rose-400'
-                              : isSuccess
-                                ? 'text-emerald-400'
-                                : 'text-slate-200'
-                          }`}
-                        >
-                          {evt.url || evt.error || `Progresso: ${evt.progress}%`}
-                        </span>
-                        <span className="text-slate-500 shrink-0 font-semibold text-[11px]">
-                          {evt.progress}%
-                        </span>
-                      </div>
-                    );
-                  })
-                )}
-                <div ref={terminalEndRef} />
-              </div>
-            </div>
-          </div>
-        </Card>
+        <ScraperStreamConsole
+          events={events}
+          progress={progress}
+          error={error}
+          statusInfo={statusInfo}
+        />
       )}
+
+      {/* Form Modo 2: Ingestão em Lote */}
+      {mode === 'batch' && <ScraperBatchForm />}
     </div>
   );
 };

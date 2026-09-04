@@ -18,6 +18,15 @@ Todo módulo dentro de `src/features/` deve respeitar rigorosamente a separaçã
 3. **Hooks (`features/{feature}/hooks/`):** Gerenciamento de estado local/global, mutações, paginação e consumo de streaming SSE.
 4. **UI Components (`features/{feature}/components/`):** Componentes visuais desacoplados, consumindo dados exclusivamente via props ou hooks da feature.
 
+### 🛡️ 1.1. Prevenção de Degradação por Injeção (Quality Gate: 350 Linhas)
+
+Para evitar a degradação de contexto e acúmulo desordenado de código gerado por IA (conforme preconizado no *Vibe-Coding Toolkit*):
+1. **Teto Rígido de 350 Linhas:** Nenhum arquivo de componente, hook ou serviço pode ultrapassar 350 linhas de código (excluindo linhas vazias e comentários), regra imposta com severidade `error` via ESLint (`max-lines`).
+2. **Decomposição por "Costuras Naturais":**
+   - Se um componente crescer, identifique seções auto-contidas (ex: formulário de lote, terminal de stream, cards de métricas, modais) e extraia-as em subcomponentes dedicados na mesma pasta `components/`.
+   - Se um hook acumular múltiplos domínios de estado/efeito, extraia sub-hooks especializados.
+3. **Proibição de Bypasses:** É estritamente proibido o uso de `/* eslint-disable max-lines */` ou truques artificiais de compactação. A modularização limpa é mandatória.
+
 ---
 
 ## 📱 2. Diretrizes Mobile-First & A11y (Acessibilidade)

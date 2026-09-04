@@ -6,3 +6,5 @@
 
 export * from './ScraperForm';
 export { default as ScraperForm } from './ScraperForm';
+export * from './ScraperBatchForm';
+export * from './ScraperStreamConsole';
