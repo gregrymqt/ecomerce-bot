@@ -13,6 +13,8 @@ A violação de qualquer uma das regras abaixo invalida a entrega e interrompe a
 4. **PROIBIDO escalação de privilégios:** Endpoints comuns de perfil (`UpdateProfileAsync`) NUNCA devem aceitar ou atualizar a claim/coluna `Role`. Registros novos recebem estritamente `Role = "MEMBER"`.
 5. **PROIBIDO colisão de rotas HTTP:** NUNCA declare múltiplos Controllers ou Actions com paths idênticos no ASP.NET Core (`AmbiguousMatchException`).
 6. **PROIBIDO validação insegura de HMAC:** NUNCA compare assinaturas de webhooks com operadores de igualdade padrão (`==` ou `.Equals()`). Use exclusivamente `CryptographicOperations.FixedTimeEquals`.
+7. **PROIBIDO execução arbitrária em ferramentas MCP:** Ferramentas expostas via Model Context Protocol DEVEM ser estritamente Read-Only e sanitizadas. É proibido executar T-SQL dinâmico (`EXEC`, `INSERT`, `UPDATE`, `DELETE`, `DROP`), comandos de escrita no Redis (`FLUSH`, `DEL`) ou comandos de shell arbitrários. Consultas a banco devem usar exclusivamente DMVs (`sys.dm_*`) com `WITH (NOLOCK)`.
+8. **PROIBIDO NotebookLM no caminho crítico de produção:** O Google NotebookLM destina-se exclusivamente ao plano de pesquisa, auditoria de métricas e estudo offline. É proibido depender de chamadas síncronas ao NotebookLM para servir requisições de clientes no SaaS.
 
 ---
 
@@ -145,4 +147,38 @@ Nenhuma tarefa é considerada concluída sem validação de compilação sem err
 - **Frontend Web:** `npm run build` (em `EcommerceBot.Web`) 
 - **Grafo de Topologia:** `& "EcommerceBot.Worker\.venv\Scripts\python.exe" .agents\scripts\generate_knowledge_graph.py`
 - **Verificação de Segurança:**  `# Windows (Executar isolado no .venv do Worker) & "EcommerceBot.Worker\.venv\Scripts\semgrep.exe" scan --config auto --exclude="**/bin" --exclude="**/obj" --exclude="**/dist" --exclude="**/node_modules" --exclude="**/.venv" EcommerceBot.Core EcommerceBot.Web/src Database.Migrations`
+
+---
+
+## 📡 8. Servidores MCP de Diagnóstico & Observabilidade
+
+Quando agentes de IA necessitarem de introspecção sobre o ecossistema em desenvolvimento/staging:
+
+1. **Transporte Padrão:** Utilizar comunicação local via `stdio` (Standard I/O), evitando abertura desnecessária de portas de rede na máquina do desenvolvedor.
+2. **Reaproveitamento de Camada:** Implementar em C# (.NET) como aplicação console compartilhando as dependências de infraestrutura (`EcommerceBot.Infrastructure`), consumindo configurações tipadas existentes.
+3. **Logs Estruturados:** A leitura de erros de aplicação deve ser realizada a partir de arquivos rotativos em disco gerados pelo Serilog (`logs/errors-.json`), sem travar o processo principal da API.
+4. **Sanitização de Segredos:** O servidor MCP NUNCA deve expor senhas de banco de dados, chaves de API do Mercado Pago/Resend ou tokens JWT nas respostas entregues às LLMs.
+5. **Runbooks Operacionais:** Guias de troubleshooting e arquitetura devem residir em `docs/runbooks/*.md` e ser expostos dinamicamente como **MCP Resources** (`resource://runbooks/{topico}`).
+
+---
+
+## 🔬 9. Arquitetura Tripartite de Machine Learning
+
+O pipeline analítico e preditivo do E-commerce Bot é distribuído em três planos independentes:
+
+1. **Batch & Data Plane (Google Spark / PySpark):**
+   - Execução em lote para grandes volumes de dados históricos (transações, catálogo, eventos).
+   - Treinamento e calibração de modelos (`RFMSegmentation`, `ChurnPredictor`, `LTVForecaster`).
+   - Exportação determinística de artefatos serializados (`.joblib` ou `.onnx`).
+
+2. **Runtime Inference Plane (EcommerceBot.Worker):**
+   - Microsserviço assíncrono em Python (FastAPI + aio-pika).
+   - Carrega modelos exportados em memória para inferência ultra-rápida (< 50ms).
+   - Comunicação estrita via RabbitMQ (`queue:analytics_ml` -> `queue:analytics_processed`).
+   - Zero acesso direto a bancos de dados relacionais.
+
+3. **Knowledge & Research Plane (Google NotebookLM):**
+   - Ambiente de estudo, síntese e aprendizado humano e de agentes.
+   - Alimentado com relatórios periódicos de drift, métricas de acurácia, papers e runbooks operacionais.
+   - Zero acoplamento com a latência ou disponibilidade da produção.
 

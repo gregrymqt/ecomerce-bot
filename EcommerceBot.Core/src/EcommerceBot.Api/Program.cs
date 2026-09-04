@@ -3,8 +3,24 @@ using EcommerceBot.Api.Middlewares;
 using EcommerceBot.Api.Services;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Infrastructure.Configurations;
+using Serilog;
+using Serilog.Events;
+using Serilog.Formatting.Compact;
+
+// Configuração do Serilog estruturado com arquivo rotativo JSON compartilhado para o MCP Server
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.Logger(lc => lc
+        .Filter.ByIncludingOnly(e => e.Level >= LogEventLevel.Warning)
+        .WriteTo.File(new CompactJsonFormatter(), "logs/errors-.json", rollingInterval: RollingInterval.Day, shared: true))
+    .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseSerilog();
 
 // Carregamento de variáveis de ambiente nativas a partir do arquivo .env (com mapeamento de aliases e duplo underscore)
 builder.Configuration.AddDotEnvConfiguration();
