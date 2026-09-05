@@ -39,16 +39,6 @@ export function useRechargeModal({
   const activePackage =
     RECHARGE_PACKAGES.find((pkg) => pkg.id === selectedPackage) || RECHARGE_PACKAGES[1];
 
-  // Reseta estados locais ao abrir/fechar o modal
-  useEffect(() => {
-    if (!isOpen) {
-      setLoading(false);
-      setError(null);
-      setSuccessMessage(null);
-      setRechargeData(null);
-      setPaymentStatus('PENDING');
-    }
-  }, [isOpen]);
 
   // Limpeza de timeouts ao desmontar
   useEffect(() => {

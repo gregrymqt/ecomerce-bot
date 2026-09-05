@@ -35,16 +35,18 @@ export const useMetering = (
 ): UseMeteringReturn => {
   const [balance, setBalance] = useState<TenantCreditBalanceResponse | null>(null);
   const [usageLogs, setUsageLogs] = useState<PaginatedLLMUsageResponse | null>(null);
-  const [isLoadingBalance, setIsLoadingBalance] = useState<boolean>(false);
-  const [isLoadingUsage, setIsLoadingUsage] = useState<boolean>(false);
+  const [isLoadingBalance, setIsLoadingBalance] = useState<boolean>(true);
+  const [isLoadingUsage, setIsLoadingUsage] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState<number>(initialPage);
   const [limit] = useState<number>(initialLimit);
   const [filters, setFilters] = useState<Omit<LLMUsageFilterParams, 'page' | 'limit'>>({});
 
-  const fetchBalance = useCallback(async () => {
-    setIsLoadingBalance(true);
-    setError(null);
+  const fetchBalance = useCallback(async (isManualAction = false) => {
+    if (isManualAction) {
+      setIsLoadingBalance(true);
+      setError(null);
+    }
     try {
       const data = await meteringService.getCreditBalance();
       setBalance(data);
@@ -57,9 +59,11 @@ export const useMetering = (
   }, []);
 
   const fetchUsageLogs = useCallback(
-    async (params?: LLMUsageFilterParams) => {
-      setIsLoadingUsage(true);
-      setError(null);
+    async (params?: LLMUsageFilterParams, isManualAction = false) => {
+      if (isManualAction) {
+        setIsLoadingUsage(true);
+        setError(null);
+      }
       try {
         const mergedParams: LLMUsageFilterParams = {
           page,
@@ -80,25 +84,77 @@ export const useMetering = (
   );
 
   const refetchAll = useCallback(async () => {
-    await Promise.all([fetchBalance(), fetchUsageLogs()]);
+    await Promise.all([fetchBalance(true), fetchUsageLogs(undefined, true)]);
   }, [fetchBalance, fetchUsageLogs]);
 
   const changePage = useCallback((newPage: number) => {
+    setIsLoadingUsage(true);
     setPage(newPage);
   }, []);
 
   const applyFilters = useCallback((newFilters: Omit<LLMUsageFilterParams, 'page' | 'limit'>) => {
+    setIsLoadingUsage(true);
     setFilters(newFilters);
     setPage(1);
   }, []);
 
   useEffect(() => {
-    fetchBalance();
-  }, [fetchBalance]);
+    let isCancelled = false;
+
+    meteringService
+      .getCreditBalance()
+      .then((data) => {
+        if (!isCancelled) {
+          setBalance(data);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!isCancelled) {
+          setError(getErrorMessage(err, 'Falha ao consultar saldo de créditos.'));
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsLoadingBalance(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
-    fetchUsageLogs();
-  }, [fetchUsageLogs]);
+    let isCancelled = false;
+
+    const mergedParams: LLMUsageFilterParams = {
+      page,
+      limit,
+      ...filters,
+    };
+
+    meteringService
+      .getUsageLogs(mergedParams)
+      .then((data) => {
+        if (!isCancelled) {
+          setUsageLogs(data);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!isCancelled) {
+          setError(getErrorMessage(err, 'Falha ao buscar extrato de consumo de LLM.'));
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsLoadingUsage(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [page, limit, filters]);
 
   return {
     balance,

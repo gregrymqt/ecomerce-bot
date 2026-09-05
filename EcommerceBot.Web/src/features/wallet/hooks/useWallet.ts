@@ -19,19 +19,34 @@ export function useWallet(initialPage = 1, limit = 10): UseWalletReturn {
   const [balance, setBalance] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
-  const [loadingBalance, setLoadingBalance] = useState<boolean>(false);
-  const [loadingStatement, setLoadingStatement] = useState<boolean>(false);
+  const [loadingBalance, setLoadingBalance] = useState<boolean>(true);
+  const [loadingStatement, setLoadingStatement] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const [page, setPage] = useState<number>(initialPage);
   const [typeFilter, setTypeFilter] = useState<TransactionType | 'ALL'>('ALL');
 
+  const handlePageChange: React.Dispatch<React.SetStateAction<number>> = useCallback((action) => {
+    setLoadingStatement(true);
+    setPage(action);
+  }, []);
+
+  const handleTypeFilterChange: React.Dispatch<React.SetStateAction<TransactionType | 'ALL'>> = useCallback(
+    (action) => {
+      setLoadingStatement(true);
+      setTypeFilter(action);
+    },
+    []
+  );
+
   /**
    * Carrega o saldo atual de créditos via walletService.
    */
-  const fetchBalance = useCallback(async () => {
-    setLoadingBalance(true);
-    setError(null);
+  const fetchBalance = useCallback(async (isManualAction = false) => {
+    if (isManualAction) {
+      setLoadingBalance(true);
+      setError(null);
+    }
     try {
       const data = await walletService.getWalletBalance();
       setBalance(data.balance_credits);
@@ -47,9 +62,11 @@ export function useWallet(initialPage = 1, limit = 10): UseWalletReturn {
    * Carrega o extrato de movimentações de crédito via walletService.
    */
   const fetchStatement = useCallback(
-    async (overrideFilters?: StatementFilters) => {
-      setLoadingStatement(true);
-      setError(null);
+    async (overrideFilters?: StatementFilters, isManualAction = false) => {
+      if (isManualAction) {
+        setLoadingStatement(true);
+        setError(null);
+      }
       try {
         const filters: StatementFilters = {
           page,
@@ -78,18 +95,73 @@ export function useWallet(initialPage = 1, limit = 10): UseWalletReturn {
    * Recarrega tanto o saldo quanto o extrato de movimentações.
    */
   const refetchWallet = useCallback(async (): Promise<[void, void]> => {
-    return Promise.all([fetchBalance(), fetchStatement()]);
+    return Promise.all([fetchBalance(true), fetchStatement(undefined, true)]);
   }, [fetchBalance, fetchStatement]);
 
   // Efeito inicial para buscar o saldo
   useEffect(() => {
-    fetchBalance();
-  }, [fetchBalance]);
+    let isCancelled = false;
+
+    walletService
+      .getWalletBalance()
+      .then((data) => {
+        if (!isCancelled) {
+          setBalance(data.balance_credits);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!isCancelled) {
+          setError(getErrorMessage(err, 'Falha ao consultar o saldo da carteira.'));
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setLoadingBalance(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   // Efeito reativo para buscar o extrato quando a página ou o filtro mudar
   useEffect(() => {
-    fetchStatement();
-  }, [fetchStatement]);
+    let isCancelled = false;
+
+    const filters: StatementFilters = {
+      page,
+      limit,
+      type: typeFilter === 'ALL' ? undefined : typeFilter,
+    };
+
+    walletService
+      .getWalletStatement(filters)
+      .then((data) => {
+        if (!isCancelled) {
+          setTransactions(data.transactions || []);
+          setTotalCount(data.total_count || 0);
+
+          if (typeof data.balance_credits === 'number') {
+            setBalance(data.balance_credits);
+          }
+        }
+      })
+      .catch((err: unknown) => {
+        if (!isCancelled) {
+          setError(getErrorMessage(err, 'Falha ao buscar o extrato da carteira.'));
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setLoadingStatement(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [page, limit, typeFilter]);
 
   return {
     balance,
@@ -100,8 +172,8 @@ export function useWallet(initialPage = 1, limit = 10): UseWalletReturn {
     error,
     page,
     typeFilter,
-    setPage,
-    setTypeFilter,
+    setPage: handlePageChange,
+    setTypeFilter: handleTypeFilterChange,
     refetchWallet,
   };
 }

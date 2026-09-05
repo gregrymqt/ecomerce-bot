@@ -4,7 +4,7 @@
  * Modal de Captura de Lead para SSO Enterprise (Okta / SAML 2.0 / Azure AD).
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ShieldCheck, Building, Mail, Phone, Users, CheckCircle, Loader2, FileText } from 'lucide-react';
 import { authService } from '../../services/authService';
 import type { EnterpriseLeadPayload } from '../../types/auth.types';
@@ -41,11 +41,6 @@ export const EnterpriseSsoModal: React.FC<EnterpriseSsoModalProps> = ({
   const [isSuccess, setIsSuccess] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    if (initialEmail) {
-      setFormData((prev) => ({ ...prev, email: initialEmail }));
-    }
-  }, [initialEmail]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -107,6 +102,14 @@ export const EnterpriseSsoModal: React.FC<EnterpriseSsoModalProps> = ({
   const handleClose = () => {
     setIsSuccess(false);
     setError(null);
+    setFieldErrors({});
+    setFormData({
+      email: initialEmail || '',
+      company_name: '',
+      team_size: '11-50 colaboradores',
+      phone: '',
+      notes: '',
+    });
     onClose();
   };
 

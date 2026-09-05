@@ -58,9 +58,11 @@ export function useAdminPlans(): UseAdminPlansReturn {
   const [editingPlan, setEditingPlan] = useState<PlanResponse | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
 
-  const fetchPlans = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const fetchPlans = useCallback(async (isManualAction = false) => {
+    if (isManualAction) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const data = await plansService.listPlans(false);
       let filtered = data;
@@ -92,8 +94,46 @@ export function useAdminPlans(): UseAdminPlansReturn {
   }, [statusFilter, searchQuery]);
 
   useEffect(() => {
-    fetchPlans();
-  }, [fetchPlans]);
+    let isCancelled = false;
+
+    plansService
+      .listPlans(false)
+      .then((data) => {
+        if (!isCancelled) {
+          let filtered = data;
+          if (statusFilter !== 'all') {
+            const isActiveFilter = statusFilter === 'active';
+            filtered = filtered.filter((p) => (p.isActive ?? p.status === 'active') === isActiveFilter);
+          }
+          if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            filtered = filtered.filter(
+              (p) =>
+                p.name?.toLowerCase().includes(q) ||
+                p.reason?.toLowerCase().includes(q) ||
+                p.id?.toLowerCase().includes(q) ||
+                p.mpPreapprovalPlanId?.toLowerCase().includes(q) ||
+                p.description?.toLowerCase().includes(q)
+            );
+          }
+          setPlans(filtered);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!isCancelled) {
+          setError(getErrorMessage(err, 'Falha ao carregar planos de assinatura.'));
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [statusFilter, searchQuery]);
 
   const openCreateModal = () => {
     setEditingPlan(null);

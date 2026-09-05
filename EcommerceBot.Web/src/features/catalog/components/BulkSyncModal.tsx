@@ -57,8 +57,6 @@ export const BulkSyncModal: React.FC<BulkSyncModalProps> = ({
   // Escuta SSE durante a sincronização
   useEffect(() => {
     if (!isOpen) {
-      setProgressCount(0);
-      setSyncedSkus([]);
       return;
     }
 
@@ -97,13 +95,19 @@ export const BulkSyncModal: React.FC<BulkSyncModalProps> = ({
     }
   };
 
+  const handleClose = () => {
+    setProgressCount(0);
+    setSyncedSkus([]);
+    onClose();
+  };
+
   const progressPercent = selectedSkus.length > 0 ? Math.round((progressCount / selectedSkus.length) * 100) : 0;
 
   const footerActions = (
     <div className="flex items-center justify-end gap-3 w-full">
       <Button
         variant="secondary"
-        onClick={onClose}
+        onClick={handleClose}
         disabled={isSyncing}
         className="min-h-[44px]"
       >
@@ -124,7 +128,7 @@ export const BulkSyncModal: React.FC<BulkSyncModalProps> = ({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title="Sincronização em Massa (Bulk Sync)"
       description="Envie múltiplos produtos enriquecidos por IA simultaneamente para as lojas conectadas."
       size="md"

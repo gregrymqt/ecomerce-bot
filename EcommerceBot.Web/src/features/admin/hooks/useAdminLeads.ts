@@ -33,9 +33,11 @@ export const useAdminLeads = () => {
   const [isSavingNotes, setIsSavingNotes] = useState<boolean>(false);
   const [saveNotesError, setSaveNotesError] = useState<string | null>(null);
 
-  const fetchLeads = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const fetchLeads = useCallback(async (isManualAction = false) => {
+    if (isManualAction) {
+      setIsLoading(true);
+      setError(null);
+    }
     try {
       const data = await adminLeadsService.getLeads(
         selectedStatusFilter !== 'ALL' ? selectedStatusFilter : undefined,
@@ -52,8 +54,34 @@ export const useAdminLeads = () => {
   }, [selectedStatusFilter, searchQuery]);
 
   useEffect(() => {
-    fetchLeads();
-  }, [fetchLeads]);
+    let isCancelled = false;
+
+    adminLeadsService
+      .getLeads(
+        selectedStatusFilter !== 'ALL' ? selectedStatusFilter : undefined,
+        searchQuery || undefined
+      )
+      .then((data) => {
+        if (!isCancelled) {
+          setLeads(data.leads || []);
+          setMetrics(data.metrics || null);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!isCancelled) {
+          setError(getErrorMessage(err, 'Erro ao carregar leads do CRM.'));
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedStatusFilter, searchQuery]);
 
   const filteredLeads = useMemo(() => {
     if (!searchQuery.trim()) return leads;

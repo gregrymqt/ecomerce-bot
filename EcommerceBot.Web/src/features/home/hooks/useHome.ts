@@ -37,8 +37,10 @@ export function useHome() {
   }, []);
 
   // Carrega status real das integrações com fallback silencioso
-  const fetchIntegrations = useCallback(async () => {
-    setIntegrationsLoading(true);
+  const fetchIntegrations = useCallback(async (isManualAction = false) => {
+    if (isManualAction) {
+      setIntegrationsLoading(true);
+    }
     try {
       const stores = await integrationService.listIntegrations();
       setIntegrations(stores);
@@ -51,8 +53,30 @@ export function useHome() {
   }, []);
 
   useEffect(() => {
-    fetchIntegrations();
-  }, [fetchIntegrations]);
+    let isCancelled = false;
+
+    integrationService
+      .listIntegrations()
+      .then((stores) => {
+        if (!isCancelled) {
+          setIntegrations(stores);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setIntegrations([]);
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIntegrationsLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   // Derivação dos jobs recentes a partir dos produtos do catálogo
   const jobs: ExtractionJob[] = useMemo(() => {

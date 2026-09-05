@@ -101,6 +101,7 @@ export const CatalogPage: React.FC = () => {
 
       {/* 3. Side Drawer de Edição Fina por IA */}
       <EditCopyDrawer
+        key={editingProduct?.sku ?? 'closed'}
         isOpen={!!editingProduct}
         product={editingProduct}
         onClose={() => setEditingProduct(null)}

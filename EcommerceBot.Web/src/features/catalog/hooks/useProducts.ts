@@ -29,9 +29,11 @@ export function useProducts(initialLimit = 20) {
   /**
    * Carrega a lista paginada de produtos a partir da API.
    */
-  const fetchProducts = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const fetchProducts = useCallback(async (isManualAction = false) => {
+    if (isManualAction) {
+      setIsLoading(true);
+      setError(null);
+    }
     try {
       const data = await productService.getProducts({
         status: statusFilter || undefined,
@@ -50,8 +52,37 @@ export function useProducts(initialLimit = 20) {
   }, [statusFilter, searchTerm, page, limit]);
 
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+    let isCancelled = false;
+
+    productService
+      .getProducts({
+        status: statusFilter || undefined,
+        search: searchTerm || undefined,
+        page,
+        limit,
+      })
+      .then((data) => {
+        if (!isCancelled) {
+          setProducts(data.items || []);
+          setTotal(data.total || 0);
+          setPages(data.pages || 1);
+        }
+      })
+      .catch((err) => {
+        if (!isCancelled) {
+          setError(getErrorMessage(err, 'Erro ao carregar lista de produtos.'));
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [statusFilter, searchTerm, page, limit]);
 
   /**
    * Executa a atualização de um produto pelo SKU.

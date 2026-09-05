@@ -19,9 +19,11 @@ export const useMlAnalytics = () => {
 
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchInsights = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const fetchInsights = useCallback(async (isManualAction = false) => {
+    if (isManualAction) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const res = await mlAnalyticsService.getLatestInsights();
       setInsights(res);
@@ -34,13 +36,33 @@ export const useMlAnalytics = () => {
   }, []);
 
   useEffect(() => {
-    fetchInsights();
+    let isCancelled = false;
+
+    mlAnalyticsService
+      .getLatestInsights()
+      .then((res) => {
+        if (!isCancelled) {
+          setInsights(res);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!isCancelled) {
+          setError(getErrorMessage(err, 'Erro ao buscar insights de Machine Learning.'));
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      });
+
     return () => {
+      isCancelled = true;
       if (pollTimerRef.current) {
         clearTimeout(pollTimerRef.current);
       }
     };
-  }, [fetchInsights]);
+  }, []);
 
   const handleTriggerAnalysis = async () => {
     setTriggering(true);

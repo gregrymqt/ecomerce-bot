@@ -28,14 +28,10 @@ export function useDashboard(initialPeriod: PeriodFilter = 'WEEK') {
   // 2. Carregamento completo da telemetria
   const fetchDashboard = useCallback(
     async (selectedPeriod: PeriodFilter = period, isSilent = false) => {
-      if (!isSilent) {
-        if (isFirstMount.current) {
-          setLoading(true);
-        } else {
-          setRefreshing(true);
-        }
+      if (!isSilent && !isFirstMount.current) {
+        setRefreshing(true);
+        setError(null);
       }
-      setError(null);
 
       try {
         const response = await dashboardService.getTelemetry(selectedPeriod);
@@ -54,11 +50,36 @@ export function useDashboard(initialPeriod: PeriodFilter = 'WEEK') {
 
   // Requisita dados ao mudar o período
   useEffect(() => {
-    fetchDashboard(period);
-  }, [period, fetchDashboard]);
+    let isCancelled = false;
+
+    dashboardService
+      .getTelemetry(period)
+      .then((response) => {
+        if (!isCancelled) {
+          setData(response);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!isCancelled) {
+          setError(getErrorMessage(err, 'Erro ao carregar telemetria do Dashboard.'));
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setLoading(false);
+          setRefreshing(false);
+          isFirstMount.current = false;
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [period]);
 
   // 3. Handler de Alteração de Período
   const handlePeriodChange = useCallback((newPeriod: PeriodFilter) => {
+    setRefreshing(true);
     setPeriod(newPeriod);
   }, []);
 

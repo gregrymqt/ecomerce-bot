@@ -222,6 +222,7 @@ export const AdminPlansPage: React.FC = () => {
 
       {/* Admin Plan Modal */}
       <AdminPlanModal
+        key={editingPlan?.id ?? (isModalOpen ? 'create' : 'closed')}
         isOpen={isModalOpen}
         editingPlan={editingPlan}
         submitting={submitting}

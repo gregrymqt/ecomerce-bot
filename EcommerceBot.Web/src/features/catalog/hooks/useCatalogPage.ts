@@ -4,7 +4,7 @@
  * Hook orquestrador do ciclo de vida, filtros, seleções e ações da página de Catálogo.
  */
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import type { CatalogProduct, FilterStatus, AITone, ProductStatus, EcomPlatform, SyncProductResponse } from '../types';
 import type { AlertVariant } from '@/components/ui/feedback/Alert';
 import { useProducts } from './useProducts';
@@ -38,24 +38,24 @@ export function useCatalogPage() {
     updateProduct: apiUpdateProduct,
   } = useProducts(50);
 
-  // Estado dos produtos do catálogo
-  const [localCatalogProducts, setLocalCatalogProducts] = useState<CatalogProduct[]>([]);
-
-  // Estado de Alerta Customizado para UI Feedback
+  // Overrides locais para atualizações otimistas e SKUs deletados
+  const [localOverrides, setLocalOverrides] = useState<Record<string, Partial<CatalogProduct>>>({});
+  const [deletedSkus, setDeletedSkus] = useState<string[]>([]);
   const [alertInfo, setAlertInfo] = useState<CatalogAlert | null>(null);
+  const clearAlert = useCallback(() => setAlertInfo(null), []);
 
-  const clearAlert = () => setAlertInfo(null);
-
-  // Sincroniza produtos vindos da Core API (/api/v1/products) quando retornados do backend
-  useEffect(() => {
-    if (apiProducts) {
-      const mapped: CatalogProduct[] = apiProducts.map((p, idx) => {
+  // Transforma produtos da Core API durante a renderização (zero cascading render)
+  const localCatalogProducts = useMemo<CatalogProduct[]>(() => {
+    if (!apiProducts) return [];
+    return apiProducts
+      .filter((p) => !deletedSkus.includes(p.sku))
+      .map((p, idx) => {
         const rawPlatform = (p.attributes?.platform as string) || (p.sku.startsWith('NUV') ? 'Nuvemshop' : 'Shopify');
         const platform: EcomPlatform = (['Shopify', 'Nuvemshop', 'WooCommerce'].includes(rawPlatform)
           ? rawPlatform
           : 'Shopify') as EcomPlatform;
 
-        return {
+        const base: CatalogProduct = {
           id: `api-${p.sku}-${idx}`,
           sku: p.sku,
           titleOriginal: p.title || p.sku,
@@ -67,10 +67,11 @@ export function useCatalogPage() {
           synced: String(p.status).toUpperCase() === 'EXPORTED',
           createdAt: p.created_at || new Date().toISOString(),
         };
+
+        const override = localOverrides[p.sku];
+        return override ? { ...base, ...override } : base;
       });
-      setLocalCatalogProducts(mapped);
-    }
-  }, [apiProducts]);
+  }, [apiProducts, deletedSkus, localOverrides]);
 
   // Estados Reativos dos Filtros e Seleções
   const [searchTerm, setSearchTerm] = useState('');
@@ -140,18 +141,10 @@ export function useCatalogPage() {
         attributes: { title_ai: newTitleAi },
       });
 
-      setLocalCatalogProducts((prev) =>
-        prev.map((p) => {
-          if (p.sku === product.sku) {
-            return {
-              ...p,
-              titleAi: newTitleAi,
-              status: 'PROCESSED',
-            };
-          }
-          return p;
-        })
-      );
+      setLocalOverrides((prev) => ({
+        ...prev,
+        [product.sku]: { ...prev[product.sku], titleAi: newTitleAi, status: 'PROCESSED' },
+      }));
     } catch {
       setAlertInfo({
         variant: 'error',
@@ -194,14 +187,10 @@ export function useCatalogPage() {
         });
       }
 
-      setLocalCatalogProducts((prev) =>
-        prev.map((p) => {
-          if (p.sku === product.sku) {
-            return { ...p, synced: true, status: 'PROCESSED' };
-          }
-          return p;
-        })
-      );
+      setLocalOverrides((prev) => ({
+        ...prev,
+        [product.sku]: { ...prev[product.sku], synced: true, status: 'PROCESSED' },
+      }));
     } catch (err: unknown) {
       const errorDetail = getErrorMessage(err, 'Erro desconhecido de sincronização.');
       setAlertInfo({
@@ -223,7 +212,7 @@ export function useCatalogPage() {
   const confirmDeleteProduct = useCallback(async (sku: string) => {
     try {
       await apiDeleteProduct(sku);
-      setLocalCatalogProducts((prev) => prev.filter((p) => p.sku !== sku));
+      setDeletedSkus((prev) => [...prev, sku]);
       setSelectedSkus((prev) => prev.filter((item) => item !== sku));
       setDeletingProductSku(null);
       setAlertInfo({
@@ -258,20 +247,16 @@ export function useCatalogPage() {
         },
       });
 
-      setLocalCatalogProducts((prev) =>
-        prev.map((p) => {
-          if (p.sku === sku) {
-            return {
-              ...p,
-              titleAi: data.titleAi,
-              descriptionAi: data.descriptionAi,
-              synced: true,
-              status: 'PROCESSED',
-            };
-          }
-          return p;
-        })
-      );
+      setLocalOverrides((prev) => ({
+        ...prev,
+        [sku]: {
+          ...prev[sku],
+          titleAi: data.titleAi,
+          descriptionAi: data.descriptionAi,
+          synced: true,
+          status: 'PROCESSED',
+        },
+      }));
     } catch {
       setAlertInfo({
         variant: 'error',

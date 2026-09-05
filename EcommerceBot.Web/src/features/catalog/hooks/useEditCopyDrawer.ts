@@ -28,18 +28,10 @@ export function useEditCopyDrawer({
   onSave,
   onGenerateSuggestion,
 }: UseEditCopyDrawerProps) {
-  const [titleAi, setTitleAi] = useState('');
-  const [descriptionAi, setDescriptionAi] = useState('');
+  const [titleAi, setTitleAi] = useState(() => product?.titleAi || '');
+  const [descriptionAi, setDescriptionAi] = useState(() => product?.descriptionAi || '');
   const [tone, setTone] = useState<AITone>('Persuasivo');
   const [isGenerating, setIsGenerating] = useState(false);
-
-  // Sincroniza o estado interno quando um novo produto é aberto
-  useEffect(() => {
-    if (product) {
-      setTitleAi(product.titleAi || '');
-      setDescriptionAi(product.descriptionAi || '');
-    }
-  }, [product]);
 
   // Handler para tecla ESC e trava do scroll do body
   useEffect(() => {

@@ -5,7 +5,7 @@
  * Em conformidade com acessibilidade WCAG 2.1 AA, inputs >= 16px e touch targets >= 44px.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Sparkles, AlertCircle } from 'lucide-react';
 import { Modal, Button, Input } from '@/components/ui';
 import type { CreatePlanRequest, PlanResponse, UpdatePlanRequest } from '../types';
@@ -26,40 +26,17 @@ export const AdminPlanModal: React.FC<AdminPlanModalProps> = ({
   onClose,
   onSave,
 }) => {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [price, setPrice] = useState<number | ''>(49.9);
-  const [creditsIncluded, setCreditsIncluded] = useState<number | ''>(1000);
-  const [billingInterval, setBillingInterval] = useState('MONTHLY');
-  const [trialDays, setTrialDays] = useState<number | ''>(7);
-  const [mpPreapprovalPlanId, setMpPreapprovalPlanId] = useState('');
-  const [isActive, setIsActive] = useState(true);
+  const [name, setName] = useState(() => editingPlan?.name || editingPlan?.reason || '');
+  const [description, setDescription] = useState(() => editingPlan?.description || '');
+  const [price, setPrice] = useState<number | ''>(() => editingPlan?.price ?? editingPlan?.auto_recurring?.transaction_amount ?? 49.9);
+  const [creditsIncluded, setCreditsIncluded] = useState<number | ''>(() => editingPlan?.creditsIncluded ?? 1000);
+  const [billingInterval, setBillingInterval] = useState(() => editingPlan?.billingInterval || 'MONTHLY');
+  const [trialDays, setTrialDays] = useState<number | ''>(() => editingPlan?.trialDays ?? editingPlan?.auto_recurring?.free_trial?.frequency ?? 7);
+  const [mpPreapprovalPlanId, setMpPreapprovalPlanId] = useState(() => editingPlan?.mpPreapprovalPlanId || editingPlan?.external_id || '');
+  const [isActive, setIsActive] = useState(() => editingPlan?.isActive ?? (editingPlan ? editingPlan.status === 'active' : true));
   const [formError, setFormError] = useState<string | null>(null);
 
   const isEditMode = Boolean(editingPlan);
-
-  useEffect(() => {
-    if (editingPlan) {
-      setName(editingPlan.name || editingPlan.reason || '');
-      setDescription(editingPlan.description || '');
-      setPrice(editingPlan.price ?? editingPlan.auto_recurring?.transaction_amount ?? 49.9);
-      setCreditsIncluded(editingPlan.creditsIncluded ?? 1000);
-      setBillingInterval(editingPlan.billingInterval || 'MONTHLY');
-      setTrialDays(editingPlan.trialDays ?? editingPlan.auto_recurring?.free_trial?.frequency ?? 0);
-      setMpPreapprovalPlanId(editingPlan.mpPreapprovalPlanId || editingPlan.external_id || '');
-      setIsActive(editingPlan.isActive ?? editingPlan.status === 'active');
-    } else {
-      setName('');
-      setDescription('');
-      setPrice(49.9);
-      setCreditsIncluded(1000);
-      setBillingInterval('MONTHLY');
-      setTrialDays(7);
-      setMpPreapprovalPlanId('');
-      setIsActive(true);
-    }
-    setFormError(null);
-  }, [editingPlan, isOpen]);
 
   if (!isOpen) return null;
 

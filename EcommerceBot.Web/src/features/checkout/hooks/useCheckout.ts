@@ -26,7 +26,7 @@ export function useCheckout(initialPlanId?: string) {
   const [pixData, setPixData] = useState<PixPaymentResponse | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(900); // 15 minutos (900 segundos)
   const [isCopied, setIsCopied] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(Boolean(initialPlanId));
   const [error, setError] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('PENDING');
 
@@ -49,9 +49,6 @@ export function useCheckout(initialPlanId?: string) {
   // 2. Timer Regressivo do PIX (decremente 1s enquanto timeLeft > 0)
   useEffect(() => {
     if (activeTab !== 'PIX' || paymentStatus !== 'PENDING' || timeLeft <= 0) {
-      if (timeLeft <= 0 && paymentStatus === 'PENDING' && pixData) {
-        setPaymentStatus('EXPIRED');
-      }
       return;
     }
 
@@ -242,10 +239,34 @@ export function useCheckout(initialPlanId?: string) {
 
   // Efeito opcional de auto-geração se initialPlanId for fornecido na montagem
   useEffect(() => {
-    if (initialPlanId && !pixData && activeTab === 'PIX' && !loading && !error) {
-      handleGeneratePix(initialPlanId);
+    let isCancelled = false;
+
+    if (initialPlanId && !pixData && activeTab === 'PIX' && !error) {
+      checkoutService
+        .createPixPayment(initialPlanId)
+        .then((response) => {
+          if (!isCancelled) {
+            setPixData(response);
+            setPaymentStatus(response.status || 'PENDING');
+            setTimeLeft(900);
+          }
+        })
+        .catch((err: unknown) => {
+          if (!isCancelled) {
+            setError(getErrorMessage(err, 'Erro ao solicitar pagamento via PIX.'));
+          }
+        })
+        .finally(() => {
+          if (!isCancelled) {
+            setLoading(false);
+          }
+        });
     }
-  }, [initialPlanId, pixData, activeTab, loading, error, handleGeneratePix]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [initialPlanId, pixData, activeTab, error]);
 
   return {
     // Estados

@@ -68,9 +68,11 @@ export function useSettings(initialTab: SettingsTab = 'AI_RULES'): UseSettingsRe
 
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchSettings = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const fetchSettings = useCallback(async (isManualAction = false) => {
+    if (isManualAction) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const data = await settingsService.getSettings();
       setFormData(data || DEFAULT_SETTINGS);
@@ -83,8 +85,30 @@ export function useSettings(initialTab: SettingsTab = 'AI_RULES'): UseSettingsRe
   }, []);
 
   useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
+    let isCancelled = false;
+
+    settingsService
+      .getSettings()
+      .then((data) => {
+        if (!isCancelled) {
+          setFormData(data || DEFAULT_SETTINGS);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setFormData(DEFAULT_SETTINGS);
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   const handleTabChange = useCallback((tab: SettingsTab) => {
     setActiveTab(tab);

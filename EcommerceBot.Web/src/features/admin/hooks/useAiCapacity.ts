@@ -25,9 +25,11 @@ export function useAiCapacity() {
   const [isTopupModalOpen, setIsTopupModalOpen] = useState<boolean>(false);
   const [topupForm, setTopupForm] = useState<AiCreditTopupPayload>(INITIAL_TOPUP_FORM);
 
-  const fetchOverview = useCallback(async (horizonDays: number) => {
-    setLoading(true);
-    setError(null);
+  const fetchOverview = useCallback(async (horizonDays: number, isManualAction = false) => {
+    if (isManualAction) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const data = await aiCapacityService.getOverview(horizonDays);
       setOverview(data);
@@ -39,8 +41,30 @@ export function useAiCapacity() {
   }, []);
 
   useEffect(() => {
-    fetchOverview(days);
-  }, [days, fetchOverview]);
+    let isCancelled = false;
+
+    aiCapacityService
+      .getOverview(days)
+      .then((data) => {
+        if (!isCancelled) {
+          setOverview(data);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!isCancelled) {
+          setError(getErrorMessage(err, 'Erro ao carregar telemetria de capacidade de IA.'));
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [days]);
 
   const handleTriggerForecast = async () => {
     setTriggering(true);

@@ -144,6 +144,7 @@ export const WalletPage: React.FC = () => {
 
       {/* Modal de Recarga (RechargeModal) */}
       <RechargeModal
+        key={isRechargeModalOpen ? 'open' : 'closed'}
         isOpen={isRechargeModalOpen}
         onClose={() => setIsRechargeModalOpen(false)}
         onSuccessPayment={() => refetchWallet()}

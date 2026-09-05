@@ -35,9 +35,11 @@ export const TenantSsoTab: React.FC = () => {
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
   const [isDefaultRoleInput, setIsDefaultRoleInput] = useState<boolean>(false);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const fetchData = useCallback(async (isManualAction = false) => {
+    if (isManualAction) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const [rolesData, mappingsData] = await Promise.all([
         tenantSsoService.getRoles(),
@@ -56,8 +58,33 @@ export const TenantSsoTab: React.FC = () => {
   }, [selectedRoleId]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    let isCancelled = false;
+
+    Promise.all([tenantSsoService.getRoles(), tenantSsoService.getMappings()])
+      .then(([rolesData, mappingsData]) => {
+        if (!isCancelled) {
+          setRoles(rolesData);
+          setMappings(mappingsData);
+          if (rolesData.length > 0 && !selectedRoleId) {
+            setSelectedRoleId(rolesData[0].id);
+          }
+        }
+      })
+      .catch((err: unknown) => {
+        if (!isCancelled) {
+          setError(getErrorMessage(err, 'Erro ao carregar dados de SSO e Roles.'));
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedRoleId]);
 
   const handleCreateMapping = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,8 +146,9 @@ export const TenantSsoTab: React.FC = () => {
         <Button
           type="button"
           variant="outline"
-          size="sm"
-          onClick={fetchData}
+          onClick={() => {
+            void fetchData(true);
+          }}
           disabled={loading}
           iconLeft={<RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />}
           className="min-h-[44px] bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800"

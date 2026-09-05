@@ -58,10 +58,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   /**
    * Verifica a sessão ativa do usuário junto ao endpoint GET /api/v1/auth/me.
    */
-  const checkAuth = useCallback(async () => {
-    setIsLoading(true);
-    setStatus('loading');
-    setError(null);
+  const checkAuth = useCallback(async (showLoading = false) => {
+    if (showLoading) {
+      setIsLoading(true);
+      setStatus('loading');
+      setError(null);
+    }
     try {
       const userData = await authService.getMe();
       setUser(userData);
@@ -91,8 +93,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [resetAuthState]);
 
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    let isCancelled = false;
+
+    authService
+      .getMe()
+      .then((userData) => {
+        if (!isCancelled) {
+          setUser(userData);
+          setStatus('authenticated');
+          const activeTenant = resolveTenant(userData.tenants);
+          if (activeTenant) {
+            setCurrentTenant(activeTenant);
+            saveTenantId(activeTenant);
+          }
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          resetAuthState();
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [resolveTenant, resetAuthState]);
 
   const login = async (credentials: LoginCredentials): Promise<UserResponse> => {
     setIsLoading(true);
