@@ -1,6 +1,6 @@
 # 📚 E-commerce Bot — Master Knowledge Pack & Technical Specification
 
-> **Data de Compilação:** 2026-09-05 21:35:35 UTC  
+> **Data de Compilação:** 2026-09-05 22:45:22 UTC  
 > **Versão da Topologia:** v2.0 (115 nós, 56 arestas catalogadas)  
 > **Finalidade:** Base de Conhecimento Canônica para Grounding e Consultas de Engenharia no **Google NotebookLM** (Card 83 do Trello).
 
@@ -533,6 +533,13 @@ cfg.UseRawJsonSerializer();
 3. `inspect_rabbitmq_queues`: Profundidade de mensagens acumuladas, contagem de consumidores ativos.
 4. `get_recent_application_errors`: Leitura dos últimos erros estruturados em `logs/errors-*.json` sem travar a API.
 
+### Arquitetura de Observabilidade & Logs (Serilog)
+A API Core adota arquitetura desacoplada via `SerilogConfigurationExtensions`:
+- **Console Rico:** Formatação colorida com timestamp, nível e contexto para debug imediato no terminal.
+- **Arquivo Rotativo Geral (`logs/app-.log`):** Nível `Information+` para rastreamento contínuo de execução.
+- **Arquivo Rotativo de Erros (`logs/errors-.json`):** Formato `CompactJsonFormatter` filtrado para `Warning+` com acesso multi-processo compartilhado (`shared: true`), lido nativamente pelo MCP.
+- **Request Logging:** Middleware `app.UseCustomRequestLogging()` interceptando requisições com latência, status code e TenantId.
+
 ---
 
 ## 🛡️ 4. Regras de Segurança SaaS Invioláveis
@@ -542,6 +549,7 @@ cfg.UseRawJsonSerializer();
 3. **Validação de HMAC em Tempo Constante:** Prevenção de timing attacks via `CryptographicOperations.FixedTimeEquals`.
 4. **Zero Acesso a Banco no Python Worker:** O microsserviço Python comunica-se exclusivamente através do RabbitMQ e Redis.
 5. **Zero HTML Inline em E-mails:** Proibido hardcoding de HTML em C# ou Python. C# utiliza views Razor (`.cshtml` em `EcommerceBot.Api/Views/Emails` com ViewModels em `EcommerceBot.Application/ViewModels/Emails`) e Python utiliza Jinja2 com autoescape (`.html` em `EcommerceBot.Worker/app/templates`).
+6. **Clean Program.cs Pattern:** Proibido lógica de serviço ou configuração inline no `Program.cs`. Todo setup de DI, middlewares e observabilidade deve ser encapsulado em métodos de extensão dedicados (`*Extensions.cs`).
 
 
 ---
