@@ -17,12 +17,14 @@ import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar
 import { useAuth, useFeatureGate } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/feedback/Badge';
+import { useRoleLayout } from './hooks/useRoleLayout';
 
 export const MerchantLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, currentTenant, logout } = useAuth();
   const { getPlanName } = useFeatureGate();
+  const { setAdminViewMode } = useRoleLayout();
 
   const isAdmin = Boolean(user && (user.is_admin === true || user.role === 'admin' || user.role === 'ADMIN'));
 
@@ -153,7 +155,10 @@ export const MerchantLayout: React.FC = () => {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => navigate('/admin/leads')}
+                onClick={() => {
+                  setAdminViewMode('crm');
+                  navigate('/admin/leads');
+                }}
                 iconLeft={<Building className="w-4 h-4 text-sky-400" />}
                 className="min-h-[38px] text-xs font-bold border-indigo-500/30 bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 cursor-pointer"
               >

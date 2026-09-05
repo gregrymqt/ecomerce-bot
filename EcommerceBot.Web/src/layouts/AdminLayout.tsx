@@ -16,11 +16,13 @@ import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar
 import { useAuth } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/feedback/Badge';
+import { useRoleLayout } from './hooks/useRoleLayout';
 
 export const AdminLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, currentTenant, logout } = useAuth();
+  const { setAdminViewMode } = useRoleLayout();
 
   const navItems: SidebarNavItem[] = [
     {
@@ -138,7 +140,10 @@ export const AdminLayout: React.FC = () => {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => navigate('/catalog')}
+              onClick={() => {
+                setAdminViewMode('store');
+                navigate('/catalog');
+              }}
               iconLeft={<Store className="w-4 h-4 text-emerald-400" />}
               className="min-h-[38px] text-xs font-bold border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 cursor-pointer"
             >

@@ -14,6 +14,7 @@ export * from './sso/EnterpriseSsoModal';
 export * from './guards/ProtectedRoute';
 export * from './guards/PaidRouteGuard';
 export * from './guards/AdminRouteGuard';
+export * from './guards/MerchantRouteGuard';
 
 // Layout
 export * from './layout/AuthLeftPanel';

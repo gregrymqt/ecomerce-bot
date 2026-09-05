@@ -1,7 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AdminLayout, MerchantLayout, MemberLayout } from '@/layouts';
-import { ProtectedRoute, PaidRouteGuard, AdminRouteGuard, useAuth } from '@/features/auth';
+import { AdminLayout, MerchantLayout, MemberLayout, DynamicRoleLayout } from '@/layouts';
+import { ProtectedRoute, MerchantRouteGuard, AdminRouteGuard, useAuth } from '@/features/auth';
 import { PageLoader } from '@/components/ui/feedback/PageLoader';
 
 // Carregamento Sob Demanda das Páginas (Code Splitting / Lazy Loading)
@@ -21,6 +21,8 @@ const TrafficAnalyticsPage = lazy(() => import('@/features/analytics/pages/Traff
 const AdminGrowthPage = lazy(() => import('@/features/admin/pages/AdminGrowthPage'));
 const AdminEnterpriseLeadsPage = lazy(() => import('@/features/admin/pages/AdminEnterpriseLeadsPage'));
 const AdminAiCapacityPage = lazy(() => import('@/features/admin/pages/AdminAiCapacityPage'));
+
+const MERCHANT_ROLES = new Set(['TENANT_ADMIN', 'CATALOG_OPERATOR', 'MERCHANT', 'OWNER']);
 
 /**
  * Componente de Redirecionamento Inteligente por Perfil de Usuário
@@ -42,7 +44,10 @@ const RootRoleRedirect: React.FC = () => {
   }
 
   const plan = user.plan?.toLowerCase() || 'free';
-  if (plan === 'pro' || plan === 'enterprise') {
+  const role = user.role?.toUpperCase() || '';
+  const isMerchant = plan === 'pro' || plan === 'enterprise' || MERCHANT_ROLES.has(role);
+
+  if (isMerchant) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -74,18 +79,24 @@ export const AppRoutes: React.FC = () => {
           </Route>
         </Route>
 
-        {/* 2. PORTAL DO LOJISTA (Merchant E-commerce Tools: Pro / Enterprise / Admin) */}
-        <Route element={<PaidRouteGuard featureKey="dashboard" />}>
+        {/* 2. PORTAL DO LOJISTA (Ferramentas Exclusivas: Pro / Enterprise / Admin) */}
+        <Route element={<MerchantRouteGuard featureKey="dashboard" />}>
           <Route element={<MerchantLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/catalog" element={<CatalogPage />} />
-            <Route path="/products" element={<Navigate to="/catalog" replace />} />
             <Route path="/integrations" element={<IntegrationsPage />} />
             <Route path="/credentials" element={<Navigate to="/integrations" replace />} />
             <Route path="/analytics/traffic" element={<TrafficAnalyticsPage />} />
             <Route path="/traffic" element={<Navigate to="/analytics/traffic" replace />} />
             <Route path="/metering" element={<MeteringDashboardPage />} />
             <Route path="/billing/metering" element={<Navigate to="/metering" replace />} />
+          </Route>
+        </Route>
+
+        {/* 3. PÁGINAS COMPARTILHADAS (Multi-Perfil: Member / Merchant / Admin via Shell Adaptativo) */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<DynamicRoleLayout />}>
+            <Route path="/catalog" element={<CatalogPage />} />
+            <Route path="/products" element={<Navigate to="/catalog" replace />} />
             <Route path="/wallet" element={<WalletPage />} />
             <Route path="/billing" element={<Navigate to="/wallet" replace />} />
             <Route path="/subscriptions" element={<Navigate to="/wallet" replace />} />
@@ -94,7 +105,7 @@ export const AppRoutes: React.FC = () => {
           </Route>
         </Route>
 
-        {/* 3. PORTAL DO USUÁRIO FREE / DEGUSTAÇÃO */}
+        {/* 4. PORTAL DO USUÁRIO FREE / DEGUSTAÇÃO (Exclusivo Member) */}
         <Route element={<ProtectedRoute />}>
           <Route element={<MemberLayout />}>
             <Route path="/demo" element={<LiveDemoPage />} />
@@ -110,3 +121,4 @@ export const AppRoutes: React.FC = () => {
 };
 
 export default AppRoutes;
+
