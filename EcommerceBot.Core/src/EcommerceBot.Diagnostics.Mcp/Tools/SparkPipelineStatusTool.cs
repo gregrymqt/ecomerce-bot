@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using EcommerceBot.Diagnostics.Mcp.Common;
 using EcommerceBot.Diagnostics.Mcp.Protocol;
 
 namespace EcommerceBot.Diagnostics.Mcp.Tools;
@@ -159,20 +160,5 @@ public class SparkPipelineStatusTool : ISystemDiagnosticTool
         };
     }
 
-    private static string? FindWorkspaceRoot()
-    {
-        var current = new DirectoryInfo(Directory.GetCurrentDirectory());
-        while (current != null)
-        {
-            if (File.Exists(Path.Combine(current.FullName, "EcommerceBot.sln")) ||
-                Directory.Exists(Path.Combine(current.FullName, ".agents")))
-            {
-                return current.FullName;
-            }
-
-            current = current.Parent;
-        }
-
-        return null;
-    }
+    private static string? FindWorkspaceRoot() => WorkspaceResolver.FindWorkspaceRoot();
 }

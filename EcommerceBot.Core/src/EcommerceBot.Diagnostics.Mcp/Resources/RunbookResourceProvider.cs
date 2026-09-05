@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using EcommerceBot.Diagnostics.Mcp.Common;
 using EcommerceBot.Diagnostics.Mcp.Protocol;
 
 namespace EcommerceBot.Diagnostics.Mcp.Resources;
@@ -139,16 +140,14 @@ public class RunbookResourceProvider
 
     private static string? FindRunbooksDirectory()
     {
-        var current = new DirectoryInfo(Directory.GetCurrentDirectory());
-        while (current != null)
+        var root = WorkspaceResolver.FindWorkspaceRoot();
+        if (root != null)
         {
-            var candidate = Path.Combine(current.FullName, "docs", "runbooks");
+            var candidate = Path.Combine(root, "docs", "runbooks");
             if (Directory.Exists(candidate))
             {
                 return candidate;
             }
-
-            current = current.Parent;
         }
 
         return null;
@@ -156,16 +155,14 @@ public class RunbookResourceProvider
 
     private static string? FindReportsDirectory()
     {
-        var current = new DirectoryInfo(Directory.GetCurrentDirectory());
-        while (current != null)
+        var root = WorkspaceResolver.FindWorkspaceRoot();
+        if (root != null)
         {
-            var candidate = Path.Combine(current.FullName, "docs", "notebooklm", "reports");
+            var candidate = Path.Combine(root, "docs", "notebooklm", "reports");
             if (Directory.Exists(candidate))
             {
                 return candidate;
             }
-
-            current = current.Parent;
         }
 
         return null;

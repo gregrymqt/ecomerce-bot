@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using EcommerceBot.Diagnostics.Mcp.Common;
 using EcommerceBot.Diagnostics.Mcp.Protocol;
 
 namespace EcommerceBot.Diagnostics.Mcp.Tools;
@@ -171,7 +172,7 @@ public class ErrorLogReaderTool : ISystemDiagnosticTool
     private static List<string> FindErrorLogFiles()
     {
         var candidates = new List<string>();
-        var searchRoots = new[]
+        var searchRoots = new List<string>
         {
             Directory.GetCurrentDirectory(),
             Path.Combine(Directory.GetCurrentDirectory(), "logs"),
@@ -179,6 +180,13 @@ public class ErrorLogReaderTool : ISystemDiagnosticTool
             Path.Combine(Directory.GetCurrentDirectory(), "..", "EcommerceBot.Api", "logs"),
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs")
         };
+
+        var root = WorkspaceResolver.FindWorkspaceRoot();
+        if (root != null)
+        {
+            searchRoots.Add(Path.Combine(root, "logs"));
+            searchRoots.Add(Path.Combine(root, "EcommerceBot.Core", "src", "EcommerceBot.Api", "logs"));
+        }
 
         foreach (var dir in searchRoots)
         {
