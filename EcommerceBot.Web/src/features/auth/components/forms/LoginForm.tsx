@@ -11,6 +11,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { GoogleAuthButton } from '../sso/GoogleAuthButton';
 import { EnterpriseSsoButton } from '../sso/EnterpriseSsoButton';
 import { EnterpriseSsoModal } from '../sso/EnterpriseSsoModal';
+import { ForgotPasswordModal } from '../modals/ForgotPasswordModal';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/display/Card';
 import { Alert } from '@/components/ui/feedback/Alert';
@@ -32,6 +33,8 @@ export interface LoginFormProps {
   onSuccess?: () => void;
   /** Callback para alternar para a tela/modo de Registro */
   onSwitchToRegister?: () => void;
+  /** E-mail inicial para pré-preenchimento (ex: vindo de redefinição de senha) */
+  initialEmail?: string;
   /** Classes CSS adicionais para o container principal */
   className?: string;
   /** Define se o formulário deve ser encapsulado no componente Card. Padrão: true */
@@ -46,6 +49,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   onLogin,
   onSuccess,
   onSwitchToRegister,
+  initialEmail = '',
   className,
   showCard = true,
 }) => {
@@ -53,13 +57,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
   const [formData, setFormData] = useState<LoginFormData>({
     tenant: '',
-    email: '',
+    email: initialEmail,
     password: '',
   });
 
   const [internalShowPassword, setInternalShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isSsoModalOpen, setIsSsoModalOpen] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
   const isLoading = propsIsLoading ?? authIsLoading;
   const isPasswordVisible = propsShowPassword ?? internalShowPassword;
@@ -218,15 +223,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           />
 
           <div className="flex justify-end pt-1">
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-              }}
-              className="text-xs sm:text-sm font-medium text-indigo-400 hover:text-indigo-300 hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-md"
+            <button
+              type="button"
+              onClick={() => setIsForgotPasswordOpen(true)}
+              className="text-xs sm:text-sm font-medium text-indigo-400 hover:text-indigo-300 hover:underline min-h-[44px] inline-flex items-center focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-md cursor-pointer"
             >
               Esqueceu a senha?
-            </a>
+            </button>
           </div>
         </div>
 
@@ -271,6 +274,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       <EnterpriseSsoModal
         isOpen={isSsoModalOpen}
         onClose={() => setIsSsoModalOpen(false)}
+        initialEmail={formData.email}
+      />
+
+      {/* Modal de Recuperação de Senha */}
+      <ForgotPasswordModal
+        key={isForgotPasswordOpen ? 'open' : 'closed'}
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
         initialEmail={formData.email}
       />
 

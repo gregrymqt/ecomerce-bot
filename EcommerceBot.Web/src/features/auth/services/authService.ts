@@ -17,6 +17,9 @@ import type {
   AuthTokenResponse,
   EnterpriseLeadPayload,
   EnterpriseLeadResponse,
+  ForgotPasswordPayload,
+  ResetPasswordPayload,
+  ResetPasswordResponse,
 } from '../types/auth.types';
 
 export const authService = {
@@ -82,6 +85,25 @@ export const authService = {
    */
   async submitEnterpriseLead(payload: EnterpriseLeadPayload): Promise<EnterpriseLeadResponse> {
     const response = await apiClient.post<EnterpriseLeadResponse>('/api/v1/auth/sso-enterprise/lead', payload);
+    return response.data;
+  },
+
+  /**
+   * Solicita o envio de link de recuperação de senha por e-mail.
+   */
+  async forgotPassword(payload: ForgotPasswordPayload): Promise<{ message: string }> {
+    const response = await apiClient.post<{ message: string }>('/api/v1/auth/forgot-password', payload);
+    return response.data;
+  },
+
+  /**
+   * Define uma nova senha a partir de um token de recuperação válido.
+   */
+  async resetPassword(payload: ResetPasswordPayload): Promise<ResetPasswordResponse> {
+    const response = await apiClient.post<ResetPasswordResponse>('/api/v1/auth/reset-password', {
+      token: payload.token,
+      newPassword: payload.newPassword,
+    });
     return response.data;
   },
 };

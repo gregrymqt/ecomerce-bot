@@ -429,6 +429,8 @@
           "POST api/v1/[controller]/register",
           "POST api/v1/[controller]/login",
           "POST api/v1/[controller]/logout",
+          "POST api/v1/[controller]/forgot-password",
+          "POST api/v1/[controller]/reset-password",
           "GET api/v1/[controller]/me",
           "PUT api/v1/[controller]/me",
           "GET api/v1/[controller]/google/login",

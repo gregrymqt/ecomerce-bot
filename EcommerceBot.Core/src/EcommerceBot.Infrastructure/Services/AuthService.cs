@@ -4,11 +4,17 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
 using EcommerceBot.Application.DTOs.Auth;
+using EcommerceBot.Application.DTOs.Emails;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
 using EcommerceBot.Infrastructure.Options;
+using MassTransit;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using BCrypt.Net;
@@ -19,17 +25,29 @@ namespace EcommerceBot.Infrastructure.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly ITenantRepository _tenantRepository;
+        private readonly IRedisService _redisService;
+        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IWebHostEnvironment _env;
+        private readonly ILogger<AuthService> _logger;
         private readonly JwtOptions _jwtOptions;
         private readonly SecurityOptions _securityOptions;
 
         public AuthService(
             IUserRepository userRepository, 
             ITenantRepository tenantRepository, 
+            IRedisService redisService,
+            IPublishEndpoint publishEndpoint,
+            IWebHostEnvironment env,
+            ILogger<AuthService> logger,
             IOptions<JwtOptions> jwtOptions,
             IOptions<SecurityOptions> securityOptions)
         {
             _userRepository = userRepository;
             _tenantRepository = tenantRepository;
+            _redisService = redisService;
+            _publishEndpoint = publishEndpoint;
+            _env = env;
+            _logger = logger;
             _jwtOptions = jwtOptions.Value;
             _securityOptions = securityOptions.Value;
         }
@@ -226,6 +244,98 @@ namespace EcommerceBot.Infrastructure.Services
             }
 
             return currentUser;
+        }
+
+        public async Task ForgotPasswordAsync(string email, string? clientOrigin = null)
+        {
+            if (string.IsNullOrWhiteSpace(email)) return;
+
+            var normalizedEmail = email.Trim().ToLowerInvariant();
+            var user = await _userRepository.GetByEmailAsync(normalizedEmail);
+
+            // Prevenção contra User Enumeration Attack: Resposta idêntica mesmo se usuário não existir
+            if (user == null || !user.IsActive)
+            {
+                _logger.LogInformation("Password reset requested for non-existent or inactive email: {Email}", normalizedEmail);
+                return;
+            }
+
+            // Geração de token criptograficamente seguro (32 bytes = 64 caracteres hexadecimais)
+            var tokenBytes = RandomNumberGenerator.GetBytes(32);
+            var token = Convert.ToHexString(tokenBytes).ToLowerInvariant();
+
+            var session = new PasswordResetSession
+            {
+                UserId = user.Id,
+                TenantId = user.TenantId,
+                Email = user.Email,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            var redisKey = $"auth:password_reset:{token}";
+
+            // TTL de 15 minutos estrito no Redis
+            await _redisService.SetAsync(redisKey, session, TimeSpan.FromMinutes(15));
+
+            var baseUrl = !string.IsNullOrWhiteSpace(clientOrigin)
+                ? clientOrigin.TrimEnd('/')
+                : (_env.IsDevelopment() ? "http://localhost:5173" : "https://app.ecommercebot.com");
+
+            var resetUrl = $"{baseUrl}/auth/reset-password?token={token}";
+
+            // Publica o evento assíncrono para envio de e-mail via MassTransit / Resend
+            await _publishEndpoint.Publish(new EmailEventPayload
+            {
+                TenantId = user.TenantId,
+                Event = "auth.password_reset",
+                RecipientEmail = user.Email,
+                RecipientName = user.FullName ?? "Usuário",
+                IdempotencyKey = $"email:pwd_reset:{user.Id}:{DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 60}",
+                Data = new Dictionary<string, object>
+                {
+                    { "resetUrl", resetUrl },
+                    { "expiresInMinutes", 15 },
+                    { "email", user.Email }
+                }
+            }, ctx =>
+            {
+                ctx.SetRoutingKey("email_notifications");
+            });
+
+            if (_env.IsDevelopment())
+            {
+                _logger.LogInformation("🔗 [DEV LOG] Link de redefinição de senha para {Email}: {ResetUrl}", user.Email, resetUrl);
+            }
+        }
+
+        public async Task<string> ResetPasswordAsync(ResetPasswordRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Token))
+                throw new ArgumentException("O token de recuperação é obrigatório.");
+
+            if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 6)
+                throw new ArgumentException("A nova senha deve conter no mínimo 6 caracteres.");
+
+            var redisKey = $"auth:password_reset:{request.Token.Trim()}";
+            var session = await _redisService.GetAsync<PasswordResetSession>(redisKey);
+
+            if (session == null || session.UserId == Guid.Empty)
+                throw new ArgumentException("O link de recuperação é inválido ou expirou. Solicite um novo link.");
+
+            var user = await _userRepository.GetByIdAsync(session.UserId);
+            if (user == null || !user.IsActive)
+                throw new InvalidOperationException("Usuário não encontrado ou inativo.");
+
+            // Atualiza o hash da senha usando BCrypt Work Factor 12
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 12);
+            await _userRepository.UpdateAsync(user);
+
+            // Destrói o token do Redis imediatamente (Proteção Single-Use)
+            await _redisService.RemoveAsync(redisKey);
+
+            _logger.LogInformation("Senha redefinida com sucesso para o usuário {UserId} ({Email})", user.Id, user.Email);
+
+            return user.Email;
         }
     }
 }

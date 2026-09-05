@@ -126,3 +126,20 @@ export interface RegisterFormData {
   password: string;
   confirmPassword: string;
 }
+
+// --- RECUPERAÇÃO DE SENHA ---
+
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  token: string;
+  newPassword: string;
+}
+
+export interface ResetPasswordResponse {
+  message: string;
+  email?: string;
+}
+

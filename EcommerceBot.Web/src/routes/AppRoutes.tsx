@@ -6,6 +6,7 @@ import { PageLoader } from '@/components/ui/feedback/PageLoader';
 
 // Carregamento Sob Demanda das Páginas (Code Splitting / Lazy Loading)
 const AuthPage = lazy(() => import('@/features/auth/pages/AuthPage'));
+const ResetPasswordPage = lazy(() => import('@/features/auth/pages/ResetPasswordPage'));
 const GoogleCallbackPage = lazy(() => import('@/features/auth/pages/GoogleCallbackPage'));
 const CheckoutPage = lazy(() => import('@/features/checkout/pages/CheckoutPage'));
 const LiveDemoPage = lazy(() => import('@/features/live-demo/pages/LiveDemoPage'));
@@ -58,6 +59,7 @@ export const AppRoutes: React.FC = () => {
 
         {/* Rotas Públicas */}
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
 

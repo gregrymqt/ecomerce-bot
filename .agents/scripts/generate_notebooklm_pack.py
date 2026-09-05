@@ -329,6 +329,10 @@ cfg.UseRawJsonSerializer();
 | `shopify_bulk_sync` | Sincronização em lote de catálogo Shopify | `EcommerceBot.Core` | `ShopifyBulkSyncConsumer` (C#) |
 | `nuvemshop_bulk_sync` | Sincronização em lote de catálogo Nuvemshop | `EcommerceBot.Core` | `NuvemshopBulkSyncConsumer` (C#) |
 
+### Padrão Canônico de Templates de E-mail
+- **C# Core API:** Proibido HTML inline. Todo e-mail utiliza views Razor `.cshtml` em `EcommerceBot.Core/src/EcommerceBot.Api/Views/Emails` associadas a ViewModels tipadas em `EcommerceBot.Core/src/EcommerceBot.Application/ViewModels/Emails` renderizadas via `IRazorTemplateRenderer`.
+- **Python Worker:** Proibido HTML inline. Relatórios e notificações HTML utilizam templates `.html` em `EcommerceBot.Worker/app/templates` renderizados via Jinja2 com autoescape ativado (`render_jinja_template`).
+
 ---
 
 ## ⚡ 2. Redis: Cache, Idempotência, Rate Limit & SSE
@@ -365,6 +369,7 @@ cfg.UseRawJsonSerializer();
 2. **Prevenção de SSRF:** O scraper bloqueia esquemas não-HTTP e endereços IP de loopback (`127.0.0.1`, `localhost`), redes privadas RFC 1918 (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`) e metadados de nuvem (`169.254.169.254`).
 3. **Validação de HMAC em Tempo Constante:** Prevenção de timing attacks via `CryptographicOperations.FixedTimeEquals`.
 4. **Zero Acesso a Banco no Python Worker:** O microsserviço Python comunica-se exclusivamente através do RabbitMQ e Redis.
+5. **Zero HTML Inline em E-mails:** Proibido hardcoding de HTML em C# ou Python. C# utiliza views Razor (`.cshtml` em `EcommerceBot.Api/Views/Emails` com ViewModels em `EcommerceBot.Application/ViewModels/Emails`) e Python utiliza Jinja2 com autoescape (`.html` em `EcommerceBot.Worker/app/templates`).
 """
 
 def generate_master_bundle(p1, p2, p3, p4, stats):

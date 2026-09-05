@@ -11,5 +11,7 @@ namespace EcommerceBot.Application.Interfaces
         Task<UserResponse> UpdateProfileAsync(Guid userId, UpdateUserRequest request);
         Task RevokeTokenAsync(string token);
         Task<AuthenticatedUser> ResolveUserActivePlanAsync(AuthenticatedUser currentUser, string? tenantId);
+        Task ForgotPasswordAsync(string email, string? clientOrigin = null);
+        Task<string> ResetPasswordAsync(ResetPasswordRequest request);
     }
 }

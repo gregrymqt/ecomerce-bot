@@ -77,6 +77,54 @@ public class AuthController : BaseApiController
         return Ok(new { Message = "Logout realizado com sucesso." });
     }
 
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    [RateLimit(MaxRequests = 5, WindowSeconds = 60, BlockDurationSeconds = 300)]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var origin = Request.Headers.Origin.FirstOrDefault() ?? Request.Headers.Referer.FirstOrDefault();
+        await _authService.ForgotPasswordAsync(request.Email, origin);
+
+        return Ok(new
+        {
+            Message = "Se o e-mail informado estiver cadastrado, um link de recuperação foi enviado. Verifique sua caixa de entrada e spam."
+        });
+    }
+
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    [RateLimit(MaxRequests = 5, WindowSeconds = 60, BlockDurationSeconds = 300)]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            var userEmail = await _authService.ResetPasswordAsync(request);
+            return Ok(new
+            {
+                Message = "Senha redefinida com sucesso! Faça login com sua nova senha.",
+                Email = userEmail
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { Message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { Message = ex.Message });
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new { Message = "Erro ao processar a redefinição de senha." });
+        }
+    }
+
     [HttpGet("me")]
     public async Task<IActionResult> GetMe([FromHeader(Name = "X-Tenant-ID")] string? tenantId)
     {

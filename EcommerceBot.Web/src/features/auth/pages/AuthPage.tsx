@@ -5,9 +5,11 @@
  */
 
 import React from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AuthLeftPanel, LoginForm, RegisterForm } from '../components';
 import { useAuthForm } from '../hooks/useAuthForm';
 import { SEO } from '@/components/common/SEO';
+import { Alert } from '@/components/ui/feedback/Alert';
 import { cn } from '@/lib/utils';
 
 export interface AuthPageProps {
@@ -19,6 +21,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   initialMode = 'login',
   className,
 }) => {
+  const [searchParams] = useSearchParams();
+  const emailParam = searchParams.get('email') || '';
+  const isResetSuccess = searchParams.get('reset') === 'success';
+
   const {
     mode,
     setMode,
@@ -93,15 +99,26 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             </button>
           </div>
 
+          {/* Alerta de Sucesso na Redefinição de Senha */}
+          {isResetSuccess && mode === 'login' && (
+            <div className="mb-4">
+              <Alert variant="success" title="Senha Atualizada">
+                Sua senha foi redefinida com sucesso! Faça login com a sua nova senha.
+              </Alert>
+            </div>
+          )}
+
           {/* Renderização Condicional dos Formulários */}
           {mode === 'login' ? (
             <LoginForm
+              key={emailParam || 'login-form'}
               showCard={false}
               isLoading={isLoading}
               showPassword={showPassword}
               onTogglePassword={togglePasswordVisibility}
               onSubmit={handleLogin}
               onSwitchToRegister={() => setMode('register')}
+              initialEmail={emailParam}
             />
           ) : (
             <RegisterForm

@@ -182,6 +182,19 @@ namespace EcommerceBot.Infrastructure.Messaging
                         return ("❌ Falha na Sincronização de Loja", html);
                     }
 
+                    case "auth.password_reset":
+                    case "password.reset":
+                    {
+                        var model = new PasswordResetEmailViewModel
+                        {
+                            RecipientName = recipientName,
+                            ResetUrl = data.TryGetValue("resetUrl", out var rUrl) ? rUrl.ToString() ?? "" : "",
+                            ExpiresInMinutes = data.TryGetValue("expiresInMinutes", out var exp) ? exp.ToString() ?? "15" : "15"
+                        };
+                        var html = await _templateRenderer.RenderViewToStringAsync("/Views/Emails/PasswordReset.cshtml", model);
+                        return ("🔐 Redefinição de Senha — E-commerce Bot", html);
+                    }
+
                     default:
                     {
                         string defaultSubject = $"Notificação: {payload.Event}";

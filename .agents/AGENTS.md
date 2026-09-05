@@ -15,6 +15,7 @@ A violação de qualquer uma das regras abaixo invalida a entrega e interrompe a
 6. **PROIBIDO validação insegura de HMAC:** NUNCA compare assinaturas de webhooks com operadores de igualdade padrão (`==` ou `.Equals()`). Use exclusivamente `CryptographicOperations.FixedTimeEquals`.
 7. **PROIBIDO execução arbitrária em ferramentas MCP:** Ferramentas expostas via Model Context Protocol DEVEM ser estritamente Read-Only e sanitizadas. É proibido executar T-SQL dinâmico (`EXEC`, `INSERT`, `UPDATE`, `DELETE`, `DROP`), comandos de escrita no Redis (`FLUSH`, `DEL`) ou comandos de shell arbitrários. Consultas a banco devem usar exclusivamente DMVs (`sys.dm_*`) com `WITH (NOLOCK)`.
 8. **PROIBIDO NotebookLM no caminho crítico de produção:** O Google NotebookLM destina-se exclusivamente ao plano de pesquisa, auditoria de métricas e estudo offline. É proibido depender de chamadas síncronas ao NotebookLM para servir requisições de clientes no SaaS.
+9. **PROIBIDO HTML inline / hardcoded para e-mails:** NUNCA concatene ou declare strings HTML diretamente no código C# ou Python para envio de e-mails. No Python (`EcommerceBot.Worker`), templates DEVEM ser criados exclusivamente como arquivos `.html` na pasta `EcommerceBot.Worker/app/templates` e renderizados via Jinja2 (`render_jinja_template`). No C# (`EcommerceBot.Core`), templates DEVEM ser criados exclusivamente como views Razor `.cshtml` na pasta `EcommerceBot.Core/src/EcommerceBot.Api/Views/Emails` acompanhados de sua ViewModel fortemente tipada em `EcommerceBot.Core/src/EcommerceBot.Application/ViewModels/Emails` e renderizados via `IRazorTemplateRenderer`.
 
 ---
 
@@ -135,6 +136,17 @@ O **E-commerce Bot** é uma plataforma SaaS monorepo dividida em 4 pilares:
   - `email_notifications`: Disparos transacionais via Resend.
   - `payments_process_queue`: Conciliação assíncrona de pagamentos Mercado Pago e concessão de benefícios SaaS.
   - `nuvemshop_bulk_sync`: Sincronização em lote de catálogo com a Nuvemshop.
+
+### 5.1. Padrão Canônico de E-mails e Templates (C# Razor & Python Jinja2)
+Para garantir sanitização XSS, separação absoluta de responsabilidades, preview visual e manutenibilidade, o ecossistema proíbe HTML inline e impõe:
+
+| Stack / Microsserviço | Localização do Template | Localização do Modelo de Dados | Mecanismo de Renderização |
+|---|---|---|---|
+| **C# Core API (`EcommerceBot.Core`)** | `EcommerceBot.Core/src/EcommerceBot.Api/Views/Emails/{Nome}.cshtml` | `EcommerceBot.Core/src/EcommerceBot.Application/ViewModels/Emails/{Nome}EmailViewModel.cs` | `IRazorTemplateRenderer.RenderViewToStringAsync("/Views/Emails/{Nome}.cshtml", model)` |
+| **Python Worker (`EcommerceBot.Worker`)** | `EcommerceBot.Worker/app/templates/{nome}.html` | Dicionário tipado / Schema Pydantic | `render_jinja_template("{nome}.html", context)` via `jinja2.Environment(autoescape=True)` |
+
+- **No C# (.NET):** Todo novo tipo de e-mail consumido por `EmailNotificationConsumer` (ou gerado na Core API) DEVE instanciar uma ViewModel dedicada em `EcommerceBot.Application.ViewModels.Emails` e renderizar sua view `.cshtml` correspondente via `IRazorTemplateRenderer`. É proibido concatenar strings HTML em C#.
+- **No Python:** Todo e-mail ou documento HTML gerado pelo Worker DEVE residir em `EcommerceBot.Worker/app/templates` e ser renderizado exclusivamente via `render_jinja_template`, com `autoescape` ativo contra injeção de HTML/XSS. É proibido usar f-strings com tags HTML em código Python.
 
 ---
 

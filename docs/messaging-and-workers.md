@@ -184,3 +184,37 @@ O `MLWorker` processa o histórico transacional do tenant e gera inteligência p
 - **Segmentação RFM (Recência, Frequência, Valor Monetário):** Classifica clientes em clusters (ex: *VIP/Champions*, *Leais*, *Em Risco*, *Hibernando*, *Perdidos*).
 - **Preditor de Churn:** Modelo supervisionado de classificação que calcula a probabilidade (0.0 a 1.0) de o cliente não voltar a comprar nos próximos 30/60 dias.
 - **Previsão de LTV (Lifetime Value):** Modelo de regressão que estima o valor financeiro total que cada cliente trará nos próximos 12 meses.
+
+---
+
+## 📧 6. Padrão Arquitetural de Templates de E-mail (Razor C# & Jinja2 Python)
+
+Para manter alta segurança contra injeção de HTML/XSS, tipagem estrita e total separação entre lógica de negócio/mensageria e a camada de apresentação, **é terminantemente proibido inserir HTML inline ou interpolado diretamente em código C# ou Python**.
+
+### 6.1. C# Core API (`EcommerceBot.Core`)
+No ecossistema .NET, todo e-mail transacional despachado via fila `email_notifications` segue a arquitetura em 3 elementos:
+
+1. **ViewModel Fortemente Tipada:** Reside estritamente em `EcommerceBot.Core/src/EcommerceBot.Application/ViewModels/Emails/{Nome}EmailViewModel.cs`.
+2. **View Razor (.cshtml):** Reside estritamente em `EcommerceBot.Core/src/EcommerceBot.Api/Views/Emails/{Nome}.cshtml` com a diretiva `@model EcommerceBot.Application.ViewModels.Emails.{Nome}EmailViewModel`.
+3. **Renderizador Razor:** O consumidor (`EmailNotificationConsumer`) injeta `IRazorTemplateRenderer` e invoca:
+   ```csharp
+   var model = new PasswordResetEmailViewModel { ... };
+   var html = await _templateRenderer.RenderViewToStringAsync("/Views/Emails/PasswordReset.cshtml", model);
+   ```
+
+### 6.2. Python Worker (`EcommerceBot.Worker`)
+No Worker assíncrono em Python, toda notificação, relatório analítico ou documento HTML formatado gerado pelo serviço deve utilizar Jinja2:
+
+1. **Localização dos Templates:** Arquivos `.html` puros devem residir estritamente na pasta `EcommerceBot.Worker/app/templates/{nome}.html`.
+2. **Renderizador Centralizado:** Utilizar a função auxiliar `render_jinja_template` de `app/core/shared/templates.py`:
+   ```python
+   from app.core.shared.templates import render_jinja_template
+
+   html_content = render_jinja_template("ml_analytics_summary.html", {
+       "tenant_id": payload.tenant_id,
+       "churn_rate": 0.042,
+       "vip_count": 128
+   })
+   ```
+3. **Prevenção de XSS:** O ambiente Jinja2 é instanciado com `autoescape=select_autoescape(["html", "xml", "htm"])`, garantindo que variáveis textuais sejam escapadas automaticamente.
+

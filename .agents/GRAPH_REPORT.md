@@ -29,7 +29,7 @@
 - **AdminGrowthController** (`/api/v1/admin`): 5 endpoints mapeados.
 - **AiCreditsWebhookPayload** (`/api/v1/webhooks/ai-credits`): 1 endpoints mapeados.
 - **AnalyticsController** (`/api/v1/[controller]`): 2 endpoints mapeados.
-- **AuthController** (`/api/v1/[controller]`): 8 endpoints mapeados.
+- **AuthController** (`/api/v1/[controller]`): 10 endpoints mapeados.
 - **CheckoutController** (`/api/v1/[controller]`): 5 endpoints mapeados.
 - **EmailWebhookController** (`/api/v1/emails/webhooks`): 1 endpoints mapeados.
 - **IntegrationsController** (`/api/v1/integrations`): 4 endpoints mapeados.
