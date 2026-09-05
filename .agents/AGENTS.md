@@ -45,6 +45,8 @@ NUNCA carregue todas as skills simultaneamente. Inspecione e ative estritamente 
 | **Interface / Web** | `.agents/skills/impeccable/SKILL.md` | Ao desenvolver páginas React, Tailwind, formulários, A11y e SSE. |
 | **Comandos / Terminal** | `.agents/skills/token-density/SKILL.md` | Padrão obrigatório para execuções concisas no terminal (RTK pattern). |
 | **Integrações / Shopify** | `.agents/skills/shopify-expert/SKILL.md` | Ao implementar ou refatorar endpoints Shopify (GraphQL 2024+, OAuth 2.0, Webhooks HMAC). |
+| **Pagamentos / Mercado Pago** | `.agents/skills/mercadopago-expert/SKILL.md` | Ao mexer em checkout transparente (PIX/Cartão), assinaturas recorrentes SaaS, recargas de IA, conciliação e webhooks Mercado Pago. |
+| **Integrações / Nuvemshop** | `.agents/skills/nuvemshop-expert/SKILL.md` | Ao implementar ou refatorar conexões Nuvemshop (OAuth 2.0, BYOK AES-256, REST V1, Webhooks Thin e Bulk Sync RabbitMQ). |
 
 ### 🧭 Navegação via Grafo (Zero Busca Cega)
 
@@ -102,6 +104,10 @@ O **E-commerce Bot** é uma plataforma SaaS monorepo dividida em 4 pilares:
 ### 3.2. Idempotência e Webhooks
 - **Idempotência no Redis:** Chave registrada com TTL de 24h via `SET NX` (`StringSetAsync($"webhook:idempotency:{id}", "processed", TimeSpan.FromHours(24), When.NotExists)`). Duplicidades respondem imediatamente `200 OK`.
 - **Tempo Constante:** Validações de HMAC devem usar `CryptographicOperations.FixedTimeEquals`.
+- **Especificações Canônicas por Provedor:**
+  - **Mercado Pago** (`x-signature`, manifesto `ts`/`v1`, conciliação e assinaturas): consulte estritamente `.agents/skills/mercadopago-expert/SKILL.md`.
+  - **Nuvemshop** (`X-LinkedStore-HMAC-SHA256`, Thin Payload, OAuth 2.0 e Bulk Sync): consulte estritamente `.agents/skills/nuvemshop-expert/SKILL.md`.
+  - **Shopify** (`X-Shopify-Hmac-Sha256`, GraphQL 2024+ e Bulk API): consulte estritamente `.agents/skills/shopify-expert/SKILL.md`.
 
 ### 3.3. Proteção Anti-SSRF
 - Esquemas permitidos: estritamente `http://` e `https://`.
@@ -127,7 +133,8 @@ O **E-commerce Bot** é uma plataforma SaaS monorepo dividida em 4 pilares:
   - `queue:ecommerce` / `queue:demo_ecommerce`: Entrada de extração de produtos.
   - `ecommerce_processed_queue`: Retorno assíncrono consumido por `ProcessedProductConsumer` para persistência Dapper e disparo de SSE no Redis.
   - `email_notifications`: Disparos transacionais via Resend.
-  - `nuvemshop_bulk_sync`: Sincronização em lote de catálogo.
+  - `payments_process_queue`: Conciliação assíncrona de pagamentos Mercado Pago e concessão de benefícios SaaS.
+  - `nuvemshop_bulk_sync`: Sincronização em lote de catálogo com a Nuvemshop.
 
 ---
 
