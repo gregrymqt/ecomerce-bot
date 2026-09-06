@@ -1,5 +1,5 @@
 /**
- * src/features/wallet/components/CreditPackagesGrid.tsx
+ * src/features/wallet/components/cards/CreditPackagesGrid.tsx
  *
  * Vitrine de Pacotes de Recarga de Créditos da Carteira (Ledger Pattern).
  * Elimina completamente a semântica de assinaturas mensais/anuais, exibindo
@@ -11,7 +11,7 @@ import React from 'react';
 import { Zap, Check, Sparkles, Shield, ArrowRight } from 'lucide-react';
 import { Card } from '@/components/ui/display/Card';
 import { Button } from '@/components/ui/Button';
-import type { CreditPackagesGridProps, RechargePackage } from '../types';
+import type { CreditPackagesGridProps, RechargePackage } from '../../types';
 
 export const CreditPackagesGrid: React.FC<CreditPackagesGridProps> = ({
   packages = [],

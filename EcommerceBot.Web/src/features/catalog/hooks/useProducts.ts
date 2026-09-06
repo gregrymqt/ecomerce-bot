@@ -42,7 +42,7 @@ export function useProducts(initialLimit = 20) {
       setProducts(data.items || []);
       setTotal(data.total || 0);
       setPages(data.pages || 1);
-    } catch (err) {
+    } catch (err: unknown) {
       setError(getErrorMessage(err, 'Erro ao carregar lista de produtos.'));
     } finally {
       setIsLoading(false);
@@ -50,37 +50,42 @@ export function useProducts(initialLimit = 20) {
   }, [statusFilter, searchTerm, page, limit]);
 
   useEffect(() => {
-    let isCancelled = false;
+    const controller = new AbortController();
+    let isCurrent = true;
 
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const data = await productService.getProducts({
+    productService
+      .getProducts(
+        {
           status: statusFilter || undefined,
           search: searchTerm || undefined,
           page,
           limit,
-        });
-        if (!isCancelled) {
+        },
+        controller.signal
+      )
+      .then((data) => {
+        if (isCurrent) {
           setProducts(data.items || []);
           setTotal(data.total || 0);
           setPages(data.pages || 1);
         }
-      } catch (err) {
-        if (!isCancelled) {
+      })
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        if ((err as { name?: string })?.name === 'CanceledError') return;
+        if (isCurrent) {
           setError(getErrorMessage(err, 'Erro ao carregar lista de produtos.'));
         }
-      } finally {
-        if (!isCancelled) {
+      })
+      .finally(() => {
+        if (isCurrent && !controller.signal.aborted) {
           setIsLoading(false);
         }
-      }
-    };
-
-    load();
+      });
 
     return () => {
-      isCancelled = true;
+      isCurrent = false;
+      controller.abort();
     };
   }, [statusFilter, searchTerm, page, limit]);
 

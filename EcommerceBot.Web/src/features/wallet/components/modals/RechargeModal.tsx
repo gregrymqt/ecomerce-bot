@@ -1,5 +1,5 @@
 /**
- * src/features/wallet/components/RechargeModal.tsx
+ * src/features/wallet/components/modals/RechargeModal.tsx
  *
  * Componente visual de apresentação (UI Pura) do Modal de Recargas.
  * Consome o hook customizado useRechargeModal para gerenciar toda a lógica de negócio,
@@ -9,13 +9,13 @@
 
 import React from 'react';
 import { Zap, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
-import { useRechargeModal } from '../hooks/useRechargeModal';
-import type { RechargeModalProps } from '../types';
+import { useRechargeModal } from '../../hooks/useRechargeModal';
+import type { RechargeModalProps } from '../../types';
 import { Modal } from '@/components/ui/overlay/Modal';
 import { Card } from '@/components/ui/display/Card';
 import { Button } from '@/components/ui/Button';
-import { PixRechargeTab } from './PixRechargeTab';
-import { CreditCardRechargeTab } from './CreditCardRechargeTab';
+import { PixRechargeTab } from '../tabs/PixRechargeTab';
+import { CreditCardRechargeTab } from '../tabs/CreditCardRechargeTab';
 
 export const RechargeModal: React.FC<RechargeModalProps> = ({
   isOpen,

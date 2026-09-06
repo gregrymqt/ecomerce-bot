@@ -100,34 +100,32 @@ export function useWallet(initialPage = 1, limit = 10): UseWalletReturn {
 
   // Efeito inicial para buscar o saldo
   useEffect(() => {
-    let isCancelled = false;
+    const controller = new AbortController();
 
     walletService
-      .getWalletBalance()
+      .getWalletBalance(controller.signal)
       .then((data) => {
-        if (!isCancelled) {
-          setBalance(data.balance_credits);
-        }
+        setBalance(data.balance_credits);
       })
       .catch((err: unknown) => {
-        if (!isCancelled) {
-          setError(getErrorMessage(err, 'Falha ao consultar o saldo da carteira.'));
-        }
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        if ((err as { name?: string })?.name === 'CanceledError') return;
+        setError(getErrorMessage(err, 'Falha ao consultar o saldo da carteira.'));
       })
       .finally(() => {
-        if (!isCancelled) {
+        if (!controller.signal.aborted) {
           setLoadingBalance(false);
         }
       });
 
     return () => {
-      isCancelled = true;
+      controller.abort();
     };
   }, []);
 
   // Efeito reativo para buscar o extrato quando a página ou o filtro mudar
   useEffect(() => {
-    let isCancelled = false;
+    const controller = new AbortController();
 
     const filters: StatementFilters = {
       page,
@@ -136,30 +134,28 @@ export function useWallet(initialPage = 1, limit = 10): UseWalletReturn {
     };
 
     walletService
-      .getWalletStatement(filters)
+      .getWalletStatement(filters, controller.signal)
       .then((data) => {
-        if (!isCancelled) {
-          setTransactions(data.transactions || []);
-          setTotalCount(data.total_count || 0);
+        setTransactions(data.transactions || []);
+        setTotalCount(data.total_count || 0);
 
-          if (typeof data.balance_credits === 'number') {
-            setBalance(data.balance_credits);
-          }
+        if (typeof data.balance_credits === 'number') {
+          setBalance(data.balance_credits);
         }
       })
       .catch((err: unknown) => {
-        if (!isCancelled) {
-          setError(getErrorMessage(err, 'Falha ao buscar o extrato da carteira.'));
-        }
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        if ((err as { name?: string })?.name === 'CanceledError') return;
+        setError(getErrorMessage(err, 'Falha ao buscar o extrato da carteira.'));
       })
       .finally(() => {
-        if (!isCancelled) {
+        if (!controller.signal.aborted) {
           setLoadingStatement(false);
         }
       });
 
     return () => {
-      isCancelled = true;
+      controller.abort();
     };
   }, [page, limit, typeFilter]);
 

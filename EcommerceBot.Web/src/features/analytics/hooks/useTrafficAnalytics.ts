@@ -46,24 +46,34 @@ export const useTrafficAnalytics = (enabled: boolean = true) => {
 
   useEffect(() => {
     if (!enabled) return;
-    let isMounted = true;
+    const controller = new AbortController();
+    let isCurrent = true;
 
-    const load = async () => {
-      try {
-        await fetchTrafficData();
-      } catch {
-        // Erro já tratado no state por fetchTrafficData
-      }
-    };
-
-    if (isMounted) {
-      load();
-    }
+    trafficAnalyticsService
+      .getTrafficOverview(days, undefined, controller.signal)
+      .then((res) => {
+        if (isCurrent) {
+          setOverview(res);
+        }
+      })
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        if ((err as { name?: string })?.name === 'CanceledError') return;
+        if (isCurrent) {
+          setError(getErrorMessage(err, 'Erro ao carregar métricas de tráfego do lojista.'));
+        }
+      })
+      .finally(() => {
+        if (isCurrent && !controller.signal.aborted) {
+          setLoadingTraffic(false);
+        }
+      });
 
     return () => {
-      isMounted = false;
+      isCurrent = false;
+      controller.abort();
     };
-  }, [enabled, fetchTrafficData]);
+  }, [days, enabled]);
 
   const handleCopySnippet = async () => {
     try {

@@ -146,9 +146,9 @@ export const settingsService = {
    * Obtém as configurações consolidadas ativas do Tenant (IA, Perfil da Loja, Faturamento).
    * Endpoint: GET /api/v1/settings
    */
-  getSettings: async (): Promise<TenantSettingsResponse> => {
+  getSettings: async (signal?: AbortSignal): Promise<TenantSettingsResponse> => {
     try {
-      const response = await apiClient.get<TenantSettingsBackendResponse>('/api/v1/settings');
+      const response = await apiClient.get<TenantSettingsBackendResponse>('/api/v1/settings', { signal });
       return mapBackendToFrontend(response.data);
     } catch (error: unknown) {
       const message = getErrorMessage(

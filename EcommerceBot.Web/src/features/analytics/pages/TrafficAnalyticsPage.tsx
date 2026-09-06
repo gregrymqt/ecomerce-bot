@@ -7,7 +7,8 @@
  */
 
 import React, { useState } from 'react';
-import { BrainCircuit, BarChart3, Loader2 } from 'lucide-react';
+import { BrainCircuit, BarChart3 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/feedback/Skeleton';
 import { useTrafficAnalytics } from '../hooks/useTrafficAnalytics';
 import {
   MlIntelligenceView,
@@ -145,9 +146,22 @@ export const TrafficAnalyticsPage: React.FC = () => {
           )}
 
           {loadingTraffic ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
-              <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
-              <span className="text-sm font-medium">Carregando métricas de tráfego...</span>
+            <div className="space-y-6 animate-pulse" role="region" aria-label="Carregando métricas de tráfego">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={`kpi-skel-${i}`} className="p-5 bg-slate-900/60 border border-slate-800 rounded-xl space-y-3">
+                    <Skeleton className="h-4 w-24 rounded" />
+                    <Skeleton className="h-8 w-32 rounded" />
+                    <Skeleton className="h-3 w-20 rounded" />
+                  </div>
+                ))}
+              </div>
+              <div className="p-6 bg-slate-900/60 border border-slate-800 rounded-xl space-y-3">
+                <Skeleton className="h-6 w-48 rounded" />
+                <Skeleton className="h-4 w-full rounded" />
+                <Skeleton className="h-4 w-full rounded" />
+                <Skeleton className="h-4 w-3/4 rounded" />
+              </div>
             </div>
           ) : (
             <>

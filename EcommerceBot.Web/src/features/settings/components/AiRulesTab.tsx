@@ -12,6 +12,10 @@ import {
   DollarSign,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/form/Input';
+import { Button } from '@/components/ui/Button';
+import { FormField } from '@/components/ui/form/fields/FormField';
+import { Select } from '@/components/ui/form/Select';
 import type {
   AiSettingsPayload,
   DefaultLanguage,
@@ -179,20 +183,20 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
         </div>
 
         <form onSubmit={handleAddTagSubmit} className="flex gap-2 max-w-md">
-          <input
-            type="text"
+          <Input
             value={newTagInput}
             onChange={(e) => setNewTagInput(e.target.value)}
             placeholder="Digite uma tag (ex: frete-gratis)..."
-            className="flex-1 min-h-[44px] h-11 px-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all placeholder:text-slate-500"
+            className="flex-1 min-h-[44px] bg-[#090D16] border-[#1E293B] text-slate-100 placeholder:text-slate-500"
           />
-          <button
+          <Button
             type="submit"
-            className="min-h-[44px] h-11 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none"
+            variant="primary"
+            iconLeft={<Plus className="h-4 w-4" />}
+            className="min-h-[44px] bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shrink-0"
           >
-            <Plus className="h-4 w-4" />
             Adicionar
-          </button>
+          </Button>
         </form>
 
         <div className="flex flex-wrap gap-2 pt-2">
@@ -228,43 +232,33 @@ export const AiRulesTab: React.FC<AiRulesTabProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
-          <div className="space-y-2">
-            <label htmlFor="markup-percentage-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Margem de Lucro / Markup (%)
-            </label>
-            <div className="relative">
-              <input
-                id="markup-percentage-input"
-                type="number"
-                min="0"
-                max="500"
-                value={currentData.price_markup_percentage}
-                onChange={(e) => onChange('price_markup_percentage', Number(e.target.value) || 0)}
-                className="w-full min-h-[44px] h-11 px-4 pr-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all font-mono"
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">
-                %
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400">Ex: 20% adiciona +20% sobre o valor raspado.</p>
-          </div>
+          <FormField
+            id="markup-percentage-input"
+            label="Margem de Lucro / Markup (%)"
+            type="number"
+            min="0"
+            max="500"
+            value={currentData.price_markup_percentage}
+            onChange={(e) => onChange('price_markup_percentage', Number(e.target.value) || 0)}
+            helperText="Ex: 20% adiciona +20% sobre o valor raspado."
+            iconRight={<span className="text-slate-400 text-sm font-bold">%</span>}
+            className="bg-[#090D16] border-[#1E293B] text-slate-100 font-mono"
+          />
 
-          <div className="space-y-2">
-            <label htmlFor="rounding-rule-select" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Regra de Arredondamento
-            </label>
-            <select
+          <FormField id="rounding-rule-select" label="Regra de Arredondamento">
+            <Select
               id="rounding-rule-select"
               value={currentData.rounding_rule}
               onChange={(e) => onChange('rounding_rule', e.target.value as RoundingRule)}
-              className="w-full min-h-[44px] h-11 px-4 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all cursor-pointer font-sans"
-            >
-              <option value="ENDING_99">Final .99 (ex: R$ 99,99)</option>
-              <option value="ENDING_90">Final .90 (ex: R$ 99,90)</option>
-              <option value="NEAREST_INTEGER">Inteiro mais próximo (ex: R$ 100,00)</option>
-              <option value="NONE">Sem arredondamento</option>
-            </select>
-          </div>
+              className="bg-[#090D16] border-[#1E293B] text-slate-100"
+              options={[
+                { value: 'ENDING_99', label: 'Final .99 (ex: R$ 99,99)' },
+                { value: 'ENDING_90', label: 'Final .90 (ex: R$ 99,90)' },
+                { value: 'NEAREST_INTEGER', label: 'Inteiro mais próximo (ex: R$ 100,00)' },
+                { value: 'NONE', label: 'Sem arredondamento' },
+              ]}
+            />
+          </FormField>
         </div>
       </div>
     </div>

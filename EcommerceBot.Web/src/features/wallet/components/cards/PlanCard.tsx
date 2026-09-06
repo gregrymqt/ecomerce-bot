@@ -1,5 +1,5 @@
 /**
- * src/features/wallet/components/PlanCard.tsx
+ * src/features/wallet/components/cards/PlanCard.tsx
  *
  * Card visual para exibição de Planos SaaS (Free, Starter, Pro, Enterprise).
  * Tema Synthetica Dark (#090D16, #15121B, #1E293B, accents indigo/emerald).
@@ -9,7 +9,7 @@ import React from 'react';
 import { Check, Sparkles, Zap, ShieldCheck } from 'lucide-react';
 import { Button, Badge } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import type { SaaSPlan } from '../types';
+import type { SaaSPlan } from '../../types';
 
 export interface PlanCardProps {
   plan: SaaSPlan;

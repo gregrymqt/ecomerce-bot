@@ -1,5 +1,5 @@
 /**
- * src/features/wallet/components/PlansTab.tsx
+ * src/features/wallet/components/tabs/PlansTab.tsx
  *
  * Aba de Comparativo e Contratação de Planos SaaS dentro da Carteira.
  * Apresenta planos Free, Starter, Pro e Enterprise com toggle Mensal/Anual.
@@ -7,9 +7,9 @@
 
 import React, { useState } from 'react';
 import { Sparkles, Shield, Gift } from 'lucide-react';
-import { PlanCard } from './PlanCard';
+import { PlanCard } from '../cards/PlanCard';
 import { useAuth } from '@/features/auth';
-import type { SaaSPlan } from '../types';
+import type { SaaSPlan } from '../../types';
 
 export interface PlansTabProps {
   onSelectPlan: (plan: SaaSPlan, isAnnual: boolean) => void;

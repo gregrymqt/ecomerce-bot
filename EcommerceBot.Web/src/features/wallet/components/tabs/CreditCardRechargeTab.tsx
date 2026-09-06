@@ -1,5 +1,5 @@
 /**
- * src/features/wallet/components/CreditCardRechargeTab.tsx
+ * src/features/wallet/components/tabs/CreditCardRechargeTab.tsx
  *
  * Aba de Pagamento via Cartão de Crédito (Recarga de Créditos da Carteira).
  * Reutiliza a tokenização PCI-DSS e a interface do CreditCardPaymentTab da feature checkout.
@@ -8,8 +8,8 @@
 import React from 'react';
 import { Card } from '@/components/ui/display/Card';
 import { CreditCardPaymentTab } from './CreditCardPaymentTab';
-import { useCreditCardRecharge } from '../hooks/useCreditCardRecharge';
-import type { CreditCardRechargeTabProps } from '../types';
+import { useCreditCardRecharge } from '../../hooks/useCreditCardRecharge';
+import type { CreditCardRechargeTabProps } from '../../types';
 
 export const CreditCardRechargeTab: React.FC<CreditCardRechargeTabProps> = ({
   packageId = 'default-package',
@@ -41,5 +41,3 @@ export const CreditCardRechargeTab: React.FC<CreditCardRechargeTabProps> = ({
 };
 
 export default CreditCardRechargeTab;
-
-

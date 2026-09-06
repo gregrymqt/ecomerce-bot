@@ -1,5 +1,5 @@
 /**
- * src/features/wallet/components/CreditCardPaymentTab.tsx
+ * src/features/wallet/components/tabs/CreditCardPaymentTab.tsx
  *
  * Aba de Pagamento Transparente via Cartão de Crédito (Planos SaaS e Recargas).
  * Integra o SDK do Mercado Pago (@mercadopago/sdk-react) para tokenização PCI-DSS.
@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { initMercadoPago, createCardToken } from '@mercadopago/sdk-react';
-import { CreditCardPaymentForm, type CreditCardPaymentFormData as CreditCardFormData } from './payment/CreditCardPaymentForm';
+import { CreditCardPaymentForm, type CreditCardPaymentFormData as CreditCardFormData } from '../payment/CreditCardPaymentForm';
 import { env } from '@/config/env';
 
 const MP_PUBLIC_KEY = env.mercadoPagoPublicKey;

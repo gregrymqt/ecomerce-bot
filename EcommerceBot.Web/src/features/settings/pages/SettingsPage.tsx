@@ -13,9 +13,9 @@ import {
   Store,
   Receipt,
   Save,
-  Loader2,
   ShieldCheck,
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/feedback/Skeleton';
 import { cn } from '@/lib/utils';
 import { useSettings } from '../hooks/useSettings';
 import { useAuth } from '@/features/auth';
@@ -189,9 +189,32 @@ export const SettingsPage: React.FC = () => {
 
       {/* Conteúdo Dinâmico da Aba Ativa */}
       {loading ? (
-        <div className="h-64 rounded-2xl bg-[#15121B] border border-[#1E293B] flex flex-col items-center justify-center gap-3 text-slate-400">
-          <Loader2 className="h-8 w-8 text-violet-400 animate-spin" />
-          <span className="text-sm font-medium">Carregando configurações do tenant...</span>
+        <div
+          role="region"
+          aria-label="Carregando configurações do tenant"
+          className="rounded-2xl bg-[#15121B] border border-[#1E293B] p-6 sm:p-8 space-y-6 animate-pulse"
+        >
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-48 rounded" />
+            <Skeleton className="h-4 w-80 rounded" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-800">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24 rounded" />
+              <Skeleton className="h-11 w-full rounded-lg" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-28 rounded" />
+              <Skeleton className="h-11 w-full rounded-lg" />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Skeleton className="h-4 w-32 rounded" />
+              <Skeleton className="h-24 w-full rounded-lg" />
+            </div>
+          </div>
+          <div className="pt-4 flex justify-end">
+            <Skeleton className="h-11 w-36 rounded-lg" />
+          </div>
         </div>
       ) : (
         <section>

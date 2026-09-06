@@ -1,5 +1,5 @@
 /**
- * src/features/wallet/components/UsageInsightsCard.tsx
+ * src/features/wallet/components/cards/UsageInsightsCard.tsx
  *
  * Componente visual de métricas e consumo com estética Glassmorphism,
  * exibindo o consumo mensal com barra de progresso e taxa de sucesso.
@@ -8,7 +8,7 @@
 import React from 'react';
 import { TrendingUp, BarChart3, Activity } from 'lucide-react';
 import { Card } from '@/components/ui/display/Card';
-import type { UsageInsightsCardProps } from '../types';
+import type { UsageInsightsCardProps } from '../../types';
 
 export const UsageInsightsCard: React.FC<UsageInsightsCardProps> = ({
   monthlyUsage,

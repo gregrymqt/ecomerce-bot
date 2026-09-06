@@ -9,6 +9,8 @@
 import React from 'react';
 import { Store, Mail, Clock, DollarSign, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FormField } from '@/components/ui/form/fields/FormField';
+import { Select } from '@/components/ui/form/Select';
 import type { StoreProfilePayload } from '../types';
 
 export interface StoreProfileTabProps {
@@ -50,98 +52,71 @@ export const StoreProfileTab: React.FC<StoreProfileTabProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* Nome da Loja */}
-          <div className="space-y-2">
-            <label htmlFor="store-name-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Nome da Loja
-            </label>
-            <div className="relative">
-              <input
-                id="store-name-input"
-                type="text"
-                value={currentData.store_name}
-                onChange={(e) => onChange('store_name', e.target.value)}
-                placeholder="Ex: Minha Loja E-Commerce"
-                className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all"
-              />
-              <Store className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-            </div>
-          </div>
+          <FormField
+            id="store-name-input"
+            label="Nome da Loja"
+            value={currentData.store_name}
+            onChange={(e) => onChange('store_name', e.target.value)}
+            placeholder="Ex: Minha Loja E-Commerce"
+            iconLeft={<Store className="h-4 w-4 text-slate-500" />}
+            className="bg-[#090D16] border-[#1E293B] text-slate-100"
+          />
 
           {/* Tenant ID (Readonly) */}
-          <div className="space-y-2">
-            <label htmlFor="tenant-id-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Tenant ID (Identificador do Sistema)
-            </label>
-            <div className="relative">
-              <input
-                id="tenant-id-input"
-                type="text"
-                value={currentData.tenant_id}
-                readOnly
-                className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16]/50 border border-[#1E293B] text-slate-400 font-mono text-base cursor-not-allowed"
-              />
-              <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-            </div>
-          </div>
+          <FormField
+            id="tenant-id-input"
+            label="Tenant ID (Identificador do Sistema)"
+            value={currentData.tenant_id}
+            readOnly
+            disabled
+            iconLeft={<Shield className="h-4 w-4 text-slate-500" />}
+            className="bg-[#090D16]/50 border-[#1E293B] text-slate-400 font-mono cursor-not-allowed"
+          />
 
           {/* E-mail Admin */}
-          <div className="space-y-2">
-            <label htmlFor="admin-email-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-              E-mail do Administrador
-            </label>
-            <div className="relative">
-              <input
-                id="admin-email-input"
-                type="email"
-                value={currentData.admin_email}
-                onChange={(e) => onChange('admin_email', e.target.value)}
-                placeholder="admin@loja.com.br"
-                className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all"
-              />
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-            </div>
-          </div>
+          <FormField
+            id="admin-email-input"
+            label="E-mail do Administrador"
+            type="email"
+            value={currentData.admin_email}
+            onChange={(e) => onChange('admin_email', e.target.value)}
+            placeholder="admin@loja.com.br"
+            iconLeft={<Mail className="h-4 w-4 text-slate-500" />}
+            className="bg-[#090D16] border-[#1E293B] text-slate-100"
+          />
 
           {/* Fuso Horário */}
-          <div className="space-y-2">
-            <label htmlFor="timezone-select" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Fuso Horário (Timezone)
-            </label>
-            <div className="relative">
-              <select
-                id="timezone-select"
-                value={currentData.timezone}
-                onChange={(e) => onChange('timezone', e.target.value)}
-                className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all cursor-pointer font-sans"
-              >
-                <option value="America/Sao_Paulo">América / São Paulo (GMT-3)</option>
-                <option value="America/Manaus">América / Manaus (GMT-4)</option>
-                <option value="America/New_York">América / New York (EST)</option>
-                <option value="Europe/Lisbon">Europa / Lisboa (WET)</option>
-              </select>
-              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-            </div>
-          </div>
+          <FormField id="timezone-select" label="Fuso Horário (Timezone)">
+            <Select
+              id="timezone-select"
+              value={currentData.timezone}
+              onChange={(e) => onChange('timezone', e.target.value)}
+              iconLeft={<Clock className="h-4 w-4 text-slate-500" />}
+              className="bg-[#090D16] border-[#1E293B] text-slate-100"
+              options={[
+                { value: 'America/Sao_Paulo', label: 'América / São Paulo (GMT-3)' },
+                { value: 'America/Manaus', label: 'América / Manaus (GMT-4)' },
+                { value: 'America/New_York', label: 'América / New York (EST)' },
+                { value: 'Europe/Lisbon', label: 'Europa / Lisboa (WET)' },
+              ]}
+            />
+          </FormField>
 
           {/* Moeda Base */}
-          <div className="space-y-2 sm:col-span-2 max-w-md">
-            <label htmlFor="base-currency-select" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Moeda Base da Loja
-            </label>
-            <div className="relative">
-              <select
-                id="base-currency-select"
-                value={currentData.base_currency}
-                onChange={(e) => onChange('base_currency', e.target.value)}
-                className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all cursor-pointer font-sans"
-              >
-                <option value="BRL">Real Brasileiro (R$ - BRL)</option>
-                <option value="USD">Dólar Americano ($ - USD)</option>
-                <option value="EUR">Euro (€ - EUR)</option>
-              </select>
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-            </div>
-          </div>
+          <FormField id="base-currency-select" label="Moeda Base da Loja" containerClassName="sm:col-span-2 max-w-md">
+            <Select
+              id="base-currency-select"
+              value={currentData.base_currency}
+              onChange={(e) => onChange('base_currency', e.target.value)}
+              iconLeft={<DollarSign className="h-4 w-4 text-slate-500" />}
+              className="bg-[#090D16] border-[#1E293B] text-slate-100"
+              options={[
+                { value: 'BRL', label: 'Real Brasileiro (R$ - BRL)' },
+                { value: 'USD', label: 'Dólar Americano ($ - USD)' },
+                { value: 'EUR', label: 'Euro (€ - EUR)' },
+              ]}
+            />
+          </FormField>
         </div>
       </div>
     </div>

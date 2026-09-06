@@ -10,12 +10,13 @@ import { getErrorMessage } from '@/utils/errors';
 import type { TenantTrafficOverview, VerifyTagResponse } from '../types/traffic.types';
 
 export const trafficAnalyticsService = {
-  async getTrafficOverview(days: number = 30, source?: string): Promise<TenantTrafficOverview> {
+  async getTrafficOverview(days: number = 30, source?: string, signal?: AbortSignal): Promise<TenantTrafficOverview> {
     try {
       const params = new URLSearchParams({ days: days.toString() });
       if (source) params.append('source', source);
       const response = await apiClient.get<TenantTrafficOverview>(
-        `/api/v1/analytics/traffic?${params.toString()}`
+        `/api/v1/analytics/traffic?${params.toString()}`,
+        { signal }
       );
       return response.data;
     } catch (error) {

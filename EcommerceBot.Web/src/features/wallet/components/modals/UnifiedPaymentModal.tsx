@@ -1,5 +1,5 @@
 /**
- * src/features/wallet/components/UnifiedPaymentModal.tsx
+ * src/features/wallet/components/modals/UnifiedPaymentModal.tsx
  *
  * Modal Unificado de Pagamento Transparente do Mercado Pago.
  * Atende tanto Recargas de Créditos quanto Assinaturas de Planos SaaS.
@@ -18,10 +18,10 @@ import {
 
 import { Modal } from '@/components/ui/overlay/Modal';
 import { Button } from '@/components/ui/Button';
-import { PixPaymentTab } from './PixPaymentTab';
-import { CreditCardPaymentTab } from './CreditCardPaymentTab';
-import { useUnifiedPayment } from '../hooks/useUnifiedPayment';
-import type { UnifiedPaymentModalProps } from '../types';
+import { PixPaymentTab } from '../tabs/PixPaymentTab';
+import { CreditCardPaymentTab } from '../tabs/CreditCardPaymentTab';
+import { useUnifiedPayment } from '../../hooks/useUnifiedPayment';
+import type { UnifiedPaymentModalProps } from '../../types';
 
 export const UnifiedPaymentModal: React.FC<UnifiedPaymentModalProps> = ({
   isOpen,
@@ -80,7 +80,6 @@ export const UnifiedPaymentModal: React.FC<UnifiedPaymentModalProps> = ({
           </Button>
         </div>
       }
-
     >
       <div className="space-y-6 text-slate-100">
         {/* Banner de Sucesso */}

@@ -10,9 +10,10 @@ import {
   Edit3,
   Trash2,
   Package,
-  Loader2,
   Zap,
+  Loader2,
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/feedback/Skeleton';
 import { Badge } from '@/components/ui/feedback/Badge';
 import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/form/Checkbox';
@@ -133,14 +134,28 @@ export const ProductCatalogTable: React.FC<ProductCatalogTableProps> = ({
           </thead>
           <tbody className="divide-y divide-slate-800/60 text-sm">
             {isLoading && products.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-16 text-center text-slate-400">
-                  <div className="flex flex-col items-center justify-center gap-3">
-                    <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
-                    <span className="text-sm font-medium font-mono">Carregando catálogo de produtos...</span>
-                  </div>
-                </td>
-              </tr>
+              Array.from({ length: 5 }).map((_, idx) => (
+                <tr key={`cat-skel-${idx}`} className="animate-pulse">
+                  <td className="px-5 py-4 flex items-center gap-4">
+                    <Skeleton className="w-4 h-4 rounded shrink-0" />
+                    <Skeleton className="w-12 h-12 rounded-xl shrink-0" />
+                    <div className="space-y-2 flex-1 max-w-xs">
+                      <Skeleton className="h-4 w-3/4 rounded" />
+                      <Skeleton className="h-3 w-1/2 rounded" />
+                    </div>
+                  </td>
+                  <td className="px-5 py-4"><Skeleton className="h-6 w-24 rounded-full" /></td>
+                  <td className="px-5 py-4"><Skeleton className="h-4 w-16 rounded" /></td>
+                  <td className="px-5 py-4"><Skeleton className="h-4 w-12 rounded" /></td>
+                  <td className="px-5 py-4"><Skeleton className="h-6 w-28 rounded-md" /></td>
+                  <td className="px-5 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Skeleton className="h-8 w-8 rounded-lg" />
+                      <Skeleton className="h-8 w-8 rounded-lg" />
+                    </div>
+                  </td>
+                </tr>
+              ))
             ) : products.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-16 text-center text-slate-400">

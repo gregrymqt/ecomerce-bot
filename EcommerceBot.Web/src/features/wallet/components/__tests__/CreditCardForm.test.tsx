@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { CreditCardPaymentTab } from './CreditCardPaymentTab';
+import { CreditCardPaymentTab } from '../tabs/CreditCardPaymentTab';
 
 describe('CreditCardPaymentTab / CreditCardForm Component', () => {
   const mockOnSubmit = vi.fn();
@@ -72,7 +72,6 @@ describe('CreditCardPaymentTab / CreditCardForm Component', () => {
           installments: 1,
           docNumber: '12345678901',
         }),
-
       })
     );
   });

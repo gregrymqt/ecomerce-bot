@@ -8,6 +8,7 @@
 import React from 'react';
 import { Edit2, ExternalLink, Power, RefreshCw, ShieldAlert, CheckCircle2, XCircle, Sparkles } from 'lucide-react';
 import { Badge, Button } from '@/components/ui';
+import { Skeleton } from '@/components/ui/feedback/Skeleton';
 import type { PlanResponse } from '../types';
 
 export interface AdminPlanTableProps {
@@ -48,12 +49,45 @@ export const AdminPlanTable: React.FC<AdminPlanTableProps> = ({
   if (loading && plans.length === 0) {
     return (
       <div
-        role="status"
+        role="region"
         aria-label="Carregando catálogo de pacotes"
-        className="flex flex-col items-center justify-center p-12 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl backdrop-blur-md"
+        className="w-full overflow-hidden bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl backdrop-blur-md"
       >
-        <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin mb-3" />
-        <p className="text-slate-400 font-medium font-mono text-sm">Carregando pacotes de recarga...</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[700px]">
+            <thead>
+              <tr className="border-b border-slate-800 bg-slate-950/80 text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">
+                <th scope="col" className="py-4 px-6 font-mono uppercase">Pacote & Descrição</th>
+                <th scope="col" className="py-4 px-4 font-mono uppercase">Valor Avulso</th>
+                <th scope="col" className="py-4 px-4 font-mono uppercase">Créditos de IA</th>
+                <th scope="col" className="py-4 px-4 font-mono uppercase">Destaque (Badge)</th>
+                <th scope="col" className="py-4 px-4 text-center font-mono uppercase">Status</th>
+                <th scope="col" className="py-4 px-6 text-right font-mono uppercase">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60 text-sm">
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <tr key={`plan-skel-${idx}`} className="animate-pulse">
+                  <td className="py-4 px-6">
+                    <Skeleton className="h-5 w-40 rounded mb-1.5" />
+                    <Skeleton className="h-3 w-56 rounded mb-1" />
+                    <Skeleton className="h-3 w-24 rounded font-mono" />
+                  </td>
+                  <td className="py-4 px-4"><Skeleton className="h-5 w-20 rounded" /></td>
+                  <td className="py-4 px-4"><Skeleton className="h-5 w-28 rounded" /></td>
+                  <td className="py-4 px-4"><Skeleton className="h-5 w-16 rounded-full" /></td>
+                  <td className="py-4 px-4 text-center"><Skeleton className="h-6 w-16 rounded-full mx-auto" /></td>
+                  <td className="py-4 px-6 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Skeleton className="h-8 w-8 rounded-lg" />
+                      <Skeleton className="h-8 w-8 rounded-lg" />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }

@@ -1,15 +1,16 @@
 /**
- * src/features/wallet/components/WalletBalanceCard.tsx
+ * src/features/wallet/components/cards/WalletBalanceCard.tsx
  *
  * Componente visual de resumo de saldo com estética Glassmorphism,
- * badge de status de garantia e botão de ação para recargas (min-h-[44px]).
+ * badge de status de garantia, esqueleto estrutural (Zero CLS) e botão de ação para recargas (min-h-[44px]).
  */
 
 import React from 'react';
-import { Zap, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Zap, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/display/Card';
-import type { WalletBalanceCardProps } from '../types';
+import { Skeleton } from '@/components/ui/feedback/Skeleton';
+import type { WalletBalanceCardProps } from '../../types';
 
 export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
   balance,
@@ -47,12 +48,11 @@ export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
         </div>
       </div>
 
-      {/* Exibição Numérica do Saldo */}
+      {/* Exibição Numérica do Saldo com Skeleton estrutural */}
       <div className="mb-6">
         {loading ? (
-          <div className="flex items-center gap-3 py-2">
-            <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
-            <span className="text-sm font-medium text-slate-400">Carregando saldo...</span>
+          <div className="py-2" role="status" aria-label="Carregando saldo disponível">
+            <Skeleton className="h-12 w-44 rounded-md" />
           </div>
         ) : (
           <div className="flex items-baseline gap-2">

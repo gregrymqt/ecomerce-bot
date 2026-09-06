@@ -85,28 +85,26 @@ export function useSettings(initialTab: SettingsTab = 'AI_RULES'): UseSettingsRe
   }, []);
 
   useEffect(() => {
-    let isCancelled = false;
+    const controller = new AbortController();
 
     settingsService
-      .getSettings()
+      .getSettings(controller.signal)
       .then((data) => {
-        if (!isCancelled) {
-          setFormData(data || DEFAULT_SETTINGS);
-        }
+        setFormData(data || DEFAULT_SETTINGS);
       })
-      .catch(() => {
-        if (!isCancelled) {
-          setFormData(DEFAULT_SETTINGS);
-        }
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        if ((err as { name?: string })?.name === 'CanceledError') return;
+        setFormData(DEFAULT_SETTINGS);
       })
       .finally(() => {
-        if (!isCancelled) {
+        if (!controller.signal.aborted) {
           setLoading(false);
         }
       });
 
     return () => {
-      isCancelled = true;
+      controller.abort();
     };
   }, []);
 

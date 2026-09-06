@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { useTenantSso } from '../hooks/useTenantSso';
 import { Card, Button, Badge, Alert, FormField } from '@/components/ui';
+import { Select } from '@/components/ui/form/Select';
+import { Checkbox } from '@/components/ui/form/Checkbox';
 import { cn } from '@/lib/utils';
 
 export const TenantSsoTab: React.FC = () => {
@@ -101,23 +103,18 @@ export const TenantSsoTab: React.FC = () => {
               />
             </div>
 
-            <div>
-              <label htmlFor="sso-role-select" className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Papel de Destino (Role)
-              </label>
-              <select
+            <FormField id="sso-role-select" label="Papel de Destino (Role)">
+              <Select
                 id="sso-role-select"
                 value={selectedRoleId}
                 onChange={(e) => setSelectedRoleId(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-base text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[44px] cursor-pointer font-sans"
-              >
-                {roles.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name} — {r.description}
-                  </option>
-                ))}
-              </select>
-            </div>
+                className="bg-slate-950 border-slate-800 text-slate-100"
+                options={roles.map((r) => ({
+                  value: r.id,
+                  label: `${r.name} — ${r.description}`,
+                }))}
+              />
+            </FormField>
 
             <div>
               <Button
@@ -133,17 +130,17 @@ export const TenantSsoTab: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pt-2">
-            <input
-              type="checkbox"
+          <div className="pt-2">
+            <Checkbox
               id="is_default_role"
               checked={isDefaultRoleInput}
               onChange={(e) => setIsDefaultRoleInput(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              label={
+                <span className="text-xs text-slate-300">
+                  Definir este papel como <strong>Fallback Padrão</strong> para colaboradores que não pertençam a grupos específicos.
+                </span>
+              }
             />
-            <label htmlFor="is_default_role" className="text-xs text-slate-300 cursor-pointer">
-              Definir este papel como <strong>Fallback Padrão</strong> para colaboradores que não pertençam a grupos específicos.
-            </label>
           </div>
         </form>
       </Card>

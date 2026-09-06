@@ -1,5 +1,5 @@
 /**
- * src/features/wallet/components/PixRechargeTab.tsx
+ * src/features/wallet/components/tabs/PixRechargeTab.tsx
  *
  * Aba de Pagamento via PIX (Recarga de Créditos da Carteira).
  * Reutiliza o componente atômico PixPaymentDisplay da biblioteca de UI.
@@ -7,9 +7,9 @@
 
 import React from 'react';
 import { Card } from '@/components/ui/display/Card';
-import { PixPaymentDisplay } from './payment/PixPaymentDisplay';
-import { usePixRecharge } from '../hooks/usePixRecharge';
-import type { PixRechargeTabProps } from '../types';
+import { PixPaymentDisplay } from '../payment/PixPaymentDisplay';
+import { usePixRecharge } from '../../hooks/usePixRecharge';
+import type { PixRechargeTabProps } from '../../types';
 
 export const PixRechargeTab: React.FC<PixRechargeTabProps> = ({
   pixQrCode,

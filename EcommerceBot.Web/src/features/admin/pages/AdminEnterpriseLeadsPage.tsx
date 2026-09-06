@@ -7,7 +7,8 @@
  */
 
 import React from 'react';
-import { ShieldCheck, Loader2 } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
+import { Skeleton } from '@/components/ui/feedback/Skeleton';
 import { useAdminLeads } from '../hooks/useAdminLeads';
 import { useEnterpriseProvision } from '../hooks/useEnterpriseProvision';
 import {
@@ -117,10 +118,23 @@ export const AdminEnterpriseLeadsPage: React.FC = () => {
 
       {/* Exibição Principal (Kanban ou Tabela) */}
       {isLoading && filteredLeads.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 gap-3 text-slate-400">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
-          <span className="text-sm font-medium">Carregando pipeline de leads...</span>
-        </div>
+        viewMode === 'kanban' ? (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-pulse">
+            {Array.from({ length: 4 }).map((_, cIdx) => (
+              <div key={`col-skel-${cIdx}`} className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-3">
+                <Skeleton className="h-5 w-28 rounded" />
+                <Skeleton className="h-28 w-full rounded-lg" />
+                <Skeleton className="h-28 w-full rounded-lg" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-3 animate-pulse">
+            {Array.from({ length: 5 }).map((_, rIdx) => (
+              <Skeleton key={`row-skel-${rIdx}`} className="h-12 w-full rounded-lg" />
+            ))}
+          </div>
+        )
       ) : viewMode === 'kanban' ? (
         <LeadsKanbanPipeline
           leads={filteredLeads}

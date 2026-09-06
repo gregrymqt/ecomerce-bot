@@ -74,7 +74,7 @@ export const walletService = {
    * Consulta o catálogo da API com fallback resiliente para pacotes canônicos.
    * Endpoint: GET /api/v1/plans?onlyActive=true
    */
-  getCreditPackages: async (): Promise<RechargePackage[]> => {
+  getCreditPackages: async (signal?: AbortSignal): Promise<RechargePackage[]> => {
     try {
       const response = await apiClient.get<
         Array<{
@@ -86,7 +86,7 @@ export const walletService = {
           creditsIncluded?: number;
           credits?: number;
         }>
-      >('/api/v1/plans?onlyActive=true');
+      >('/api/v1/plans?onlyActive=true', { signal });
 
       if (Array.isArray(response.data) && response.data.length > 0) {
         return response.data.map((p) => {
@@ -123,9 +123,9 @@ export const walletService = {
    * Obtém o saldo atual de créditos da carteira do tenant.
    * Endpoint: GET /api/v1/wallet/balance
    */
-  getWalletBalance: async (): Promise<WalletBalanceResponse> => {
+  getWalletBalance: async (signal?: AbortSignal): Promise<WalletBalanceResponse> => {
     try {
-      const response = await apiClient.get<WalletBalanceResponse>('/api/v1/wallet/balance');
+      const response = await apiClient.get<WalletBalanceResponse>('/api/v1/wallet/balance', { signal });
       return response.data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Falha ao obter saldo da carteira.');
@@ -137,10 +137,11 @@ export const walletService = {
    * Obtém o extrato de movimentações e transações da carteira.
    * Endpoint: GET /api/v1/wallet/statement
    */
-  getWalletStatement: async (params?: StatementFilters): Promise<WalletStatementResponse> => {
+  getWalletStatement: async (params?: StatementFilters, signal?: AbortSignal): Promise<WalletStatementResponse> => {
     try {
       const response = await apiClient.get<WalletStatementResponse>('/api/v1/wallet/statement', {
         params,
+        signal,
       });
       return response.data;
     } catch (error: unknown) {

@@ -9,6 +9,7 @@
 import React from 'react';
 import { Receipt, Building, FileText, Mail, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FormField } from '@/components/ui/form/fields/FormField';
 import type { BillingProfilePayload } from '../types';
 
 export interface BillingProfileTabProps {
@@ -49,76 +50,50 @@ export const BillingProfileTab: React.FC<BillingProfileTabProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* Razão Social / Nome Completo */}
-          <div className="space-y-2">
-            <label htmlFor="company-name-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Razão Social / Nome Completo
-            </label>
-            <div className="relative">
-              <input
-                id="company-name-input"
-                type="text"
-                value={currentData.company_name}
-                onChange={(e) => onChange('company_name', e.target.value)}
-                placeholder="Ex: Minha Empresa E-Commerce Ltda"
-                className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all"
-              />
-              <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-            </div>
-          </div>
+          <FormField
+            id="company-name-input"
+            label="Razão Social / Nome Completo"
+            value={currentData.company_name}
+            onChange={(e) => onChange('company_name', e.target.value)}
+            placeholder="Ex: Minha Empresa E-Commerce Ltda"
+            iconLeft={<Building className="h-4 w-4 text-slate-500" />}
+            className="bg-[#090D16] border-[#1E293B] text-slate-100"
+          />
 
           {/* CNPJ / CPF */}
-          <div className="space-y-2">
-            <label htmlFor="tax-id-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-              CNPJ / CPF (Documento Fiscal)
-            </label>
-            <div className="relative">
-              <input
-                id="tax-id-input"
-                type="text"
-                value={currentData.tax_id}
-                onChange={(e) => onChange('tax_id', e.target.value)}
-                placeholder="00.000.000/0001-00"
-                className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base font-mono focus:border-violet-500 focus:outline-none transition-all"
-              />
-              <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-            </div>
-          </div>
+          <FormField
+            id="tax-id-input"
+            label="CNPJ / CPF (Documento Fiscal)"
+            value={currentData.tax_id}
+            onChange={(e) => onChange('tax_id', e.target.value)}
+            placeholder="00.000.000/0001-00"
+            iconLeft={<FileText className="h-4 w-4 text-slate-500" />}
+            className="bg-[#090D16] border-[#1E293B] text-slate-100 font-mono"
+          />
 
           {/* E-mail de Faturamento */}
-          <div className="space-y-2">
-            <label htmlFor="billing-email-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-              E-mail de Faturamento (Recibos / NFs)
-            </label>
-            <div className="relative">
-              <input
-                id="billing-email-input"
-                type="email"
-                value={currentData.billing_email}
-                onChange={(e) => onChange('billing_email', e.target.value)}
-                placeholder="financeiro@loja.com.br"
-                className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all"
-              />
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-            </div>
-          </div>
+          <FormField
+            id="billing-email-input"
+            label="E-mail de Faturamento (Recibos / NFs)"
+            type="email"
+            value={currentData.billing_email}
+            onChange={(e) => onChange('billing_email', e.target.value)}
+            placeholder="financeiro@loja.com.br"
+            iconLeft={<Mail className="h-4 w-4 text-slate-500" />}
+            className="bg-[#090D16] border-[#1E293B] text-slate-100"
+          />
 
           {/* Endereço Comercial */}
-          <div className="space-y-2 sm:col-span-2">
-            <label htmlFor="commercial-address-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Endereço Comercial Completo
-            </label>
-            <div className="relative">
-              <input
-                id="commercial-address-input"
-                type="text"
-                value={currentData.commercial_address}
-                onChange={(e) => onChange('commercial_address', e.target.value)}
-                placeholder="Av. Paulista, 1000 - São Paulo, SP - CEP 01310-100"
-                className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all"
-              />
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-            </div>
-          </div>
+          <FormField
+            id="commercial-address-input"
+            label="Endereço Comercial Completo"
+            value={currentData.commercial_address}
+            onChange={(e) => onChange('commercial_address', e.target.value)}
+            placeholder="Av. Paulista, 1000 - São Paulo, SP - CEP 01310-100"
+            iconLeft={<MapPin className="h-4 w-4 text-slate-500" />}
+            containerClassName="sm:col-span-2"
+            className="bg-[#090D16] border-[#1E293B] text-slate-100"
+          />
         </div>
       </div>
     </div>

@@ -1,13 +1,13 @@
 /**
- * src/features/wallet/components/PixPaymentTab.tsx
+ * src/features/wallet/components/tabs/PixPaymentTab.tsx
  *
  * Aba de Pagamento Transparente via PIX (Carteira: Planos e Recargas).
  * Reutiliza o componente atômico PixPaymentDisplay da biblioteca de UI.
  */
 
 import React from 'react';
-import { PixPaymentDisplay } from './payment/PixPaymentDisplay';
-import type { PixPaymentResponse, PaymentStatus } from '../types';
+import { PixPaymentDisplay } from '../payment/PixPaymentDisplay';
+import type { PixPaymentResponse, PaymentStatus } from '../../types';
 
 export interface PixPaymentTabProps {
   pixData: PixPaymentResponse | null;

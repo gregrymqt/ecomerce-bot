@@ -24,7 +24,7 @@ export const productService = {
   /**
    * Busca lista paginada de produtos com suporte a filtro por status e busca por título/SKU.
    */
-  getProducts: async (params?: ProductFilterParams): Promise<PaginatedProductsResponse> => {
+  getProducts: async (params?: ProductFilterParams, signal?: AbortSignal): Promise<PaginatedProductsResponse> => {
     try {
       const response = await apiClient.get<PaginatedProductsResponse>('/api/v1/products', {
         params: {
@@ -33,6 +33,7 @@ export const productService = {
           page: params?.page || 1,
           limit: params?.limit || 20,
         },
+        signal,
       });
       return response.data;
     } catch (error: unknown) {

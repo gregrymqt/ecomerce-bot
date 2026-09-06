@@ -7,9 +7,10 @@
  */
 
 import React, { useState } from 'react';
-import { Zap, Plus, Loader2 } from 'lucide-react';
+import { Zap, Plus } from 'lucide-react';
 import { useRealtimeWalletBalance } from '@/features/wallet/hooks/useRealtimeWalletBalance';
-import { UnifiedPaymentModal } from '@/features/wallet/components/UnifiedPaymentModal';
+import { UnifiedPaymentModal } from '../modals/UnifiedPaymentModal';
+import { Skeleton } from '@/components/ui/feedback/Skeleton';
 import type { CheckoutTarget } from '@/features/wallet/types';
 
 export interface GlobalCreditBalanceBadgeProps {
@@ -62,10 +63,7 @@ export const GlobalCreditBalanceBadge: React.FC<GlobalCreditBalanceBadgeProps> =
 
         <span className="font-mono font-bold tracking-tight">
           {isLoading && balance === null ? (
-            <span className="inline-flex items-center gap-1">
-              <Loader2 className="w-3 h-3 animate-spin text-amber-400" />
-              <span>Carregando...</span>
-            </span>
+            <Skeleton className="h-4 w-16 inline-block align-middle rounded" />
           ) : (
             <span>{formattedBalance} créditos</span>
           )}

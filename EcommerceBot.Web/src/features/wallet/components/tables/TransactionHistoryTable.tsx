@@ -1,5 +1,5 @@
 /**
- * src/features/wallet/components/TransactionHistoryTable.tsx
+ * src/features/wallet/components/tables/TransactionHistoryTable.tsx
  *
  * Componente de tabela de extrato e histórico de movimentações da carteira.
  * Utiliza os componentes genéricos de UI Card e Table de @/components/ui/display.
@@ -17,7 +17,7 @@ import {
   Inbox,
   Sparkles,
 } from 'lucide-react';
-import type { CreditTransaction, TransactionHistoryTableProps } from '../types';
+import type { CreditTransaction, TransactionHistoryTableProps } from '../../types';
 import { Card } from '@/components/ui/display/Card';
 import { Table, type TableColumn } from '@/components/ui/display/Table';
 
