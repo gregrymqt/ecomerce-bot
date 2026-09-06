@@ -5,11 +5,10 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import type { CatalogProduct, FilterStatus, AITone, ProductStatus, EcomPlatform, SyncProductResponse } from '../types';
+import type { CatalogProduct, FilterStatus, AITone, ProductStatus, EcomPlatform } from '../types';
 import type { AlertVariant } from '@/components/ui/feedback/Alert';
 import { useProducts } from './useProducts';
-import { productService } from '../services/product.service';
-import { getErrorMessage } from '@/utils/errors';
+import { useProductSync } from './useProductSync';
 
 export interface CatalogAlert {
   variant: AlertVariant;
@@ -86,7 +85,6 @@ export function useCatalogPage() {
 
   // Estados de Loading por ação de linha
   const [regeneratingSku, setRegeneratingSku] = useState<string | null>(null);
-  const [syncingSku, setSyncingSku] = useState<string | null>(null);
   const [isSavingDrawer, setIsSavingDrawer] = useState(false);
 
   // Filtragem Reativa de Produtos
@@ -156,52 +154,35 @@ export function useCatalogPage() {
     }
   };
 
-  // Sincronizar Produto Individual com Plataforma Backend (Shopify GraphQL ou Nuvemshop REST)
-  const handleSyncProduct = async (product: CatalogProduct) => {
-    setSyncingSku(product.sku);
-    try {
-      const payload = {
-        sku: product.sku,
-        title: product.titleAi || product.titleOriginal,
-        description: product.descriptionAi,
-        images: product.thumbnailUrl ? [product.thumbnailUrl] : [],
-      };
-
-      const res = product.platform === 'Nuvemshop'
-        ? await productService.syncToNuvemshop(payload)
-        : await productService.syncToShopify(payload);
-
-      const syncRes = res as SyncProductResponse;
-      if (syncRes.status === 'fallback_csv') {
-        const reasonText = syncRes.reason || syncRes.error_detail || syncRes.message || 'Falha de comunicação com a plataforma externa.';
-        setAlertInfo({
-          variant: 'warning',
-          title: 'Fallback para CSV Acionado',
-          message: `A API da ${product.platform} retornou uma falha (${reasonText}). O arquivo CSV com a copywriting de IA foi gerado como alternativa. Acesse ${syncRes.download_url || '/api/v1/export'} para baixar.`,
-        });
-      } else {
-        setAlertInfo({
-          variant: 'success',
-          title: 'Sincronizado!',
-          message: `O produto SKU ${product.sku} foi sincronizado com sucesso na ${product.platform}.`,
-        });
-      }
-
+  // Hook especializado de sincronização individual de produtos
+  const { syncingSku, syncProduct } = useProductSync({
+    onSyncSuccess: (product, isFallback, message) => {
+      setAlertInfo({
+        variant: isFallback ? 'warning' : 'success',
+        title: isFallback ? 'Fallback para CSV Acionado' : 'Sincronizado!',
+        message,
+      });
       setLocalOverrides((prev) => ({
         ...prev,
         [product.sku]: { ...prev[product.sku], synced: true, status: 'PROCESSED' },
       }));
-    } catch (err: unknown) {
-      const errorDetail = getErrorMessage(err, 'Erro desconhecido de sincronização.');
+    },
+    onSyncError: (product, errorDetail) => {
       setAlertInfo({
         variant: 'error',
         title: 'Erro de Sincronização',
         message: `Falha ao sincronizar o produto SKU ${product.sku}: ${errorDetail}`,
       });
-    } finally {
-      setSyncingSku(null);
-    }
-  };
+    },
+  });
+
+  // Sincronizar Produto Individual com Plataforma Backend
+  const handleSyncProduct = useCallback(
+    async (product: CatalogProduct) => {
+      await syncProduct(product);
+    },
+    [syncProduct]
+  );
 
   // Solicitar Exclusão de Produto (abre modal acessível)
   const promptDeleteProduct = (sku: string) => {

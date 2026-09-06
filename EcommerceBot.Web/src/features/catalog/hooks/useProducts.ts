@@ -29,11 +29,9 @@ export function useProducts(initialLimit = 20) {
   /**
    * Carrega a lista paginada de produtos a partir da API.
    */
-  const fetchProducts = useCallback(async (isManualAction = false) => {
-    if (isManualAction) {
-      setIsLoading(true);
-      setError(null);
-    }
+  const fetchProducts = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     try {
       const data = await productService.getProducts({
         status: statusFilter || undefined,
@@ -54,30 +52,32 @@ export function useProducts(initialLimit = 20) {
   useEffect(() => {
     let isCancelled = false;
 
-    productService
-      .getProducts({
-        status: statusFilter || undefined,
-        search: searchTerm || undefined,
-        page,
-        limit,
-      })
-      .then((data) => {
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const data = await productService.getProducts({
+          status: statusFilter || undefined,
+          search: searchTerm || undefined,
+          page,
+          limit,
+        });
         if (!isCancelled) {
           setProducts(data.items || []);
           setTotal(data.total || 0);
           setPages(data.pages || 1);
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         if (!isCancelled) {
           setError(getErrorMessage(err, 'Erro ao carregar lista de produtos.'));
         }
-      })
-      .finally(() => {
+      } finally {
         if (!isCancelled) {
           setIsLoading(false);
         }
-      });
+      }
+    };
+
+    load();
 
     return () => {
       isCancelled = true;
