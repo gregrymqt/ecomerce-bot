@@ -131,7 +131,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
           <select
             value={statusSelect}
             onChange={(e) => setStatusSelect(e.target.value)}
-            className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-base sm:text-sm text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[44px]"
+            className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-base text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[44px]"
           >
             <option value="PENDING">📥 Novos Leads (Pendente)</option>
             <option value="CONTACTED">💬 Em Contato</option>
@@ -151,7 +151,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
             value={notesInput}
             onChange={(e) => setNotesInput(e.target.value)}
             placeholder="ex: Conversamos dia 29/08 com o diretor de TI. Desejam 100k produtos/mês e integração com 3 lojas Shopify..."
-            className="w-full p-3 bg-slate-950 border border-slate-800 rounded-lg text-base sm:text-sm text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"
+            className="w-full p-3 bg-slate-950 border border-slate-800 rounded-lg text-base text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"
           />
         </div>
       </div>

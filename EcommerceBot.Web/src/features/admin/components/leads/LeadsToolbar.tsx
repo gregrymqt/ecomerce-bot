@@ -42,7 +42,7 @@ export const LeadsToolbar: React.FC<LeadsToolbarProps> = ({
             placeholder="Buscar por empresa, e-mail, telefone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-950/60 border border-slate-800 rounded-lg text-base sm:text-sm text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[44px]"
+            className="w-full pl-10 pr-4 py-2 bg-slate-950/60 border border-slate-800 rounded-lg text-base text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[44px]"
           />
         </div>
 
@@ -53,7 +53,7 @@ export const LeadsToolbar: React.FC<LeadsToolbarProps> = ({
               <select
                 value={selectedStatusFilter}
                 onChange={(e) => setSelectedStatusFilter(e.target.value)}
-                className="bg-slate-950 border border-slate-800 text-base sm:text-sm text-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[44px]"
+                className="bg-slate-950 border border-slate-800 text-base text-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[44px]"
               >
                 <option value="ALL">Todos os Estágios</option>
                 <option value="PENDING">Novos Leads</option>

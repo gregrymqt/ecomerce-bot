@@ -7,9 +7,6 @@
 // Types
 export * from './types';
 
-// Services
-export * from './services';
-
 // Hooks
 export * from './hooks';
 
@@ -19,3 +16,4 @@ export * from './components';
 // Pages
 export * from './pages/AdminGrowthPage';
 export * from './pages/AdminEnterpriseLeadsPage';
+export * from './pages/AdminAiCapacityPage';

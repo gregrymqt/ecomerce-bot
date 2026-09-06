@@ -6,6 +6,7 @@
  */
 
 import { apiClient } from '@/lib/apiClient';
+import { getErrorMessage } from '@/utils/errors';
 import type {
   AcquisitionFunnelData,
   UnitEconomicsData,
@@ -14,25 +15,37 @@ import type {
 
 export const adminGrowthService = {
   async getAcquisitionFunnel(days: number = 30): Promise<AcquisitionFunnelData> {
-    const response = await apiClient.get<AcquisitionFunnelData>(
-      `/api/v1/admin/analytics/acquisition?days=${days}`
-    );
-    return response.data;
+    try {
+      const response = await apiClient.get<AcquisitionFunnelData>(
+        `/api/v1/admin/analytics/acquisition?days=${days}`
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Falha ao buscar funil de aquisição.'), { cause: error });
+    }
   },
 
   async getUnitEconomics(days: number = 30): Promise<UnitEconomicsData> {
-    const response = await apiClient.get<UnitEconomicsData>(
-      `/api/v1/admin/analytics/unit-economics?days=${days}`
-    );
-    return response.data;
+    try {
+      const response = await apiClient.get<UnitEconomicsData>(
+        `/api/v1/admin/analytics/unit-economics?days=${days}`
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Falha ao buscar unit economics.'), { cause: error });
+    }
   },
 
   async createAdSpend(payload: CreateAdSpendPayload): Promise<{ success: boolean; id: string }> {
-    const response = await apiClient.post<{ success: boolean; id: string }>(
-      '/api/v1/admin/analytics/ad-spend',
-      payload
-    );
-    return response.data;
+    try {
+      const response = await apiClient.post<{ success: boolean; id: string }>(
+        '/api/v1/admin/analytics/ad-spend',
+        payload
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Falha ao lançar gasto em anúncios.'), { cause: error });
+    }
   },
 };
 

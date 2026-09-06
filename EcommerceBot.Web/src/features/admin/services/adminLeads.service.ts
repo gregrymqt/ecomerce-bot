@@ -5,6 +5,7 @@
  */
 
 import { apiClient } from '@/lib/apiClient';
+import { getErrorMessage } from '@/utils/errors';
 import type {
   EnterpriseLeadsListResponse,
   UpdateLeadStatusPayload,
@@ -19,38 +20,50 @@ export const adminLeadsService = {
     page: number = 1,
     pageSize: number = 100
   ): Promise<EnterpriseLeadsListResponse> {
-    const params = new URLSearchParams();
-    if (status && status !== 'ALL') params.append('status', status);
-    if (search && search.trim()) params.append('search', search.trim());
-    params.append('page', page.toString());
-    params.append('pageSize', pageSize.toString());
+    try {
+      const params = new URLSearchParams();
+      if (status && status !== 'ALL') params.append('status', status);
+      if (search && search.trim()) params.append('search', search.trim());
+      params.append('page', page.toString());
+      params.append('pageSize', pageSize.toString());
 
-    const response = await apiClient.get<EnterpriseLeadsListResponse>(
-      `/api/v1/admin/enterprise-leads?${params.toString()}`
-    );
-    return response.data;
+      const response = await apiClient.get<EnterpriseLeadsListResponse>(
+        `/api/v1/admin/enterprise-leads?${params.toString()}`
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Falha ao buscar leads enterprise do CRM.'), { cause: error });
+    }
   },
 
   async updateStatus(
     id: string,
     payload: UpdateLeadStatusPayload
   ): Promise<{ success: boolean; message: string }> {
-    const response = await apiClient.patch<{ success: boolean; message: string }>(
-      `/api/v1/admin/enterprise-leads/${id}/status`,
-      payload
-    );
-    return response.data;
+    try {
+      const response = await apiClient.patch<{ success: boolean; message: string }>(
+        `/api/v1/admin/enterprise-leads/${id}/status`,
+        payload
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Falha ao atualizar status do lead.'), { cause: error });
+    }
   },
 
   async provisionAccount(
     id: string,
     payload: ProvisionEnterprisePayload
   ): Promise<ProvisionEnterpriseResponse> {
-    const response = await apiClient.post<ProvisionEnterpriseResponse>(
-      `/api/v1/admin/enterprise-leads/${id}/provision`,
-      payload
-    );
-    return response.data;
+    try {
+      const response = await apiClient.post<ProvisionEnterpriseResponse>(
+        `/api/v1/admin/enterprise-leads/${id}/provision`,
+        payload
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Falha ao provisionar conta enterprise.'), { cause: error });
+    }
   },
 };
 

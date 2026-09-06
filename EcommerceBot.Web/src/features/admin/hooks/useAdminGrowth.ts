@@ -37,8 +37,8 @@ export const useAdminGrowth = () => {
   const [formData, setFormData] = useState<CreateAdSpendPayload>(initialFormData());
 
   const fetchData = useCallback(async (isManualAction = false) => {
+    setLoading(true);
     if (isManualAction) {
-      setLoading(true);
       setError(null);
     }
     try {
@@ -57,33 +57,24 @@ export const useAdminGrowth = () => {
   }, [days]);
 
   useEffect(() => {
-    let isCancelled = false;
+    let isMounted = true;
 
-    Promise.all([
-      adminGrowthService.getAcquisitionFunnel(days),
-      adminGrowthService.getUnitEconomics(days),
-    ])
-      .then(([funnelRes, economicsRes]) => {
-        if (!isCancelled) {
-          setFunnel(funnelRes);
-          setUnitEconomics(economicsRes);
-        }
-      })
-      .catch((err: unknown) => {
-        if (!isCancelled) {
-          setError(getErrorMessage(err, 'Erro ao carregar métricas de growth.'));
-        }
-      })
-      .finally(() => {
-        if (!isCancelled) {
-          setLoading(false);
-        }
-      });
+    const load = async () => {
+      try {
+        await fetchData();
+      } catch {
+        // Erro já gerenciado no state por fetchData
+      }
+    };
+
+    if (isMounted) {
+      load();
+    }
 
     return () => {
-      isCancelled = true;
+      isMounted = false;
     };
-  }, [days]);
+  }, [fetchData]);
 
   const resetForm = () => {
     setFormData(initialFormData());
