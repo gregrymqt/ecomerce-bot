@@ -5,6 +5,8 @@
  * Alinhado estritamente com os padrões de arquitetura em 4 camadas e WCAG 2.1 AA.
  */
 
+import type React from 'react';
+
 /**
  * Abas ativas no painel de configurações.
  */
@@ -159,4 +161,25 @@ export interface UpdateTenantSsoMappingPayload {
   idpGroupName: string;
   roleId: string;
   isDefaultRole?: boolean;
+}
+
+/**
+ * Retorno do custom hook useTenantSso.
+ */
+export interface UseTenantSsoReturn {
+  roles: Role[];
+  mappings: TenantSsoMapping[];
+  loading: boolean;
+  saving: boolean;
+  error: string | null;
+  successMsg: string | null;
+  groupNameInput: string;
+  setGroupNameInput: (val: string) => void;
+  selectedRoleId: string;
+  setSelectedRoleId: (val: string) => void;
+  isDefaultRoleInput: boolean;
+  setIsDefaultRoleInput: (val: boolean) => void;
+  fetchData: (isManualAction?: boolean) => Promise<void>;
+  handleCreateMapping: (e: React.FormEvent) => Promise<void>;
+  handleDeleteMapping: (id: string, groupName: string) => Promise<void>;
 }

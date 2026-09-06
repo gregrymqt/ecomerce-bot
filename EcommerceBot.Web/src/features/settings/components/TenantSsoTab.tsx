@@ -6,7 +6,7 @@
  * Em conformidade com acessibilidade WCAG 2.1 AA, inputs >= 16px e touch targets >= 44px.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import {
   ShieldCheck,
   Plus,
@@ -16,118 +16,28 @@ import {
   HelpCircle,
   RefreshCw,
 } from 'lucide-react';
-import { tenantSsoService } from '../services/tenantSso.service';
-import type { Role, TenantSsoMapping } from '../types';
+import { useTenantSso } from '../hooks/useTenantSso';
 import { Card, Button, Badge, Alert, FormField } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { getErrorMessage } from '@/utils/errors';
 
 export const TenantSsoTab: React.FC = () => {
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [mappings, setMappings] = useState<TenantSsoMapping[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [saving, setSaving] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
-  // Form State para Novo Mapeamento
-  const [groupNameInput, setGroupNameInput] = useState<string>('');
-  const [selectedRoleId, setSelectedRoleId] = useState<string>('');
-  const [isDefaultRoleInput, setIsDefaultRoleInput] = useState<boolean>(false);
-
-  const fetchData = useCallback(async (isManualAction = false) => {
-    if (isManualAction) {
-      setLoading(true);
-      setError(null);
-    }
-    try {
-      const [rolesData, mappingsData] = await Promise.all([
-        tenantSsoService.getRoles(),
-        tenantSsoService.getMappings(),
-      ]);
-      setRoles(rolesData);
-      setMappings(mappingsData);
-      if (rolesData.length > 0 && !selectedRoleId) {
-        setSelectedRoleId(rolesData[0].id);
-      }
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Erro ao carregar dados de SSO e Roles.'));
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedRoleId]);
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    Promise.all([tenantSsoService.getRoles(), tenantSsoService.getMappings()])
-      .then(([rolesData, mappingsData]) => {
-        if (!isCancelled) {
-          setRoles(rolesData);
-          setMappings(mappingsData);
-          if (rolesData.length > 0 && !selectedRoleId) {
-            setSelectedRoleId(rolesData[0].id);
-          }
-        }
-      })
-      .catch((err: unknown) => {
-        if (!isCancelled) {
-          setError(getErrorMessage(err, 'Erro ao carregar dados de SSO e Roles.'));
-        }
-      })
-      .finally(() => {
-        if (!isCancelled) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [selectedRoleId]);
-
-  const handleCreateMapping = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!groupNameInput.trim() || !selectedRoleId) {
-      setError('Por favor, informe o nome do grupo e selecione um papel.');
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
-    setSuccessMsg(null);
-
-    try {
-      await tenantSsoService.createMapping({
-        idpGroupName: groupNameInput.trim(),
-        roleId: selectedRoleId,
-        isDefaultRole: isDefaultRoleInput,
-      });
-
-      setSuccessMsg(`Mapeamento para o grupo "${groupNameInput.trim()}" criado com sucesso!`);
-      setGroupNameInput('');
-      setIsDefaultRoleInput(false);
-      fetchData();
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Erro ao criar mapeamento de grupo SSO.'));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteMapping = async (id: string, groupName: string) => {
-    if (!window.confirm(`Tem certeza que deseja remover o mapeamento do grupo "${groupName}"?`)) {
-      return;
-    }
-
-    try {
-      await tenantSsoService.deleteMapping(id);
-      setSuccessMsg(`Mapeamento "${groupName}" removido.`);
-      fetchData();
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Erro ao remover mapeamento.'));
-    }
-  };
+  const {
+    roles,
+    mappings,
+    loading,
+    saving,
+    error,
+    successMsg,
+    groupNameInput,
+    setGroupNameInput,
+    selectedRoleId,
+    setSelectedRoleId,
+    isDefaultRoleInput,
+    setIsDefaultRoleInput,
+    fetchData,
+    handleCreateMapping,
+    handleDeleteMapping,
+  } = useTenantSso();
 
   return (
     <div className="space-y-8 animate-fade-in">

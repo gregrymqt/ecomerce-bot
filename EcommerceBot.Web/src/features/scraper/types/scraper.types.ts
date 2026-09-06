@@ -60,6 +60,16 @@ export interface UseScraperReturn {
   reset: () => void;
 }
 
+export interface UseScraperBatchReturn {
+  batchRawText: string;
+  setBatchRawText: (text: string) => void;
+  batchQueue: BatchQueueItem[];
+  isBatchProcessing: boolean;
+  batchProgress: number;
+  handleStartBatch: (e?: React.FormEvent) => Promise<void>;
+  resetBatch: () => void;
+}
+
 export interface UseScraperStreamReturn {
   events: ScraperStreamEvent[];
   progress: number;
@@ -71,6 +81,10 @@ export interface UseScraperStreamReturn {
 }
 
 export interface ScraperFormProps {
+  className?: string;
+}
+
+export interface ScraperBatchFormProps {
   className?: string;
 }
 

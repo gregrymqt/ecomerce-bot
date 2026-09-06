@@ -8,10 +8,8 @@
 import React from 'react';
 import { Card } from '@/components/ui/display/Card';
 import { CreditCardPaymentTab } from './CreditCardPaymentTab';
-import { walletService } from '../services/wallet.service';
-import { useAuth } from '@/features/auth';
-import type { CreditCardRechargeTabProps, CreditCardRechargePayload, CardPaymentPayer } from '../types';
-import type { CreditCardFormData } from '@/components/ui/payment/CreditCardPaymentForm';
+import { useCreditCardRecharge } from '../hooks/useCreditCardRecharge';
+import type { CreditCardRechargeTabProps } from '../types';
 
 export const CreditCardRechargeTab: React.FC<CreditCardRechargeTabProps> = ({
   packageId = 'default-package',
@@ -21,49 +19,12 @@ export const CreditCardRechargeTab: React.FC<CreditCardRechargeTabProps> = ({
   onSubmitCard,
   className,
 }) => {
-  const { user } = useAuth();
-
-  const handleCheckoutSubmit = async ({
-    formData,
-    cardToken,
-    paymentMethodId,
-  }: {
-    formData: CreditCardFormData;
-    cardToken: string;
-    paymentMethodId: string;
-  }) => {
-    const cleanDoc = formData.docNumber.replace(/\D/g, '');
-    const docType: 'CPF' | 'CNPJ' = cleanDoc.length > 11 ? 'CNPJ' : 'CPF';
-
-    const payer: CardPaymentPayer = {
-      email: user?.email || 'cliente@exemplo.com',
-      identification: {
-        type: docType,
-        number: cleanDoc,
-      },
-    };
-
-
-    const rechargePayload: CreditCardRechargePayload = {
-      package_id: packageId,
-      amount: amountBrl,
-      payment_method: 'credit_card',
-      card_token: cardToken || '',
-      payment_method_id: paymentMethodId || 'visa',
-      installments: Number(formData.installments) || 1,
-      payer: payer,
-    };
-
-    if (onSubmitCard) {
-      await onSubmitCard(rechargePayload);
-    } else {
-      await walletService.processCreditCardRecharge(rechargePayload);
-    }
-
-    if (onSuccessPayment) {
-      onSuccessPayment();
-    }
-  };
+  const { isLoading, handleCheckoutSubmit } = useCreditCardRecharge({
+    packageId,
+    amountBrl,
+    onSubmitCard,
+    onSuccessPayment,
+  });
 
   return (
     <Card
@@ -72,7 +33,7 @@ export const CreditCardRechargeTab: React.FC<CreditCardRechargeTabProps> = ({
     >
       <CreditCardPaymentTab
         amountBrl={amountBrl}
-        loading={loading}
+        loading={loading || isLoading}
         onSubmit={handleCheckoutSubmit}
       />
     </Card>

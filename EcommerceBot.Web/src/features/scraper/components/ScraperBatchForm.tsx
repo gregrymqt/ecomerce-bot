@@ -1,65 +1,19 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Layers, Sparkles, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Card, Button, ProgressBar } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { scraperService } from '../services/scraper.service';
-import type { BatchQueueItem } from '../types';
-import { getErrorMessage } from '@/utils/errors';
-
-export interface ScraperBatchFormProps {
-  className?: string;
-}
+import { useScraperBatch } from '../hooks/useScraperBatch';
+import type { ScraperBatchFormProps } from '../types';
 
 export const ScraperBatchForm: React.FC<ScraperBatchFormProps> = ({ className }) => {
-  const [batchRawText, setBatchRawText] = useState<string>('');
-  const [batchQueue, setBatchQueue] = useState<BatchQueueItem[]>([]);
-  const [isBatchProcessing, setIsBatchProcessing] = useState<boolean>(false);
-  const [batchProgress, setBatchProgress] = useState<number>(0);
-
-  const handleStartBatch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const urls = batchRawText
-      .split('\n')
-      .map((u) => u.trim())
-      .filter((u) => u.startsWith('http://') || u.startsWith('https://'));
-
-    if (urls.length === 0) return;
-
-    const initialQueue: BatchQueueItem[] = urls.map((u, idx) => ({
-      id: idx,
-      url: u,
-      status: 'pending',
-    }));
-
-    setBatchQueue(initialQueue);
-    setIsBatchProcessing(true);
-    setBatchProgress(0);
-
-    for (let i = 0; i < initialQueue.length; i++) {
-      setBatchQueue((prev) =>
-        prev.map((item, idx) => (idx === i ? { ...item, status: 'sending' } : item))
-      );
-
-      try {
-        await scraperService.extractUrl({ url: initialQueue[i].url });
-        setBatchQueue((prev) =>
-          prev.map((item, idx) => (idx === i ? { ...item, status: 'completed' } : item))
-        );
-      } catch (err: unknown) {
-        const errorMsg = getErrorMessage(err, 'Falha no enfileiramento');
-        setBatchQueue((prev) =>
-          prev.map((item, idx) =>
-            idx === i ? { ...item, status: 'failed', error: errorMsg } : item
-          )
-        );
-      }
-
-      const percent = Math.round(((i + 1) / initialQueue.length) * 100);
-      setBatchProgress(percent);
-    }
-
-    setIsBatchProcessing(false);
-  };
+  const {
+    batchRawText,
+    setBatchRawText,
+    batchQueue,
+    isBatchProcessing,
+    batchProgress,
+    handleStartBatch,
+  } = useScraperBatch();
 
   return (
     <div
