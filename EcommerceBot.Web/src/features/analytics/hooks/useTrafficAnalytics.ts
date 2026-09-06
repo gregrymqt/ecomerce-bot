@@ -29,8 +29,8 @@ export const useTrafficAnalytics = (enabled: boolean = true) => {
   const trackerSnippet = `<script async src="https://api.ecomautobot.com/tracker.js" data-tenant-id="${tenantId}"></script>`;
 
   const fetchTrafficData = useCallback(async (isManualAction = false) => {
+    setLoadingTraffic(true);
     if (isManualAction) {
-      setLoadingTraffic(true);
       setError(null);
     }
     try {
@@ -46,30 +46,24 @@ export const useTrafficAnalytics = (enabled: boolean = true) => {
 
   useEffect(() => {
     if (!enabled) return;
-    let isCancelled = false;
+    let isMounted = true;
 
-    trafficAnalyticsService
-      .getTrafficOverview(days)
-      .then((res) => {
-        if (!isCancelled) {
-          setOverview(res);
-        }
-      })
-      .catch((err: unknown) => {
-        if (!isCancelled) {
-          setError(getErrorMessage(err, 'Erro ao carregar métricas de tráfego do lojista.'));
-        }
-      })
-      .finally(() => {
-        if (!isCancelled) {
-          setLoadingTraffic(false);
-        }
-      });
+    const load = async () => {
+      try {
+        await fetchTrafficData();
+      } catch {
+        // Erro já tratado no state por fetchTrafficData
+      }
+    };
+
+    if (isMounted) {
+      load();
+    }
 
     return () => {
-      isCancelled = true;
+      isMounted = false;
     };
-  }, [enabled, days]);
+  }, [enabled, fetchTrafficData]);
 
   const handleCopySnippet = async () => {
     try {

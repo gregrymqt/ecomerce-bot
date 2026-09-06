@@ -104,7 +104,7 @@ export const TrackerInstallationCard: React.FC<TrackerInstallationCardProps> = (
           placeholder="https://minhaloja.com.br"
           value={storeUrlInput}
           onChange={(e) => setStoreUrlInput(e.target.value)}
-          className="w-full sm:w-80 h-11 px-3.5 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base sm:text-sm placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 min-h-[44px]"
+          className="w-full sm:w-80 h-11 px-3.5 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 min-h-[44px]"
         />
         <Button
           type="submit"
