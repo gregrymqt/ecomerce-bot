@@ -115,4 +115,16 @@ public class StoreIntegrationRepository : IStoreIntegrationRepository
         """;
         await connection.ExecuteAsync(sql, new { Id = id, Status = status, LatencyMs = latencyMs, HealthMessage = healthMessage });
     }
+
+    public async Task UpdateStatusAsync(Guid tenantId, string platform, string status)
+    {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        const string sql = """
+            UPDATE dbo.StoreIntegrations 
+            SET Status = @Status,
+                UpdatedAt = SYSDATETIMEOFFSET()
+            WHERE TenantId = @TenantId AND Platform = @Platform;
+        """;
+        await connection.ExecuteAsync(sql, new { TenantId = tenantId, Platform = platform, Status = status });
+    }
 }

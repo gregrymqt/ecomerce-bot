@@ -11,9 +11,10 @@ export interface CreatePlanRequest {
   description?: string;
   price: number;
   creditsIncluded: number;
-  billingInterval: string;
+  badge?: string;
+  billingInterval?: string;
   mpPreapprovalPlanId?: string;
-  trialDays: number;
+  trialDays?: number;
   isActive: boolean;
 }
 
@@ -22,6 +23,7 @@ export interface UpdatePlanRequest {
   description?: string;
   price?: number;
   creditsIncluded?: number;
+  badge?: string;
   billingInterval?: string;
   mpPreapprovalPlanId?: string;
   trialDays?: number;
@@ -34,9 +36,10 @@ export interface PlanResponse {
   description?: string;
   price: number;
   creditsIncluded: number;
-  billingInterval: string;
+  badge?: string;
+  billingInterval?: string;
   mpPreapprovalPlanId?: string;
-  trialDays: number;
+  trialDays?: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

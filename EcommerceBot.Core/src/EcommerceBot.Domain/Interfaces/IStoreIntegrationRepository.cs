@@ -15,4 +15,5 @@ public interface IStoreIntegrationRepository
     Task UpsertAsync(StoreIntegration integration);
     Task<bool> DeleteAsync(Guid tenantId, Guid id);
     Task UpdateHealthCheckAsync(Guid id, string status, int latencyMs, string healthMessage);
+    Task UpdateStatusAsync(Guid tenantId, string platform, string status);
 }

@@ -76,6 +76,16 @@ def scan_dotnet_core():
     consumer_pattern = re.compile(r'public\s+class\s+(\w+)\s*:\s*IConsumer<(\w+)>', re.MULTILINE)
     dapper_table_pattern = re.compile(r'FROM\s+dbo\.(\w+)|INSERT\s+INTO\s+dbo\.(\w+)|UPDATE\s+dbo\.(\w+)', re.IGNORECASE)
 
+    consumer_queue_mapping = {
+        "PaymentProcessingConsumer": "queue:payments_process_queue",
+        "ShopifyBulkSyncConsumer": "queue:shopify_bulk_sync",
+        "NuvemshopBulkSyncConsumer": "queue:nuvemshop_bulk_sync",
+        "ProcessedProductConsumer": "queue:ecommerce_processed_queue",
+        "EmailNotificationConsumer": "queue:email_notifications",
+        "LlmUsageConsumer": "queue:llm_usage_queue"
+    }
+    injected_pattern = re.compile(r'\bI([A-Z]\w+(?:Service|Repository))\b')
+
     for cs_file in core_dir.rglob("*.cs"):
         if any(ignored in cs_file.parts for ignored in ["bin", "obj", ".vs", "EcommerceBot.Diagnostics.Mcp"]):
             continue
@@ -103,6 +113,12 @@ def scan_dotnet_core():
                     add_node(ctrl_id, ctrl_name, "ApiController", rel_path, {"base_route": base_route, "endpoints": endpoints})
                     controllers.append({"name": ctrl_name, "route": base_route, "endpoints": endpoints})
 
+                    for inj in injected_pattern.finditer(content):
+                        target_code = inj.group(1)
+                        if target_code != ctrl_name:
+                            add_node(f"code:{target_code}", target_code, "CoreServiceOrRepo")
+                            add_edge(ctrl_id, f"code:{target_code}", "invokes")
+
             # Detectar Consumers MassTransit
             for cons_match in consumer_pattern.finditer(content):
                 cons_name = cons_match.group(1)
@@ -110,6 +126,27 @@ def scan_dotnet_core():
                 cons_id = f"consumer:{cons_name}"
                 add_node(cons_id, cons_name, "MassTransitConsumer", rel_path, {"message": msg_type})
                 consumers.append({"name": cons_name, "message": msg_type})
+
+                if cons_name in consumer_queue_mapping:
+                    q_id = consumer_queue_mapping[cons_name]
+                    add_node(q_id, q_id.replace("queue:", ""), "MessageQueue")
+                    add_edge(cons_id, q_id, "consumes_from")
+
+                for inj in injected_pattern.finditer(content):
+                    target_code = inj.group(1)
+                    if target_code != cons_name:
+                        add_node(f"code:{target_code}", target_code, "CoreServiceOrRepo")
+                        add_edge(cons_id, f"code:{target_code}", "invokes")
+
+            # Detectar Serviços e Repositórios
+            if "Service" in cs_file.stem or "Repository" in cs_file.stem:
+                file_id = f"code:{cs_file.stem}"
+                add_node(file_id, cs_file.stem, "CoreServiceOrRepo", rel_path)
+                for inj in injected_pattern.finditer(content):
+                    target_code = inj.group(1)
+                    if target_code != cs_file.stem:
+                        add_node(f"code:{target_code}", target_code, "CoreServiceOrRepo")
+                        add_edge(file_id, f"code:{target_code}", "invokes")
 
             # Detectar queries Dapper para tabelas
             for match in dapper_table_pattern.finditer(content):
@@ -336,7 +373,16 @@ def generate_report(tables, controllers, consumers, queues, features, mcp_tools,
 
     lines.extend([
         "",
-        "## 🎨 5. Módulos Frontend (`EcommerceBot.Web`)",
+        "## 💳 5. Topologia do Ledger de Créditos, Quotas e Consumidores",
+        "- **Entidade Canônica:** `dbo.CreditTransactions` (auditável, append-only, rastreabilidade por `TenantId`).",
+        "- **Controlador Central:** `WalletController` (`/api/v1/wallet`) -> `WalletService` -> `TenantRepository` -> `dbo.CreditTransactions`.",
+        "- **Consumidores Integrados:**",
+        "  - `PaymentProcessingConsumer` (`payments_process_queue`): créditos por recarga (PIX/CC) e estornos (`CHARGEBACK_REVERSAL`).",
+        "  - `ShopifyBulkSyncConsumer` (`shopify_bulk_sync`): dedução atômica por SKU (`PRODUCT_ENRICHMENT`) com auto-pause em falta de saldo.",
+        "  - `NuvemshopBulkSyncConsumer` (`nuvemshop_bulk_sync`): dedução atômica por SKU (`PRODUCT_ENRICHMENT`) com auto-pause em falta de saldo.",
+        "  - `CatalogService` & `ProcessedProductConsumer` (`ecommerce_processed_queue`): enriquecimento com validação e isenção BYOK.",
+        "",
+        "## 🎨 6. Módulos Frontend (`EcommerceBot.Web`)",
     ])
 
     for feat in features:
@@ -345,7 +391,7 @@ def generate_report(tables, controllers, consumers, queues, features, mcp_tools,
 
     lines.extend([
         "",
-        "## 🛠️ 6. Servidor MCP de Diagnóstico (`EcommerceBot.Diagnostics.Mcp`)",
+        "## 🛠️ 7. Servidor MCP de Diagnóstico (`EcommerceBot.Diagnostics.Mcp`)",
         "- **Transporte:** `stdio` (JSON-RPC 2.0 padrão v2024-11-05)",
         "- **Ferramentas Registradas:**"
     ])
@@ -355,7 +401,7 @@ def generate_report(tables, controllers, consumers, queues, features, mcp_tools,
 
     lines.extend([
         "",
-        "## 🔬 7. Modelos de Machine Learning & Spark (`EcommerceBot.Worker/app/ml`)",
+        "## 🔬 8. Modelos de Machine Learning & Spark (`EcommerceBot.Worker/app/ml`)",
     ])
 
     for model in ml_models:
@@ -363,7 +409,7 @@ def generate_report(tables, controllers, consumers, queues, features, mcp_tools,
 
     lines.extend([
         "",
-        "## 📚 8. Runbooks Operacionais Catalogados (`docs/runbooks`)",
+        "## 📚 9. Runbooks Operacionais Catalogados (`docs/runbooks`)",
     ])
 
     for rb in runbooks:
@@ -371,11 +417,11 @@ def generate_report(tables, controllers, consumers, queues, features, mcp_tools,
 
     lines.extend([
         "",
-        "## 🧭 9. Diretriz de Uso para Agentes",
+        "## 🧭 10. Diretriz de Uso para Agentes",
         "1. Para verificar o raio de impacto de um campo ou contrato, localize o símbolo no `.agents/graph.json`.",
         "2. NUNCA altere assinaturas de mensageria sem verificar consumidores em C# e handlers Python simultaneamente.",
         "3. Mantenha queries em conformidade com as tabelas listadas na Seção 3 e isole queries por `TenantId`.",
-        "4. Utilize as ferramentas do Servidor MCP (Seção 6) para inspeção operacional antes de qualquer alteração de infraestrutura."
+        "4. Utilize as ferramentas do Servidor MCP (Seção 7) para inspeção operacional antes de qualquer alteração de infraestrutura."
     ])
 
     report_path.write_text("\n".join(lines), encoding="utf-8")

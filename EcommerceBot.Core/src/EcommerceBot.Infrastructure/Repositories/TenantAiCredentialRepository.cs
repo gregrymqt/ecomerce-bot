@@ -25,6 +25,14 @@ public class TenantAiCredentialRepository : ITenantAiCredentialRepository
         return await connection.QueryFirstOrDefaultAsync<TenantAiCredential>(sql, new { TenantId = tenantId, Provider = provider });
     }
 
+    public async Task<bool> HasActiveByokAsync(Guid tenantId)
+    {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        const string sql = "SELECT COUNT(1) FROM dbo.TenantAiCredentials WHERE TenantId = @TenantId AND IsActive = 1";
+        var count = await connection.ExecuteScalarAsync<int>(sql, new { TenantId = tenantId });
+        return count > 0;
+    }
+
     public async Task UpsertAsync(TenantAiCredential credential)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();

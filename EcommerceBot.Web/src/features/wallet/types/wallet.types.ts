@@ -14,6 +14,7 @@ export type TransactionType =
   | 'WELCOME_BONUS'
   | 'PRODUCT_ENRICHMENT'
   | 'REFUND'
+  | 'CHARGEBACK_REVERSAL'
   | 'ML_ANALYSIS';
 export type WalletTab = 'BALANCE' | 'PLANS';
 export type PaymentMethod = 'pix' | 'credit_card';

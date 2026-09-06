@@ -151,7 +151,21 @@ class SparkBatchPipeline:
 
         return metrics
 
-    def generate_notebooklm_report(self, metrics: Dict[str, Any], output_path: Optional[str] = None) -> str:
+    def calculate_transactional_ltv(self, transactions: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Calcula o LTV projetado e métricas da carteira com base na fórmula transacional B2B:
+        LTV = Ticket Médio por Recarga * Frequência Anual de Recargas * Tempo Médio de Atividade.
+        """
+        from app.ml.ltv_forecaster import LTVForecaster
+        forecaster = LTVForecaster()
+        return forecaster.forecast_ltv(transactions)
+
+    def generate_notebooklm_report(
+        self,
+        metrics: Dict[str, Any],
+        output_path: Optional[str] = None,
+        ltv_summary: Optional[Dict[str, Any]] = None
+    ) -> str:
         """
         Gera um relatório estruturado em Markdown otimizado para ingestão no Google NotebookLM.
         Zero PII (dados 100% agregados por perfil e métricas de distribuição).
@@ -189,22 +203,34 @@ class SparkBatchPipeline:
                 f"| **{p.get('label', 'Segmento')}** | {p['count']} | {pct:.1f}% | R$ {p['avg_monetary']:,.2f} | {p['avg_recency_days']} dias | R$ {p['total_revenue']:,.2f} |"
             )
 
+        if ltv_summary:
+            lines.extend([
+                "",
+                "---",
+                "",
+                "## 💰 3. Projeção de LTV Transacional B2B (Ledger & Recargas)",
+                f"- **LTV Total Projetado da Base:** R$ {ltv_summary.get('projected_total_ltv', 0):,.2f}",
+                f"- **Receita Projetada (3 meses):** R$ {ltv_summary.get('projected_revenue_3m', 0):,.2f}",
+                f"- **Receita Projetada (6 meses):** R$ {ltv_summary.get('projected_revenue_6m', 0):,.2f}",
+                f"- **Receita Projetada (12 meses):** R$ {ltv_summary.get('projected_revenue_12m', 0):,.2f}",
+            ])
+
         lines.extend([
             "",
             "---",
             "",
-            "## 💡 3. Recomendações Táticas por Cluster",
-            "- **Campeões (VIP):** Criar programa de fidelidade exclusivo, acesso antecipado a lançamentos e atendimento prioritário.",
-            "- **Clientes Fiéis:** Campanhas de cross-sell e upsell recomendando produtos complementares aos pedidos habituais.",
-            "- **Em Risco:** Disparo de e-mails transacionais com cupons de reativação por tempo limitado.",
-            "- **Inativos / Ocasionais:** Campanhas de remarketing de baixo custo e pesquisas de satisfação.",
+            "## 💡 4. Recomendações Táticas por Cluster",
+            "- **Campeões (VIP):** Criar programa de fidelidade exclusivo, acesso antecipado a pacotes com desconto e atendimento prioritário.",
+            "- **Clientes Fiéis:** Campanhas de recarga programada e incentivos de volume com créditos bônus.",
+            "- **Em Risco:** Disparo de e-mails transacionais com ofertas especiais de reativação de saldo.",
+            "- **Inativos / Ocasionais:** Campanhas de reengajamento de baixo custo destacando novas automações de IA.",
             "",
             "---",
             "",
-            "## 🤖 4. Prompts de Estudo Recomendados para o Google NotebookLM",
+            "## 🤖 5. Prompts de Estudo Recomendados para o Google NotebookLM",
             "Cole este relatório no seu caderno do NotebookLM e pergunte:",
             "1. *'Qual cluster concentra o maior faturamento e qual a estratégia ideal para blindá-lo?'*",
-            "2. *'Qual a taxa de clientes em risco e qual o impacto financeiro estimado caso eles evadam?'*",
+            "2. *'Qual a projeção de receita para os próximos 12 meses com base no LTV transacional?'*",
             "3. *'Gere um script de áudio/podcast resumindo a saúde da carteira de clientes para a diretoria.'*",
             ""
         ])

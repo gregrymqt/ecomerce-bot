@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 from app.ml.rfm_segmentation import RFMSegmentation
 from app.ml.churn_predictor import ChurnPredictor
 from app.ml.ltv_forecaster import LTVForecaster
@@ -43,6 +43,11 @@ class TestMLModule(unittest.TestCase):
         self.assertEqual(result["summary"]["total_customers"], 1)
         self.assertEqual(result["forecasts"][0]["customerTier"], "DIAMOND")
         self.assertGreater(result["summary"]["projected_revenue_12m"], 0)
+        self.assertIn("annualRechargeFrequency", result["forecasts"][0])
+        self.assertIn("expectedLifespanYears", result["forecasts"][0])
+        self.assertIn("projectedLtv", result["forecasts"][0])
+        self.assertGreater(result["forecasts"][0]["projectedLtv"], 0)
+        self.assertGreater(result["summary"]["projected_total_ltv"], 0)
 
 if __name__ == "__main__":
     unittest.main()

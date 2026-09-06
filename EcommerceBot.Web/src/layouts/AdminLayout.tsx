@@ -16,6 +16,7 @@ import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar
 import { useAuth } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/feedback/Badge';
+import { GlobalCreditBalanceBadge } from '@/components/ui';
 import { useRoleLayout } from './hooks/useRoleLayout';
 
 export const AdminLayout: React.FC = () => {
@@ -127,6 +128,7 @@ export const AdminLayout: React.FC = () => {
             <Badge variant="info" icon={<Layers className="w-3.5 h-3.5" />}>
               SaaS Admin Portal
             </Badge>
+            <GlobalCreditBalanceBadge />
             {currentTenant && (
               <span className="hidden sm:inline text-xs text-slate-400 font-mono">
                 Tenant: {currentTenant}

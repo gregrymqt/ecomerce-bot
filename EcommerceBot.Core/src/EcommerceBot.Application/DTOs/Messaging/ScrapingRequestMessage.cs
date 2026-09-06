@@ -8,4 +8,5 @@ public record ScrapingRequestMessage
     public string Sku { get; init; } = string.Empty;
     public string Url { get; init; } = string.Empty;
     public string PromptContext { get; init; } = string.Empty;
+    public bool IsByok { get; init; } = false;
 }

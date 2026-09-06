@@ -41,12 +41,12 @@ public class PlanRepository : IPlanRepository
         using var connection = await _connectionFactory.CreateConnectionAsync();
         const string sql = @"
             INSERT INTO dbo.Plans (
-                Name, Description, Price, CreditsIncluded, BillingInterval, 
+                Name, Description, Price, CreditsIncluded, Badge, BillingInterval, 
                 MpPreapprovalPlanId, TrialDays, IsActive
             )
             OUTPUT INSERTED.Id
             VALUES (
-                @Name, @Description, @Price, @CreditsIncluded, @BillingInterval, 
+                @Name, @Description, @Price, @CreditsIncluded, @Badge, @BillingInterval, 
                 @MpPreapprovalPlanId, @TrialDays, @IsActive
             );";
             
@@ -62,6 +62,7 @@ public class PlanRepository : IPlanRepository
                 Description = @Description,
                 Price = @Price,
                 CreditsIncluded = @CreditsIncluded,
+                Badge = @Badge,
                 BillingInterval = @BillingInterval,
                 MpPreapprovalPlanId = @MpPreapprovalPlanId,
                 TrialDays = @TrialDays,

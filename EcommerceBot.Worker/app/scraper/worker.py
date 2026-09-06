@@ -29,12 +29,13 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
         sku = payload.get("sku") or payload.get("Sku")
         url = payload.get("url") or payload.get("Url") or payload.get("targetUrl") or payload.get("TargetUrl")
         prompt_ctx = payload.get("promptContext") or payload.get("PromptContext")
+        is_byok = bool(payload.get("isByok") or payload.get("IsByok") or False)
 
         if not url or not tenant_id or not sku:
             logger.warning(f"Payload inválido ou incompleto: {payload}")
             return
 
-        logger.info(f"🕷️ [ScraperWorker] Processando Scraping com Scrapling para Tenant {tenant_id} | SKU {sku} | URL {url}")
+        logger.info(f"🕷️ [ScraperWorker] Processando Scraping com Scrapling para Tenant {tenant_id} | SKU {sku} | URL {url} | BYOK: {is_byok}")
 
         try:
             result = await parser.parse_and_enrich(url, prompt_context=prompt_ctx)
@@ -65,8 +66,8 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
                 "promptTokens": result.get("prompt_tokens", 350),
                 "completionTokens": result.get("completion_tokens", 250),
                 "totalTokens": result.get("total_tokens", 600),
-                "estimatedCostUsd": 0.00015,
-                "isByok": False,
+                "estimatedCostUsd": 0.0 if is_byok else 0.00015,
+                "isByok": is_byok,
                 "executionTimeMs": result.get("duration_ms", 1200)
             }
             await channel.default_exchange.publish(

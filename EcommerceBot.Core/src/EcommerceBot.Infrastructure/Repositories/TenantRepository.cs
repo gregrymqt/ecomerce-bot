@@ -150,6 +150,72 @@ public class TenantRepository : ITenantRepository
         return newBalance.Value;
     }
 
+    public async Task<int> ReverseCreditsAsync(
+        Guid tenantId, 
+        int amount, 
+        string type = "CHARGEBACK_REVERSAL", 
+        string description = "Estorno / Chargeback de créditos", 
+        string? referenceId = null, 
+        Guid? orderId = null)
+    {
+        if (amount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(amount), "A quantidade de créditos a reverter deve ser maior que zero.");
+        }
+
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+
+        // 1. Dedução Atômica Incondicional no SQL Server (pode negativar saldo se créditos já foram gastos)
+        const string sqlUpdate = """
+            UPDATE dbo.Tenants 
+            SET CreditsBalance = CreditsBalance - @Amount,
+                UpdatedAt = SYSDATETIMEOFFSET()
+            OUTPUT inserted.CreditsBalance
+            WHERE Id = @TenantId;
+        """;
+
+        var newBalance = await connection.ExecuteScalarAsync<int?>(sqlUpdate, new { TenantId = tenantId, Amount = amount });
+
+        if (!newBalance.HasValue)
+        {
+            throw new InvalidOperationException($"Tenant com Id '{tenantId}' não encontrado.");
+        }
+
+        // Se o saldo ficar negativo (créditos foram consumidos antes do estorno/chargeback), suspender preventivamente
+        if (newBalance.Value < 0)
+        {
+            const string sqlSuspend = """
+                UPDATE dbo.Tenants
+                SET IsActive = 0,
+                    UpdatedAt = SYSDATETIMEOFFSET()
+                WHERE Id = @TenantId;
+            """;
+            await connection.ExecuteAsync(sqlSuspend, new { TenantId = tenantId });
+        }
+
+        // 2. Registro Auditável no Ledger (dbo.CreditTransactions)
+        const string sqlInsertLedger = """
+            INSERT INTO dbo.CreditTransactions 
+            (Id, TenantId, OrderId, Amount, BalanceAfter, Type, Description, ReferenceId, CreatedAt)
+            VALUES 
+            (@Id, @TenantId, @OrderId, @Amount, @BalanceAfter, @Type, @Description, @ReferenceId, SYSDATETIMEOFFSET());
+        """;
+
+        await connection.ExecuteAsync(sqlInsertLedger, new
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            OrderId = orderId,
+            Amount = -amount, // Valor negativo para representar saída no ledger
+            BalanceAfter = newBalance.Value,
+            Type = type,
+            Description = description,
+            ReferenceId = referenceId
+        });
+
+        return newBalance.Value;
+    }
+
     public async Task<IEnumerable<CreditTransaction>> GetCreditTransactionsAsync(Guid tenantId, int limit = 50, int offset = 0, string? type = null)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();

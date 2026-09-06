@@ -210,14 +210,65 @@ public class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                 }
                 _logger.LogWarning("Payment {ResourceId} rejected or failed with detail {Detail}", resourceId, statusDetail);
             }
-            else if (status == "refunded" || status == "charged_back")
+            else if (status == "refunded" || status == "charged_back" || status == "cancelled")
             {
                 if (order != null)
                 {
-                    order.Status = "refunded";
+                    bool wasPaid = order.PaidAt != null || order.Status == "approved";
+                    bool alreadyReverted = order.Status == "refunded" || order.Status == "charged_back";
+
+                    order.Status = status == "charged_back" ? "charged_back" : "refunded";
                     await _orderRepository.UpdateOrderAsync(order);
+
+                    if (wasPaid && !alreadyReverted)
+                    {
+                        int creditsToRevert = 0;
+                        if (order.PlanId.HasValue)
+                        {
+                            var plan = await _planRepository.GetByIdAsync(order.PlanId.Value);
+                            if (plan != null)
+                            {
+                                creditsToRevert = plan.CreditsIncluded;
+                            }
+                        }
+
+                        if (creditsToRevert <= 0)
+                        {
+                            creditsToRevert = (int)Math.Ceiling(order.TotalAmount * 10);
+                        }
+
+                        _logger.LogWarning("Revertendo {Credits} créditos por {Status} do pedido {OrderId} do Tenant {TenantId}",
+                            creditsToRevert, status, order.Id, order.TenantId);
+
+                        var newBalance = await _tenantRepository.ReverseCreditsAsync(
+                            tenantId: order.TenantId,
+                            amount: creditsToRevert,
+                            type: "CHARGEBACK_REVERSAL",
+                            description: $"Estorno / Chargeback Mercado Pago ({status}): -{creditsToRevert} créditos",
+                            referenceId: order.ExternalReference ?? resourceId,
+                            orderId: order.Id
+                        );
+
+                        if (newBalance < 0)
+                        {
+                            _logger.LogCritical("INCIDENTE DE SEGURANÇA / INADIMPLÊNCIA: Tenant {TenantId} teve estorno/chargeback de {Credits} créditos e saldo ficou negativo ({NewBalance}). Conta suspensa preventivamente.",
+                                order.TenantId, creditsToRevert, newBalance);
+                        }
+
+                        // Notifica Frontend via SSE através do canal Redis
+                        var ssePayload = JsonSerializer.Serialize(new
+                        {
+                            type = "payment_refunded",
+                            order_id = order.Id.ToString(),
+                            status = order.Status,
+                            amount = paidAmount > 0 ? paidAmount : order.TotalAmount,
+                            credits_reverted = creditsToRevert,
+                            balance_credits = newBalance
+                        });
+                        await _redisService.PublishAsync($"events:tenant:{order.TenantId}", ssePayload);
+                    }
                 }
-                _logger.LogWarning("Payment {ResourceId} refunded or charged back.", resourceId);
+                _logger.LogWarning("Payment {ResourceId} refunded, charged back or cancelled.", resourceId);
             }
 
             // Registra atividade em dbo.RobotActivities

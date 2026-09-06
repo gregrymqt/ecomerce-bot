@@ -14,16 +14,16 @@ import {
   Building,
 } from 'lucide-react';
 import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar';
-import { useAuth, useFeatureGate } from '@/features/auth';
+import { useAuth } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/feedback/Badge';
+import { GlobalCreditBalanceBadge } from '@/components/ui';
 import { useRoleLayout } from './hooks/useRoleLayout';
 
 export const MerchantLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, currentTenant, logout } = useAuth();
-  const { getPlanName } = useFeatureGate();
   const { setAdminViewMode } = useRoleLayout();
 
   const isAdmin = Boolean(user && (user.is_admin === true || user.role === 'admin' || user.role === 'ADMIN'));
@@ -143,9 +143,7 @@ export const MerchantLayout: React.FC = () => {
             <span className="font-bold text-sm text-white">
               Painel do Lojista
             </span>
-            <Badge variant="success" icon={<Activity className="w-3.5 h-3.5" />}>
-              {getPlanName()}
-            </Badge>
+            <GlobalCreditBalanceBadge />
           </div>
 
           <div className="flex items-center gap-3">

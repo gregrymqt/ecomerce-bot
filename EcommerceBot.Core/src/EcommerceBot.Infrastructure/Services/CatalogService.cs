@@ -16,17 +16,20 @@ public class CatalogService : ICatalogService
 {
     private readonly IProductRepository _productRepository;
     private readonly ITenantRepository _tenantRepository;
+    private readonly ITenantAiCredentialRepository _tenantAiCredentialRepository;
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly ILogger<CatalogService> _logger;
 
     public CatalogService(
         IProductRepository productRepository,
         ITenantRepository tenantRepository,
+        ITenantAiCredentialRepository tenantAiCredentialRepository,
         IPublishEndpoint publishEndpoint,
         ILogger<CatalogService> logger)
     {
         _productRepository = productRepository;
         _tenantRepository = tenantRepository;
+        _tenantAiCredentialRepository = tenantAiCredentialRepository;
         _publishEndpoint = publishEndpoint;
         _logger = logger;
     }
@@ -103,13 +106,22 @@ public class CatalogService : ICatalogService
 
         var sku = Guid.NewGuid().ToString("N")[..10].ToUpper();
 
-        // Dedução atômica de 1 crédito anti-double-spending (lança InsufficientCreditsException se insuficiente)
-        await _tenantRepository.DeductCreditsAsync(
-            tenantId,
-            1,
-            type: "PRODUCT_ENRICHMENT",
-            description: "Extração e enriquecimento de catálogo com IA",
-            referenceId: sku);
+        // 1. Verificação de credencial BYOK ativa para o Tenant
+        var hasByok = await _tenantAiCredentialRepository.HasActiveByokAsync(tenantId);
+        if (!hasByok)
+        {
+            // Dedução atômica de 1 crédito anti-double-spending (lança InsufficientCreditsException se insuficiente)
+            await _tenantRepository.DeductCreditsAsync(
+                tenantId,
+                1,
+                type: "PRODUCT_ENRICHMENT",
+                description: "Extração e enriquecimento de catálogo com IA",
+                referenceId: sku);
+        }
+        else
+        {
+            _logger.LogInformation("Tenant '{TenantId}' possui BYOK ativo. Isenção de dedução de créditos da plataforma para SKU '{Sku}'.", tenantId, sku);
+        }
 
         var product = new Product
         {
@@ -127,7 +139,8 @@ public class CatalogService : ICatalogService
             TenantId = tenantId,
             Sku = sku,
             Url = request.Url,
-            PromptContext = request.CustomPrompt ?? string.Empty
+            PromptContext = request.CustomPrompt ?? string.Empty,
+            IsByok = hasByok
         });
 
         _logger.LogInformation("Scraping enqueued for SKU '{Sku}', Tenant '{TenantId}'", sku, tenantId);

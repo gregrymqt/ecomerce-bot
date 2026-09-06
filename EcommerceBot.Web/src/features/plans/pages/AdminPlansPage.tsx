@@ -40,7 +40,7 @@ export const AdminPlansPage: React.FC = () => {
   return (
     <div
       role="main"
-      aria-label="Gestão de Planos de Assinatura"
+      aria-label="Gestão de Pacotes de Recarga (Quotas de IA)"
       className="min-h-screen p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto animate-fade-in pb-12"
     >
       {/* Alerta de Feedback Customizado */}
@@ -62,11 +62,11 @@ export const AdminPlansPage: React.FC = () => {
               <ShieldCheck className="w-6 h-6" />
             </span>
             <h1 className="text-2xl font-bold text-slate-100 tracking-tight">
-              Gestão de Planos de Assinatura
+              Gestão de Pacotes de Recarga (Quotas de IA)
             </h1>
           </div>
           <p className="text-sm text-slate-400 mt-1 font-mono">
-            Sincronização e cadastro de planos da plataforma
+            Cadastro e configuração de pacotes avulsos de créditos de inteligência artificial
           </p>
         </div>
 
@@ -75,35 +75,35 @@ export const AdminPlansPage: React.FC = () => {
           variant="primary"
           onClick={openCreateModal}
           iconLeft={<Plus className="w-5 h-5" />}
-          className="min-h-[44px] px-5 bg-indigo-600 hover:bg-indigo-500 font-bold text-white shadow-lg shadow-indigo-600/25"
+          className="min-h-[44px] px-5 bg-indigo-600 hover:bg-indigo-500 font-bold text-white shadow-lg shadow-indigo-600/25 cursor-pointer"
         >
-          Criar Novo Plano
+          Criar Novo Pacote
         </Button>
       </header>
 
       {/* Metrics Bar - 3 KPI Cards */}
-      <section aria-label="Métricas de Planos" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Card 1: Total de Planos */}
+      <section aria-label="Métricas de Pacotes" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Card 1: Total de Pacotes */}
         <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-lg backdrop-blur-md flex items-center gap-4">
           <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
             <Database className="w-5 h-5" />
           </div>
           <div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">
-              Total de Planos ({sourceMode === 'local' ? 'Local' : 'Mercado Pago'})
+              Total de Pacotes ({sourceMode === 'local' ? 'Local' : 'Mercado Pago'})
             </span>
             <div className="text-2xl font-bold text-slate-100 font-mono">{plans.length}</div>
           </div>
         </div>
 
-        {/* Card 2: Planos Ativos */}
+        {/* Card 2: Pacotes Ativos */}
         <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-lg backdrop-blur-md flex items-center gap-4">
           <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">
-              Planos Ativos
+              Pacotes Ativos
             </span>
             <div className="text-2xl font-bold text-emerald-400 font-mono">{activePlansCount}</div>
           </div>
@@ -210,7 +210,7 @@ export const AdminPlansPage: React.FC = () => {
       )}
 
       {/* Main Data Table */}
-      <section aria-label="Tabela de Planos">
+      <section aria-label="Tabela de Pacotes de Recarga">
         <AdminPlanTable
           plans={plans}
           loading={loading}

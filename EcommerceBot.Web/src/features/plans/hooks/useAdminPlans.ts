@@ -158,21 +158,21 @@ export function useAdminPlans(): UseAdminPlansReturn {
         await plansService.updatePlan(editingPlan.id, payload as UpdatePlanRequest);
         setAlertInfo({
           variant: 'success',
-          title: 'Plano Atualizado',
-          message: `O plano "${(payload as UpdatePlanRequest).name || editingPlan.name}" foi atualizado com sucesso.`,
+          title: 'Pacote Atualizado',
+          message: `O pacote de recarga "${(payload as UpdatePlanRequest).name || editingPlan.name}" foi atualizado com sucesso.`,
         });
       } else {
         await plansService.createPlan(payload as CreatePlanRequest);
         setAlertInfo({
           variant: 'success',
-          title: 'Plano Criado',
-          message: `O novo plano "${(payload as CreatePlanRequest).name}" foi cadastrado com sucesso.`,
+          title: 'Pacote Criado',
+          message: `O novo pacote de recarga "${(payload as CreatePlanRequest).name}" foi cadastrado com sucesso.`,
         });
       }
       closeModal();
       await fetchPlans();
     } catch (err: unknown) {
-      const msg = getErrorMessage(err, 'Erro ao salvar o plano.');
+      const msg = getErrorMessage(err, 'Erro ao salvar o pacote.');
       throw new Error(msg, { cause: err });
     } finally {
       setSubmitting(false);
@@ -182,8 +182,8 @@ export function useAdminPlans(): UseAdminPlansReturn {
   const handleToggleStatus = async (plan: PlanResponse) => {
     const isCurrentlyActive = plan.isActive ?? plan.status === 'active';
     const newStatus = !isCurrentlyActive;
-    const planName = plan.name || plan.reason || 'Plano';
-    const confirmMsg = `Deseja ${newStatus ? 'ativar' : 'desativar'} o plano "${planName}"?`;
+    const planName = plan.name || plan.reason || 'Pacote';
+    const confirmMsg = `Deseja ${newStatus ? 'ativar' : 'desativar'} o pacote "${planName}"?`;
     if (!window.confirm(confirmMsg)) return;
 
     setLoading(true);
@@ -192,14 +192,14 @@ export function useAdminPlans(): UseAdminPlansReturn {
       setAlertInfo({
         variant: 'success',
         title: 'Status Alterado',
-        message: `O status do plano "${planName}" foi alterado para ${newStatus ? 'Ativo' : 'Inativo'}.`,
+        message: `O status do pacote "${planName}" foi alterado para ${newStatus ? 'Ativo' : 'Inativo'}.`,
       });
       await fetchPlans();
     } catch (err: unknown) {
-      const msg = getErrorMessage(err, 'Falha ao atualizar status do plano.');
+      const msg = getErrorMessage(err, 'Falha ao atualizar status do pacote.');
       setAlertInfo({
         variant: 'error',
-        title: 'Erro de Status do Plano',
+        title: 'Erro de Status do Pacote',
         message: msg,
       });
     } finally {

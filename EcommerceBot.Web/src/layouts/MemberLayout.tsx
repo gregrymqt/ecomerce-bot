@@ -13,7 +13,7 @@ import {
 import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar';
 import { useAuth } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/feedback/Badge';
+import { GlobalCreditBalanceBadge } from '@/components/ui';
 
 export const MemberLayout: React.FC = () => {
   const navigate = useNavigate();
@@ -138,9 +138,7 @@ export const MemberLayout: React.FC = () => {
         {/* Header Superior */}
         <header className="sticky top-0 z-30 flex items-center justify-between pl-16 pr-4 sm:px-6 py-3.5 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 shadow-sm">
           <div className="flex items-center gap-3">
-            <Badge variant="warning">
-              Plano Free
-            </Badge>
+            <GlobalCreditBalanceBadge />
             {currentTenant && (
               <span className="hidden sm:inline text-xs text-slate-400 font-mono">
                 Tenant: {currentTenant}

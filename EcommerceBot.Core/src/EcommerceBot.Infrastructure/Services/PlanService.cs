@@ -41,6 +41,7 @@ public class PlanService : IPlanService
             BillingInterval = plan.BillingInterval,
             MpPreapprovalPlanId = plan.MpPreapprovalPlanId,
             TrialDays = plan.TrialDays,
+            Badge = plan.Badge,
             IsActive = plan.IsActive,
             CreatedAt = plan.CreatedAt,
             UpdatedAt = plan.UpdatedAt
@@ -89,6 +90,7 @@ public class PlanService : IPlanService
             BillingInterval = request.BillingInterval,
             MpPreapprovalPlanId = request.MpPreapprovalPlanId,
             TrialDays = request.TrialDays,
+            Badge = request.Badge,
             IsActive = request.IsActive
         };
 
@@ -113,6 +115,7 @@ public class PlanService : IPlanService
         if (request.BillingInterval != null) plan.BillingInterval = request.BillingInterval;
         if (request.MpPreapprovalPlanId != null) plan.MpPreapprovalPlanId = request.MpPreapprovalPlanId;
         if (request.TrialDays.HasValue) plan.TrialDays = request.TrialDays.Value;
+        if (request.Badge != null) plan.Badge = request.Badge;
         if (request.IsActive.HasValue) plan.IsActive = request.IsActive.Value;
 
         await _planRepository.UpdateAsync(plan);
