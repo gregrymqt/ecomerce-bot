@@ -9,7 +9,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { walletService } from '../services/wallet.service';
 import { useAuth } from '@/features/auth';
-import type { CreditCardFormData } from '@/components/ui/payment/CreditCardPaymentForm';
+import type { CreditCardPaymentFormData as CreditCardFormData } from '../components/payment/CreditCardPaymentForm';
 import type {
   PaymentMethod,
   PaymentStatus,

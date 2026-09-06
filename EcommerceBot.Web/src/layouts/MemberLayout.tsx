@@ -13,7 +13,7 @@ import {
 import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar';
 import { useAuth } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
-import { GlobalCreditBalanceBadge } from '@/components/ui';
+import { GlobalCreditBalanceBadge } from '@/features/wallet/components/badges';
 
 export const MemberLayout: React.FC = () => {
   const navigate = useNavigate();

@@ -10,7 +10,7 @@ import { useForgotPassword } from '../../hooks/useForgotPassword';
 import { Modal } from '@/components/ui/overlay/Modal';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/feedback/Alert';
-import { FormField } from '@/components/ui/form/FormField';
+import { FormField } from '@/components/ui/form';
 
 export interface ForgotPasswordModalProps {
   /** Controla a visibilidade do modal */

@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { Card } from '@/components/ui/display/Card';
-import { PixPaymentDisplay } from '@/components/ui/payment/PixPaymentDisplay';
+import { PixPaymentDisplay } from './payment/PixPaymentDisplay';
 import { usePixRecharge } from '../hooks/usePixRecharge';
 import type { PixRechargeTabProps } from '../types';
 

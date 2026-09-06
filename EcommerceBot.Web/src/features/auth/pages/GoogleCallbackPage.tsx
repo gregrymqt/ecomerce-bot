@@ -11,7 +11,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/display/Card';
 import { Alert } from '@/components/ui/feedback/Alert';
-import { FormField } from '@/components/ui/form/FormField';
+import { FormField } from '@/components/ui/form';
 import { getErrorMessage } from '@/utils/errors';
 
 export const GoogleCallbackPage: React.FC = () => {

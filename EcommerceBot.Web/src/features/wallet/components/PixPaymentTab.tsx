@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { PixPaymentDisplay } from '@/components/ui/payment/PixPaymentDisplay';
+import { PixPaymentDisplay } from './payment/PixPaymentDisplay';
 import type { PixPaymentResponse, PaymentStatus } from '../types';
 
 export interface PixPaymentTabProps {

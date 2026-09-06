@@ -16,4 +16,6 @@ export * from './PixPaymentTab';
 export * from './CreditCardPaymentTab';
 export * from './UnifiedPaymentModal';
 export * from './CreditPackagesGrid';
+export * from './payment';
+export * from './badges';
 

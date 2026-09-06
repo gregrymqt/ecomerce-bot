@@ -3,7 +3,4 @@ export * from './Select';
 export * from './Textarea';
 export * from './Checkbox';
 export * from './ToggleSwitch';
-export * from './FormField';
-export * from './Label';
-export * from './ErrorMessage';
-export * from './HelperText';
+export * from './fields';

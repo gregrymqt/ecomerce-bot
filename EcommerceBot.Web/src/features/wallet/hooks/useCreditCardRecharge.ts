@@ -9,7 +9,7 @@ import { useState, useCallback } from 'react';
 import { walletService } from '../services/wallet.service';
 import { useAuth } from '@/features/auth';
 import type { CreditCardRechargePayload, CardPaymentPayer } from '../types';
-import type { CreditCardFormData } from '@/components/ui/payment/CreditCardPaymentForm';
+import type { CreditCardPaymentFormData as CreditCardFormData } from '../components/payment/CreditCardPaymentForm';
 import { getErrorMessage } from '@/utils/errors';
 
 export interface UseCreditCardRechargeOptions {

@@ -7,7 +7,7 @@
 import React from 'react';
 import { Building, Users, ShieldCheck } from 'lucide-react';
 import { Modal } from '@/components/ui/overlay/Modal';
-import { FormField } from '@/components/ui/form/FormField';
+import { FormField } from '@/components/ui/form';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/feedback/Alert';
 import type { EnterpriseLead } from '../../types/leads.types';

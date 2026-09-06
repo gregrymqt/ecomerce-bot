@@ -14,7 +14,7 @@ import { EnterpriseSsoModal } from '../sso/EnterpriseSsoModal';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/display/Card';
 import { Alert } from '@/components/ui/feedback/Alert';
-import { FormField } from '@/components/ui/form/FormField';
+import { FormField } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 
 export interface RegisterFormProps {

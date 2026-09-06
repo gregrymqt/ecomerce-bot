@@ -7,5 +7,4 @@ export * from './display';
 export * from './overlay';
 export * from './navigation';
 export * from './Button';
-export * from './payment';
 

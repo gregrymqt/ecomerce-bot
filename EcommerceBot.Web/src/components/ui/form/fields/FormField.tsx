@@ -1,6 +1,6 @@
 import React, { forwardRef, useId } from 'react';
 import { Label } from './Label';
-import { Input, type InputProps } from './Input';
+import { Input, type InputProps } from '../Input';
 import { ErrorMessage } from './ErrorMessage';
 import { HelperText } from './HelperText';
 import { cn } from '@/lib/utils';

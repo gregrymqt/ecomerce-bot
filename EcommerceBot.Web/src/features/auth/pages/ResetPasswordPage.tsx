@@ -12,7 +12,7 @@ import { useResetPassword } from '../hooks/useResetPassword';
 import { SEO } from '@/components/common/SEO';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/feedback/Alert';
-import { FormField } from '@/components/ui/form/FormField';
+import { FormField } from '@/components/ui/form';
 
 export const ResetPasswordPage: React.FC = () => {
   const navigate = useNavigate();

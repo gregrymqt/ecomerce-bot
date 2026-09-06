@@ -9,8 +9,7 @@
 import React, { useState } from 'react';
 import { CreditCard, Calendar, Lock, User, FileText, ShieldCheck, Loader2 } from 'lucide-react';
 import { cn } from '@/utils/cn';
-
-export interface CreditCardFormData {
+export interface CreditCardPaymentFormData {
   cardNumber: string;
   cardholderName: string;
   expirationMonth: string;
@@ -30,7 +29,7 @@ export interface CreditCardPaymentFormProps {
   /** Exibir campo de CPF/CNPJ (default: true) */
   showDocNumber?: boolean;
   /** Callback acionado após validação dos campos do formulário */
-  onSubmitForm: (data: CreditCardFormData) => Promise<void>;
+  onSubmitForm: (data: CreditCardPaymentFormData) => Promise<void>;
   /** Estilos CSS adicionais */
   className?: string;
 }

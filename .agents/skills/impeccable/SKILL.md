@@ -1,11 +1,11 @@
 ---
 name: impeccable
-description: "Padrões técnicos e arquiteturais para o desenvolvimento de frontend no ecossistema E-commerce Bot (React 18, TypeScript, Vite, Tailwind CSS). Impõe arquitetura em 4 camadas com separação estrita de responsabilidades (components/pages isolados de services via hooks), mobile-first, conformidade com acessibilidade WCAG 2.1 AA, touch targets de 44px e consumo resiliente de APIs REST e streaming SSE."
+description: "Padrões técnicos e arquiteturais para o desenvolvimento frontend no ecossistema E-commerce Bot (React 18/19, TypeScript, Vite, Tailwind CSS). Impõe arquitetura em 4 camadas com separação estrita de responsabilidades, mobile-first, acessibilidade WCAG 2.1 AA, touch targets de 44px, code-splitting, prevenção de memory leaks via AbortController, governança anti-proliferação de componentes e organização hierárquica de pastas."
 ---
 
 # 🎨 Frontend Engineering & UI Patterns — E-commerce Bot Web
 
-Este documento define os padrões canônicos de arquitetura, acessibilidade e estilização para o aplicativo **`EcommerceBot.Web`**.
+Este documento define os padrões canônicos de arquitetura, acessibilidade, performance, ciclo de vida e governança de código para o aplicativo `EcommerceBot.Web`.
 
 ---
 
@@ -13,23 +13,65 @@ Este documento define os padrões canônicos de arquitetura, acessibilidade e es
 
 Todo módulo dentro de `src/features/` deve respeitar rigorosamente a separação de responsabilidades:
 
-1. **Types (`features/{feature}/types/`):** Modelos de dados e contratos de payload em TypeScript estrito. Proibido o uso de `any`.
-2. **Services (`features/{feature}/services/`):** Funções assíncronas de integração HTTP usando o `apiClient`. Nenhuma manipulação de estado do React deve residir aqui.
-3. **Hooks (`features/{feature}/hooks/`):** Gerenciamento de estado local/global, mutações, paginação e consumo de streaming SSE.
-4. **UI Components (`features/{feature}/components/`):** Componentes visuais desacoplados, consumindo dados exclusivamente via props ou hooks da feature.
+- **Types (`features/{feature}/types/`):** Modelos de dados e contratos de payload em TypeScript estrito. Proibido o uso de `any`.
+- **Services (`features/{feature}/services/`):** Funções assíncronas puras de integração HTTP usando o `apiClient`. Devem aceitar `AbortSignal` para cancelamento de requisições. Nenhuma manipulação de estado do React reside aqui.
+- **Hooks (`features/{feature}/hooks/`):** Gerenciamento de estado local/global, ciclo de vida, cancelamento de requisições, paginação, mutações e consumo de streaming SSE.
+- **UI Components (`features/{feature}/components/`):** Componentes visuais declarativos e desacoplados, consumindo dados exclusivamente via props ou hooks da feature.
+
+---
 
 ### 🛡️ 1.1. Prevenção de Degradação por Injeção (Quality Gate: 350 Linhas)
 
-Para evitar a degradação de contexto e acúmulo desordenado de código gerado por IA (conforme preconizado no *Vibe-Coding Toolkit*):
-1. **Teto Rígido de 350 Linhas:** Nenhum arquivo de componente, hook ou serviço pode ultrapassar 350 linhas de código (excluindo linhas vazias e comentários), regra imposta com severidade `error` via ESLint (`max-lines`).
-2. **Decomposição por "Costuras Naturais":**
-   - Se um componente crescer, identifique seções auto-contidas (ex: formulário de lote, terminal de stream, cards de métricas, modais) e extraia-as em subcomponentes dedicados na mesma pasta `components/`.
-   - Se um hook acumular múltiplos domínios de estado/efeito, extraia sub-hooks especializados.
-3. **Proibição de Bypasses:** É estritamente proibido o uso de `/* eslint-disable max-lines */` ou truques artificiais de compactação. A modularização limpa é mandatória.
+- **Teto Rígido de 350 Linhas:** Nenhum arquivo de componente, hook ou serviço pode ultrapassar 350 linhas de código (excluindo linhas vazias e comentários), regra imposta com severidade `error` via ESLint (`max-lines`).
+- **Decomposição por "Costuras Naturais":**
+  - Se um componente crescer, extraia subcomponentes dedicados na mesma pasta `components/` (ex: cards de métricas, itens de listagem, modais, formulários de lote).
+  - Se um hook acumular múltiplos domínios de estado ou efeitos, particione-o em sub-hooks especializados.
+- **Proibição de Bypasses:** É estritamente proibido o uso de `/* eslint-disable max-lines */` ou truques artificiais de compactação. A modularização limpa é mandatória.
 
-### 🚫 1.2. Barreira Arquitetural e Separação de Responsabilidade (Zero Tolerance)
+---
 
-Para manter testabilidade, manutenibilidade e evitar o acoplamento caótico entre camadas visuais e requisições HTTP:
+### 🧩 1.2. Justificativa de Existência & Princípio Anti-Proliferação (Evitar Componentes Inúteis)
+
+Antes de criar qualquer novo arquivo `.tsx`, o desenvolvedor/agente DEVE responder a dois critérios de validação:
+
+#### Critério 1: "Por que criar outro se algo parecido já existe?" (Auditoria de Reuso)
+- **Regra de Ouro:** É expressamente proibido criar um novo componente se já existir um elemento estrutural equivalente no Design System (`src/components/ui/`) ou na pasta `components/` compartilhada.
+- Se o componente existente cobrir ~80% da necessidade, não duplique. Estenda-o utilizando composição (`children`), variantes do Tailwind via `cva` ou propriedades opcionais de configuração.
+- Componentes duplicados com variações cosméticas mínimas (ex: criar `DangerButton.tsx` quando já existe `Button.tsx` com prop `variant="destructive"`) são considerados antipadrões críticos.
+
+#### Critério 2: "Esse componente realmente faz sentido existir?" (Anti-Abstração Prematura)
+- Não crie componentes que sejam apenas "passadores de propriedades" (*prop-drilling wrappers*) ou que apenas envelopem uma única tag HTML sem adicionar lógica de estado, estilo complexo reutilizável ou ganho de legibilidade.
+- **Regra do Inline vs. Componente:** Mantenha a renderização inline caso o trecho de JSX seja usado em apenas um lugar, tenha menos de 25 linhas e não possua ciclo de vida próprio. Componentize apenas se houver reuso comprovado (Regra dos 3 Usos), isolamento de re-renderização pesada ou decomposição mandatória pelo teto de 350 linhas.
+
+---
+
+### 📁 1.3. Governança de Estrutura e Limite de Sprawl em components/
+
+Para evitar diretórios com dezenas de arquivos soltos que degradam a navegabilidade e a manutenção:
+
+- **Limite de Arquivos Raiz (Teto de 8 Componentes):**
+  Nenhuma pasta `components/` (seja em `src/components/` ou em `src/features/{feature}/components/`) pode ter mais de 8 arquivos `.tsx` soltos na raiz.
+
+- **Subdivisão Categórica Mandatória:**
+  Ao atingir 8 componentes em uma pasta, é obrigatório criar subdiretórios semânticos para agrupamento lógico, por exemplo:
+  - `components/cards/` (ex: `ProductCard.tsx`, `SummaryCard.tsx`)
+  - `components/forms/` (ex: `ProductFilterForm.tsx`, `ProductPriceInput.tsx`)
+  - `components/modals/` ou `components/dialogs/` (ex: `ConfirmDeleteDialog.tsx`)
+  - `components/tables/` (ex: `ProductTable.tsx`, `ProductTableRow.tsx`)
+  - `components/skeletons/` (ex: `ProductCardSkeleton.tsx`)
+
+- **Escopo Local de Subcomponentes Exclusivos:**
+  Se um subcomponente for utilizado exclusivamente por um único componente pai complexo (ex: `OrderTimelineItem.tsx` utilizado apenas por `OrderTimeline.tsx`), agrupe-os em uma pasta dedicada com o nome do componente principal:
+
+```text
+components/order-timeline/
+├── OrderTimeline.tsx
+├── OrderTimelineItem.tsx
+└── OrderTimelineSkeleton.tsx
+```
+
+
+### 🚫 1.4. Barreira Arquitetural e Separação de Responsabilidade (Zero Tolerance)
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
@@ -51,9 +93,9 @@ Para manter testabilidade, manutenibilidade e evitar o acoplamento caótico entr
 ┌──────────────────────────────────────────────────────────────┐
 │  Services (services/)                                        │
 │  • Funções assíncronas puras consumindo apiClient            │
-│  • NUNCA utilizam hooks ou estado do React                   │
+│  • NUNCA utilizam hooks ou retêm referências de estado       │
 └──────────────────────────────┬───────────────────────────────┘
-                               │ (HTTP com X-Tenant-ID)
+                               │ (HTTP com X-Tenant-ID & AbortSignal)
                                ▼
 ┌──────────────────────────────────────────────────────────────┐
 │  Core API Backend (.NET / ASP.NET Core)                      │
@@ -61,15 +103,16 @@ Para manter testabilidade, manutenibilidade e evitar o acoplamento caótico entr
 ```
 
 #### ❌ Violação de Responsabilidade (Antipadrão Proibido)
-```tsx
-// ❌ ERRADO: Componente ou Página importando e executando service diretamente
+
+```typescript
+// ❌ ERRADO: Componente importando service diretamente e acoplando ciclo de vida
 import { productService } from '../services/product.service';
 
 export const ProductList = () => {
   const [products, setProducts] = useState([]);
 
   useEffect(() => {
-    // Violação de SoC: lógica de transporte e ciclo de rede acoplados à visualização
+    // Violação de SoC e vazamento de memória se o componente desmontar durante o fetch
     productService.getProducts().then(setProducts).catch(console.error);
   }, []);
 
@@ -77,9 +120,10 @@ export const ProductList = () => {
 };
 ```
 
-#### ✅ Padrão Canônico (Encapsulamento Estrito via Hook)
+#### ✅ Padrão Canônico (Encapsulamento Estrito via Hook com AbortController)
+
 ```typescript
-// ✅ CORRETO: Hook orquestra o serviço, o ciclo de vida e os estados
+// ✅ CORRETO: Hook orquestra o serviço, estado e cancelamento de memória
 // features/catalog/hooks/useProducts.ts
 import { useState, useEffect, useCallback } from 'react';
 import { productService } from '../services/product.service';
@@ -90,13 +134,14 @@ export const useProducts = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await productService.getProducts();
+      const data = await productService.getProducts(signal);
       setProducts(data);
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : 'Erro ao carregar produtos');
     } finally {
       setIsLoading(false);
@@ -104,101 +149,178 @@ export const useProducts = () => {
   }, []);
 
   useEffect(() => {
-    fetchProducts();
+    const controller = new AbortController();
+    fetchProducts(controller.signal);
+
+    // Limpeza mandatória para evitar vazamentos de memória
+    return () => controller.abort();
   }, [fetchProducts]);
 
-  return { products, isLoading, error, refetch: fetchProducts };
+  return { products, isLoading, error, refetch: () => fetchProducts() };
 };
 ```
 
 ```tsx
-// ✅ CORRETO: Componente consome estritamente o hook da feature
+// ✅ CORRETO: Componente consome estritamente o hook e usa Skeletons
 // features/catalog/components/ProductList.tsx
 import { useProducts } from '../hooks/useProducts';
+import { ProductCardSkeleton } from './skeletons/ProductCardSkeleton';
+import { ProductCard } from './cards/ProductCard';
 
 export const ProductList = () => {
-  const { products, isLoading, error } = useProducts();
+  const { products, isLoading, error, refetch } = useProducts();
 
-  if (isLoading) return <p>Carregando catálogo...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" aria-busy="true">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <ProductCardSkeleton key={i} />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div role="alert" className="p-4 rounded-lg bg-red-50 text-red-700">
+        <p>{error}</p>
+        <button onClick={refetch} className="mt-2 text-sm font-semibold underline">
+          Tentar novamente
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <ul>
-      {products.map((p) => (
-        <li key={p.id}>{p.name}</li>
+    <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {products.map((product) => (
+        <ProductCard key={product.id} product={product} />
       ))}
     </ul>
   );
 };
 ```
+---
+
+## 📱 2. Diretrizes Mobile-First, UI/UX & Acessibilidade
+
+- **Touch Targets:**
+  Todo elemento interativo (botões, links, toggles, paginação) DEVE possuir dimensões mínimas de 44x44px (`min-h-[44px] min-w-[44px]`).
+
+- **Prevenção de Auto-Zoom no iOS:**
+  Todos os inputs de formulário, selects e textareas DEVEM possuir `font-size: 1rem` (16px / `text-base`). O uso de `text-sm` em campos editáveis é estritamente proibido.
+
+- **Contraste de Cores & Foco:**
+  - Respeitar a razão mínima de contraste de 4.5:1 para texto padrão conforme WCAG 2.1 AA.
+  - Anéis de foco interativo (`focus-visible:ring-2 focus-visible:outline-none`) são obrigatórios.
+
+- **Estados de Carregamento Estruturados (Skeletons):**
+  É proibido exibir mensagens textuais estáticas como `<p>Carregando...</p>`. Utilize Skeleton Screens que repliquem a geometria final do layout para mitigar o tempo percebido de resposta.
+
+- **Estabilidade Visual & Prevenção de Layout Shift (CLS):**
+  Banners, mídias e imagens de produtos devem conter dimensões intrínsecas explícitas (`width` e `height`) ou classes utilitárias de aspecto (`aspect-video`, `aspect-square`).
+
+- **Fronteiras de Erro Resilientes (Error Boundaries):**
+  Páginas e blocos dinâmicos complexos (como feeds de métricas ou listagens de produtos) devem ser envelopados por `ErrorBoundary`. Uma falha localizada não deve produzir tela em branco global.
+
+- **Sanitização de Renderização:**
+  Proibido o uso de `dangerouslySetInnerHTML` com conteúdo não sanitizado via `DOMPurify`.
 
 ---
 
-## 📱 2. Diretrizes Mobile-First & A11y (Acessibilidade)
+## ⚡ 3. Performance de Renderização & Ciclo de Vida
 
-1. **Touch Targets:**
-   - Todo elemento interativo (botões, links, toggles, itens de menu) DEVE possuir dimensões mínimas de 44x44px (`min-h-[44px] min-w-[44px]`).
-2. **Prevenção de Auto-Zoom no iOS:**
-   - Todos os inputs de formulário, selects e textareas DEVEM possuir `font-size: 1rem` (16px / `text-base`). O uso de `text-sm` em inputs é proibido por acionar o zoom automático no Safari iOS.
-3. **Contraste de Cores & Feedback:**
-   - Respeitar a razão mínima de contraste de 4.5:1 para texto normal conforme WCAG 2.1 AA.
-   - Estados de foco (`focus-visible:ring-2 focus-visible:outline-none`) são obrigatórios em todos os componentes interativos.
-4. **Sanitização de Renderização:**
-   - Proibido o uso de `dangerouslySetInnerHTML` com conteúdo dinâmico não sanitizado.
+- **Localização de Estado (State Colocation):**
+  Estados efêmeros (como digitação em buscas, abertura de seletores e filtros locais) devem residir no componente folha correspondente. Não propague estados para contextos globais se apenas um componente filho os consome.
 
----
+- **Memoização Criteriosa (`memo`, `useMemo`, `useCallback`):**
+  - Não aplique memoização indiscriminada. Utilize `useMemo` apenas em transformações de coleções pesadas (>100 itens) ou cálculos de alta complexidade computacional.
+  - Aplique `React.memo` prioritariamente em componentes de listas, dashboards ou tabelas que sofrem renderizações frequentes por atualização de componentes irmãos.
 
-## 🎨 3. Design System & Tailwind CSS
+- **Virtualização de Listas e Tabelas:**
+  Qualquer catálogo, log de eventos ou tabela que possa exibir mais de 50 nós simultâneos DEVE utilizar virtualização via `@tanstack/react-virtual`, prevenindo saturação da árvore DOM e quedas de FPS durante a rolagem.
 
-1. **Componentes Base (`src/components/ui/`):**
-   - Utilize a biblioteca interna baseada em Radix UI / Atomic Tokens (Button, Input, Dialog, DropdownMenu).
-   - Não crie novos botões com estilos inline ou classes ad-hoc se o componente `Button` padrão puder ser estendido via variantes (`cva`).
-2. **Densidade e Responsividade:**
-   - Desenvolva pensando na menor viewport (360px de largura) e escale progressivamente via breakpoints Tailwind (`sm:`, `md:`, `lg:`, `xl:`).
-   - Modais e sidebars devem possuir tratamento para travamento de scroll do body e fechar na tecla `Escape`.
+- **Desalocação de Recursos em Componentes:**
+  Todo listener de DOM (`window.addEventListener`), temporizador (`setInterval`) ou conexão aberta deve ser limpo explicitamente na função de retorno do `useEffect`.
 
 ---
 
-## ⚡ 4. Integração com Core API & Streaming SSE
+## 📦 4. Otimização de Tamanho de Pacote (Bundle Size) & Código
 
-1. **Autenticação & Tenant:**
-   - O `apiClient` (`src/lib/apiClient.ts`) envia credenciais por cookies `HttpOnly` e injeta automaticamente o header `X-Tenant-ID`. Nunca monte cabeçalhos de autenticação manualmente em services.
-2. **Streaming em Tempo Real (SSE):**
-   - O consumo do canal `/api/v1/demo/stream` deve ser encapsulado em hooks que garantem reconexão automática, limpeza de event listeners no desmonte do componente (`useEffect cleanup`) e tratamento de erros de conexão.
+- **Code-Splitting Mandatório por Rota:**
+  Todas as visualizações contidas em `src/pages/` devem ser carregadas sob demanda via `React.lazy()` e encapsuladas por `Suspense` com fallbacks baseados em skeletons estruturais.
+
+- **Importações Dinâmicas de Módulos Pesados:**
+  Bibliotecas com peso significativo (ex: geradores de relatórios PDF, leitores XLSX, editores Markdown, visualizadores de gráficos) não devem compor o chunk inicial. Devem ser requisitadas via importação dinâmica assíncrona (`await import(...)`) no momento do disparo da ação.
+
+- **Importações Pontuais e Tree-Shaking:**
+  É proibido o uso de importações universais de pacotes utilitários (`import _ from 'lodash'` ou `import * as Icons from 'lucide-react'`). Importe exclusivamente os membros nomeados necessários (`import debounce from 'lodash-es/debounce'`).
+
+- **Auditoria de Chunks:**
+  O projeto deve manter integração com o plugin de visualização de pacotes do Vite (`rollup-plugin-visualizer`) para validar que nenhum chunk de página ultrapasse 150 kB gzipped.
 
 ---
 
-## 🛡️ 5. Resiliência de Runtime, Error Cause & React 19 Guardrails
+## 🎨 5. Design System & Tailwind CSS
 
-1. **Preservação de Erros na Camada de Services (`preserve-caught-error`):**
-   - Ao capturar erros no `try/catch` de services e relançar mensagens de erro de negócio, é obrigatório encadear a causa original através da sintaxe ES2022:
-     ```typescript
-     try {
-       const response = await apiClient.get('/endpoint');
-       return response.data;
-     } catch (error) {
-       throw new Error('Falha ao obter dados do endpoint.', { cause: error });
-     }
-     ```
+- **Componentes Base (`src/components/ui/`):**
+  - Utilize a biblioteca interna baseada em Radix UI com variantes construídas via `class-variance-authority` (`cva`).
+  - É proibido recriar botões, inputs ou badges com classes ad-hoc caso o componente base possa ser parametrizado.
 
-2. **Isolamento de React Context para Fast Refresh (`only-export-components`):**
-   - NUNCA exporte `createContext` no mesmo arquivo `.tsx` de um componente (`AuthProvider`, etc.).
-   - Isole o contexto em um arquivo TypeScript puro (ex: `AuthContextDefinition.ts`) e o provider no componente `.tsx`.
+- **Densidade e Responsividade:**
+  - Projete a partir da menor viewport móvel (360px) e escale progressivamente via breakpoints Tailwind (`sm:`, `md:`, `lg:`, `xl:`).
+  - Modais, gavetas e sidebars devem travar a rolagem do elemento raiz (`body`) e possuir listener para fechamento na tecla `Escape`.
 
-3. **Prevenção de Cascading Renders (`set-state-in-effect`):**
-   - Não dispare `setState` síncrono no início de `useEffect` se o valor já puder ser inicializado no `useState` inicial.
-   - Derivação de dados e resets de formulário em modais devem ser feitos durante a renderização, via `key` de componente ou em handlers de evento (`onClose`/`onSubmit`), nunca em `useEffect` observando `isOpen`.
+---
 
-4. **Tipagem Estrita de Metadados e JSON-LD:**
-   - Proibido o uso de `Record<string, any>`. Utilize `Record<string, unknown>` acompanhado de narrowing seguro.
+## 🔌 6. Integração com Core API & Streaming SSE
 
-5. **Checklist Pré-Flight de Separação de Responsabilidades (Obrigatório):**
-   Antes de finalizar qualquer modificação ou entrega no frontend (`EcommerceBot.Web`), o agente DEVE verificar:
-   - [ ] **Nenhum import de `services/` em componentes ou páginas:**
-     Verifique se os arquivos em `src/features/**/components/` e `src/features/**/pages/` não importam caminhos de serviços (`services/` ou `*.service`).
-   - [ ] **Nenhum import de `apiClient` fora de `services/`:**
-     O cliente HTTP (`src/lib/apiClient.ts`) só pode ser importado por arquivos na pasta `services/`.
-   - [ ] **Toda mutação e busca de API orquestrada por Hook:**
-     Submissão de formulários, paginação, filtros e botões de ação devem invocar exclusivamente métodos e estados expostos por hooks customizados.
-   - [ ] **Teto de 350 Linhas Respeitado:**
-     Nenhum arquivo modificado ultrapassa o limite de 350 linhas de código imposto pelo ESLint.
+- **Autenticação & Injeção de Contexto:**
+  O `apiClient` (`src/lib/apiClient.ts`) injeta automaticamente cookies `HttpOnly` e o header `X-Tenant-ID`. É proibido inserir tokens ou cabeçalhos manuais dentro dos arquivos de serviço.
+
+- **Propagação de AbortSignal em Services:**
+  Toda função em `services/` deve aceitar opcionalmente um parâmetro `signal?: AbortSignal` e repassá-lo na configuração da requisição do `apiClient`.
+
+- **Streaming em Tempo Real (SSE):**
+  O consumo do canal `/api/v1/demo/stream` deve ser isolado em hooks dedicados com suporte a reconexão automática com backoff exponencial e encerramento compulsório da conexão (`eventSource.close()`) no desmonte.
+
+---
+
+## 🛡️ 7. Resiliência de Runtime & React Guardrails
+
+- **Preservação da Causa Raiz de Erros (`preserve-caught-error`):**
+  Ao relançar erros dentro da camada de services, encadeie o erro de origem com a propriedade `cause`:
+
+```typescript
+try {
+  const response = await apiClient.get('/products', { signal });
+  return response.data;
+} catch (error) {
+  throw new Error('Falha ao obter produtos.', { cause: error });
+}
+```
+
+- **Isolamento de React Context para Fast Refresh (`only-export-components`):**
+  NUNCA exporte `createContext` no mesmo arquivo `.tsx` de um componente (`AuthProvider.tsx`). O contexto deve residir em um arquivo de definição TypeScript puro (ex: `AuthContextDefinition.ts`).
+
+- **Prevenção de Cascading Renders (`set-state-in-effect`):**
+  É proibido disparar `setState` síncrono no corpo de um `useEffect` para fins de derivação de estado. Transforme os dados diretamente durante a renderização ou force a reinicialização limpa do componente via prop `key`.
+
+- **Tipagem Estrita de Estruturas Genéricas:**
+  É proibido o uso de `Record<string, any>`. Utilize `Record<string, unknown>` com checagem de tipos (*type narrowing*).
+
+---
+
+## 📋 8. Checklist Pré-Flight de Engenharia (Obrigatório)
+
+Antes de aprovar ou finalizar qualquer alteração no frontend (`EcommerceBot.Web`), valide:
+
+- [ ] **Anti-Proliferação de Componentes:** Foi verificado se já não existe um componente similar no Design System ou na feature antes de criar um novo? O novo componente tem razão real de existir (não é apenas um invólucro de 1 tag)?
+- [ ] **Organização de Pastas (Teto de 8 Arquivos):** A pasta `components/` possui no máximo 8 arquivos soltos na raiz? Se passou disso, os componentes foram agrupados em subpastas semânticas (`cards/`, `forms/`, `dialogs/`, etc.)?
+- [ ] **Barreira de Services:** Nenhum componente ou página importa caminhos de `services/` ou do `apiClient`.
+- [ ] **Cancelamento de Rede:** Requisições assíncronas em hooks repassam `AbortSignal` e acionam `controller.abort()` no retorno do `useEffect`.
+- [ ] **Lazy Loading:** Rotas e ferramentas auxiliares pesadas utilizam `React.lazy()` e importações dinâmicas.
+- [ ] **Experiência de Carregamento:** Não há textos simples de espera; Skeleton Screens adequados são exibidos.
+- [ ] **Virtualização:** Listas com possibilidade de ultrapassar 50 registros utilizam virtualização.
+- [ ] **Acessibilidade:** Elementos clicáveis possuem no mínimo 44x44px e inputs mantêm 16px (`text-base`).
+- [ ] **Teto de 350 Linhas:** Nenhum arquivo modificado ultrapassa o limite rígido de 350 linhas imposto pelo ESLint.

@@ -16,7 +16,7 @@ import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar
 import { useAuth } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/feedback/Badge';
-import { GlobalCreditBalanceBadge } from '@/components/ui';
+import { GlobalCreditBalanceBadge } from '@/features/wallet/components/badges';
 import { useRoleLayout } from './hooks/useRoleLayout';
 
 export const AdminLayout: React.FC = () => {
