@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { AdminLayout, MerchantLayout, MemberLayout, DynamicRoleLayout } from '@/layouts';
 import { ProtectedRoute, MerchantRouteGuard, AdminRouteGuard, useAuth } from '@/features/auth';
 import { PageLoader } from '@/components/ui/feedback/PageLoader';
@@ -8,7 +8,7 @@ import { PageLoader } from '@/components/ui/feedback/PageLoader';
 const AuthPage = lazy(() => import('@/features/auth/pages/AuthPage'));
 const ResetPasswordPage = lazy(() => import('@/features/auth/pages/ResetPasswordPage'));
 const GoogleCallbackPage = lazy(() => import('@/features/auth/pages/GoogleCallbackPage'));
-const CheckoutPage = lazy(() => import('@/features/checkout/pages/CheckoutPage'));
+
 const LiveDemoPage = lazy(() => import('@/features/live-demo/pages/LiveDemoPage'));
 const CatalogPage = lazy(() => import('@/features/catalog/pages/CatalogPage'));
 const AdminPlansPage = lazy(() => import('@/features/plans/pages/AdminPlansPage'));
@@ -54,6 +54,17 @@ const RootRoleRedirect: React.FC = () => {
   return <Navigate to="/demo" replace />;
 };
 
+/**
+ * Redireciona requisições legadas de /checkout para a aba de Planos & Assinaturas na Wallet.
+ * Preserva eventuais parâmetros de query como planId ou billingPeriod.
+ */
+const CheckoutRedirect: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const searchStr = searchParams.toString();
+  const target = searchStr ? `/wallet?tab=plans&${searchStr}` : '/wallet?tab=plans';
+  return <Navigate to={target} replace />;
+};
+
 export const AppRoutes: React.FC = () => {
   return (
     <Suspense fallback={<PageLoader />}>
@@ -66,7 +77,8 @@ export const AppRoutes: React.FC = () => {
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/checkout" element={<CheckoutRedirect />} />
+
 
         {/* 1. PORTAL ADMIN (SaaS CRM, Growth, Planos) — Protegido por AdminRouteGuard */}
         <Route element={<AdminRouteGuard />}>

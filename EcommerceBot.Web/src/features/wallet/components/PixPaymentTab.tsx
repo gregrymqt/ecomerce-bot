@@ -1,7 +1,7 @@
 /**
- * src/features/checkout/components/PixPaymentTab.tsx
+ * src/features/wallet/components/PixPaymentTab.tsx
  *
- * Aba de Pagamento Transparente via PIX (Checkout de Planos).
+ * Aba de Pagamento Transparente via PIX (Carteira: Planos e Recargas).
  * Reutiliza o componente atômico PixPaymentDisplay da biblioteca de UI.
  */
 

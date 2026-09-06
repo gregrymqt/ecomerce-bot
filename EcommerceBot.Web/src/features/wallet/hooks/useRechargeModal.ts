@@ -9,9 +9,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { RechargePackage, RechargeResponse, UseRechargeModalProps } from '../types';
 import { walletService } from '../services/wallet.service';
-import { checkoutService } from '@/features/checkout/services/checkout.service';
 import { useAuth } from '@/features/auth';
 import { getErrorMessage } from '@/utils/errors';
+
 
 export const RECHARGE_PACKAGES: RechargePackage[] = [
   { id: 'pkg_100', credits: 100, price_brl: 20 },
@@ -77,7 +77,7 @@ export function useRechargeModal({
 
     const pollInterval = setInterval(async () => {
       try {
-        const syncRes = await checkoutService.syncOrderStatus(paymentId);
+        const syncRes = await walletService.syncPaymentStatus(paymentId);
         if (syncRes.is_approved || syncRes.status === 'APPROVED') {
           clearInterval(pollInterval);
           handlePaymentApproved();

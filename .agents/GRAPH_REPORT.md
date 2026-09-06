@@ -41,7 +41,6 @@
 - **analytics**: [components, hooks, pages, services, types]
 - **auth**: [components, context, hooks, pages, services, types]
 - **catalog**: [components, hooks, pages, services, types]
-- **checkout**: [components, hooks, pages, services, types]
 - **dashboard**: [components, hooks, pages, services, types]
 - **home**: [components, hooks, pages, services, types]
 - **integrations**: [components, hooks, pages, services, types]

@@ -1,11 +1,17 @@
 /**
  * src/features/wallet/types/wallet.types.ts
  *
- * Contratos de tipos e DTOs canônicos para a feature Wallet (Carteira, Saldo e Recargas).
+ * Contratos de tipos e DTOs canônicos para o Hub Financeiro da Wallet:
+ * Gestão de Saldo, Extrato, Pacotes de Recarga, Planos SaaS e Pagamento Unificado Mercado Pago.
  * Alinhado estritamente com os padrões de arquitetura em 4 camadas e WCAG 2.1 AA.
  */
 
+import React from 'react';
+
 export type TransactionType = 'RECHARGE' | 'USAGE';
+export type WalletTab = 'BALANCE' | 'PLANS';
+export type PaymentMethod = 'pix' | 'credit_card';
+export type PaymentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
 
 export interface WalletBalanceResponse {
   tenant_id: string;
@@ -37,6 +43,50 @@ export interface RechargePackage {
   is_popular?: boolean;
 }
 
+export interface SaaSPlan {
+  id: string;
+  name: string;
+  description: string;
+  price_monthly_brl: number;
+  price_annual_brl: number;
+  credits_included: number;
+  features: string[];
+  is_popular?: boolean;
+  tier: 'free' | 'starter' | 'pro' | 'enterprise';
+  trial_days?: number;
+}
+
+export type CheckoutTargetType = 'plan' | 'recharge';
+
+export interface CheckoutTarget {
+  type: CheckoutTargetType;
+  id: string;
+  name: string;
+  amountBrl: number;
+  credits: number;
+  description?: string;
+  trialDays?: number;
+  billingPeriod?: 'monthly' | 'yearly';
+}
+
+export interface PixRechargeTabProps {
+  loading: boolean;
+  pixQrCode?: string;
+  pixCopiaECola?: string;
+  expirationDate?: string;
+  onGeneratePix: () => void;
+}
+
+export interface CreditCardRechargeTabProps {
+  packageId?: string;
+  amountBrl?: number;
+  loading?: boolean;
+  onSuccessPayment?: () => void;
+  onSubmitCard?: (payload: CreditCardRechargePayload) => Promise<void>;
+  className?: string;
+}
+
+
 export interface RechargeRequest {
   credits_package: number;
   payment_method: 'pix' | 'credit_card';
@@ -57,10 +107,43 @@ export interface CreditCardRechargePayload {
   amount: number;
   payment_method: 'credit_card';
   card_token: string;
-  payment_method_id: string; // ex: 'visa', 'master'
+  payment_method_id: string;
   issuer_id?: string;
   installments: number;
   payer: CardPaymentPayer;
+}
+
+export interface CreditCardPaymentPayload {
+  plan_id: string;
+  card_number: string;
+  cardholder_name: string;
+  expiration_month: string;
+  expiration_year: string;
+  security_code: string;
+  installments: number;
+  doc_number: string;
+  card_token?: string;
+  payment_method_id?: string;
+}
+
+export interface CreditCardPaymentResponse {
+  payment_id: string;
+  status: PaymentStatus;
+  message?: string;
+}
+
+export interface PixPaymentResponse {
+  payment_id: string;
+  qr_code_base64: string;
+  qr_code_copy_paste: string;
+  expires_at: string;
+  status: PaymentStatus;
+}
+
+export interface OrderStatusSyncResponse {
+  payment_id: string;
+  status: PaymentStatus;
+  is_approved: boolean;
 }
 
 export interface RechargeResponse {
@@ -134,19 +217,9 @@ export interface TransactionHistoryTableProps {
 
 export type RechargeModalProps = UseRechargeModalProps;
 
-export interface PixRechargeTabProps {
-  pixQrCode?: string;
-  pixCopiaECola?: string;
-  expirationDate?: string;
-  loading: boolean;
-  onGeneratePix?: () => void;
-}
-
-export interface CreditCardRechargeTabProps {
-  packageId?: string;
-  amountBrl?: number;
-  loading?: boolean;
+export interface UnifiedPaymentModalProps {
+  isOpen: boolean;
+  target: CheckoutTarget | null;
+  onClose: () => void;
   onSuccessPayment?: () => void;
-  onSubmitCard?: (payload: CreditCardRechargePayload) => Promise<void>;
-  className?: string;
 }

@@ -2,7 +2,7 @@
   "metadata": {
     "version": "2.0",
     "generator": "generate_knowledge_graph.py",
-    "total_nodes": 115,
+    "total_nodes": 114,
     "total_edges": 56
   },
   "nodes": [
@@ -810,21 +810,6 @@
       "label": "catalog",
       "type": "FrontendFeature",
       "file": "EcommerceBot.Web/src/features/catalog",
-      "metadata": {
-        "layers": [
-          "components",
-          "hooks",
-          "pages",
-          "services",
-          "types"
-        ]
-      }
-    },
-    {
-      "id": "frontend_feature:checkout",
-      "label": "checkout",
-      "type": "FrontendFeature",
-      "file": "EcommerceBot.Web/src/features/checkout",
       "metadata": {
         "layers": [
           "components",

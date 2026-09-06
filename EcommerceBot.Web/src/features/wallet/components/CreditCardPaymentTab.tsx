@@ -1,7 +1,7 @@
 /**
- * src/features/checkout/components/CreditCardPaymentTab.tsx
+ * src/features/wallet/components/CreditCardPaymentTab.tsx
  *
- * Aba de Pagamento Transparente via Cartão de Crédito (Checkout de Planos e Recargas).
+ * Aba de Pagamento Transparente via Cartão de Crédito (Planos SaaS e Recargas).
  * Integra o SDK do Mercado Pago (@mercadopago/sdk-react) para tokenização PCI-DSS.
  * Reutiliza o componente atômico CreditCardPaymentForm da biblioteca de UI.
  */
@@ -10,7 +10,6 @@ import React from 'react';
 import { initMercadoPago, createCardToken } from '@mercadopago/sdk-react';
 import { CreditCardPaymentForm, type CreditCardFormData } from '@/components/ui/payment/CreditCardPaymentForm';
 import { env } from '@/config/env';
-import type { CreditCardPaymentPayload } from '../types';
 
 const MP_PUBLIC_KEY = env.mercadoPagoPublicKey;
 
@@ -25,16 +24,18 @@ interface MercadoPagoCardTokenResponse {
 }
 
 export interface CreditCardPaymentTabProps {
-  planId: string;
   amountBrl?: number;
   loading: boolean;
   submitButtonText?: string;
-  onSubmit: (payload: CreditCardPaymentPayload) => Promise<void>;
+  onSubmit: (data: {
+    formData: CreditCardFormData;
+    cardToken: string;
+    paymentMethodId: string;
+  }) => Promise<void>;
   className?: string;
 }
 
 export const CreditCardPaymentTab: React.FC<CreditCardPaymentTabProps> = ({
-  planId,
   amountBrl = 197.0,
   loading,
   submitButtonText = 'Finalizar Pagamento Seguro',
@@ -72,7 +73,7 @@ export const CreditCardPaymentTab: React.FC<CreditCardPaymentTabProps> = ({
         cardTokenId = tokenResponse.id;
       }
     } catch (sdkErr: unknown) {
-      console.warn('Erro na tokenização Mercado Pago no checkout, gerando token seguro de contingência:', sdkErr);
+      console.warn('Tokenização Mercado Pago contingência:', sdkErr);
     }
 
     if (!cardTokenId) {
@@ -82,16 +83,9 @@ export const CreditCardPaymentTab: React.FC<CreditCardPaymentTabProps> = ({
     const paymentMethodId = detectPaymentMethodId(cleanCardNumber);
 
     await onSubmit({
-      plan_id: planId,
-      card_number: formData.cardNumber,
-      cardholder_name: formData.cardholderName,
-      expiration_month: formData.expirationMonth,
-      expiration_year: formData.expirationYear,
-      security_code: formData.securityCode,
-      installments: formData.installments,
-      doc_number: formData.docNumber,
-      card_token: cardTokenId,
-      payment_method_id: paymentMethodId,
+      formData,
+      cardToken: cardTokenId,
+      paymentMethodId,
     });
   };
 
