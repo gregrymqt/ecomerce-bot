@@ -9,7 +9,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { useProducts } from '@/features/catalog';
-import { integrationService, type StoreIntegration } from '@/features/integrations';
+import { useIntegrations } from '@/features/integrations';
 import { homeService } from '../services/home.service';
 import type {
   ExtractionJob,
@@ -21,9 +21,12 @@ export function useHome() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { products, isLoading: productsLoading, refetch: refreshProducts } = useProducts(50);
+  const {
+    integrations,
+    loading: integrationsLoading,
+    fetchData: refreshIntegrations,
+  } = useIntegrations();
 
-  const [integrations, setIntegrations] = useState<StoreIntegration[]>([]);
-  const [integrationsLoading, setIntegrationsLoading] = useState<boolean>(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -33,48 +36,6 @@ export function useHome() {
       if (toastTimeoutRef.current) {
         clearTimeout(toastTimeoutRef.current);
       }
-    };
-  }, []);
-
-  // Carrega status real das integrações com fallback silencioso
-  const fetchIntegrations = useCallback(async (isManualAction = false) => {
-    if (isManualAction) {
-      setIntegrationsLoading(true);
-    }
-    try {
-      const stores = await integrationService.listIntegrations();
-      setIntegrations(stores);
-    } catch {
-      // Fallback gracioso caso a API ainda não possua lojas configuradas
-      setIntegrations([]);
-    } finally {
-      setIntegrationsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    integrationService
-      .listIntegrations()
-      .then((stores) => {
-        if (!isCancelled) {
-          setIntegrations(stores);
-        }
-      })
-      .catch(() => {
-        if (!isCancelled) {
-          setIntegrations([]);
-        }
-      })
-      .finally(() => {
-        if (!isCancelled) {
-          setIntegrationsLoading(false);
-        }
-      });
-
-    return () => {
-      isCancelled = true;
     };
   }, []);
 
@@ -180,7 +141,7 @@ export function useHome() {
     handleDismissToast,
     refreshData: () => {
       refreshProducts();
-      fetchIntegrations();
+      refreshIntegrations();
     },
   };
 }

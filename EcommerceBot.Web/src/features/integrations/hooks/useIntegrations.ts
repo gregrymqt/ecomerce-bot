@@ -33,11 +33,9 @@ export function useIntegrations() {
   };
 
   // 2. Carregamento em paralelo dos dados iniciais (Resumo e Lista de Lojas)
-  const fetchData = useCallback(async (isManualAction = false) => {
-    if (isManualAction) {
-      setLoading(true);
-      setError(null);
-    }
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const [summaryRes, integrationsRes] = await Promise.all([
         integrationService.getSummary(),
@@ -53,30 +51,32 @@ export function useIntegrations() {
     }
   }, []);
 
-  // Disparo automático na montagem
+  // Disparo automático na montagem com controle de cancelamento
   useEffect(() => {
     let isCancelled = false;
 
-    Promise.all([
-      integrationService.getSummary(),
-      integrationService.listIntegrations(),
-    ])
-      .then(([summaryRes, integrationsRes]) => {
+    const load = async () => {
+      try {
+        const [summaryRes, integrationsRes] = await Promise.all([
+          integrationService.getSummary(),
+          integrationService.listIntegrations(),
+        ]);
         if (!isCancelled) {
           setSummary(summaryRes);
           setIntegrations(integrationsRes);
         }
-      })
-      .catch((err: unknown) => {
+      } catch (err: unknown) {
         if (!isCancelled) {
           setError(getErrorMessage(err, 'Erro ao carregar dados das integrações.'));
         }
-      })
-      .finally(() => {
+      } finally {
         if (!isCancelled) {
           setLoading(false);
         }
-      });
+      }
+    };
+
+    load();
 
     return () => {
       isCancelled = true;
