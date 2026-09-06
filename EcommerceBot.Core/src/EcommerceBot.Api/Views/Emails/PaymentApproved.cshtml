@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pagamento Aprovado</title>
+    <title>Recarga de Créditos de IA Confirmada</title>
     <style>
         body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; color: #f8fafc; }
         .container { max-width: 600px; margin: 40px auto; background-color: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #334155; }
@@ -24,16 +24,24 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>✅ Pagamento Confirmado</h1>
+            <h1>⚡ Recarga de Créditos Confirmada</h1>
         </div>
         <div class="content">
             <h2>Olá, @Model.RecipientName!</h2>
-            <p>Seu pagamento foi processado e aprovado com sucesso. Seus créditos e acesso ao plano já estão disponíveis.</p>
+            <p>Seu pagamento foi aprovado com sucesso e seus créditos de inteligência artificial já foram adicionados à sua carteira. Seus créditos são perpétuos e não possuem data de expiração.</p>
             
             <div class="receipt-card">
                 <div class="receipt-row">
-                    <span style="color:#94a3b8;">Item / Plano:</span>
-                    <span>@Model.PlanName</span>
+                    <span style="color:#94a3b8;">Pacote Adquirido:</span>
+                    <span style="font-weight: 600; color: #ffffff;">@Model.PackageName</span>
+                </div>
+                <div class="receipt-row">
+                    <span style="color:#94a3b8;">Créditos Adicionados:</span>
+                    <span style="font-weight: 600; color: #34d399;">+@Model.CreditsAdded.ToString("N0") créditos</span>
+                </div>
+                <div class="receipt-row">
+                    <span style="color:#94a3b8;">Novo Saldo Disponível:</span>
+                    <span style="font-weight: 600; color: #60a5fa;">@Model.NewBalance.ToString("N0") créditos</span>
                 </div>
                 <div class="receipt-row">
                     <span style="color:#94a3b8;">Método de Pagamento:</span>
@@ -41,7 +49,7 @@
                 </div>
                 <div class="receipt-row">
                     <span style="color:#94a3b8;">ID da Transação:</span>
-                    <span style="font-family:monospace;">@Model.TransactionId</span>
+                    <span style="font-family:monospace; font-size: 12px;">@Model.TransactionId</span>
                 </div>
                 <div class="receipt-row">
                     <span>Total Pago:</span>
@@ -50,10 +58,10 @@
             </div>
 
             <div class="btn-wrapper">
-                <a href="@Model.DashboardUrl" class="btn" target="_blank">Acessar Dashboard</a>
+                <a href="@Model.DashboardUrl" class="btn" target="_blank">Acessar Painel & Utilizar Créditos</a>
             </div>
 
-            <p style="font-size: 14px; color: #94a3b8;">Obrigado por confiar no E-commerce Bot!</p>
+            <p style="font-size: 14px; color: #94a3b8;">Obrigado por confiar no ecossistema E-commerce Bot!</p>
         </div>
         <div class="footer">
             <p>&copy; @Model.Year E-commerce Bot. Todos os direitos reservados.</p>

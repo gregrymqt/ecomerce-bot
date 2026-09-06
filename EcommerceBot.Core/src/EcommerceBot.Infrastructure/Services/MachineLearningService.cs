@@ -7,6 +7,7 @@ using Dapper;
 using EcommerceBot.Application.DTOs.Analytics;
 using EcommerceBot.Application.DTOs.Messaging;
 using EcommerceBot.Application.Interfaces;
+using EcommerceBot.Domain.Exceptions;
 using EcommerceBot.Domain.Interfaces;
 using MassTransit;
 using Microsoft.Extensions.Logging;
@@ -21,22 +22,41 @@ public class MachineLearningService : IMachineLearningService
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly IDbConnectionFactory _dbConnectionFactory;
     private readonly IRobotActivityRepository _activityRepository;
+    private readonly ITenantRepository _tenantRepository;
+    private readonly IRedisService _redisService;
     private readonly ILogger<MachineLearningService> _logger;
 
     public MachineLearningService(
         IPublishEndpoint publishEndpoint,
         IDbConnectionFactory dbConnectionFactory,
         IRobotActivityRepository activityRepository,
+        ITenantRepository tenantRepository,
+        IRedisService redisService,
         ILogger<MachineLearningService> logger)
     {
         _publishEndpoint = publishEndpoint;
         _dbConnectionFactory = dbConnectionFactory;
         _activityRepository = activityRepository;
+        _tenantRepository = tenantRepository;
+        _redisService = redisService;
         _logger = logger;
     }
 
     public async Task<bool> TriggerAnalysisAsync(Guid tenantId, string jobType = "FULL_ANALYTICS")
     {
+        // 1. Validação de saldo de créditos de IA
+        if (!await _tenantRepository.HasCreditsAsync(tenantId, 1))
+        {
+            throw new InsufficientCreditsException("Você precisa de pelo menos 1 crédito de IA em saldo para executar a análise de Machine Learning.");
+        }
+
+        // 2. Cooldown de 24 horas via Redis (anti-abuso de inferência de ML)
+        var cooldownAcquired = await _redisService.SetIfNotExistsAsync($"cooldown:ml:{tenantId}", "active", TimeSpan.FromHours(24));
+        if (!cooldownAcquired)
+        {
+            throw new InvalidOperationException("A análise preditiva de Machine Learning possui um intervalo mínimo de 24 horas entre execuções gratuitas.");
+        }
+
         _logger.LogInformation("Iniciando disparo de análise ML ({JobType}) para Tenant {TenantId}", jobType, tenantId);
 
         var transactions = await GetTenantTransactionsAsync(tenantId);
@@ -70,8 +90,15 @@ public class MachineLearningService : IMachineLearningService
 
         if (activity == null)
         {
-            // Se ainda não houver análise processada, dispara uma primeira execução em background
-            await TriggerAnalysisAsync(tenantId, "FULL_ANALYTICS");
+            // Se ainda não houver análise processada, tenta disparar uma primeira execução em background
+            try
+            {
+                await TriggerAnalysisAsync(tenantId, "FULL_ANALYTICS");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation("Disparo automático inicial de ML não executado para Tenant {TenantId}: {Message}", tenantId, ex.Message);
+            }
             return null;
         }
 

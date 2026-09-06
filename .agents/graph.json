@@ -140,6 +140,13 @@
       "metadata": {}
     },
     {
+      "id": "table:CreditTransactions",
+      "label": "CreditTransactions",
+      "type": "DatabaseTable",
+      "file": "Database.Migrations/Scripts/020_Credit_Ledger_And_Packages.sql",
+      "metadata": {}
+    },
+    {
       "id": "consumer:AnalyticsProcessedConsumer",
       "label": "AnalyticsProcessedConsumer",
       "type": "MassTransitConsumer",
@@ -340,13 +347,6 @@
       "label": "SystemService",
       "type": "CoreServiceOrRepo",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/SystemService.cs",
-      "metadata": {}
-    },
-    {
-      "id": "code:WalletService",
-      "label": "WalletService",
-      "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/WalletService.cs",
       "metadata": {}
     },
     {
@@ -683,6 +683,7 @@
       "metadata": {
         "base_route": "api/v1/[controller]",
         "endpoints": [
+          "GET api/v1/[controller]/credit-packages",
           "GET api/v1/[controller]/balance",
           "GET api/v1/[controller]/statement",
           "POST api/v1/[controller]/recharge"
@@ -1248,6 +1249,11 @@
       "relationship": "queries"
     },
     {
+      "source": "code:TenantRepository",
+      "target": "table:CreditTransactions",
+      "relationship": "queries"
+    },
+    {
       "source": "code:TenantSsoMappingRepository",
       "target": "table:TenantSsoMappings",
       "relationship": "queries"
@@ -1285,11 +1291,6 @@
     {
       "source": "code:SystemService",
       "target": "table:Products",
-      "relationship": "queries"
-    },
-    {
-      "source": "code:WalletService",
-      "target": "table:Orders",
       "relationship": "queries"
     },
     {

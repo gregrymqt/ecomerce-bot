@@ -83,7 +83,7 @@ namespace EcommerceBot.Infrastructure.Services
                     Id = tenantId,
                     Name = tenantName,
                     PlanTier = "FREE",
-                    CreditsBalance = 10, // 10 créditos de boas-vindas
+                    CreditsBalance = 20, // 20 créditos bônus de boas-vindas
                     IsActive = true,
                     FirstUtmSource = request.UtmSource,
                     FirstUtmMedium = request.UtmMedium,
@@ -94,6 +94,18 @@ namespace EcommerceBot.Infrastructure.Services
                     UpdatedAt = DateTimeOffset.UtcNow
                 };
                 await _tenantRepository.CreateAsync(newTenant);
+
+                // Registra o bônus inicial no Ledger de Créditos
+                await _tenantRepository.RecordTransactionAsync(new CreditTransaction
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    Amount = 20,
+                    BalanceAfter = 20,
+                    Type = "WELCOME_BONUS",
+                    Description = "Bônus de boas-vindas (20 créditos de IA)",
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
             }
 
             var isSuperAdmin = IsSuperAdminEmail(request.Email);
@@ -107,7 +119,7 @@ namespace EcommerceBot.Infrastructure.Services
             };
 
             var created = await _userRepository.CreateAsync(newUser);
-            var jwt = GenerateJwtToken(created);
+            var jwt = GenerateJwtToken(created, hasActiveCredits: true, creditsBalance: 20);
 
             var resp = new UserResponse
             {
@@ -116,7 +128,9 @@ namespace EcommerceBot.Infrastructure.Services
                 Name = created.FullName,
                 Role = created.Role,
                 Tenants = new List<string> { created.TenantId.ToString() },
-                CreatedAt = created.CreatedAt
+                CreatedAt = created.CreatedAt,
+                CreditsBalance = 20,
+                HasActiveCredits = true
             };
 
             return (resp, jwt);
@@ -137,7 +151,11 @@ namespace EcommerceBot.Infrastructure.Services
                 await _userRepository.UpdateAsync(user);
             }
 
-            var jwt = GenerateJwtToken(user);
+            var tenant = await _tenantRepository.GetByIdAsync(user.TenantId);
+            var creditsBalance = tenant?.CreditsBalance ?? 0;
+            var hasActiveCredits = user.Role == "ADMIN" || creditsBalance > 0;
+
+            var jwt = GenerateJwtToken(user, hasActiveCredits, creditsBalance);
 
             var resp = new UserResponse
             {
@@ -146,13 +164,15 @@ namespace EcommerceBot.Infrastructure.Services
                 Name = user.FullName,
                 Role = user.Role,
                 Tenants = new List<string> { user.TenantId.ToString() },
-                CreatedAt = user.CreatedAt
+                CreatedAt = user.CreatedAt,
+                CreditsBalance = creditsBalance,
+                HasActiveCredits = hasActiveCredits
             };
 
             return (resp, jwt);
         }
 
-        private string GenerateJwtToken(User user)
+        private string GenerateJwtToken(User user, bool hasActiveCredits = false, int creditsBalance = 0)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var keyStr = _jwtOptions.Key;
@@ -173,7 +193,9 @@ namespace EcommerceBot.Infrastructure.Services
                     new Claim(ClaimTypes.Email, user.Email),
                     new Claim(ClaimTypes.Name, user.FullName ?? string.Empty),
                     new Claim("tenantId", user.TenantId.ToString()),
-                    new Claim(ClaimTypes.Role, user.Role)
+                    new Claim(ClaimTypes.Role, user.Role),
+                    new Claim("hasActiveCredits", hasActiveCredits.ToString().ToLowerInvariant()),
+                    new Claim("creditsBalance", creditsBalance.ToString())
                 }),
                 Issuer = _jwtOptions.Issuer,
                 Audience = _jwtOptions.Audience,
@@ -195,6 +217,10 @@ namespace EcommerceBot.Infrastructure.Services
 
             await _userRepository.UpdateAsync(user);
 
+            var tenant = await _tenantRepository.GetByIdAsync(user.TenantId);
+            var creditsBalance = tenant?.CreditsBalance ?? 0;
+            var hasActiveCredits = user.Role == "ADMIN" || creditsBalance > 0;
+
             return new UserResponse
             {
                 Id = user.Id,
@@ -202,7 +228,9 @@ namespace EcommerceBot.Infrastructure.Services
                 Name = user.FullName,
                 Role = user.Role,
                 Tenants = new List<string> { user.TenantId.ToString() },
-                CreatedAt = user.CreatedAt
+                CreatedAt = user.CreatedAt,
+                CreditsBalance = creditsBalance,
+                HasActiveCredits = hasActiveCredits
             };
         }
 
@@ -233,14 +261,21 @@ namespace EcommerceBot.Infrastructure.Services
                     var tenant = await _tenantRepository.GetByIdAsync(targetTenantId);
                     if (tenant != null)
                     {
-                        currentUser.Plan = user.Role == "ADMIN" ? "admin" : (tenant.PlanTier?.ToLowerInvariant() ?? "free");
+                        currentUser.CreditsBalance = tenant.CreditsBalance;
+                        currentUser.HasActiveCredits = user.Role == "ADMIN" || tenant.CreditsBalance > 0;
+                        currentUser.Plan = user.Role == "ADMIN" ? "admin" : (currentUser.HasActiveCredits ? "active" : "free");
                     }
                 }
             }
 
-            if (string.IsNullOrEmpty(currentUser.Plan))
+            if (currentUser.Role == "ADMIN")
             {
-                currentUser.Plan = currentUser.Role == "ADMIN" ? "admin" : "free";
+                currentUser.HasActiveCredits = true;
+                currentUser.Plan = "admin";
+            }
+            else if (string.IsNullOrEmpty(currentUser.Plan))
+            {
+                currentUser.Plan = currentUser.HasActiveCredits ? "active" : "free";
             }
 
             return currentUser;

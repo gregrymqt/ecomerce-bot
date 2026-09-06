@@ -107,9 +107,9 @@ describe('MerchantRouteGuard', () => {
     expect(screen.getByText('Painel Lojista Admin')).toBeInTheDocument();
   });
 
-  it('deve bloquear usuário MEMBER comum e redirecionar para /wallet?reason=upgrade_required', () => {
+  it('não deve bloquear nem ejetar usuário com saldo zerado, exibindo banner suave e conteúdo da rota', () => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { email: 'member@test.com', role: 'MEMBER', plan: 'free' },
+      user: { email: 'lojista@test.com', role: 'MEMBER' },
       status: 'authenticated',
       isLoading: false,
     } as unknown as AuthHookReturn);
@@ -122,27 +122,25 @@ describe('MerchantRouteGuard', () => {
 
     render(
       <MemoryRouter initialEntries={['/dashboard']}>
-        <Routes>
-          <Route
-            path="/dashboard"
-            element={
-              <MerchantRouteGuard>
-                <div>Painel Lojista</div>
-              </MerchantRouteGuard>
-            }
-          />
-          <Route path="/wallet" element={<div>Página da Carteira / Upgrade</div>} />
-        </Routes>
+        <MerchantRouteGuard featureKey="dashboard">
+          <div>Painel da Loja</div>
+        </MerchantRouteGuard>
       </MemoryRouter>
     );
 
-    expect(screen.queryByText('Painel Lojista')).not.toBeInTheDocument();
-    expect(screen.getByText('Página da Carteira / Upgrade')).toBeInTheDocument();
+    // O conteúdo da rota é renderizado normalmente
+    expect(screen.getByText('Painel da Loja')).toBeInTheDocument();
+    // O aviso suave no topo é exibido informando sobre a pausa das rotas de IA
+    expect(
+      screen.getByText('Seu saldo de créditos está zerado. As rotas de inteligência artificial estão pausadas.')
+    ).toBeInTheDocument();
+    // O link de recarga rápida está presente
+    expect(screen.getByText('Recarregar Agora')).toBeInTheDocument();
   });
 
-  it('deve permitir acesso para lojista com plano Pro e saldo ativo', () => {
+  it('deve permitir acesso direto sem banner de aviso quando o lojista possui créditos ativos', () => {
     vi.mocked(useAuth).mockReturnValue({
-      user: { email: 'merchant@test.com', role: 'MEMBER', plan: 'pro' },
+      user: { email: 'lojista@test.com', role: 'MEMBER' },
       status: 'authenticated',
       isLoading: false,
     } as unknown as AuthHookReturn);
@@ -162,5 +160,8 @@ describe('MerchantRouteGuard', () => {
     );
 
     expect(screen.getByText('Painel Lojista Autorizado')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Seu saldo de créditos está zerado. As rotas de inteligência artificial estão pausadas.')
+    ).not.toBeInTheDocument();
   });
 });

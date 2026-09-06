@@ -30,6 +30,22 @@ public static class GlobalExceptionHandlerExtensions
                 var path = exceptionHandlerPathFeature.Path;
                 var services = context.RequestServices;
 
+                // Tratamento semântico para Saldo Insuficiente (HTTP 402 Payment Required)
+                if (ex is Domain.Exceptions.InsufficientCreditsException creditsEx)
+                {
+                    context.Response.StatusCode = StatusCodes.Status402PaymentRequired;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        status = StatusCodes.Status402PaymentRequired,
+                        error = "Insufficient Credits",
+                        code = "insufficient_credits",
+                        message = creditsEx.Message,
+                        timestamp = DateTimeOffset.UtcNow
+                    });
+                    return;
+                }
+
                 // 1. Log estruturado local via ILogger
                 var loggerFactory = services.GetService<ILoggerFactory>();
                 var logger = loggerFactory?.CreateLogger("GlobalExceptionHandler");

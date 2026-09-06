@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Wallet;
 using EcommerceBot.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceBot.Api.Controllers;
@@ -14,6 +15,14 @@ public class WalletController : BaseApiController
     public WalletController(IWalletService walletService)
     {
         _walletService = walletService;
+    }
+
+    [HttpGet("credit-packages")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetCreditPackages([FromServices] IPlanService planService)
+    {
+        var packages = await planService.GetAllPlansAsync(onlyActive: true);
+        return Ok(packages);
     }
 
     [HttpGet("balance")]

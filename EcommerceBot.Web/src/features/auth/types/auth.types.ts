@@ -15,6 +15,8 @@ export interface UserResponse {
   tenants: string[];
   created_at?: string;
   plan?: string;
+  credits_balance?: number;
+  has_active_credits?: boolean;
   is_admin?: boolean;
   role?: string;
   access_token?: string;
@@ -28,6 +30,8 @@ export interface AuthenticatedUser {
   name: string;
   tenants: string[];
   plan: string;
+  credits_balance?: number;
+  has_active_credits?: boolean;
   is_admin?: boolean;
   role?: string;
 }
@@ -54,6 +58,8 @@ export interface AuthTokenResponse {
   name: string;
   tenants: string[];
   tenant_id?: string;
+  credits_balance?: number;
+  has_active_credits?: boolean;
 }
 
 export interface EnterpriseLeadPayload {

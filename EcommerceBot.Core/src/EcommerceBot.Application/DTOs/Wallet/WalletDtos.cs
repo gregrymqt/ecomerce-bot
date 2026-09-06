@@ -12,6 +12,9 @@ public class WalletBalanceResponseDto
     [JsonPropertyName("balance_credits")]
     public int BalanceCredits { get; set; }
 
+    [JsonPropertyName("credits_balance")]
+    public int CreditsBalance => BalanceCredits;
+
     [JsonPropertyName("managed_credit_balance")]
     public decimal ManagedCreditBalance { get; set; }
 
@@ -30,11 +33,17 @@ public class CreditTransactionDto
     [JsonPropertyName("amount")]
     public decimal Amount { get; set; }
 
+    [JsonPropertyName("balance_after")]
+    public int BalanceAfter { get; set; }
+
     [JsonPropertyName("type")]
-    public string Type { get; set; } = "RECHARGE"; // 'RECHARGE' | 'USAGE'
+    public string Type { get; set; } = "RECHARGE"; // 'WELCOME_BONUS' | 'RECHARGE' | 'PRODUCT_ENRICHMENT' | 'REFUND'
 
     [JsonPropertyName("description")]
     public string? Description { get; set; }
+
+    [JsonPropertyName("reference_id")]
+    public string? ReferenceId { get; set; }
 
     [JsonPropertyName("external_payment_id")]
     public string? ExternalPaymentId { get; set; }

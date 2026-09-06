@@ -14,9 +14,9 @@ import { getErrorMessage } from '@/utils/errors';
 
 
 export const RECHARGE_PACKAGES: RechargePackage[] = [
-  { id: 'pkg_100', credits: 100, price_brl: 20 },
-  { id: 'pkg_500', credits: 500, price_brl: 80, discount_badge: '20% OFF', is_popular: true },
-  { id: 'pkg_1000', credits: 1000, price_brl: 150 },
+  { id: 'pkg_500', name: 'Starter AI', credits: 500, price_brl: 49 },
+  { id: 'pkg_2000', name: 'Pro AI', credits: 2000, price_brl: 149, discount_badge: 'Mais Popular', is_popular: true },
+  { id: 'pkg_6000', name: 'Scale AI', credits: 6000, price_brl: 399, discount_badge: 'Melhor Custo' },
 ];
 
 export function useRechargeModal({
@@ -25,7 +25,7 @@ export function useRechargeModal({
   onSuccessPayment,
 }: UseRechargeModalProps) {
   const { user } = useAuth();
-  const [selectedPackage, setSelectedPackage] = useState<string>('pkg_500');
+  const [selectedPackage, setSelectedPackage] = useState<string>('pkg_2000');
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'credit_card'>('pix');
 
   const [loading, setLoading] = useState<boolean>(false);

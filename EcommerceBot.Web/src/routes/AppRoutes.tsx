@@ -22,8 +22,6 @@ const AdminGrowthPage = lazy(() => import('@/features/admin/pages/AdminGrowthPag
 const AdminEnterpriseLeadsPage = lazy(() => import('@/features/admin/pages/AdminEnterpriseLeadsPage'));
 const AdminAiCapacityPage = lazy(() => import('@/features/admin/pages/AdminAiCapacityPage'));
 
-const MERCHANT_ROLES = new Set(['TENANT_ADMIN', 'CATALOG_OPERATOR', 'MERCHANT', 'OWNER']);
-
 /**
  * Componente de Redirecionamento Inteligente por Perfil de Usuário
  */
@@ -43,25 +41,18 @@ const RootRoleRedirect: React.FC = () => {
     return <Navigate to="/admin/leads" replace />;
   }
 
-  const plan = user.plan?.toLowerCase() || 'free';
-  const role = user.role?.toUpperCase() || '';
-  const isMerchant = plan === 'pro' || plan === 'enterprise' || MERCHANT_ROLES.has(role);
-
-  if (isMerchant) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <Navigate to="/demo" replace />;
+  // Todos os usuários autenticados do SaaS acessam o dashboard da loja
+  return <Navigate to="/dashboard" replace />;
 };
 
 /**
- * Redireciona requisições legadas de /checkout para a aba de Planos & Assinaturas na Wallet.
- * Preserva eventuais parâmetros de query como planId ou billingPeriod.
+ * Redireciona requisições legadas de /checkout para a Wallet.
+ * Preserva eventuais parâmetros de query como package.
  */
 const CheckoutRedirect: React.FC = () => {
   const [searchParams] = useSearchParams();
   const searchStr = searchParams.toString();
-  const target = searchStr ? `/wallet?tab=plans&${searchStr}` : '/wallet?tab=plans';
+  const target = searchStr ? `/wallet?${searchStr}` : '/wallet';
   return <Navigate to={target} replace />;
 };
 

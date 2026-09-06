@@ -33,6 +33,7 @@ public class TenantHeaderMiddleware
         "/api/v1/checkout/status",
         "/api/v1/admin",
         "/api/v1/plans",
+        "/api/v1/wallet/credit-packages",
         "/api/v1/analytics/traffic/visit"
     };
 

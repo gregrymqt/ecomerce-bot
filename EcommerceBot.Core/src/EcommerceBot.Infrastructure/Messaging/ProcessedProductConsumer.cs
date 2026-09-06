@@ -12,15 +12,18 @@ namespace EcommerceBot.Infrastructure.Messaging;
 public class ProcessedProductConsumer : IConsumer<ProductProcessedEvent>
 {
     private readonly IProductRepository _productRepository;
+    private readonly ITenantRepository _tenantRepository;
     private readonly IRedisService _redisService;
     private readonly ILogger<ProcessedProductConsumer> _logger;
 
     public ProcessedProductConsumer(
         IProductRepository productRepository,
+        ITenantRepository tenantRepository,
         IRedisService redisService,
         ILogger<ProcessedProductConsumer> logger)
     {
         _productRepository = productRepository;
+        _tenantRepository = tenantRepository;
         _redisService = redisService;
         _logger = logger;
     }
@@ -50,5 +53,32 @@ public class ProcessedProductConsumer : IConsumer<ProductProcessedEvent>
         });
 
         await _redisService.PublishAsync(channel, payload);
+
+        // Se o processamento do Worker falhou ou retornou erro, estorna o crédito deduzido atomicamente
+        if (string.Equals(message.Status, "FAILED", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(message.Status, "ERROR", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("Extração com erro para Tenant {TenantId}, SKU {Sku}. Executando estorno de 1 crédito no Ledger.",
+                message.TenantId, message.Sku);
+
+            var newBalance = await _tenantRepository.AddCreditsAsync(
+                tenantId: message.TenantId,
+                amount: 1,
+                type: "REFUND",
+                description: $"Estorno automático por falha na extração de produto (SKU: {message.Sku})",
+                referenceId: message.Sku
+            );
+
+            var refundPayload = JsonSerializer.Serialize(new
+            {
+                type = "credits_refunded",
+                sku = message.Sku,
+                amount = 1,
+                balance_credits = newBalance,
+                timestamp = DateTimeOffset.UtcNow
+            });
+
+            await _redisService.PublishAsync(channel, refundPayload);
+        }
     }
 }

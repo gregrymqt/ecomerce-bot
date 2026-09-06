@@ -15,20 +15,20 @@ public class CheckoutService : ICheckoutService
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IPlanRepository _planRepository;
-    private readonly ISubscriptionService _subscriptionService;
+    private readonly ITenantRepository _tenantRepository;
     private readonly IMercadoPagoGateway _mercadoPagoGateway;
     private readonly ILogger<CheckoutService> _logger;
 
     public CheckoutService(
         IOrderRepository orderRepository,
         IPlanRepository planRepository,
-        ISubscriptionService subscriptionService,
+        ITenantRepository tenantRepository,
         IMercadoPagoGateway mercadoPagoGateway,
         ILogger<CheckoutService> logger)
     {
         _orderRepository = orderRepository;
         _planRepository = planRepository;
-        _subscriptionService = subscriptionService;
+        _tenantRepository = tenantRepository;
         _mercadoPagoGateway = mercadoPagoGateway;
         _logger = logger;
     }
@@ -196,8 +196,8 @@ public class CheckoutService : ICheckoutService
                     }
                 }
             },
-            Items = new List<MercadoPagoItemRequest>
-            {
+            Items =
+            [
                 new()
                 {
                     Title = planName,
@@ -205,7 +205,7 @@ public class CheckoutService : ICheckoutService
                     Quantity = 1,
                     ExternalCode = plan?.Id.ToString() ?? "PRO_PLAN"
                 }
-            },
+            ],
             Config = new MercadoPagoConfigRequest
             {
                 Online = new MercadoPagoOnlineConfigRequest
@@ -234,7 +234,14 @@ public class CheckoutService : ICheckoutService
             
             if (plan != null)
             {
-                await _subscriptionService.ActivateOrRenewSubscriptionAsync(tenantId, plan.Id);
+                await _tenantRepository.AddCreditsAsync(
+                    tenantId: tenantId,
+                    amount: plan.CreditsIncluded,
+                    type: "RECHARGE",
+                    description: $"Compra de {plan.Name} (+{plan.CreditsIncluded} créditos)",
+                    referenceId: order.ExternalReference,
+                    orderId: order.Id
+                );
             }
         }
         else if (mpResponse.Status == "failed" || mpResponse.Status == "canceled")
@@ -294,7 +301,16 @@ public class CheckoutService : ICheckoutService
 
                 if (order.PlanId.HasValue)
                 {
-                    await _subscriptionService.ActivateOrRenewSubscriptionAsync(tenantId, order.PlanId.Value);
+                    var plan = await _planRepository.GetByIdAsync(order.PlanId.Value);
+                    var creditsToAdd = plan?.CreditsIncluded ?? (int)Math.Ceiling(order.TotalAmount * 10);
+                    await _tenantRepository.AddCreditsAsync(
+                        tenantId: tenantId,
+                        amount: creditsToAdd,
+                        type: "RECHARGE",
+                        description: $"Recarga de IA confirmada (+{creditsToAdd} créditos)",
+                        referenceId: order.ExternalReference,
+                        orderId: order.Id
+                    );
                 }
             }
 
@@ -320,7 +336,16 @@ public class CheckoutService : ICheckoutService
 
                 if (order.PlanId.HasValue)
                 {
-                    await _subscriptionService.ActivateOrRenewSubscriptionAsync(tenantId, order.PlanId.Value);
+                    var plan = await _planRepository.GetByIdAsync(order.PlanId.Value);
+                    var creditsToAdd = plan?.CreditsIncluded ?? (int)Math.Ceiling(order.TotalAmount * 10);
+                    await _tenantRepository.AddCreditsAsync(
+                        tenantId: tenantId,
+                        amount: creditsToAdd,
+                        type: "RECHARGE",
+                        description: $"Recarga de IA confirmada (+{creditsToAdd} créditos)",
+                        referenceId: order.ExternalReference,
+                        orderId: order.Id
+                    );
                 }
             }
 

@@ -10,6 +10,8 @@ export * from './useCreditCardForm';
 export * from './useRechargeModal';
 export * from './useCreditCardRecharge';
 export * from './useUnifiedPayment';
+export * from './useCreditPackages';
 export { default as useWallet } from './useWallet';
 export { default as useCreditCardRecharge } from './useCreditCardRecharge';
 export { default as useUnifiedPayment } from './useUnifiedPayment';
+export { default as useCreditPackages } from './useCreditPackages';

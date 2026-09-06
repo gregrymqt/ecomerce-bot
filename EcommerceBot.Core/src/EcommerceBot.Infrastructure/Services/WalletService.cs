@@ -15,22 +15,22 @@ namespace EcommerceBot.Infrastructure.Services;
 public class WalletService : IWalletService
 {
     private readonly ITenantRepository _tenantRepository;
+    private readonly IPlanRepository _planRepository;
     private readonly IOrderRepository _orderRepository;
     private readonly IMercadoPagoGateway _mercadoPagoGateway;
-    private readonly IDbConnectionFactory _connectionFactory;
     private readonly ILogger<WalletService> _logger;
 
     public WalletService(
         ITenantRepository tenantRepository,
+        IPlanRepository planRepository,
         IOrderRepository orderRepository,
         IMercadoPagoGateway mercadoPagoGateway,
-        IDbConnectionFactory connectionFactory,
         ILogger<WalletService> logger)
     {
         _tenantRepository = tenantRepository;
+        _planRepository = planRepository;
         _orderRepository = orderRepository;
         _mercadoPagoGateway = mercadoPagoGateway;
-        _connectionFactory = connectionFactory;
         _logger = logger;
     }
 
@@ -57,39 +57,43 @@ public class WalletService : IWalletService
         var balanceCredits = tenant?.CreditsBalance ?? 0;
         var managedBalance = tenant?.ManagedCreditBalance ?? 0.00m;
 
-        using var connection = await _connectionFactory.CreateConnectionAsync();
-        
-        // Busca ordens de pagamento aprovadas e pendentes
-        const string sqlOrders = @"
-            SELECT Id, TenantId, TotalAmount, Status, PaymentMethod, MpPaymentId, CreatedAt 
-            FROM dbo.Orders 
-            WHERE TenantId = @TenantId 
-            ORDER BY CreatedAt DESC";
+        var page = filters.Page > 0 ? filters.Page : 1;
+        var limit = filters.Limit > 0 ? filters.Limit : 50;
+        var offset = (page - 1) * limit;
 
-        var orders = (await connection.QueryAsync<Order>(sqlOrders, new { TenantId = tenantId })).ToList();
+        var transactions = await _tenantRepository.GetCreditTransactionsAsync(tenantId, limit, offset, filters.Type);
+        var totalCount = await _tenantRepository.CountCreditTransactionsAsync(tenantId, filters.Type);
 
-        var transactions = orders.Select(o => new CreditTransactionDto
+        var transactionDtos = transactions.Select(t => new CreditTransactionDto
         {
-            Id = o.Id.ToString(),
-            TenantId = o.TenantId,
-            Amount = o.TotalAmount,
-            Type = "RECHARGE",
-            Description = $"Recarga via {o.PaymentMethod?.ToUpper()} ({o.Status})",
-            ExternalPaymentId = o.MpPaymentId,
-            CreatedAt = o.CreatedAt
+            Id = t.Id.ToString(),
+            TenantId = t.TenantId,
+            Amount = t.Amount,
+            BalanceAfter = t.BalanceAfter,
+            Type = t.Type,
+            Description = t.Description,
+            ReferenceId = t.ReferenceId,
+            ExternalPaymentId = t.ReferenceId ?? t.OrderId?.ToString(),
+            CreatedAt = t.CreatedAt
         }).ToList();
 
         return new WalletStatementResponseDto
         {
             BalanceCredits = balanceCredits,
             ManagedCreditBalance = managedBalance,
-            Transactions = transactions.Skip((filters.Page - 1) * filters.Limit).Take(filters.Limit).ToList(),
-            TotalCount = transactions.Count
+            Transactions = transactionDtos,
+            TotalCount = totalCount
         };
     }
 
     public async Task<RechargeResponseDto> CreateRechargeAsync(Guid tenantId, RechargeRequestDto request)
     {
+        Guid? planId = null;
+        if (!string.IsNullOrEmpty(request.PackageId) && Guid.TryParse(request.PackageId, out var parsedId))
+        {
+            planId = parsedId;
+        }
+
         var amount = request.Amount > 0 ? request.Amount : (request.CreditsPackage > 0 ? request.CreditsPackage * 0.50m : 50.00m);
         var isPix = request.PaymentMethod.ToLower() == "pix";
         var externalRef = $"rec_{tenantId.ToString()[..8]}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
@@ -98,6 +102,7 @@ public class WalletService : IWalletService
         {
             Id = Guid.NewGuid(),
             TenantId = tenantId,
+            PlanId = planId,
             ExternalReference = externalRef,
             TotalAmount = amount,
             Status = "pending",
@@ -177,7 +182,33 @@ public class WalletService : IWalletService
             order.Status = "approved";
             order.PaidAt = DateTimeOffset.UtcNow;
             order.TotalPaidAmount = amount;
-            await _tenantRepository.AddManagedBalanceAsync(tenantId, amount);
+
+            int creditsToAdd = request.CreditsPackage;
+            string packageName = "Recarga de Créditos";
+
+            if (order.PlanId.HasValue)
+            {
+                var plan = await _planRepository.GetByIdAsync(order.PlanId.Value);
+                if (plan != null)
+                {
+                    creditsToAdd = plan.CreditsIncluded;
+                    packageName = plan.Name;
+                }
+            }
+
+            if (creditsToAdd <= 0)
+            {
+                creditsToAdd = (int)Math.Ceiling(amount * 10);
+            }
+
+            await _tenantRepository.AddCreditsAsync(
+                tenantId: tenantId,
+                amount: creditsToAdd,
+                type: "RECHARGE",
+                description: $"Recarga de IA aprovada: {packageName} (+{creditsToAdd} créditos)",
+                referenceId: order.ExternalReference ?? order.MpPaymentId,
+                orderId: order.Id
+            );
         }
 
         await _orderRepository.CreateOrderAsync(order);

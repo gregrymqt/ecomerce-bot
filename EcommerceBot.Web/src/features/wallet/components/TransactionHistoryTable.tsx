@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Inbox,
+  Sparkles,
 } from 'lucide-react';
 import type { CreditTransaction, TransactionHistoryTableProps } from '../types';
 import { Card } from '@/components/ui/display/Card';
@@ -68,18 +69,50 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
         header: 'Tipo',
         align: 'left',
         render: (tx) => {
-          const isRecharge = tx.type === 'RECHARGE';
-          return isRecharge ? (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
-              Recarga
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
-              <ArrowDownRight className="w-3.5 h-3.5 shrink-0" />
-              Consumo
-            </span>
-          );
+          switch (tx.type) {
+            case 'WELCOME_BONUS':
+              return (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  Bônus
+                </span>
+              );
+            case 'RECHARGE':
+              return (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
+                  Recarga
+                </span>
+              );
+            case 'REFUND':
+              return (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                  <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
+                  Estorno
+                </span>
+              );
+            case 'PRODUCT_ENRICHMENT':
+              return (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                  <ArrowDownRight className="w-3.5 h-3.5 shrink-0" />
+                  Enriquecimento
+                </span>
+              );
+            case 'ML_ANALYSIS':
+              return (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  <ArrowDownRight className="w-3.5 h-3.5 shrink-0" />
+                  Análise ML
+                </span>
+              );
+            default:
+              return (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                  <ArrowDownRight className="w-3.5 h-3.5 shrink-0" />
+                  Consumo
+                </span>
+              );
+          }
         },
       },
       {
@@ -87,13 +120,19 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
         header: 'Descrição / Referência',
         align: 'left',
         render: (tx) => {
-          const isRecharge = tx.type === 'RECHARGE';
+          const isPositive = tx.amount > 0 || tx.type === 'RECHARGE' || tx.type === 'WELCOME_BONUS' || tx.type === 'REFUND';
+          const defaultDesc = tx.type === 'WELCOME_BONUS'
+            ? 'Bônus de Boas-vindas (Onboarding)'
+            : isPositive
+            ? 'Recarga de Créditos'
+            : 'Processamento LLM de Produto';
+
           return (
             <div className="text-xs font-medium text-[#e7e0ed]">
-              {tx.description || (isRecharge ? 'Recarga de Créditos SaaS' : 'Processamento LLM')}
-              {tx.external_payment_id && (
+              {tx.description || defaultDesc}
+              {(tx.reference_id || tx.external_payment_id) && (
                 <span className="block text-[11px] font-mono text-[#887f91] mt-0.5">
-                  Ref: #{tx.external_payment_id}
+                  Ref: #{tx.reference_id || tx.external_payment_id}
                 </span>
               )}
             </div>
@@ -102,22 +141,29 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
       },
       {
         key: 'amount',
-        header: 'Valor em Créditos',
+        header: 'Valor & Saldo Resultante',
         align: 'right',
         render: (tx) => {
-          const isRecharge = tx.type === 'RECHARGE';
-          const formattedAmount = isRecharge
-            ? `+${tx.amount.toLocaleString('pt-BR')} CRD`
+          const isPositive = tx.amount > 0 || tx.type === 'RECHARGE' || tx.type === 'WELCOME_BONUS' || tx.type === 'REFUND';
+          const formattedAmount = isPositive
+            ? `+${Math.abs(tx.amount).toLocaleString('pt-BR')} CRD`
             : `-${Math.abs(tx.amount).toLocaleString('pt-BR')} CRD`;
 
           return (
-            <span
-              className={`font-mono text-xs font-bold ${
-                isRecharge ? 'text-emerald-400' : 'text-[#cbc3d7]'
-              }`}
-            >
-              {formattedAmount}
-            </span>
+            <div className="text-right">
+              <span
+                className={`font-mono text-xs font-bold ${
+                  isPositive ? 'text-emerald-400' : 'text-slate-300'
+                }`}
+              >
+                {formattedAmount}
+              </span>
+              {typeof tx.balance_after === 'number' && (
+                <span className="block text-[10px] font-mono text-slate-400 mt-0.5">
+                  Saldo: {tx.balance_after.toLocaleString('pt-BR')} CRD
+                </span>
+              )}
+            </div>
           );
         },
       },

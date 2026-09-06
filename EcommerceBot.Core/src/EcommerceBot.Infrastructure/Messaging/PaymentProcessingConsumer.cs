@@ -16,7 +16,7 @@ public class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
 {
     private readonly IOrderRepository _orderRepository;
     private readonly ITenantRepository _tenantRepository;
-    private readonly ISubscriptionService _subscriptionService;
+    private readonly IPlanRepository _planRepository;
     private readonly IMercadoPagoGateway _mercadoPagoGateway;
     private readonly IRedisService _redisService;
     private readonly IPublishEndpoint _publishEndpoint;
@@ -26,7 +26,7 @@ public class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
     public PaymentProcessingConsumer(
         IOrderRepository orderRepository,
         ITenantRepository tenantRepository,
-        ISubscriptionService subscriptionService,
+        IPlanRepository planRepository,
         IMercadoPagoGateway mercadoPagoGateway,
         IRedisService redisService,
         IPublishEndpoint publishEndpoint,
@@ -35,7 +35,7 @@ public class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
     {
         _orderRepository = orderRepository;
         _tenantRepository = tenantRepository;
-        _subscriptionService = subscriptionService;
+        _planRepository = planRepository;
         _mercadoPagoGateway = mercadoPagoGateway;
         _redisService = redisService;
         _publishEndpoint = publishEndpoint;
@@ -118,6 +118,10 @@ public class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
 
             if (isApproved)
             {
+                int creditsToAdd = 0;
+                string packageName = "Recarga de Créditos";
+                int newBalance = 0;
+
                 if (order != null)
                 {
                     order.Status = "approved";
@@ -126,32 +130,46 @@ public class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                     order.MpPaymentId = resourceId;
                     await _orderRepository.UpdateOrderAsync(order);
 
-                    // Concessão de benefícios
+                    // Concessão de créditos de IA desvinculada de assinaturas
                     if (order.PlanId.HasValue)
                     {
-                        _logger.LogInformation("Activating/Renewing SaaS plan {PlanId} for tenant {TenantId}", order.PlanId.Value, order.TenantId);
-                        await _subscriptionService.ActivateOrRenewSubscriptionAsync(order.TenantId, order.PlanId.Value, mpPreapprovalId: resourceId, mpPayerId: order.PayerEmail);
+                        var plan = await _planRepository.GetByIdAsync(order.PlanId.Value);
+                        if (plan != null)
+                        {
+                            creditsToAdd = plan.CreditsIncluded;
+                            packageName = plan.Name;
+                        }
                     }
-                    else
+
+                    if (creditsToAdd <= 0)
                     {
-                        // Recarga de Carteira / Saldo IA
-                        _logger.LogInformation("Adding {Amount} to ManagedCreditBalance for tenant {TenantId}", order.TotalAmount, order.TenantId);
-                        await _tenantRepository.AddManagedBalanceAsync(order.TenantId, order.TotalAmount);
+                        creditsToAdd = (int)Math.Ceiling(order.TotalAmount * 10);
                     }
+
+                    _logger.LogInformation("Concedendo {Credits} créditos (Pacote: {Package}) para Tenant {TenantId}",
+                        creditsToAdd, packageName, order.TenantId);
+
+                    newBalance = await _tenantRepository.AddCreditsAsync(
+                        tenantId: order.TenantId,
+                        amount: creditsToAdd,
+                        type: "RECHARGE",
+                        description: $"Recarga de IA aprovada: {packageName} (+{creditsToAdd} créditos)",
+                        referenceId: order.ExternalReference ?? resourceId,
+                        orderId: order.Id
+                    );
 
                     tenantId = order.TenantId;
                     payerEmail = !string.IsNullOrEmpty(order.PayerEmail) ? order.PayerEmail : payerEmail;
-                }
 
-                // 4. Notifica o Frontend via Server-Sent Events (SSE) através do canal Redis
-                if (tenantId != Guid.Empty)
-                {
+                    // 4. Notifica o Frontend via Server-Sent Events (SSE) através do canal Redis
                     var ssePayload = JsonSerializer.Serialize(new
                     {
                         type = "payment_approved",
-                        order_id = order?.Id.ToString() ?? resourceId,
+                        order_id = order.Id.ToString(),
                         status = "approved",
-                        amount = paidAmount
+                        amount = paidAmount,
+                        credits_added = creditsToAdd,
+                        balance_credits = newBalance
                     });
                     await _redisService.PublishAsync($"events:tenant:{tenantId}", ssePayload);
                 }
@@ -170,7 +188,11 @@ public class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                         { "resourceId", resourceId },
                         { "orderId", order?.Id.ToString() ?? string.Empty },
                         { "amount", paidAmount },
-                        { "status", "approved" }
+                        { "status", "approved" },
+                        { "packageName", packageName },
+                        { "creditsAdded", creditsToAdd },
+                        { "balanceCredits", newBalance },
+                        { "paymentMethod", order?.PaymentMethod?.ToUpper() ?? "PIX" }
                     }
                 }, ctx =>
                 {
@@ -194,12 +216,8 @@ public class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                 {
                     order.Status = "refunded";
                     await _orderRepository.UpdateOrderAsync(order);
-                    if (order.PlanId.HasValue)
-                    {
-                        await _subscriptionService.CancelSubscriptionAsync(order.TenantId);
-                    }
                 }
-                _logger.LogWarning("Payment {ResourceId} refunded or charged back. Subscription paused.", resourceId);
+                _logger.LogWarning("Payment {ResourceId} refunded or charged back.", resourceId);
             }
 
             // Registra atividade em dbo.RobotActivities

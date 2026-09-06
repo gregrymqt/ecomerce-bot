@@ -15,4 +15,5 @@ export * from './PlansTab';
 export * from './PixPaymentTab';
 export * from './CreditCardPaymentTab';
 export * from './UnifiedPaymentModal';
+export * from './CreditPackagesGrid';
 

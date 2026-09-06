@@ -128,16 +128,22 @@ namespace EcommerceBot.Infrastructure.Messaging
                     case "payment.approved":
                     {
                         var amountVal = data.TryGetValue("amount", out var a) && decimal.TryParse(a.ToString(), out var parsedA) ? parsedA : 0m;
+                        var creditsVal = data.TryGetValue("creditsAdded", out var c) && int.TryParse(c.ToString(), out var parsedC) ? parsedC : 0;
+                        var newBalVal = data.TryGetValue("balanceCredits", out var b) && int.TryParse(b.ToString(), out var parsedB) ? parsedB : 0;
+                        var pkgName = data.TryGetValue("packageName", out var p) ? p.ToString() ?? "Pacote de Créditos IA" : (data.TryGetValue("planName", out var pl) ? pl.ToString() ?? "Pacote de Créditos IA" : "Pacote de Créditos IA");
+
                         var model = new PaymentApprovedEmailViewModel
                         {
                             RecipientName = recipientName,
-                            PlanName = data.TryGetValue("planName", out var p) ? p.ToString() ?? "Assinatura Pro" : "Assinatura Pro",
+                            PackageName = pkgName,
+                            CreditsAdded = creditsVal,
+                            NewBalance = newBalVal,
                             Amount = amountVal,
                             PaymentMethod = data.TryGetValue("paymentMethod", out var pm) ? pm.ToString() ?? "PIX" : "PIX",
                             TransactionId = data.TryGetValue("resourceId", out var r) && r != null ? r.ToString()! : (payload.IdempotencyKey ?? string.Empty)
                         };
                         var html = await _templateRenderer.RenderViewToStringAsync("/Views/Emails/PaymentApproved.cshtml", model);
-                        return ("✅ Pagamento Aprovado - E-commerce Bot", html);
+                        return ("✅ Recarga de Créditos de IA Confirmada - E-commerce Bot", html);
                     }
 
                     case "wallet.low_balance":

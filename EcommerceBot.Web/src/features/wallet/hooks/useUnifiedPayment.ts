@@ -113,6 +113,8 @@ export function useUnifiedPayment({
       } else {
         const resp = await walletService.createRecharge({
           credits_package: target.credits,
+          package_id: target.id,
+          amount: target.amountBrl,
           payment_method: 'pix',
           payer_email: user?.email || 'cliente@loja.com.br',
         });

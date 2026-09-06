@@ -133,12 +133,24 @@ namespace EcommerceBot.Infrastructure.Services
                     Id = tenantId,
                     Name = tenantName,
                     PlanTier = "FREE",
-                    CreditsBalance = 10,
+                    CreditsBalance = 20,
                     IsActive = true,
                     CreatedAt = DateTimeOffset.UtcNow,
                     UpdatedAt = DateTimeOffset.UtcNow
                 };
                 await _tenantRepository.CreateAsync(newTenant);
+
+                // Registra o bônus de boas-vindas no Ledger
+                await _tenantRepository.RecordTransactionAsync(new CreditTransaction
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    Amount = 20,
+                    BalanceAfter = 20,
+                    Type = "WELCOME_BONUS",
+                    Description = "Bônus de boas-vindas (20 créditos de IA)",
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
 
                 user = new User
                 {
@@ -156,7 +168,11 @@ namespace EcommerceBot.Infrastructure.Services
                 await _userRepository.UpdateAsync(user);
             }
 
-            var token = GenerateJwtToken(user);
+            var tenant = await _tenantRepository.GetByIdAsync(user.TenantId);
+            var creditsBalance = tenant?.CreditsBalance ?? 20;
+            var hasActiveCredits = user.Role == "ADMIN" || creditsBalance > 0;
+
+            var token = GenerateJwtToken(user, hasActiveCredits, creditsBalance);
 
             return new AuthTokenResponse
             {
@@ -166,11 +182,13 @@ namespace EcommerceBot.Infrastructure.Services
                 Email = user.Email,
                 Name = user.FullName,
                 Tenants = new List<string> { user.TenantId.ToString() },
-                TenantId = user.TenantId.ToString()
+                TenantId = user.TenantId.ToString(),
+                CreditsBalance = creditsBalance,
+                HasActiveCredits = hasActiveCredits
             };
         }
 
-        private string GenerateJwtToken(User user)
+        private string GenerateJwtToken(User user, bool hasActiveCredits = false, int creditsBalance = 0)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var keyStr = _jwtOptions.Key;
@@ -191,7 +209,9 @@ namespace EcommerceBot.Infrastructure.Services
                     new Claim(ClaimTypes.Email, user.Email),
                     new Claim(ClaimTypes.Name, user.FullName ?? string.Empty),
                     new Claim("tenantId", user.TenantId.ToString()),
-                    new Claim(ClaimTypes.Role, user.Role)
+                    new Claim(ClaimTypes.Role, user.Role),
+                    new Claim("hasActiveCredits", hasActiveCredits.ToString().ToLowerInvariant()),
+                    new Claim("creditsBalance", creditsBalance.ToString())
                 }),
                 Issuer = _jwtOptions.Issuer,
                 Audience = _jwtOptions.Audience,

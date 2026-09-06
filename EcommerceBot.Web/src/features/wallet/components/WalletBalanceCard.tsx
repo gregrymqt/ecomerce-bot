@@ -15,7 +15,9 @@ export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
   balance,
   loading,
   onOpenRechargeModal,
+  onRechargeClick,
 }) => {
+  const handleAction = onRechargeClick || onOpenRechargeModal;
   const formattedBalance = balance !== null ? balance.toLocaleString('pt-BR') : '0';
 
   return (
@@ -41,7 +43,7 @@ export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-medium">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-          <span>Garantia de saldo ativo</span>
+          <span>Garantia de saldo perpétuo</span>
         </div>
       </div>
 
@@ -68,7 +70,7 @@ export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
       <div>
         <Button
           type="button"
-          onClick={onOpenRechargeModal}
+          onClick={handleAction}
           iconLeft={<Zap className="w-4 h-4 fill-current" />}
           className="w-full min-h-[44px] bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md shadow-indigo-600/20 border-0 transition-all cursor-pointer"
         >

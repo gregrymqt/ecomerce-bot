@@ -8,7 +8,13 @@
 
 import React from 'react';
 
-export type TransactionType = 'RECHARGE' | 'USAGE';
+export type TransactionType =
+  | 'RECHARGE'
+  | 'USAGE'
+  | 'WELCOME_BONUS'
+  | 'PRODUCT_ENRICHMENT'
+  | 'REFUND'
+  | 'ML_ANALYSIS';
 export type WalletTab = 'BALANCE' | 'PLANS';
 export type PaymentMethod = 'pix' | 'credit_card';
 export type PaymentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
@@ -23,8 +29,10 @@ export interface CreditTransaction {
   id: string;
   tenant_id: string;
   amount: number;
+  balance_after?: number;
   type: TransactionType;
   description: string | null;
+  reference_id?: string | null;
   external_payment_id: string | null;
   created_at: string;
 }
@@ -37,10 +45,13 @@ export interface WalletStatementResponse {
 
 export interface RechargePackage {
   id: string;
+  name: string;
   credits: number;
   price_brl: number;
+  description?: string;
   discount_badge?: string;
   is_popular?: boolean;
+  features?: string[];
 }
 
 export interface SaaSPlan {
@@ -92,6 +103,8 @@ export interface RechargeRequest {
   payment_method: 'pix' | 'credit_card';
   card_token?: string;
   payer_email: string;
+  package_id?: string;
+  amount?: number;
 }
 
 export interface CardPaymentPayer {
@@ -196,7 +209,15 @@ export interface UseRechargeModalProps {
 export interface WalletBalanceCardProps {
   balance: number | null;
   loading: boolean;
-  onOpenRechargeModal: () => void;
+  onOpenRechargeModal?: () => void;
+  onRechargeClick?: () => void;
+}
+
+export interface CreditPackagesGridProps {
+  packages?: RechargePackage[];
+  loading?: boolean;
+  onSelectPackage: (pkg: RechargePackage) => void;
+  className?: string;
 }
 
 export interface UsageInsightsCardProps {

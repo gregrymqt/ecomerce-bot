@@ -1,6 +1,6 @@
 # 📚 E-commerce Bot — Master Knowledge Pack & Technical Specification
 
-> **Data de Compilação:** 2026-09-06 00:50:36 UTC  
+> **Data de Compilação:** 2026-09-06 03:31:49 UTC  
 > **Versão da Topologia:** v2.0 (114 nós, 56 arestas catalogadas)  
 > **Finalidade:** Base de Conhecimento Canônica para Grounding e Consultas de Engenharia no **Google NotebookLM** (Card 83 do Trello).
 
@@ -386,6 +386,20 @@ Este módulo detalha o modelo de persistência relacional do **SQL Server 2022**
   - `UpdatedAt`: `DATETIMEOFFSET` (NOT NULL)
   - `REFERENCES`: `dbo` (NULL)
   - `REFERENCES`: `dbo` (NULL)
+
+### 🗄️ Tabela `dbo.CreditTransactions` (Script: `020_Credit_Ledger_And_Packages.sql`)
+  - `Id`: `UNIQUEIDENTIFIER` (NOT NULL)
+  - `TenantId`: `UNIQUEIDENTIFIER` (NOT NULL)
+  - `OrderId`: `UNIQUEIDENTIFIER` (NULL)
+  - `Amount`: `INT` (NOT NULL)
+  - `BalanceAfter`: `INT` (NOT NULL)
+  - `Type`: `NVARCHAR(50)` (NOT NULL)
+  - `Description`: `NVARCHAR(255)` (NOT NULL)
+  - `ReferenceId`: `NVARCHAR(100)` (NULL)
+  - `CreatedAt`: `DATETIMEOFFSET` (NOT NULL)
+  - `REFERENCES`: `dbo` (NULL)
+  - `REFERENCES`: `dbo` (NULL)
+  - `Type`: `IN` (NULL)
 
 
 ---

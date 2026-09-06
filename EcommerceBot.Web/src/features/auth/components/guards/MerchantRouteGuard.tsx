@@ -1,20 +1,19 @@
 /**
  * src/features/auth/components/guards/MerchantRouteGuard.tsx
  *
- * Guarda de Rota para proteção estrita de recursos e páginas exclusivas de Lojistas.
- * Impede que usuários com perfil Member/Free acessem páginas restritas da loja
- * (/dashboard, /integrations, /metering, /analytics/traffic).
- * Redireciona usuários sem privilégio de lojista para /wallet?reason=upgrade_required,
- * garantindo que permaneçam no fluxo seguro do MemberLayout.
+ * Guarda de Rota para recursos do portal da loja (/dashboard, /integrations, /metering, etc.).
+ * Alinhado com o modelo canônico de Pacotes de Recarga (Ledger Pattern):
+ * - Não bloqueia nem ejeta usuários com 403.
+ * - Permite navegação irrestrita para todos os lojistas autenticados.
+ * - Quando o saldo de créditos for zero, exibe um banner de aviso suave no topo
+ *   alertando sobre a pausa das rotas de IA e oferecendo CTA para /wallet.
  */
 
 import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useFeatureGate } from '../../hooks/useFeatureGate';
-import { RefreshCw } from 'lucide-react';
-
-const MERCHANT_ROLES = new Set(['TENANT_ADMIN', 'CATALOG_OPERATOR', 'MERCHANT', 'OWNER']);
+import { RefreshCw, AlertTriangle, Zap } from 'lucide-react';
 
 interface MerchantRouteGuardProps {
   featureKey?: string;
@@ -22,11 +21,10 @@ interface MerchantRouteGuardProps {
 }
 
 export const MerchantRouteGuard: React.FC<MerchantRouteGuardProps> = ({
-  featureKey = 'dashboard',
   children,
 }) => {
   const { user, status, isLoading } = useAuth();
-  const { canAccess, isAdmin, hasActiveCredits } = useFeatureGate();
+  const { isAdmin, hasActiveCredits } = useFeatureGate();
 
   // 1. Estado de carregamento da sessão JWT e dados da conta
   if (isLoading || status === 'loading') {
@@ -38,7 +36,7 @@ export const MerchantRouteGuard: React.FC<MerchantRouteGuardProps> = ({
     );
   }
 
-  // 2. Não autenticado -> Tela de Login
+  // 2. Não autenticado -> Redireciona para Tela de Login
   if (status === 'unauthenticated' || !user) {
     return <Navigate to="/auth" replace />;
   }
@@ -48,31 +46,37 @@ export const MerchantRouteGuard: React.FC<MerchantRouteGuardProps> = ({
     return <>{children || <Outlet />}</>;
   }
 
-  // 4. Validação de perfil de Lojista (Plano Pro/Enterprise ou Role Canônica)
-  const isMerchantUser = (() => {
-    const plan = user.plan?.toLowerCase();
-    if (plan === 'pro' || plan === 'enterprise') return true;
-
-    const role = user.role?.toUpperCase() || '';
-    return MERCHANT_ROLES.has(role);
-  })();
-
-  if (!isMerchantUser) {
-    console.warn(
-      `Acesso negado à rota de lojista '${featureKey}': Usuário com perfil '${user.role || 'MEMBER'}' e plano '${user.plan || 'free'}'. Redirecionando para /wallet...`
+  // 4. Se saldo estiver zerado, exibe aviso suave sem bloquear a tela
+  if (!hasActiveCredits) {
+    return (
+      <>
+        <div
+          role="status"
+          aria-live="polite"
+          className="w-full bg-amber-500/15 border-b border-amber-500/30 px-4 py-2.5 text-amber-200 animate-fade-in sticky top-0 z-40 backdrop-blur-md"
+        >
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm font-medium">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>
+                Seu saldo de créditos está zerado. As rotas de inteligência artificial estão pausadas.
+              </span>
+            </div>
+            <Link
+              to="/wallet"
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition-colors shrink-0 min-h-[32px]"
+            >
+              <Zap className="w-3.5 h-3.5 fill-current" />
+              Recarregar Agora
+            </Link>
+          </div>
+        </div>
+        {children || <Outlet />}
+      </>
     );
-    return <Navigate to="/wallet?reason=upgrade_required" replace />;
   }
 
-  // 5. Validação de saldo de créditos ou feature gate quando aplicável
-  if (!hasActiveCredits || !canAccess(featureKey)) {
-    console.warn(
-      `Acesso negado ao recurso '${featureKey}': Saldo insuficiente. Redirecionando para /wallet...`
-    );
-    return <Navigate to="/wallet?reason=insufficient_credits" replace />;
-  }
-
-  // 6. Autorizado
+  // 5. Autorizado com créditos ativos
   return <>{children || <Outlet />}</>;
 };
 

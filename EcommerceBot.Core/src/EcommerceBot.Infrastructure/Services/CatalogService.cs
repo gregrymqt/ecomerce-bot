@@ -101,14 +101,15 @@ public class CatalogService : ICatalogService
             throw new ArgumentException("URL inválida ou bloqueada por política de segurança Anti-SSRF.");
         }
 
-        if (!await _tenantRepository.HasCreditsAsync(tenantId, 1))
-        {
-            throw new InvalidOperationException("Créditos insuficientes para realizar o scraping com IA.");
-        }
-
-        await _tenantRepository.DeductCreditsAsync(tenantId, 1);
-
         var sku = Guid.NewGuid().ToString("N")[..10].ToUpper();
+
+        // Dedução atômica de 1 crédito anti-double-spending (lança InsufficientCreditsException se insuficiente)
+        await _tenantRepository.DeductCreditsAsync(
+            tenantId,
+            1,
+            type: "PRODUCT_ENRICHMENT",
+            description: "Extração e enriquecimento de catálogo com IA",
+            referenceId: sku);
 
         var product = new Product
         {
