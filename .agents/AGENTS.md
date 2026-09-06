@@ -17,6 +17,7 @@ A violação de qualquer uma das regras abaixo invalida a entrega e interrompe a
 8. **PROIBIDO NotebookLM no caminho crítico de produção:** O Google NotebookLM destina-se exclusivamente ao plano de pesquisa, auditoria de métricas e estudo offline. É proibido depender de chamadas síncronas ao NotebookLM para servir requisições de clientes no SaaS.
 9. **PROIBIDO HTML inline / hardcoded para e-mails:** NUNCA concatene ou declare strings HTML diretamente no código C# ou Python para envio de e-mails. No Python (`EcommerceBot.Worker`), templates DEVEM ser criados exclusivamente como arquivos `.html` na pasta `EcommerceBot.Worker/app/templates` e renderizados via Jinja2 (`render_jinja_template`). No C# (`EcommerceBot.Core`), templates DEVEM ser criados exclusivamente como views Razor `.cshtml` na pasta `EcommerceBot.Core/src/EcommerceBot.Api/Views/Emails` acompanhados de sua ViewModel fortemente tipada em `EcommerceBot.Core/src/EcommerceBot.Application/ViewModels/Emails` e renderizados via `IRazorTemplateRenderer`.
 10. **PROIBIDO lógica de serviço ou configuração inline no Program.cs:** O arquivo `Program.cs` destina-se estritamente à orquestração do pipeline de inicialização (*bootstrapping*). É terminantemente proibido declarar lambdas extensas, configurações de options, registros diretos de serviços ou lógica de middlewares/infraestrutura dentro de `Program.cs`. Todo setup DEVE ser encapsulado em métodos de extensão dedicados (`*Extensions.cs`) com nomenclatura semântica clara (ex: `builder.ConfigureSerilog()`, `services.AddInfrastructure()`, `services.AddApiServices()`, `app.UseCustomRequestLogging()`).
+11. **PROIBIDO acoplamento direto Component/Page -> Service no Frontend:** No `EcommerceBot.Web`, componentes de UI (`components/`) e páginas (`pages/`) NUNCA devem importar diretamente arquivos de `services/` ou executar chamadas de rede/API (`apiClient`, `fetch`, `axios`). Toda comunicação com a camada de serviços DEVE ser mediada e encapsulada exclusivamente por custom hooks em `hooks/`.
 
 ---
 
@@ -44,7 +45,7 @@ NUNCA carregue todas as skills simultaneamente. Inspecione e ative estritamente 
 |---|---|---|
 | **Persistência / SQL** | `.agents/skills/sqlserver-dba/SKILL.md` | Ao criar scripts DbUp, índices, views ou investigar queries Dapper. |
 | **Segurança / Core** | `.agents/skills/production-security/SKILL.md` | Ao mexer em webhooks, HMAC, AES-256 BYOK, SSRF ou isolamento de tenant. |
-| **Interface / Web** | `.agents/skills/impeccable/SKILL.md` | Ao desenvolver páginas React, Tailwind, formulários, A11y e SSE. |
+| **Interface / Web** | `.agents/skills/impeccable/SKILL.md` | **MANDATÓRIO:** Sempre que for criar, modificar ou refatorar qualquer arquivo do frontend (`EcommerceBot.Web`), incluindo páginas React, componentes, hooks, estilização Tailwind, formulários, A11y e SSE. |
 | **Comandos / Terminal** | `.agents/skills/token-density/SKILL.md` | Padrão obrigatório para execuções concisas no terminal (RTK pattern). |
 | **Integrações / Shopify** | `.agents/skills/shopify-expert/SKILL.md` | Ao implementar ou refatorar endpoints Shopify (GraphQL 2024+, OAuth 2.0, Webhooks HMAC). |
 | **Pagamentos / Mercado Pago** | `.agents/skills/mercadopago-expert/SKILL.md` | Ao mexer em checkout transparente (PIX/Cartão), assinaturas recorrentes SaaS, recargas de IA, conciliação e webhooks Mercado Pago. |
@@ -153,7 +154,8 @@ Para garantir sanitização XSS, separação absoluta de responsabilidades, prev
 
 ## 🎨 6. Frontend Canônico (EcommerceBot.Web)
 
-- **Estrutura em 4 Camadas:** `Types -> Services -> Hooks -> UI Components`.
+- **Estrutura em 4 Camadas (Isolamento Estrito):** `Types -> Services -> Hooks -> UI Components / Pages`. Componentes visuais (`components/`) e páginas (`pages/`) são estritamente declarativos e NUNCA importam de `services/` nem acionam `apiClient` diretamente. Toda comunicação com a camada de serviços, ciclo assíncrono e tratamento de erro de rede DEVE ser encapsulada em custom hooks (`hooks/`).
+- **Governança da Skill Impeccable:** Qualquer alteração no frontend exige a inspeção prévia de `.agents/skills/impeccable/SKILL.md` e a observância rigorosa do seu checklist pré-flight de separação de responsabilidades.
 - **Configuração de Ambiente:** Consumo exclusivo via `@/config/env` (`env.apiUrl`, `env.mercadoPagoPublicKey`, etc.) com fallback padrão para `http://localhost:5183`.
 - **Comunicação:** Axios com envio automático de `X-Tenant-ID` via interceptors (`apiClient.ts`) e streaming SSE consumindo canais do Redis (`sseClient.ts`).
 - **Acessibilidade & Mobile:** Alvos de toque com no mínimo 44px (`min-h-[44px]`), campos de formulário com tamanho de fonte >= 16px (evita zoom no iOS) e contraste WCAG 2.1 AA.
