@@ -36,8 +36,8 @@ apiClient.interceptors.response.use(
     if (axios.isAxiosError(error) && error.response) {
       const status = error.response.status;
 
-      // Se a sessão expirou ou o tenant não tem acesso autorizado
-      if (status === 401 || status === 403) {
+      // Se a sessão expirou ou o token JWT é inválido (401 Unauthorized)
+      if (status === 401) {
         clearAuthToken();
         clearTenantId();
         // Notifica a aplicação para resetar o AuthContext e redirecionar para login

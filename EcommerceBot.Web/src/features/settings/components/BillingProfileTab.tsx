@@ -3,6 +3,7 @@
  *
  * Aba de Configurações de Faturamento e Dados Fiscais.
  * Em conformidade com acessibilidade WCAG 2.1 AA, inputs >= 16px e touch targets >= 44px.
+ * Com fallback defensivo contra valores undefined vindos da API.
  */
 
 import React from 'react';
@@ -11,16 +12,28 @@ import { cn } from '@/lib/utils';
 import type { BillingProfilePayload } from '../types';
 
 export interface BillingProfileTabProps {
-  data: BillingProfilePayload;
+  data?: BillingProfilePayload;
   onChange: <K extends keyof BillingProfilePayload>(field: K, value: BillingProfilePayload[K]) => void;
   className?: string;
 }
+
+const DEFAULT_BILLING_PROFILE: BillingProfilePayload = {
+  company_name: 'E-Commerce Bot Tech Ltda',
+  tax_id: '12.345.678/0001-99',
+  billing_email: 'financeiro@loja.com.br',
+  commercial_address: 'Av. Paulista, 1000 - São Paulo, SP',
+};
 
 export const BillingProfileTab: React.FC<BillingProfileTabProps> = ({
   data,
   onChange,
   className,
 }) => {
+  const currentData: BillingProfilePayload = {
+    ...DEFAULT_BILLING_PROFILE,
+    ...(data || {}),
+  };
+
   return (
     <div className={cn('space-y-8 text-slate-100', className)}>
       <div className="rounded-2xl bg-[#15121B] border border-[#1E293B] p-6 shadow-xl space-y-6">
@@ -44,7 +57,7 @@ export const BillingProfileTab: React.FC<BillingProfileTabProps> = ({
               <input
                 id="company-name-input"
                 type="text"
-                value={data.company_name}
+                value={currentData.company_name}
                 onChange={(e) => onChange('company_name', e.target.value)}
                 placeholder="Ex: Minha Empresa E-Commerce Ltda"
                 className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all"
@@ -62,7 +75,7 @@ export const BillingProfileTab: React.FC<BillingProfileTabProps> = ({
               <input
                 id="tax-id-input"
                 type="text"
-                value={data.tax_id}
+                value={currentData.tax_id}
                 onChange={(e) => onChange('tax_id', e.target.value)}
                 placeholder="00.000.000/0001-00"
                 className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base font-mono focus:border-violet-500 focus:outline-none transition-all"
@@ -80,7 +93,7 @@ export const BillingProfileTab: React.FC<BillingProfileTabProps> = ({
               <input
                 id="billing-email-input"
                 type="email"
-                value={data.billing_email}
+                value={currentData.billing_email}
                 onChange={(e) => onChange('billing_email', e.target.value)}
                 placeholder="financeiro@loja.com.br"
                 className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all"
@@ -98,7 +111,7 @@ export const BillingProfileTab: React.FC<BillingProfileTabProps> = ({
               <input
                 id="commercial-address-input"
                 type="text"
-                value={data.commercial_address}
+                value={currentData.commercial_address}
                 onChange={(e) => onChange('commercial_address', e.target.value)}
                 placeholder="Av. Paulista, 1000 - São Paulo, SP - CEP 01310-100"
                 className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all"

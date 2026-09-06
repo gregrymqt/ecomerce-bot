@@ -6,7 +6,7 @@
  * Em conformidade estrita com acessibilidade WCAG 2.1 AA e arquitetura em 4 camadas.
  */
 
-import React from 'react';
+import React, { useMemo, useEffect } from 'react';
 import {
   Settings,
   Sparkles,
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettings } from '../hooks/useSettings';
+import { useAuth } from '@/features/auth';
 import {
   AiRulesTab,
   StoreProfileTab,
@@ -29,6 +30,7 @@ import type { SettingsTab } from '../types';
 import { Button, Alert } from '@/components/ui';
 
 export const SettingsPage: React.FC = () => {
+  const { user } = useAuth();
   const {
     activeTab,
     formData,
@@ -48,28 +50,49 @@ export const SettingsPage: React.FC = () => {
     handleSaveSettings,
   } = useSettings('AI_RULES');
 
-  const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
-    {
-      id: 'AI_RULES',
-      label: 'Regras da IA & Copywriting',
-      icon: <Sparkles className="h-4 w-4 text-indigo-400" />,
-    },
-    {
-      id: 'STORE_PROFILE',
-      label: 'Perfil da Loja & Tenant',
-      icon: <Store className="h-4 w-4 text-blue-400" />,
-    },
-    {
-      id: 'BILLING_DATA',
-      label: 'Dados Fiscais & Cobrança',
-      icon: <Receipt className="h-4 w-4 text-emerald-400" />,
-    },
-    {
-      id: 'SSO_MAPPINGS',
-      label: 'SSO & Grupos IdP',
-      icon: <ShieldCheck className="h-4 w-4 text-violet-400" />,
-    },
-  ];
+  // Validação estrita de privilégio para gestão de SSO corporativo
+  const canManageSso = useMemo(() => {
+    if (!user) return false;
+    const role = user.role?.toUpperCase() || '';
+    return user.is_admin === true || role === 'ADMIN' || role === 'TENANT_ADMIN';
+  }, [user]);
+
+  // Se o usuário não tiver privilégio mas a aba ativa for SSO, redireciona para AI_RULES
+  useEffect(() => {
+    if (!canManageSso && activeTab === 'SSO_MAPPINGS') {
+      handleTabChange('AI_RULES');
+    }
+  }, [canManageSso, activeTab, handleTabChange]);
+
+  const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = useMemo(() => {
+    const list: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
+      {
+        id: 'AI_RULES',
+        label: 'Regras da IA & Copywriting',
+        icon: <Sparkles className="h-4 w-4 text-indigo-400" />,
+      },
+      {
+        id: 'STORE_PROFILE',
+        label: 'Perfil da Loja & Tenant',
+        icon: <Store className="h-4 w-4 text-blue-400" />,
+      },
+      {
+        id: 'BILLING_DATA',
+        label: 'Dados Fiscais & Cobrança',
+        icon: <Receipt className="h-4 w-4 text-emerald-400" />,
+      },
+    ];
+
+    if (canManageSso) {
+      list.push({
+        id: 'SSO_MAPPINGS',
+        label: 'SSO & Grupos IdP',
+        icon: <ShieldCheck className="h-4 w-4 text-violet-400" />,
+      });
+    }
+
+    return list;
+  }, [canManageSso]);
 
   return (
     <div
@@ -216,7 +239,7 @@ export const SettingsPage: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'SSO_MAPPINGS' && (
+          {activeTab === 'SSO_MAPPINGS' && canManageSso && (
             <div
               role="tabpanel"
               id="panel-SSO_MAPPINGS"

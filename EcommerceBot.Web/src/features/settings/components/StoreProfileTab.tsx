@@ -3,6 +3,7 @@
  *
  * Aba de Configurações do Perfil da Loja e Tenant.
  * Em conformidade com acessibilidade WCAG 2.1 AA, inputs >= 16px e touch targets >= 44px.
+ * Com fallback defensivo contra valores undefined vindos da API.
  */
 
 import React from 'react';
@@ -11,16 +12,29 @@ import { cn } from '@/lib/utils';
 import type { StoreProfilePayload } from '../types';
 
 export interface StoreProfileTabProps {
-  data: StoreProfilePayload;
+  data?: StoreProfilePayload;
   onChange: <K extends keyof StoreProfilePayload>(field: K, value: StoreProfilePayload[K]) => void;
   className?: string;
 }
+
+const DEFAULT_STORE_PROFILE: StoreProfilePayload = {
+  store_name: 'Minha Loja E-Commerce',
+  tenant_id: 'tenant-default',
+  admin_email: 'admin@loja.com.br',
+  timezone: 'America/Sao_Paulo',
+  base_currency: 'BRL',
+};
 
 export const StoreProfileTab: React.FC<StoreProfileTabProps> = ({
   data,
   onChange,
   className,
 }) => {
+  const currentData: StoreProfilePayload = {
+    ...DEFAULT_STORE_PROFILE,
+    ...(data || {}),
+  };
+
   return (
     <div className={cn('space-y-8 text-slate-100', className)}>
       <div className="rounded-2xl bg-[#15121B] border border-[#1E293B] p-6 shadow-xl space-y-6">
@@ -44,7 +58,7 @@ export const StoreProfileTab: React.FC<StoreProfileTabProps> = ({
               <input
                 id="store-name-input"
                 type="text"
-                value={data.store_name}
+                value={currentData.store_name}
                 onChange={(e) => onChange('store_name', e.target.value)}
                 placeholder="Ex: Minha Loja E-Commerce"
                 className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all"
@@ -62,7 +76,7 @@ export const StoreProfileTab: React.FC<StoreProfileTabProps> = ({
               <input
                 id="tenant-id-input"
                 type="text"
-                value={data.tenant_id}
+                value={currentData.tenant_id}
                 readOnly
                 className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16]/50 border border-[#1E293B] text-slate-400 font-mono text-base cursor-not-allowed"
               />
@@ -79,7 +93,7 @@ export const StoreProfileTab: React.FC<StoreProfileTabProps> = ({
               <input
                 id="admin-email-input"
                 type="email"
-                value={data.admin_email}
+                value={currentData.admin_email}
                 onChange={(e) => onChange('admin_email', e.target.value)}
                 placeholder="admin@loja.com.br"
                 className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all"
@@ -96,7 +110,7 @@ export const StoreProfileTab: React.FC<StoreProfileTabProps> = ({
             <div className="relative">
               <select
                 id="timezone-select"
-                value={data.timezone}
+                value={currentData.timezone}
                 onChange={(e) => onChange('timezone', e.target.value)}
                 className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all cursor-pointer font-sans"
               >
@@ -117,7 +131,7 @@ export const StoreProfileTab: React.FC<StoreProfileTabProps> = ({
             <div className="relative">
               <select
                 id="base-currency-select"
-                value={data.base_currency}
+                value={currentData.base_currency}
                 onChange={(e) => onChange('base_currency', e.target.value)}
                 className="w-full min-h-[44px] h-11 px-4 pl-10 rounded-xl bg-[#090D16] border border-[#1E293B] text-slate-100 text-base focus:border-violet-500 focus:outline-none transition-all cursor-pointer font-sans"
               >

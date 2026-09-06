@@ -60,7 +60,7 @@ export interface UseSettingsReturn {
 
 export function useSettings(initialTab: SettingsTab = 'AI_RULES'): UseSettingsReturn {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
-  const [formData, setFormData] = useState<TenantSettingsResponse | null>(null);
+  const [formData, setFormData] = useState<TenantSettingsResponse>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [showToast, setShowToast] = useState<boolean>(false);

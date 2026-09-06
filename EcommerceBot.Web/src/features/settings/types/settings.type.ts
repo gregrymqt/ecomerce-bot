@@ -84,6 +84,42 @@ export interface TenantSettingsResponse {
 }
 
 /**
+ * Contratos brutos retornados e aceitos pela Core API C# (.NET)
+ */
+export interface BackendAiSettingsDto {
+  tone_of_voice?: string;
+  target_language?: string;
+  seo_tags_enabled?: boolean;
+  custom_instructions?: string | null;
+}
+
+export interface BackendPricingSettingsDto {
+  margin_percentage?: number;
+  round_cents?: boolean;
+}
+
+export interface BackendStoreProfileDto {
+  store_name?: string | null;
+  niche?: string | null;
+  support_email?: string | null;
+}
+
+export interface TenantSettingsBackendResponse {
+  tenant_id?: string;
+  ai_settings?: BackendAiSettingsDto;
+  pricing_settings?: BackendPricingSettingsDto;
+  store_profile?: BackendStoreProfileDto;
+  updated_at?: string | null;
+}
+
+export interface TenantSettingsBackendUpdate {
+  ai_settings?: BackendAiSettingsDto;
+  pricing_settings?: BackendPricingSettingsDto;
+  store_profile?: BackendStoreProfileDto;
+}
+
+
+/**
  * Papéis de usuário canônicos no sistema para mapeamento SSO.
  */
 export interface Role {

@@ -952,7 +952,8 @@
           "hooks",
           "pages",
           "services",
-          "types"
+          "types",
+          "__tests__"
         ]
       }
     },

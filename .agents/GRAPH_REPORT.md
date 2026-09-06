@@ -49,7 +49,7 @@
 - **metering**: [components, hooks, pages, services, types, __tests__]
 - **plans**: [components, hooks, pages, services, types]
 - **scraper**: [components, hooks, services, types]
-- **settings**: [components, hooks, pages, services, types]
+- **settings**: [components, hooks, pages, services, types, __tests__]
 - **wallet**: [components, hooks, pages, services, types]
 
 ## 🛠️ 6. Servidor MCP de Diagnóstico (`EcommerceBot.Diagnostics.Mcp`)
