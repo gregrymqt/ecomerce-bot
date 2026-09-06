@@ -4,81 +4,36 @@
  * Página de Redefinição de Senha para usuários vindos do link de e-mail (?token=...).
  */
 
-import React, { useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Lock, Eye, EyeOff, CheckCircle, AlertTriangle, ArrowRight, ArrowLeft } from 'lucide-react';
 import { AuthLeftPanel } from '../components/layout/AuthLeftPanel';
-import { authService } from '../services/authService';
+import { useResetPassword } from '../hooks/useResetPassword';
 import { SEO } from '@/components/common/SEO';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/feedback/Alert';
 import { FormField } from '@/components/ui/form/FormField';
-import { getErrorMessage } from '@/utils/errors';
 
 export const ResetPasswordPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const token = searchParams.get('token')?.trim() || '';
-
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [resetEmail, setResetEmail] = useState<string>('');
-
-  const validate = (): boolean => {
-    const errors: Record<string, string> = {};
-
-    if (!newPassword) {
-      errors.newPassword = 'A nova senha é obrigatória.';
-    } else if (newPassword.length < 6) {
-      errors.newPassword = 'A senha deve conter no mínimo 6 caracteres.';
-    }
-
-    if (!confirmPassword) {
-      errors.confirmPassword = 'Confirme sua nova senha.';
-    } else if (newPassword !== confirmPassword) {
-      errors.confirmPassword = 'As senhas informadas não conferem.';
-    }
-
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!token) return;
-    if (!validate()) return;
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await authService.resetPassword({
-        token,
-        newPassword,
-      });
-
-      setIsSuccess(true);
-      if (response.email) {
-        setResetEmail(response.email);
-      }
-    } catch (err: unknown) {
-      const message = getErrorMessage(err, 'Token inválido ou expirado. Solicite uma nova recuperação.');
-      setError(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoToLogin = () => {
-    const query = resetEmail ? `?email=${encodeURIComponent(resetEmail)}&reset=success` : '?reset=success';
-    navigate(`/auth${query}`);
-  };
+  const {
+    token,
+    newPassword,
+    setNewPassword,
+    confirmPassword,
+    setConfirmPassword,
+    showPassword,
+    setShowPassword,
+    showConfirmPassword,
+    setShowConfirmPassword,
+    isLoading,
+    error,
+    fieldErrors,
+    setFieldErrors,
+    isSuccess,
+    handleSubmit,
+    handleGoToLogin,
+  } = useResetPassword();
 
   return (
     <main className="flex min-h-screen w-full relative overflow-hidden bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white">

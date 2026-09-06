@@ -7,9 +7,6 @@
 // Types
 export * from './types';
 
-// Services
-export * from './services';
-
 // Context
 export * from './context';
 

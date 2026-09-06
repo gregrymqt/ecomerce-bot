@@ -4,14 +4,13 @@
  * Modal acessível para solicitação de link de recuperação de senha.
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Mail, KeyRound, CheckCircle, ArrowLeft, Send } from 'lucide-react';
-import { authService } from '../../services/authService';
+import { useForgotPassword } from '../../hooks/useForgotPassword';
 import { Modal } from '@/components/ui/overlay/Modal';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/feedback/Alert';
 import { FormField } from '@/components/ui/form/FormField';
-import { getErrorMessage } from '@/utils/errors';
 
 export interface ForgotPasswordModalProps {
   /** Controla a visibilidade do modal */
@@ -27,54 +26,27 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   onClose,
   initialEmail = '',
 }) => {
-  const [email, setEmail] = useState(initialEmail);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [fieldError, setFieldError] = useState<string | null>(null);
+  const {
+    email,
+    setEmail,
+    isLoading,
+    error,
+    isSuccess,
+    fieldError,
+    setFieldError,
+    resetState,
+    handleSubmit,
+  } = useForgotPassword({ initialEmail });
 
-  const handleResetState = () => {
-    setIsSuccess(false);
-    setError(null);
-    setFieldError(null);
+  const handleClose = () => {
+    resetState();
     onClose();
-  };
-
-  const validate = (): boolean => {
-    if (!email.trim()) {
-      setFieldError('Informe seu endereço de e-mail.');
-      return false;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setFieldError('Informe um formato de e-mail válido.');
-      return false;
-    }
-    setFieldError(null);
-    return true;
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!validate()) return;
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      await authService.forgotPassword({ email: email.trim() });
-      setIsSuccess(true);
-    } catch (err: unknown) {
-      const message = getErrorMessage(err, 'Falha ao solicitar recuperação de senha. Tente novamente mais tarde.');
-      setError(message);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={handleResetState}
+      onClose={handleClose}
       title="Recuperação de Senha"
       description="Informe seu e-mail cadastrado para receber as instruções de redefinição de acesso."
       size="md"
@@ -109,7 +81,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
               type="button"
               variant="primary"
               size="md"
-              onClick={handleResetState}
+              onClick={handleClose}
               iconLeft={<ArrowLeft className="w-4 h-4 shrink-0" />}
               className="w-full min-h-[44px] text-base font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg mt-2"
             >
@@ -155,7 +127,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                 type="button"
                 variant="outline"
                 size="md"
-                onClick={handleResetState}
+                onClick={handleClose}
                 disabled={isLoading}
                 className="w-full sm:w-1/2 min-h-[44px] text-base border-slate-700 text-slate-300 hover:bg-slate-800"
               >
