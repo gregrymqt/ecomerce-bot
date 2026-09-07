@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.Interfaces;
@@ -29,14 +30,15 @@ public class EmailWebhookController : BaseApiController
         [FromBody] JsonElement payload,
         [FromHeader(Name = "svix-id")] string? svixId,
         [FromHeader(Name = "svix-timestamp")] string? svixTimestamp,
-        [FromHeader(Name = "svix-signature")] string? svixSignature)
+        [FromHeader(Name = "svix-signature")] string? svixSignature,
+        CancellationToken cancellationToken = default)
     {
         var result = await _emailWebhookService.ProcessResendWebhookAsync(payload, svixId, svixTimestamp, svixSignature);
 
         return result.Status switch
         {
-            WebhookResultStatus.InvalidSignature => Unauthorized(new { detail = result.Message }),
-            WebhookResultStatus.Error => BadRequest(new { detail = result.Message }),
+            WebhookResultStatus.InvalidSignature => UnauthorizedProblem(result.Message ?? "Assinatura do webhook Resend inválida."),
+            WebhookResultStatus.Error => BadRequestProblem(result.Message ?? "Erro no processamento do webhook Resend."),
             _ => Ok(new { message = result.Message })
         };
     }

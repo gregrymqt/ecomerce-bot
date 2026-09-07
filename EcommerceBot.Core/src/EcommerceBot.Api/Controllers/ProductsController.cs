@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.DTOs.Products;
@@ -23,11 +24,12 @@ public class ProductsController : BaseApiController
         [FromQuery(Name = "status")] string? statusFilter = null,
         [FromQuery] string? search = null,
         [FromQuery] int page = 1,
-        [FromQuery] int limit = 20)
+        [FromQuery] int limit = 20,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID is required");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         var response = await _catalogService.GetProductsAsync(activeTenantId, statusFilter, search, page, limit);
         return Ok(response);
@@ -37,11 +39,12 @@ public class ProductsController : BaseApiController
     [RateLimit(MaxRequests = 30, WindowSeconds = 60, BlockDurationSeconds = 300)]
     public async Task<IActionResult> RequestScraping(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
-        [FromBody] ScrapingRequestDto request)
+        [FromBody] ScrapingRequestDto request,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID is required");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         try
         {
@@ -50,11 +53,11 @@ public class ProductsController : BaseApiController
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { detail = ex.Message });
+            return BadRequestProblem(ex.Message);
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { detail = ex.Message });
+            return ConflictProblem(ex.Message);
         }
     }
 
@@ -62,15 +65,16 @@ public class ProductsController : BaseApiController
     public async Task<IActionResult> UpdateProduct(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
         string sku,
-        [FromBody] ProductUpdateDto payload)
+        [FromBody] ProductUpdateDto payload,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID is required");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         var result = await _catalogService.UpdateProductAsync(activeTenantId, sku, payload);
         if (result == null)
-            return NotFound($"Product with SKU '{sku}' not found.");
+            return NotFoundProblem($"Produto com SKU '{sku}' não encontrado.");
 
         return Ok(result);
     }
@@ -78,16 +82,17 @@ public class ProductsController : BaseApiController
     [HttpDelete("{sku}")]
     public async Task<IActionResult> DeleteProduct(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
-        string sku)
+        string sku,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID is required");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         var deleted = await _catalogService.DeleteProductAsync(activeTenantId, sku);
         if (!deleted)
-            return NotFound($"Product with SKU '{sku}' not found.");
+            return NotFoundProblem($"Produto com SKU '{sku}' não encontrado.");
 
-        return Ok(new { message = "Product deleted successfully" });
+        return Ok(new { message = "Produto excluído com sucesso." });
     }
 }

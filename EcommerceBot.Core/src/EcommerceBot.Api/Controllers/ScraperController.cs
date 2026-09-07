@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.DTOs.Scraper;
@@ -21,11 +22,12 @@ public class ScraperController : BaseApiController
     [RateLimit(MaxRequests = 20, WindowSeconds = 60, BlockDurationSeconds = 300)]
     public async Task<IActionResult> Extract(
         [FromBody] WebScraperRequest payload,
-        [FromHeader(Name = "X-Tenant-ID")] Guid tenantId)
+        [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID header is required.");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         try
         {
@@ -40,15 +42,11 @@ public class ScraperController : BaseApiController
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { detail = ex.Message });
+            return BadRequestProblem(ex.Message);
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { detail = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { detail = "Erro interno ao enfileirar extração.", error = ex.Message });
+            return ConflictProblem(ex.Message);
         }
     }
 }

@@ -3,6 +3,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.DTOs.Nuvemshop;
@@ -11,6 +12,7 @@ using EcommerceBot.Domain.Interfaces;
 using EcommerceBot.Infrastructure.Options;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -49,7 +51,7 @@ public class NuvemshopIntegrationController : BaseApiController
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID header é obrigatório.");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         var url = _nuvemshopService.GetOAuthUrl(activeTenantId);
         return Ok(new { url });
@@ -58,11 +60,12 @@ public class NuvemshopIntegrationController : BaseApiController
     [HttpPost("credentials")]
     public async Task<IActionResult> SaveCredentials(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
-        [FromBody] NuvemshopCredentialsPayloadDto payload)
+        [FromBody] NuvemshopCredentialsPayloadDto payload,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID header é obrigatório.");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         try
         {
@@ -71,28 +74,31 @@ public class NuvemshopIntegrationController : BaseApiController
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequestProblem(ex.Message);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao salvar credenciais da Nuvemshop para Tenant {TenantId}", activeTenantId);
-            return StatusCode(500, new { error = "Falha interna ao salvar credenciais da Nuvemshop." });
+            return ProblemResponse(StatusCodes.Status500InternalServerError, "Erro Interno", "Falha interna ao salvar credenciais da Nuvemshop.");
         }
     }
 
     [HttpGet("oauth/callback")]
     [AllowAnonymous]
-    public async Task<IActionResult> OAuthCallback([FromQuery] string code, [FromQuery] string state)
+    public async Task<IActionResult> OAuthCallback(
+        [FromQuery] string code,
+        [FromQuery] string state,
+        CancellationToken cancellationToken = default)
     {
         if (!Guid.TryParse(state, out var tenantId) || string.IsNullOrEmpty(code))
         {
-            return BadRequest("Parâmetros code e state são obrigatórios.");
+            return BadRequestProblem("Parâmetros 'code' e 'state' são obrigatórios.");
         }
 
         var success = await _nuvemshopService.HandleOAuthCallbackAsync(tenantId, code);
         if (!success)
         {
-            return StatusCode(500, new { error = "Falha ao autorizar aplicativo na Nuvemshop." });
+            return ProblemResponse(StatusCodes.Status500InternalServerError, "Falha de Autorização", "Falha ao autorizar aplicativo na Nuvemshop.");
         }
 
         return Ok(new { message = "Loja Nuvemshop conectada com sucesso via OAuth 2.0!" });
@@ -105,21 +111,22 @@ public class NuvemshopIntegrationController : BaseApiController
         [FromHeader(Name = "X-LinkedStore-HMAC-SHA256")] string? hmacSignature,
         [FromHeader(Name = "X-LinkedStore-Topic")] string? topicHeader,
         [FromHeader(Name = "X-LinkedStore-Store-Id")] string? storeIdHeader,
-        [FromHeader(Name = "X-LinkedStore-Event-Id")] string? eventIdHeader)
+        [FromHeader(Name = "X-LinkedStore-Event-Id")] string? eventIdHeader,
+        CancellationToken cancellationToken = default)
     {
         using var reader = new StreamReader(Request.Body);
-        var rawBody = await reader.ReadToEndAsync();
+        var rawBody = await reader.ReadToEndAsync(cancellationToken);
 
         if (string.IsNullOrEmpty(rawBody))
         {
-            return BadRequest("Corpo da requisição vazio.");
+            return BadRequestProblem("Corpo da requisição vazio.");
         }
 
         // 1. Validação Criptográfica de Assinatura HMAC SHA-256 em tempo constante
         if (!string.IsNullOrEmpty(hmacSignature) && !VerifyNuvemshopSignature(rawBody, hmacSignature))
         {
             _logger.LogWarning("Assinatura HMAC da Nuvemshop inválida");
-            return Unauthorized("Invalid HMAC signature");
+            return UnauthorizedProblem("Assinatura HMAC da Nuvemshop inválida.");
         }
 
         // 2. Parsing do Thin Payload Oficial da Nuvemshop (store_id, event, id)
@@ -174,18 +181,19 @@ public class NuvemshopIntegrationController : BaseApiController
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao processar webhook da Nuvemshop '{Topic}' para Store ID '{StoreId}'", topic, storeId);
-            return StatusCode(500, "Erro interno no processamento do webhook");
+            return ProblemResponse(StatusCodes.Status500InternalServerError, "Erro Interno", "Erro interno no processamento do webhook Nuvemshop.");
         }
     }
 
     [HttpPost("sync/bulk")]
     public async Task<IActionResult> TriggerBulkSync(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
-        [FromBody] NuvemshopBulkSyncRequest request)
+        [FromBody] NuvemshopBulkSyncRequest request,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID header é obrigatório.");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         try
         {
@@ -194,7 +202,7 @@ public class NuvemshopIntegrationController : BaseApiController
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequestProblem(ex.Message);
         }
     }
 
@@ -202,14 +210,15 @@ public class NuvemshopIntegrationController : BaseApiController
     public async Task<IActionResult> UpdateInventory(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
         string sku,
-        [FromBody] JsonElement body)
+        [FromBody] JsonElement body,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID header é obrigatório.");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         if (!body.TryGetProperty("quantity", out var qtyElem) || !qtyElem.TryGetInt32(out var qty))
-            return BadRequest("Campo 'quantity' (int) é obrigatório.");
+            return BadRequestProblem("O campo 'quantity' (inteiro) é obrigatório.");
 
         var result = await _nuvemshopService.UpdateInventoryAsync(activeTenantId, sku, qty);
         return Ok(new { success = result });
@@ -219,11 +228,12 @@ public class NuvemshopIntegrationController : BaseApiController
     public async Task<IActionResult> UpdateStatus(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
         string sku,
-        [FromBody] JsonElement body)
+        [FromBody] JsonElement body,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID header é obrigatório.");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         var status = body.TryGetProperty("status", out var statusElem) ? statusElem.GetString() ?? "ACTIVE" : "ACTIVE";
         var result = await _nuvemshopService.UpdateProductStatusAsync(activeTenantId, sku, status);
@@ -233,11 +243,12 @@ public class NuvemshopIntegrationController : BaseApiController
     [HttpDelete("products/{sku}")]
     public async Task<IActionResult> DeleteProduct(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
-        string sku)
+        string sku,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID header é obrigatório.");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         var result = await _nuvemshopService.DeleteRemoteProductAsync(activeTenantId, sku);
         return Ok(new { success = result });

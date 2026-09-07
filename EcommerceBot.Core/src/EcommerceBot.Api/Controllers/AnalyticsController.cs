@@ -1,9 +1,12 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Analytics;
 using EcommerceBot.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Api.Controllers;
 
@@ -11,24 +14,29 @@ namespace EcommerceBot.Api.Controllers;
 public class AnalyticsController : BaseApiController
 {
     private readonly IMachineLearningService _mlService;
+    private readonly ILogger<AnalyticsController> _logger;
 
-    public AnalyticsController(IMachineLearningService mlService)
+    public AnalyticsController(IMachineLearningService mlService, ILogger<AnalyticsController> logger)
     {
         _mlService = mlService;
+        _logger = logger;
     }
 
     /// <summary>
     /// Dispara assincronamente a execução dos modelos de Machine Learning (RFM, Churn e LTV) via RabbitMQ.
     /// </summary>
     [HttpPost("ml/trigger")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> TriggerMlAnalysis(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
-        [FromBody] MlTriggerRequest? request)
+        [FromBody] MlTriggerRequest? request,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
         {
-            return BadRequest(new { error = "Header X-Tenant-ID obrigatório." });
+            return BadRequestProblem("Header X-Tenant-ID obrigatório.");
         }
 
         var jobType = request?.JobType ?? "FULL_ANALYTICS";
@@ -47,13 +55,16 @@ public class AnalyticsController : BaseApiController
     /// Consulta os últimos resultados processados de RFM, Churn e LTV para o Tenant.
     /// </summary>
     [HttpGet("ml/insights")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetMlInsights(
-        [FromHeader(Name = "X-Tenant-ID")] Guid tenantId)
+        [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
         {
-            return BadRequest(new { error = "Header X-Tenant-ID obrigatório." });
+            return BadRequestProblem("Header X-Tenant-ID obrigatório.");
         }
 
         var insights = await _mlService.GetLatestInsightsAsync(activeTenantId);

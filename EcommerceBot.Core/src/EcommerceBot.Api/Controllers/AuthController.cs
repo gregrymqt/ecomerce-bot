@@ -1,5 +1,6 @@
 using System;
 using System.Security.Claims;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.DTOs.Auth;
@@ -30,7 +31,7 @@ public class AuthController : BaseApiController
     [HttpPost("register")]
     [AllowAnonymous]
     [RateLimit(MaxRequests = 10, WindowSeconds = 60, BlockDurationSeconds = 300)]
-    public async Task<IActionResult> Register([FromBody] CreateUserRequest request)
+    public async Task<IActionResult> Register([FromBody] CreateUserRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -41,14 +42,14 @@ public class AuthController : BaseApiController
         }
         catch (Exception ex)
         {
-            return Conflict(new { Message = ex.Message });
+            return ConflictProblem(ex.Message);
         }
     }
 
     [HttpPost("login")]
     [AllowAnonymous]
     [RateLimit(MaxRequests = 20, WindowSeconds = 60, BlockDurationSeconds = 300)]
-    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -59,13 +60,13 @@ public class AuthController : BaseApiController
         }
         catch (Exception ex)
         {
-            return Unauthorized(new { Message = ex.Message });
+            return UnauthorizedProblem(ex.Message);
         }
     }
 
     [HttpPost("logout")]
     [AllowAnonymous]
-    public async Task<IActionResult> Logout()
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken = default)
     {
         var token = Request.Cookies["access_token"];
         if (!string.IsNullOrEmpty(token))
@@ -80,10 +81,10 @@ public class AuthController : BaseApiController
     [HttpPost("forgot-password")]
     [AllowAnonymous]
     [RateLimit(MaxRequests = 5, WindowSeconds = 60, BlockDurationSeconds = 300)]
-    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken = default)
     {
         if (!ModelState.IsValid)
-            return BadRequest(ModelState);
+            return BadRequestProblem("Dados de recuperação de senha inválidos.");
 
         var origin = Request.Headers.Origin.FirstOrDefault() ?? Request.Headers.Referer.FirstOrDefault();
         await _authService.ForgotPasswordAsync(request.Email, origin);
@@ -97,10 +98,10 @@ public class AuthController : BaseApiController
     [HttpPost("reset-password")]
     [AllowAnonymous]
     [RateLimit(MaxRequests = 5, WindowSeconds = 60, BlockDurationSeconds = 300)]
-    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken cancellationToken = default)
     {
         if (!ModelState.IsValid)
-            return BadRequest(ModelState);
+            return BadRequestProblem("Dados de redefinição de senha inválidos.");
 
         try
         {
@@ -113,23 +114,24 @@ public class AuthController : BaseApiController
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { Message = ex.Message });
+            return BadRequestProblem(ex.Message);
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { Message = ex.Message });
+            return BadRequestProblem(ex.Message);
         }
         catch (Exception)
         {
-            return StatusCode(500, new { Message = "Erro ao processar a redefinição de senha." });
+            return ProblemResponse(StatusCodes.Status500InternalServerError, "Erro Interno", "Erro ao processar a redefinição de senha.");
         }
     }
 
     [HttpGet("me")]
-    public async Task<IActionResult> GetMe([FromHeader(Name = "X-Tenant-ID")] string? tenantId)
+    public async Task<IActionResult> GetMe([FromHeader(Name = "X-Tenant-ID")] string? tenantId, CancellationToken cancellationToken = default)
     {
         var userId = CurrentUserId;
-        if (userId == Guid.Empty) return Unauthorized();
+        if (userId == Guid.Empty)
+            return UnauthorizedProblem("Sessão ou token de acesso inválido.");
 
         var authUser = new AuthenticatedUser
         {
@@ -144,11 +146,11 @@ public class AuthController : BaseApiController
     }
 
     [HttpPut("me")]
-    public async Task<IActionResult> UpdateMe([FromBody] UpdateUserRequest request)
+    public async Task<IActionResult> UpdateMe([FromBody] UpdateUserRequest request, CancellationToken cancellationToken = default)
     {
         var userId = CurrentUserId;
         if (userId == Guid.Empty)
-            return Unauthorized();
+            return UnauthorizedProblem("Sessão ou token de acesso inválido.");
 
         var response = await _authService.UpdateProfileAsync(userId, request);
         return Ok(response);
@@ -164,7 +166,7 @@ public class AuthController : BaseApiController
 
     [HttpPost("google/callback")]
     [AllowAnonymous]
-    public async Task<IActionResult> GoogleCallback([FromBody] GoogleCallbackRequest request)
+    public async Task<IActionResult> GoogleCallback([FromBody] GoogleCallbackRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -177,14 +179,14 @@ public class AuthController : BaseApiController
         }
         catch (Exception ex)
         {
-            return BadRequest(new { Message = ex.Message });
+            return BadRequestProblem(ex.Message);
         }
     }
 
     [HttpPost("sso-enterprise/lead")]
     [AllowAnonymous]
     [RateLimit(MaxRequests = 10, WindowSeconds = 60, BlockDurationSeconds = 300)]
-    public async Task<IActionResult> CreateEnterpriseLead([FromBody] EnterpriseLeadRequest request)
+    public async Task<IActionResult> CreateEnterpriseLead([FromBody] EnterpriseLeadRequest request, CancellationToken cancellationToken = default)
     {
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
         var response = await _enterpriseLeadService.RegisterLeadAsync(request, ip);

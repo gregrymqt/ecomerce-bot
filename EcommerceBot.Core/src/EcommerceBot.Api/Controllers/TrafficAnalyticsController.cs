@@ -1,8 +1,10 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using EcommerceBot.Application.DTOs.Analytics;
 using EcommerceBot.Application.Interfaces;
 
@@ -13,10 +15,14 @@ namespace EcommerceBot.Api.Controllers;
 public class TrafficAnalyticsController : BaseApiController
 {
     private readonly ITrafficAnalyticsService _trafficService;
+    private readonly ILogger<TrafficAnalyticsController> _logger;
 
-    public TrafficAnalyticsController(ITrafficAnalyticsService trafficService)
+    public TrafficAnalyticsController(
+        ITrafficAnalyticsService trafficService,
+        ILogger<TrafficAnalyticsController> logger)
     {
         _trafficService = trafficService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -26,8 +32,14 @@ public class TrafficAnalyticsController : BaseApiController
     [HttpPost("visit")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> RecordTenantVisit([FromBody] RecordTenantVisitRequestDto request)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RecordTenantVisit([FromBody] RecordTenantVisitRequestDto request, CancellationToken cancellationToken = default)
     {
+        if (request.TenantId == Guid.Empty)
+        {
+            return BadRequestProblem("TenantId é obrigatório para registrar a visita.");
+        }
+
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
         var userAgent = Request.Headers.UserAgent.ToString();
 
@@ -41,9 +53,19 @@ public class TrafficAnalyticsController : BaseApiController
     [HttpGet]
     [Authorize]
     [ProducesResponseType(typeof(TenantTrafficOverviewDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetTrafficOverview([FromQuery] int days = 30, [FromQuery] string? source = null)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetTrafficOverview(
+        [FromQuery] int days = 30,
+        [FromQuery] string? source = null,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _trafficService.GetTenantTrafficOverviewAsync(CurrentTenantId, days, source);
+        var tenantId = CurrentTenantId;
+        if (tenantId == Guid.Empty)
+        {
+            return BadRequestProblem("X-Tenant-ID header é obrigatório.");
+        }
+
+        var result = await _trafficService.GetTenantTrafficOverviewAsync(tenantId, days, source);
         return Ok(result);
     }
 
@@ -53,9 +75,21 @@ public class TrafficAnalyticsController : BaseApiController
     [HttpPost("verify-tag")]
     [Authorize]
     [ProducesResponseType(typeof(VerifyTagResponseDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> VerifyTag([FromBody] VerifyTagRequestDto request)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyTag([FromBody] VerifyTagRequestDto request, CancellationToken cancellationToken = default)
     {
-        var result = await _trafficService.VerifyStoreTagAsync(CurrentTenantId, request.StoreUrl);
+        var tenantId = CurrentTenantId;
+        if (tenantId == Guid.Empty)
+        {
+            return BadRequestProblem("X-Tenant-ID header é obrigatório.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.StoreUrl))
+        {
+            return BadRequestProblem("StoreUrl é obrigatório.");
+        }
+
+        var result = await _trafficService.VerifyStoreTagAsync(tenantId, request.StoreUrl);
         return Ok(result);
     }
 }

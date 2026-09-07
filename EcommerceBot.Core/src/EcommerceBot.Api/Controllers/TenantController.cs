@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -18,15 +19,15 @@ public class TenantController : BaseApiController
     }
 
     [HttpGet("me")]
-    public async Task<IActionResult> GetCurrentTenantInfo()
+    public async Task<IActionResult> GetCurrentTenantInfo(CancellationToken cancellationToken = default)
     {
         var tenantId = _tenantContext.TenantId != Guid.Empty ? _tenantContext.TenantId : CurrentTenantId;
         if (tenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID header is required.");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         var profile = await _tenantService.GetTenantProfileAsync(tenantId);
         if (profile == null)
-            return NotFound("Tenant não encontrado.");
+            return NotFoundProblem("Tenant não encontrado.");
 
         return Ok(profile);
     }

@@ -27,7 +27,8 @@ public class SystemController : BaseApiController
     [HttpGet("telemetry")]
     public async Task<IActionResult> GetTelemetry(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
-        [FromQuery] string timeframe = "24h")
+        [FromQuery] string timeframe = "24h",
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         var metrics = await _systemService.GetTelemetryMetricsAsync(activeTenantId, timeframe);
@@ -38,7 +39,8 @@ public class SystemController : BaseApiController
     public async Task<IActionResult> GetActivities(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
         [FromQuery] int limit = 20,
-        [FromQuery] int page = 1)
+        [FromQuery] int page = 1,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         var activities = await _systemService.GetRecentActivitiesAsync(activeTenantId, limit, page);
@@ -47,18 +49,20 @@ public class SystemController : BaseApiController
 
     [HttpGet("health")]
     [AllowAnonymous]
-    public async Task<IActionResult> HealthCheck()
+    public async Task<IActionResult> HealthCheck(CancellationToken cancellationToken = default)
     {
         var health = await _systemService.CheckSystemHealthAsync();
-        return StatusCode(health.Status == "OK" ? 200 : 503, health);
+        return StatusCode(health.Status == "OK" ? StatusCodes.Status200OK : StatusCodes.Status503ServiceUnavailable, health);
     }
 
     [HttpPost("demo")]
     [AllowAnonymous]
     [RateLimit(MaxRequests = 10, WindowSeconds = 60, BlockDurationSeconds = 300)]
-    public async Task<IActionResult> RequestDemo([FromBody] DemoRequest payload)
+    public async Task<IActionResult> RequestDemo([FromBody] DemoRequest payload, CancellationToken cancellationToken = default)
     {
-        if (payload.Urls.Count > 3) return BadRequest("Max 3 URLs allowed");
+        if (payload.Urls.Count > 3)
+            return BadRequestProblem("O limite máximo permitido é de 3 URLs para a demonstração.");
+
         await _systemService.ProcessDemoRequestAsync(payload.Urls);
         return Ok(new { status = "enviado_para_fila" });
     }
@@ -67,7 +71,8 @@ public class SystemController : BaseApiController
     [CsvSizeLimit(MaxMegabytes = 10)]
     public async Task ExportData(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
-        [FromQuery] string platform = "shopify")
+        [FromQuery] string platform = "shopify",
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
 

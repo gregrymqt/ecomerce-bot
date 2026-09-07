@@ -912,8 +912,8 @@
       }
     },
     {
-      "id": "controller:AiCreditsWebhookPayload",
-      "label": "AiCreditsWebhookPayload",
+      "id": "controller:AiCreditsWebhookController",
+      "label": "AiCreditsWebhookController",
       "type": "ApiController",
       "file": "EcommerceBot.Core/src/EcommerceBot.Api/Controllers/AiCreditsWebhookController.cs",
       "metadata": {
@@ -969,7 +969,7 @@
           "POST api/v1/[controller]/card",
           "GET api/v1/[controller]/status/{paymentId}",
           "POST api/v1/[controller]/orders",
-          "GET api/v1/[controller]/orders/{id}"
+          "GET api/v1/[controller]/orders/{id:guid}"
         ]
       }
     },
@@ -1056,9 +1056,9 @@
         "base_route": "api/v1/plans",
         "endpoints": [
           "GET api/v1/plans",
-          "GET api/v1/plans/{id}",
+          "GET api/v1/plans/{id:guid}",
           "POST api/v1/plans",
-          "PUT api/v1/plans/{id}"
+          "PUT api/v1/plans/{id:guid}"
         ]
       }
     },
@@ -2400,7 +2400,7 @@
       "relationship": "invokes"
     },
     {
-      "source": "controller:AiCreditsWebhookPayload",
+      "source": "controller:AiCreditsWebhookController",
       "target": "code:AiCapacityService",
       "relationship": "invokes"
     },

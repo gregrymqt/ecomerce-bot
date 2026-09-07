@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using EcommerceBot.Application.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Api.Controllers;
 
@@ -13,17 +14,38 @@ public class StreamController : BaseApiController
 {
     private readonly ITenantContext _tenantContext;
     private readonly IRedisService _redisService;
+    private readonly ILogger<StreamController> _logger;
 
-    public StreamController(ITenantContext tenantContext, IRedisService redisService)
+    public StreamController(
+        ITenantContext tenantContext,
+        IRedisService redisService,
+        ILogger<StreamController> logger)
     {
         _tenantContext = tenantContext;
         _redisService = redisService;
+        _logger = logger;
     }
 
     [HttpGet]
+    [Produces("text/event-stream")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task GetStream(CancellationToken cancellationToken)
     {
         var tenantId = _tenantContext.TenantId != Guid.Empty ? _tenantContext.TenantId : CurrentTenantId;
+        if (tenantId == Guid.Empty)
+        {
+            Response.StatusCode = StatusCodes.Status400BadRequest;
+            Response.ContentType = "application/problem+json";
+            var problem = new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Tenant Inválido",
+                Detail = "X-Tenant-ID header é obrigatório para abrir stream SSE."
+            };
+            await Response.WriteAsJsonAsync(problem, cancellationToken);
+            return;
+        }
 
         Response.Headers.Append("Content-Type", "text/event-stream");
         Response.Headers.Append("Cache-Control", "no-cache");
@@ -65,6 +87,14 @@ public class StreamController : BaseApiController
                     }
                 }
             }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Conexão SSE encerrada pelo cliente para tenant {TenantId}", tenantId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro no streaming SSE para tenant {TenantId}", tenantId);
         }
         finally
         {

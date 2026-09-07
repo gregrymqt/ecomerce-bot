@@ -1,12 +1,15 @@
 using System;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Metering;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Infrastructure.Options;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Api.Controllers;
@@ -16,11 +19,16 @@ public class MeteringController : BaseApiController
 {
     private readonly IMeteringService _meteringService;
     private readonly SecurityOptions _securityOptions;
+    private readonly ILogger<MeteringController> _logger;
 
-    public MeteringController(IMeteringService meteringService, IOptions<SecurityOptions> securityOptions)
+    public MeteringController(
+        IMeteringService meteringService,
+        IOptions<SecurityOptions> securityOptions,
+        ILogger<MeteringController> logger)
     {
         _meteringService = meteringService;
         _securityOptions = securityOptions.Value;
+        _logger = logger;
     }
 
     private bool IsAuthorizedInternalService()
@@ -46,22 +54,35 @@ public class MeteringController : BaseApiController
     }
 
     [HttpGet("balance")]
-    public async Task<IActionResult> GetBalance()
+    [ProducesResponseType(typeof(TenantCreditBalanceResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetBalance(CancellationToken cancellationToken = default)
     {
         var tenantId = CurrentTenantId;
         if (tenantId == Guid.Empty)
-            return BadRequest(new { detail = "X-Tenant-ID header is missing or invalid." });
+        {
+            return BadRequestProblem("X-Tenant-ID header is missing or invalid.");
+        }
 
         var result = await _meteringService.GetTenantCreditBalanceAsync(tenantId);
         return Ok(result);
     }
 
     [HttpGet("usage")]
-    public async Task<IActionResult> GetUsageLogs([FromQuery] int page = 1, [FromQuery] int limit = 20, [FromQuery] DateTimeOffset? startDate = null, [FromQuery] DateTimeOffset? endDate = null)
+    [ProducesResponseType(typeof(PaginatedLlmUsageLogResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetUsageLogs(
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 20,
+        [FromQuery] DateTimeOffset? startDate = null,
+        [FromQuery] DateTimeOffset? endDate = null,
+        CancellationToken cancellationToken = default)
     {
         var tenantId = CurrentTenantId;
         if (tenantId == Guid.Empty)
-            return BadRequest(new { detail = "X-Tenant-ID header is missing or invalid." });
+        {
+            return BadRequestProblem("X-Tenant-ID header is missing or invalid.");
+        }
 
         var result = await _meteringService.GetTenantUsageLogsAsync(tenantId, page, limit, startDate, endDate);
         return Ok(result);
@@ -69,10 +90,23 @@ public class MeteringController : BaseApiController
 
     [HttpPost("internal/reserve")]
     [AllowAnonymous]
-    public async Task<IActionResult> ReserveCredits([FromHeader(Name = "X-Tenant-ID")] Guid tenantId, [FromBody] ReserveCreditsRequest request)
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ReserveCredits(
+        [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
+        [FromBody] ReserveCreditsRequest request,
+        CancellationToken cancellationToken = default)
     {
         if (!IsAuthorizedInternalService())
-            return Unauthorized(new { detail = "Acesso restrito a serviços internos ou administradores." });
+        {
+            return UnauthorizedProblem("Acesso restrito a serviços internos ou administradores.");
+        }
+
+        if (tenantId == Guid.Empty)
+        {
+            return BadRequestProblem("X-Tenant-ID header is required.");
+        }
 
         try
         {
@@ -81,16 +115,35 @@ public class MeteringController : BaseApiController
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { detail = ex.Message });
+            _logger.LogWarning(ex, "Saldo insuficiente ou erro na reserva de créditos para tenant {TenantId}", tenantId);
+            return BadRequestProblem(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro inesperado ao reservar créditos para tenant {TenantId}", tenantId);
+            return ProblemResponse(StatusCodes.Status500InternalServerError, "Erro ao reservar créditos", ex.Message);
         }
     }
 
     [HttpPost("internal/refund")]
     [AllowAnonymous]
-    public async Task<IActionResult> RefundCredits([FromHeader(Name = "X-Tenant-ID")] Guid tenantId, [FromBody] RefundCreditsRequest request)
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RefundCredits(
+        [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
+        [FromBody] RefundCreditsRequest request,
+        CancellationToken cancellationToken = default)
     {
         if (!IsAuthorizedInternalService())
-            return Unauthorized(new { detail = "Acesso restrito a serviços internos ou administradores." });
+        {
+            return UnauthorizedProblem("Acesso restrito a serviços internos ou administradores.");
+        }
+
+        if (tenantId == Guid.Empty)
+        {
+            return BadRequestProblem("X-Tenant-ID header is required.");
+        }
 
         await _meteringService.RefundCreditsOnFailureAsync(tenantId, request.ReservedCost);
         return Ok();
@@ -98,10 +151,23 @@ public class MeteringController : BaseApiController
 
     [HttpPost("internal/record")]
     [AllowAnonymous]
-    public async Task<IActionResult> RecordUsage([FromHeader(Name = "X-Tenant-ID")] Guid tenantId, [FromBody] LlmUsageLogCreate request)
+    [ProducesResponseType(typeof(LlmUsageLogResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RecordUsage(
+        [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
+        [FromBody] LlmUsageLogCreate request,
+        CancellationToken cancellationToken = default)
     {
         if (!IsAuthorizedInternalService())
-            return Unauthorized(new { detail = "Acesso restrito a serviços internos ou administradores." });
+        {
+            return UnauthorizedProblem("Acesso restrito a serviços internos ou administradores.");
+        }
+
+        if (tenantId == Guid.Empty)
+        {
+            return BadRequestProblem("X-Tenant-ID header is required.");
+        }
 
         var result = await _meteringService.RecordUsageAndDeductAsync(tenantId, request);
         return Ok(result);

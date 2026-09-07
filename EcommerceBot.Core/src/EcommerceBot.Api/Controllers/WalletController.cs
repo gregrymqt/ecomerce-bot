@@ -1,9 +1,12 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Wallet;
 using EcommerceBot.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Api.Controllers;
 
@@ -11,44 +14,65 @@ namespace EcommerceBot.Api.Controllers;
 public class WalletController : BaseApiController
 {
     private readonly IWalletService _walletService;
+    private readonly ILogger<WalletController> _logger;
 
-    public WalletController(IWalletService walletService)
+    public WalletController(IWalletService walletService, ILogger<WalletController> logger)
     {
         _walletService = walletService;
+        _logger = logger;
     }
 
     [HttpGet("credit-packages")]
     [AllowAnonymous]
-    public async Task<IActionResult> GetCreditPackages([FromServices] IPlanService planService)
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCreditPackages([FromServices] IPlanService planService, CancellationToken cancellationToken = default)
     {
         var packages = await planService.GetAllPlansAsync(onlyActive: true);
         return Ok(packages);
     }
 
     [HttpGet("balance")]
-    public async Task<IActionResult> GetBalance()
+    [ProducesResponseType(typeof(WalletBalanceResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetBalance(CancellationToken cancellationToken = default)
     {
         var tenantId = CurrentTenantId;
         if (tenantId == Guid.Empty)
-            return BadRequest(new { detail = "X-Tenant-ID header é obrigatório." });
+        {
+            return BadRequestProblem("X-Tenant-ID header é obrigatório.");
+        }
 
         try
         {
             var result = await _walletService.GetBalanceAsync(tenantId);
             return Ok(result);
         }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Erro ao obter saldo da carteira do tenant {TenantId}", tenantId);
+            return BadRequestProblem(ex.Message);
+        }
         catch (Exception ex)
         {
-            return BadRequest(new { detail = ex.Message });
+            _logger.LogError(ex, "Erro inesperado ao consultar saldo do tenant {TenantId}", tenantId);
+            return ProblemResponse(StatusCodes.Status500InternalServerError, "Erro ao consultar saldo", ex.Message);
         }
     }
 
     [HttpGet("statement")]
-    public async Task<IActionResult> GetStatement([FromQuery] int page = 1, [FromQuery] int limit = 20, [FromQuery] string? type = "ALL")
+    [ProducesResponseType(typeof(WalletStatementResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetStatement(
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 20,
+        [FromQuery] string? type = "ALL",
+        CancellationToken cancellationToken = default)
     {
         var tenantId = CurrentTenantId;
         if (tenantId == Guid.Empty)
-            return BadRequest(new { detail = "X-Tenant-ID header é obrigatório." });
+        {
+            return BadRequestProblem("X-Tenant-ID header é obrigatório.");
+        }
 
         var filters = new StatementFiltersDto
         {
@@ -62,20 +86,35 @@ public class WalletController : BaseApiController
     }
 
     [HttpPost("recharge")]
-    public async Task<IActionResult> CreateRecharge([FromBody] RechargeRequestDto request)
+    [ProducesResponseType(typeof(RechargeResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CreateRecharge([FromBody] RechargeRequestDto request, CancellationToken cancellationToken = default)
     {
         var tenantId = CurrentTenantId;
         if (tenantId == Guid.Empty)
-            return BadRequest(new { detail = "X-Tenant-ID header é obrigatório." });
+        {
+            return BadRequestProblem("X-Tenant-ID header é obrigatório.");
+        }
 
         try
         {
             var result = await _walletService.CreateRechargeAsync(tenantId, request);
             return Ok(result);
         }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Dados inválidos para recarga no tenant {TenantId}", tenantId);
+            return BadRequestProblem(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Operação inválida na recarga para tenant {TenantId}", tenantId);
+            return BadRequestProblem(ex.Message);
+        }
         catch (Exception ex)
         {
-            return BadRequest(new { detail = ex.Message });
+            _logger.LogError(ex, "Erro inesperado ao criar recarga para tenant {TenantId}", tenantId);
+            return ProblemResponse(StatusCodes.Status500InternalServerError, "Erro na recarga de créditos", ex.Message);
         }
     }
 }

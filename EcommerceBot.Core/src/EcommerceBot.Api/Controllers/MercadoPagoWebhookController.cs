@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.Interfaces;
@@ -30,17 +31,18 @@ public class MercadoPagoWebhookController : BaseApiController
         [FromQuery(Name = "data.id")] string? dataId,
         [FromQuery(Name = "id")] string? idParam,
         [FromHeader(Name = "x-signature")] string? xSignature,
-        [FromHeader(Name = "x-request-id")] string? xRequestId)
+        [FromHeader(Name = "x-request-id")] string? xRequestId,
+        CancellationToken cancellationToken = default)
     {
         using var reader = new StreamReader(Request.Body, Encoding.UTF8);
-        var rawBody = await reader.ReadToEndAsync();
+        var rawBody = await reader.ReadToEndAsync(cancellationToken);
 
         var result = await _webhookService.ProcessWebhookAsync(rawBody, dataId, idParam, xSignature, xRequestId);
 
         return result.Status switch
         {
-            WebhookResultStatus.MissingSecret => Unauthorized(new { detail = result.Message }),
-            WebhookResultStatus.InvalidSignature => Unauthorized(new { detail = result.Message }),
+            WebhookResultStatus.MissingSecret => UnauthorizedProblem(result.Message ?? "Configuração de segredo de webhook ausente."),
+            WebhookResultStatus.InvalidSignature => UnauthorizedProblem(result.Message ?? "Assinatura de webhook inválida."),
             WebhookResultStatus.AlreadyProcessed => Ok(new { status = "already_processed" }),
             WebhookResultStatus.Error => Ok(new { status = "error", message = result.Message }),
             _ => Ok(new { status = "received" })

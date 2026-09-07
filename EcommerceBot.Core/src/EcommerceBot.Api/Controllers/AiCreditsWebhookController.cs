@@ -2,6 +2,7 @@ using System;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.DTOs.Analytics;
@@ -13,22 +14,22 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Api.Controllers;
 
-public class AiCreditsWebhookPayload
+public sealed record AiCreditsWebhookPayload
 {
     [JsonPropertyName("amount_paid")]
-    public decimal AmountPaid { get; set; }
+    public decimal AmountPaid { get; init; }
 
     [JsonPropertyName("currency")]
-    public string Currency { get; set; } = "USD";
+    public string Currency { get; init; } = "USD";
 
     [JsonPropertyName("tokens_credited")]
-    public long TokensCredited { get; set; }
+    public long TokensCredited { get; init; }
 
     [JsonPropertyName("transaction_id")]
-    public string? TransactionId { get; set; }
+    public string? TransactionId { get; init; }
 
     [JsonPropertyName("notes")]
-    public string? Notes { get; set; }
+    public string? Notes { get; init; }
 }
 
 [ApiController]
@@ -59,7 +60,8 @@ public class AiCreditsWebhookController : BaseApiController
         [FromRoute] string provider,
         [FromBody] AiCreditsWebhookPayload payload,
         [FromHeader(Name = "X-Webhook-Secret")] string? headerSecret,
-        [FromQuery(Name = "secret")] string? querySecret)
+        [FromQuery(Name = "secret")] string? querySecret,
+        CancellationToken cancellationToken = default)
     {
         var incomingSecret = headerSecret ?? querySecret;
 
@@ -72,7 +74,7 @@ public class AiCreditsWebhookController : BaseApiController
         if (string.IsNullOrWhiteSpace(incomingSecret))
         {
             _logger.LogWarning("Tentativa de chamada ao webhook de créditos de IA sem segredo fornecido.");
-            return Unauthorized(new { error = "Cabeçalho X-Webhook-Secret ausente." });
+            return UnauthorizedProblem("Cabeçalho X-Webhook-Secret ausente.");
         }
 
         var incomingBytes = Encoding.UTF8.GetBytes(incomingSecret);
@@ -82,12 +84,12 @@ public class AiCreditsWebhookController : BaseApiController
             !CryptographicOperations.FixedTimeEquals(incomingBytes, expectedBytes))
         {
             _logger.LogWarning("Segredo do webhook de créditos de IA inválido para provedor {Provider}.", provider);
-            return Unauthorized(new { error = "Segredo do webhook inválido." });
+            return UnauthorizedProblem("Segredo do webhook inválido.");
         }
 
         if (payload.AmountPaid <= 0)
         {
-            return BadRequest(new { error = "O campo amount_paid deve ser maior que zero." });
+            return BadRequestProblem("O campo amount_paid deve ser maior que zero.");
         }
 
         var topupRequest = new AiProviderCreditTopupRequest

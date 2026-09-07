@@ -27,7 +27,7 @@
 - **AdminAiCapacityController** (`/api/v1/admin/ai-capacity`): 3 endpoints mapeados.
 - **AdminEnterpriseLeadsController** (`/api/v1/admin/enterprise-leads`): 3 endpoints mapeados.
 - **AdminGrowthController** (`/api/v1/admin`): 5 endpoints mapeados.
-- **AiCreditsWebhookPayload** (`/api/v1/webhooks/ai-credits`): 1 endpoints mapeados.
+- **AiCreditsWebhookController** (`/api/v1/webhooks/ai-credits`): 1 endpoints mapeados.
 - **AnalyticsController** (`/api/v1/[controller]`): 2 endpoints mapeados.
 - **AuthController** (`/api/v1/[controller]`): 10 endpoints mapeados.
 - **CheckoutController** (`/api/v1/[controller]`): 5 endpoints mapeados.

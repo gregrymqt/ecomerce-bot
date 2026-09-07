@@ -3,6 +3,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.DTOs.Shopify;
@@ -11,6 +12,7 @@ using EcommerceBot.Domain.Interfaces;
 using EcommerceBot.Infrastructure.Options;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -47,11 +49,12 @@ public class ShopifyIntegrationController : BaseApiController
     [HttpPost("credentials")]
     public async Task<IActionResult> SaveCredentials(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
-        [FromBody] ShopifyCredentialsPayloadDto payload)
+        [FromBody] ShopifyCredentialsPayloadDto payload,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID header é obrigatório.");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         try
         {
@@ -60,26 +63,27 @@ public class ShopifyIntegrationController : BaseApiController
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequestProblem(ex.Message);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao salvar credenciais Shopify.");
-            return StatusCode(500, new { error = "Erro interno ao salvar credenciais." });
+            return ProblemResponse(StatusCodes.Status500InternalServerError, "Erro Interno", "Erro interno ao salvar credenciais.");
         }
     }
 
     [HttpGet("auth")]
     public async Task<IActionResult> InitiateOAuth(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
-        [FromQuery] string shop)
+        [FromQuery] string shop,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID header é obrigatório.");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         if (string.IsNullOrWhiteSpace(shop))
-            return BadRequest("Parâmetro 'shop' é obrigatório.");
+            return BadRequestProblem("O parâmetro 'shop' é obrigatório.");
 
         var authorizeUrl = await _shopifyService.GetOAuthUrlAsync(activeTenantId, shop);
         return Ok(new { authorize_url = authorizeUrl });
@@ -91,16 +95,17 @@ public class ShopifyIntegrationController : BaseApiController
         [FromQuery] string code,
         [FromQuery] string shop,
         [FromQuery] string? state,
-        [FromQuery] string? hmac)
+        [FromQuery] string? hmac,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(shop))
         {
-            return BadRequest("Missing code or shop parameter.");
+            return BadRequestProblem("Parâmetros 'code' e 'shop' são obrigatórios.");
         }
 
         if (!Guid.TryParse(state, out var tenantId) || tenantId == Guid.Empty)
         {
-            return BadRequest("Invalid state/tenantId parameter.");
+            return BadRequestProblem("Parâmetro 'state/tenantId' inválido.");
         }
 
         try
@@ -111,18 +116,19 @@ public class ShopifyIntegrationController : BaseApiController
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro no callback OAuth da Shopify para a loja {Shop}", shop);
-            return StatusCode(500, new { error = "Falha ao concluir autorização OAuth da Shopify." });
+            return ProblemResponse(StatusCodes.Status500InternalServerError, "Falha de Autorização", "Falha ao concluir autorização OAuth da Shopify.");
         }
     }
 
     [HttpPost("products")]
     public async Task<IActionResult> SyncProduct(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
-        [FromBody] ShopifySyncRequestDto request)
+        [FromBody] ShopifySyncRequestDto request,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID header é obrigatório.");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         var result = await _shopifyService.SyncProductAsync(activeTenantId, request);
         return Ok(result);
@@ -131,11 +137,12 @@ public class ShopifyIntegrationController : BaseApiController
     [HttpPost("products/bulk-sync")]
     public async Task<IActionResult> TriggerBulkSync(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
-        [FromBody] ShopifyBulkSyncRequestDto request)
+        [FromBody] ShopifyBulkSyncRequestDto request,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID header é obrigatório.");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         try
         {
@@ -144,7 +151,7 @@ public class ShopifyIntegrationController : BaseApiController
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequestProblem(ex.Message);
         }
     }
 
@@ -152,11 +159,12 @@ public class ShopifyIntegrationController : BaseApiController
     public async Task<IActionResult> UpdateInventory(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
         string sku,
-        [FromBody] ShopifyInventoryUpdateDto payload)
+        [FromBody] ShopifyInventoryUpdateDto payload,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID header é obrigatório.");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         var result = await _shopifyService.UpdateInventoryAsync(activeTenantId, sku, payload);
         return Ok(result);
@@ -166,11 +174,12 @@ public class ShopifyIntegrationController : BaseApiController
     public async Task<IActionResult> UpdateStatus(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
         string sku,
-        [FromBody] ShopifyStatusUpdateDto payload)
+        [FromBody] ShopifyStatusUpdateDto payload,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID header é obrigatório.");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         var result = await _shopifyService.UpdateStatusAsync(activeTenantId, sku, payload);
         return Ok(result);
@@ -179,11 +188,12 @@ public class ShopifyIntegrationController : BaseApiController
     [HttpDelete("products/{sku}")]
     public async Task<IActionResult> DeleteProduct(
         [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
-        string sku)
+        string sku,
+        CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
-            return BadRequest("X-Tenant-ID header é obrigatório.");
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         var result = await _shopifyService.DeleteRemoteProductAsync(activeTenantId, sku);
         return Ok(result);
@@ -196,21 +206,22 @@ public class ShopifyIntegrationController : BaseApiController
         [FromHeader(Name = "X-Shopify-Topic")] string topic,
         [FromHeader(Name = "X-Shopify-Shop-Domain")] string shopDomain,
         [FromHeader(Name = "X-Shopify-Hmac-Sha256")] string hmacSignature,
-        [FromHeader(Name = "X-Shopify-Webhook-Id")] string? webhookId)
+        [FromHeader(Name = "X-Shopify-Webhook-Id")] string? webhookId,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(topic) || string.IsNullOrEmpty(shopDomain) || string.IsNullOrEmpty(hmacSignature))
         {
-            return BadRequest("Missing Shopify headers");
+            return BadRequestProblem("Cabeçalhos Shopify obrigatórios ausentes.");
         }
 
         using var reader = new StreamReader(Request.Body);
-        var rawBody = await reader.ReadToEndAsync();
+        var rawBody = await reader.ReadToEndAsync(cancellationToken);
 
         // 1. Validação Criptográfica de Assinatura HMAC SHA-256 em tempo constante
         if (!VerifyShopifySignature(rawBody, hmacSignature))
         {
             _logger.LogWarning("Invalid Shopify HMAC signature for domain {ShopDomain}", shopDomain);
-            return Unauthorized("Invalid HMAC signature");
+            return UnauthorizedProblem("Assinatura HMAC Shopify inválida.");
         }
 
         // 2. Idempotência no Redis (TTL 24 horas via SET NX conforme Regra 3.4 do AGENTS.md)
@@ -242,7 +253,7 @@ public class ShopifyIntegrationController : BaseApiController
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing Shopify webhook '{Topic}' for domain '{ShopDomain}'", topic, shopDomain);
-            return StatusCode(500, "Internal error processing webhook");
+            return ProblemResponse(StatusCodes.Status500InternalServerError, "Erro Interno", "Erro interno no processamento do webhook Shopify.");
         }
     }
 
