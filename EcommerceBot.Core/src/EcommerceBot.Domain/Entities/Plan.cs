@@ -2,7 +2,10 @@ using System;
 
 namespace EcommerceBot.Domain.Entities;
 
-public class Plan
+/// <summary>
+/// Plano de assinatura do catálogo SaaS com cota de créditos e precificação recorrente (dbo.Plans).
+/// </summary>
+public sealed class Plan
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;

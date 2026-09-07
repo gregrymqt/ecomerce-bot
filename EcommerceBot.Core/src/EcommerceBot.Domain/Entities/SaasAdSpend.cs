@@ -2,7 +2,10 @@ using System;
 
 namespace EcommerceBot.Domain.Entities;
 
-public class SaasAdSpend
+/// <summary>
+/// Despesas agregadas com publicidade digital e tráfego pago para cálculo de CAC e ROAS (dbo.SaasAdSpends).
+/// </summary>
+public sealed class SaasAdSpend
 {
     public Guid Id { get; set; }
     public string CampaignName { get; set; } = string.Empty;

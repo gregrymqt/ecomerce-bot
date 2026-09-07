@@ -2,7 +2,10 @@ using System;
 
 namespace EcommerceBot.Domain.Entities;
 
-public class TenantConfig
+/// <summary>
+/// Configurações operacionais serializadas em JSON de tom de voz, precificação e perfil da loja (dbo.TenantConfigs).
+/// </summary>
+public sealed class TenantConfig
 {
     public Guid Id { get; set; }
     public Guid TenantId { get; set; }

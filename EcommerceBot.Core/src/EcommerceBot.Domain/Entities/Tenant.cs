@@ -2,7 +2,10 @@ using System;
 
 namespace EcommerceBot.Domain.Entities;
 
-public class Tenant
+/// <summary>
+/// Tenant (organização / lojista) central no modelo multi-tenant estrito (dbo.Tenants).
+/// </summary>
+public sealed class Tenant
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;

@@ -6,7 +6,7 @@ namespace EcommerceBot.Domain.Entities;
 /// Entidade imutável do Ledger de Créditos (dbo.CreditTransactions).
 /// Registra cada entrada (recargas, bônus, estornos) ou saída (enriquecimento, ML) de créditos de IA.
 /// </summary>
-public class CreditTransaction
+public sealed class CreditTransaction
 {
     public Guid Id { get; set; }
     public Guid TenantId { get; set; }

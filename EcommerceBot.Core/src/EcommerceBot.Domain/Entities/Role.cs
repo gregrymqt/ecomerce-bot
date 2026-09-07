@@ -2,7 +2,10 @@ using System;
 
 namespace EcommerceBot.Domain.Entities;
 
-public class Role
+/// <summary>
+/// Papel de autorização do sistema para controle de acesso baseado em funções - RBAC (dbo.Roles).
+/// </summary>
+public sealed class Role
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;

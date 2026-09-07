@@ -3,10 +3,10 @@ using System;
 namespace EcommerceBot.Domain.Exceptions;
 
 /// <summary>
-/// Exceção lançada quando um tenant tenta realizar uma operação que requer créditos
-/// mas seu saldo de créditos na carteira é insuficiente.
+/// Exceção de domínio disparada quando um tenant tenta executar uma operação que requer créditos de IA/scraping,
+/// mas seu saldo disponível na carteira é insuficiente.
 /// </summary>
-public class InsufficientCreditsException : Exception
+public sealed class InsufficientCreditsException : Exception
 {
     public Guid TenantId { get; }
     public int RequiredCredits { get; }

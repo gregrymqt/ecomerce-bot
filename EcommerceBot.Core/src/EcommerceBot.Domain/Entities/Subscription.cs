@@ -2,7 +2,10 @@ using System;
 
 namespace EcommerceBot.Domain.Entities;
 
-public class Subscription
+/// <summary>
+/// Assinatura ativa ou recorrente de um lojista SaaS via Mercado Pago Preapproval (dbo.Subscriptions).
+/// </summary>
+public sealed class Subscription
 {
     public Guid Id { get; set; }
     public Guid TenantId { get; set; }

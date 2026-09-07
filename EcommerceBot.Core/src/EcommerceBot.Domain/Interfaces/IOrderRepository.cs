@@ -2,15 +2,17 @@ using System;
 using System.Threading.Tasks;
 using EcommerceBot.Domain.Entities;
 
-namespace EcommerceBot.Domain.Interfaces
+namespace EcommerceBot.Domain.Interfaces;
+
+/// <summary>
+/// Contrato de persistência para pedidos de assinatura, recargas de créditos e ordens de pagamento transparentes.
+/// </summary>
+public interface IOrderRepository
 {
-    public interface IOrderRepository
-    {
-        Task<Order> CreateOrderAsync(Order order);
-        Task<Order?> GetOrderByIdAsync(Guid id, Guid tenantId);
-        Task<Order?> GetOrderByExternalReferenceAsync(string externalReference, Guid tenantId);
-        Task<Order?> GetOrderByExternalReferenceGlobalAsync(string externalReference);
-        Task<Order?> GetOrderByMpPaymentIdAsync(string mpPaymentId);
-        Task UpdateOrderAsync(Order order);
-    }
+    Task<Order> CreateOrderAsync(Order order);
+    Task<Order?> GetOrderByIdAsync(Guid id, Guid tenantId);
+    Task<Order?> GetOrderByExternalReferenceAsync(string externalReference, Guid tenantId);
+    Task<Order?> GetOrderByExternalReferenceGlobalAsync(string externalReference);
+    Task<Order?> GetOrderByMpPaymentIdAsync(string mpPaymentId);
+    Task UpdateOrderAsync(Order order);
 }

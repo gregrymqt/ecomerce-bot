@@ -2,7 +2,10 @@ using System;
 
 namespace EcommerceBot.Domain.Entities;
 
-public class RobotActivity
+/// <summary>
+/// Trilha de execução de tarefas assíncronas por workers de IA e background jobs (dbo.RobotActivities).
+/// </summary>
+public sealed class RobotActivity
 {
     public Guid Id { get; set; }
     public Guid TenantId { get; set; }

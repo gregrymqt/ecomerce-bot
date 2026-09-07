@@ -2,7 +2,10 @@ using System;
 
 namespace EcommerceBot.Domain.Entities;
 
-public class Product
+/// <summary>
+/// Produto de catálogo extraído, enriquecido por IA ou sincronizado com e-commerce externo (dbo.Products).
+/// </summary>
+public sealed class Product
 {
     public Guid Id { get; set; }
     public Guid TenantId { get; set; }

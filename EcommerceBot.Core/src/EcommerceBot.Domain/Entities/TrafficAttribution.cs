@@ -2,7 +2,10 @@ using System;
 
 namespace EcommerceBot.Domain.Entities;
 
-public class TrafficAttribution
+/// <summary>
+/// Modelo de atribuição de tráfego e conversão com parâmetros UTM e IDs de clique (dbo.TrafficAttributions).
+/// </summary>
+public sealed class TrafficAttribution
 {
     public Guid Id { get; set; }
     public Guid TenantId { get; set; }

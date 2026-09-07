@@ -2,7 +2,10 @@ using System;
 
 namespace EcommerceBot.Domain.Entities;
 
-public class SaasTrafficVisit
+/// <summary>
+/// Registro de visita e navegação web no portal SaaS para análise de funil e atribuição de tráfego (dbo.SaasTrafficVisits).
+/// </summary>
+public sealed class SaasTrafficVisit
 {
     public Guid Id { get; set; }
     public string SessionId { get; set; } = string.Empty;

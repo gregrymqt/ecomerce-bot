@@ -2,7 +2,10 @@ using System;
 
 namespace EcommerceBot.Domain.Entities;
 
-public class AiProviderCredit
+/// <summary>
+/// Registro de recarga e capacidade de saldo pré-pago de provedores de IA (OpenRouter, OpenAI, Anthropic).
+/// </summary>
+public sealed class AiProviderCredit
 {
     public Guid Id { get; set; }
     public string Provider { get; set; } = string.Empty;
@@ -16,7 +19,10 @@ public class AiProviderCredit
     public DateTimeOffset CreatedAt { get; set; }
 }
 
-public class DailyTokenUsageSummary
+/// <summary>
+/// Resumo diário agregado de consumo de tokens e custos para FinOps.
+/// </summary>
+public sealed class DailyTokenUsageSummary
 {
     public string Date { get; set; } = string.Empty;
     public string Provider { get; set; } = string.Empty;
