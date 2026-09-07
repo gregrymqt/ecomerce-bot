@@ -3,7 +3,7 @@ namespace EcommerceBot.Infrastructure.Options;
 /// <summary>
 /// Configurações de autenticação e emissão de tokens JWT.
 /// </summary>
-public class JwtOptions
+public sealed class JwtOptions
 {
     public const string SectionName = "Jwt";
 

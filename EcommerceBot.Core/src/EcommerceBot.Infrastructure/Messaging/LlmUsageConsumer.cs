@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Messaging;
 
-public class LlmUsageConsumer : IConsumer<LlmUsageEvent>
+public sealed class LlmUsageConsumer : IConsumer<LlmUsageEvent>
 {
     private readonly IMeteringRepository _meteringRepository;
     private readonly ILogger<LlmUsageConsumer> _logger;

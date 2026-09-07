@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class AesGcmCryptoService : IAesGcmCryptoService
+public sealed class AesGcmCryptoService : IAesGcmCryptoService
 {
     private readonly byte[] _masterKey;
 

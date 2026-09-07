@@ -9,7 +9,7 @@ using EcommerceBot.Domain.Interfaces;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class TrafficAnalyticsService : ITrafficAnalyticsService
+public sealed class TrafficAnalyticsService : ITrafficAnalyticsService
 {
     private readonly ITrafficAttributionRepository _attributionRepository;
     private readonly IHttpClientFactory _httpClientFactory;

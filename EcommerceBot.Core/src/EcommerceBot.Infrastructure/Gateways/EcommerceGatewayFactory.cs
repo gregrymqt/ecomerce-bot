@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace EcommerceBot.Infrastructure.Gateways;
 
-public class EcommerceGatewayFactory : IEcommerceGatewayFactory
+public sealed class EcommerceGatewayFactory : IEcommerceGatewayFactory
 {
     private readonly IServiceProvider _serviceProvider;
 

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 namespace EcommerceBot.Infrastructure.Options;
 
 /// <summary>
-/// Op��es de configura��o de CORS para origens permitidas e credenciais no SaaS.
+/// Opções de configuração de CORS para origens permitidas e credenciais no SaaS.
 /// </summary>
-public class CorsOptions
+public sealed class CorsOptions
 {
     public const string SectionName = "Cors";
 

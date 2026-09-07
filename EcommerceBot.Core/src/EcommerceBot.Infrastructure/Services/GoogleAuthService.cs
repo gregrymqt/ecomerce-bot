@@ -16,10 +16,10 @@ using EcommerceBot.Infrastructure.Options;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
-namespace EcommerceBot.Infrastructure.Services
+namespace EcommerceBot.Infrastructure.Services;
+
+public sealed class GoogleAuthService : IGoogleAuthService
 {
-    public class GoogleAuthService : IGoogleAuthService
-    {
         private readonly IUserRepository _userRepository;
         private readonly ITenantRepository _tenantRepository;
         private readonly GoogleAuthOptions _googleOptions;
@@ -222,4 +222,3 @@ namespace EcommerceBot.Infrastructure.Services
             return tokenHandler.WriteToken(token);
         }
     }
-}

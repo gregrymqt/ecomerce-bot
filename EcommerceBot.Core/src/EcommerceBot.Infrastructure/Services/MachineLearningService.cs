@@ -17,7 +17,7 @@ namespace EcommerceBot.Infrastructure.Services;
 /// <summary>
 /// Serviço de orquestração de Inteligência de Clientes e Machine Learning (RFM, Churn e LTV).
 /// </summary>
-public class MachineLearningService : IMachineLearningService
+public sealed class MachineLearningService : IMachineLearningService
 {
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly IDbConnectionFactory _dbConnectionFactory;

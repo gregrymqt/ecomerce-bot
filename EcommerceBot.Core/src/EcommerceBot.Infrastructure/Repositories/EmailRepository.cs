@@ -5,10 +5,10 @@ using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Enums;
 using EcommerceBot.Domain.Interfaces;
 
-namespace EcommerceBot.Infrastructure.Repositories
+namespace EcommerceBot.Infrastructure.Repositories;
+
+public sealed class EmailRepository : IEmailRepository
 {
-    public class EmailRepository : IEmailRepository
-    {
         private readonly IDbConnectionFactory _connectionFactory;
 
         public EmailRepository(IDbConnectionFactory connectionFactory)
@@ -50,4 +50,3 @@ namespace EcommerceBot.Infrastructure.Repositories
             await connection.ExecuteAsync(sql, new { ResendId = resendId, Status = status.ToString(), ErrorMessage = error });
         }
     }
-}

@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Messaging;
 
-public class AnalyticsProcessedConsumer : IConsumer<MlAnalysisResultMessage>
+public sealed class AnalyticsProcessedConsumer : IConsumer<MlAnalysisResultMessage>
 {
     private readonly IRedisService _redisService;
     private readonly IRobotActivityRepository _activityRepository;

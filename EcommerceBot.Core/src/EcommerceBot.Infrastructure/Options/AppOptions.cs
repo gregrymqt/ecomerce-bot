@@ -3,7 +3,7 @@ namespace EcommerceBot.Infrastructure.Options;
 /// <summary>
 /// Configurações gerais da aplicação (URLs base do backend e frontend).
 /// </summary>
-public class AppOptions
+public sealed class AppOptions
 {
     public const string SectionName = "App";
 

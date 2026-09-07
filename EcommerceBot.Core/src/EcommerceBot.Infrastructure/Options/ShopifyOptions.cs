@@ -3,7 +3,7 @@ namespace EcommerceBot.Infrastructure.Options;
 /// <summary>
 /// Configurações da integração e-commerce Shopify (GraphQL & OAuth).
 /// </summary>
-public class ShopifyOptions
+public sealed class ShopifyOptions
 {
     public const string SectionName = "Shopify";
 

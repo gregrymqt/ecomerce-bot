@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Gateways;
 
-public class NuvemshopGateway : IEcommerceGateway
+public sealed class NuvemshopGateway : IEcommerceGateway
 {
     private readonly HttpClient _httpClient;
     private readonly IStoreIntegrationRepository _integrationRepository;

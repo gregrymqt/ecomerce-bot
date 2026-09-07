@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Gateways;
 
-public class ShopifyGateway : IEcommerceGateway
+public sealed class ShopifyGateway : IEcommerceGateway
 {
     private readonly HttpClient _httpClient;
     private readonly IStoreIntegrationRepository _integrationRepository;

@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class CheckoutService : ICheckoutService
+public sealed class CheckoutService : ICheckoutService
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IPlanRepository _planRepository;

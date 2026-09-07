@@ -11,7 +11,7 @@ using EcommerceBot.Domain.Interfaces;
 
 namespace EcommerceBot.Infrastructure.Repositories;
 
-public class TrafficAttributionRepository : ITrafficAttributionRepository
+public sealed class TrafficAttributionRepository : ITrafficAttributionRepository
 {
     private readonly IDbConnectionFactory _connectionFactory;
 

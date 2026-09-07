@@ -13,7 +13,7 @@ using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class MercadoPagoWebhookService : IMercadoPagoWebhookService
+public sealed class MercadoPagoWebhookService : IMercadoPagoWebhookService
 {
     private readonly IRedisService _redisService;
     private readonly IPublishEndpoint _publishEndpoint;

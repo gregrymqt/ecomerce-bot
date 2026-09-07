@@ -2,8 +2,8 @@
   "metadata": {
     "version": "2.0",
     "generator": "generate_knowledge_graph.py",
-    "total_nodes": 179,
-    "total_edges": 197
+    "total_nodes": 170,
+    "total_edges": 169
   },
   "nodes": [
     {
@@ -147,174 +147,6 @@
       "metadata": {}
     },
     {
-      "id": "consumer:AnalyticsProcessedConsumer",
-      "label": "AnalyticsProcessedConsumer",
-      "type": "MassTransitConsumer",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Messaging/AnalyticsProcessedConsumer.cs",
-      "metadata": {
-        "message": "MlAnalysisResultMessage"
-      }
-    },
-    {
-      "id": "code:RedisService",
-      "label": "RedisService",
-      "type": "CoreServiceOrRepo",
-      "file": "",
-      "metadata": {}
-    },
-    {
-      "id": "code:RobotActivityRepository",
-      "label": "RobotActivityRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "",
-      "metadata": {}
-    },
-    {
-      "id": "consumer:EmailNotificationConsumer",
-      "label": "EmailNotificationConsumer",
-      "type": "MassTransitConsumer",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Messaging/EmailNotificationConsumer.cs",
-      "metadata": {
-        "message": "EmailEventPayload"
-      }
-    },
-    {
-      "id": "queue:email_notifications",
-      "label": "email_notifications",
-      "type": "MessageQueue",
-      "file": "",
-      "metadata": {}
-    },
-    {
-      "id": "code:EmailRepository",
-      "label": "EmailRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "",
-      "metadata": {}
-    },
-    {
-      "id": "consumer:LlmUsageConsumer",
-      "label": "LlmUsageConsumer",
-      "type": "MassTransitConsumer",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Messaging/LlmUsageConsumer.cs",
-      "metadata": {
-        "message": "LlmUsageEvent"
-      }
-    },
-    {
-      "id": "queue:llm_usage_queue",
-      "label": "llm_usage_queue",
-      "type": "MessageQueue",
-      "file": "",
-      "metadata": {}
-    },
-    {
-      "id": "code:MeteringRepository",
-      "label": "MeteringRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "",
-      "metadata": {}
-    },
-    {
-      "id": "consumer:NuvemshopBulkSyncConsumer",
-      "label": "NuvemshopBulkSyncConsumer",
-      "type": "MassTransitConsumer",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Messaging/NuvemshopBulkSyncConsumer.cs",
-      "metadata": {
-        "message": "NuvemshopBulkSyncMessage"
-      }
-    },
-    {
-      "id": "queue:nuvemshop_bulk_sync",
-      "label": "nuvemshop_bulk_sync",
-      "type": "MessageQueue",
-      "file": "",
-      "metadata": {}
-    },
-    {
-      "id": "code:ProductRepository",
-      "label": "ProductRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "",
-      "metadata": {}
-    },
-    {
-      "id": "code:TenantRepository",
-      "label": "TenantRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "",
-      "metadata": {}
-    },
-    {
-      "id": "code:StoreIntegrationRepository",
-      "label": "StoreIntegrationRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "",
-      "metadata": {}
-    },
-    {
-      "id": "consumer:PaymentProcessingConsumer",
-      "label": "PaymentProcessingConsumer",
-      "type": "MassTransitConsumer",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Messaging/PaymentProcessingConsumer.cs",
-      "metadata": {
-        "message": "PaymentReceivedEvent"
-      }
-    },
-    {
-      "id": "queue:payments_process_queue",
-      "label": "payments_process_queue",
-      "type": "MessageQueue",
-      "file": "",
-      "metadata": {}
-    },
-    {
-      "id": "code:OrderRepository",
-      "label": "OrderRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "",
-      "metadata": {}
-    },
-    {
-      "id": "code:PlanRepository",
-      "label": "PlanRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "",
-      "metadata": {}
-    },
-    {
-      "id": "consumer:ProcessedProductConsumer",
-      "label": "ProcessedProductConsumer",
-      "type": "MassTransitConsumer",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Messaging/ProcessedProductConsumer.cs",
-      "metadata": {
-        "message": "ProductProcessedEvent"
-      }
-    },
-    {
-      "id": "queue:ecommerce_processed_queue",
-      "label": "ecommerce_processed_queue",
-      "type": "MessageQueue",
-      "file": "",
-      "metadata": {}
-    },
-    {
-      "id": "consumer:ShopifyBulkSyncConsumer",
-      "label": "ShopifyBulkSyncConsumer",
-      "type": "MassTransitConsumer",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Messaging/ShopifyBulkSyncConsumer.cs",
-      "metadata": {
-        "message": "ShopifyBulkSyncMessage"
-      }
-    },
-    {
-      "id": "queue:shopify_bulk_sync",
-      "label": "shopify_bulk_sync",
-      "type": "MessageQueue",
-      "file": "",
-      "metadata": {}
-    },
-    {
       "id": "code:AiCapacityRepository",
       "label": "AiCapacityRepository",
       "type": "CoreServiceOrRepo",
@@ -322,10 +154,52 @@
       "metadata": {}
     },
     {
+      "id": "code:EmailRepository",
+      "label": "EmailRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/EmailRepository.cs",
+      "metadata": {}
+    },
+    {
       "id": "code:EnterpriseLeadRepository",
       "label": "EnterpriseLeadRepository",
       "type": "CoreServiceOrRepo",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/EnterpriseLeadRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:MeteringRepository",
+      "label": "MeteringRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/MeteringRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:OrderRepository",
+      "label": "OrderRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/OrderRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:PlanRepository",
+      "label": "PlanRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/PlanRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:ProductRepository",
+      "label": "ProductRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/ProductRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:RobotActivityRepository",
+      "label": "RobotActivityRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/RobotActivityRepository.cs",
       "metadata": {}
     },
     {
@@ -340,6 +214,13 @@
       "label": "SaasAnalyticsRepository",
       "type": "CoreServiceOrRepo",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/SaasAnalyticsRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:StoreIntegrationRepository",
+      "label": "StoreIntegrationRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/StoreIntegrationRepository.cs",
       "metadata": {}
     },
     {
@@ -361,6 +242,13 @@
       "label": "TenantConfigRepository",
       "type": "CoreServiceOrRepo",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/TenantConfigRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:TenantRepository",
+      "label": "TenantRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/TenantRepository.cs",
       "metadata": {}
     },
     {
@@ -403,6 +291,13 @@
       "label": "AuthService",
       "type": "CoreServiceOrRepo",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/AuthService.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:RedisService",
+      "label": "RedisService",
+      "type": "CoreServiceOrRepo",
+      "file": "",
       "metadata": {}
     },
     {
@@ -1245,6 +1140,13 @@
       "metadata": {}
     },
     {
+      "id": "queue:ecommerce_processed_queue",
+      "label": "ecommerce_processed_queue",
+      "type": "MessageQueue",
+      "file": "",
+      "metadata": {}
+    },
+    {
       "id": "queue:analytics_processed_queue",
       "label": "analytics_processed_queue",
       "type": "MessageQueue",
@@ -1252,8 +1154,29 @@
       "metadata": {}
     },
     {
+      "id": "queue:llm_usage_queue",
+      "label": "llm_usage_queue",
+      "type": "MessageQueue",
+      "file": "",
+      "metadata": {}
+    },
+    {
       "id": "queue:queue:ecommerce",
       "label": "queue:ecommerce",
+      "type": "MessageQueue",
+      "file": "",
+      "metadata": {}
+    },
+    {
+      "id": "queue:email_notifications",
+      "label": "email_notifications",
+      "type": "MessageQueue",
+      "file": "",
+      "metadata": {}
+    },
+    {
+      "id": "queue:nuvemshop_bulk_sync",
+      "label": "nuvemshop_bulk_sync",
       "type": "MessageQueue",
       "file": "",
       "metadata": {}
@@ -1576,146 +1499,6 @@
     }
   ],
   "edges": [
-    {
-      "source": "consumer:AnalyticsProcessedConsumer",
-      "target": "code:RedisService",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:AnalyticsProcessedConsumer",
-      "target": "code:RobotActivityRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:EmailNotificationConsumer",
-      "target": "queue:email_notifications",
-      "relationship": "consumes_from"
-    },
-    {
-      "source": "consumer:EmailNotificationConsumer",
-      "target": "code:EmailRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:LlmUsageConsumer",
-      "target": "queue:llm_usage_queue",
-      "relationship": "consumes_from"
-    },
-    {
-      "source": "consumer:LlmUsageConsumer",
-      "target": "code:MeteringRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:NuvemshopBulkSyncConsumer",
-      "target": "queue:nuvemshop_bulk_sync",
-      "relationship": "consumes_from"
-    },
-    {
-      "source": "consumer:NuvemshopBulkSyncConsumer",
-      "target": "code:ProductRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:NuvemshopBulkSyncConsumer",
-      "target": "code:TenantRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:NuvemshopBulkSyncConsumer",
-      "target": "code:StoreIntegrationRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:NuvemshopBulkSyncConsumer",
-      "target": "code:RobotActivityRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:NuvemshopBulkSyncConsumer",
-      "target": "code:RedisService",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:PaymentProcessingConsumer",
-      "target": "queue:payments_process_queue",
-      "relationship": "consumes_from"
-    },
-    {
-      "source": "consumer:PaymentProcessingConsumer",
-      "target": "code:OrderRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:PaymentProcessingConsumer",
-      "target": "code:TenantRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:PaymentProcessingConsumer",
-      "target": "code:PlanRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:PaymentProcessingConsumer",
-      "target": "code:RedisService",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:PaymentProcessingConsumer",
-      "target": "code:RobotActivityRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:ProcessedProductConsumer",
-      "target": "queue:ecommerce_processed_queue",
-      "relationship": "consumes_from"
-    },
-    {
-      "source": "consumer:ProcessedProductConsumer",
-      "target": "code:ProductRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:ProcessedProductConsumer",
-      "target": "code:TenantRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:ProcessedProductConsumer",
-      "target": "code:RedisService",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:ShopifyBulkSyncConsumer",
-      "target": "queue:shopify_bulk_sync",
-      "relationship": "consumes_from"
-    },
-    {
-      "source": "consumer:ShopifyBulkSyncConsumer",
-      "target": "code:ProductRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:ShopifyBulkSyncConsumer",
-      "target": "code:TenantRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:ShopifyBulkSyncConsumer",
-      "target": "code:StoreIntegrationRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:ShopifyBulkSyncConsumer",
-      "target": "code:RobotActivityRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "consumer:ShopifyBulkSyncConsumer",
-      "target": "code:RedisService",
-      "relationship": "invokes"
-    },
     {
       "source": "code:AiCapacityRepository",
       "target": "table:AiProviderCredits",

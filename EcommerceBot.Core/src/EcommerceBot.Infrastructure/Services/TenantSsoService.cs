@@ -7,10 +7,10 @@ using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
 
-namespace EcommerceBot.Infrastructure.Services
+namespace EcommerceBot.Infrastructure.Services;
+
+public sealed class TenantSsoService : ITenantSsoService
 {
-    public class TenantSsoService : ITenantSsoService
-    {
         private readonly IRoleRepository _roleRepository;
         private readonly ITenantSsoMappingRepository _ssoMappingRepository;
 
@@ -165,4 +165,3 @@ namespace EcommerceBot.Infrastructure.Services
             return (Guid.Parse("44444444-4444-4444-4444-444444444444"), "MEMBER");
         }
     }
-}

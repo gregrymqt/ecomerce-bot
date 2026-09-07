@@ -15,7 +15,7 @@ namespace EcommerceBot.Infrastructure.Services;
 /// <summary>
 /// Serviço de envio de alertas em tempo real para o canal de monitoramento do Discord via Webhooks.
 /// </summary>
-public class DiscordAlertService : IDiscordAlertService
+public sealed class DiscordAlertService : IDiscordAlertService
 {
     private readonly HttpClient _httpClient;
     private readonly DiscordOptions _discordOptions;

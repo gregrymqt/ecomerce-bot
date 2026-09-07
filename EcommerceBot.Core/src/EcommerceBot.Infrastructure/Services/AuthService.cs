@@ -19,10 +19,10 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using BCrypt.Net;
 
-namespace EcommerceBot.Infrastructure.Services
+namespace EcommerceBot.Infrastructure.Services;
+
+public sealed class AuthService : IAuthService
 {
-    public class AuthService : IAuthService
-    {
         private readonly IUserRepository _userRepository;
         private readonly ITenantRepository _tenantRepository;
         private readonly IRedisService _redisService;
@@ -390,4 +390,3 @@ namespace EcommerceBot.Infrastructure.Services
             return user.Email;
         }
     }
-}

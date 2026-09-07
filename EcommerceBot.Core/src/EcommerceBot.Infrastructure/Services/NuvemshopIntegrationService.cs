@@ -17,7 +17,7 @@ using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class NuvemshopIntegrationService : INuvemshopIntegrationService
+public sealed class NuvemshopIntegrationService : INuvemshopIntegrationService
 {
     private readonly HttpClient _httpClient;
     private readonly IStoreIntegrationRepository _integrationRepository;

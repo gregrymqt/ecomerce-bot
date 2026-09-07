@@ -3,7 +3,7 @@ namespace EcommerceBot.Infrastructure.Options;
 /// <summary>
 /// Configurações da integração e-commerce Nuvemshop (REST & OAuth).
 /// </summary>
-public class NuvemshopOptions
+public sealed class NuvemshopOptions
 {
     public const string SectionName = "Nuvemshop";
 

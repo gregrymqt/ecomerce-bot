@@ -3,7 +3,7 @@ namespace EcommerceBot.Infrastructure.Options;
 /// <summary>
 /// Configurações do Gateway de Pagamento Mercado Pago.
 /// </summary>
-public class MercadoPagoOptions
+public sealed class MercadoPagoOptions
 {
     public const string SectionName = "MercadoPago";
 

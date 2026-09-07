@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class ScraperService : IScraperService
+public sealed class ScraperService : IScraperService
 {
     private readonly ISendEndpointProvider _sendEndpointProvider;
     private readonly ITenantRepository _tenantRepository;

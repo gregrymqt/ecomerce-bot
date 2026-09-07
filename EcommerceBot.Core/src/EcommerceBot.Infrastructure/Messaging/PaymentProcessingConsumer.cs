@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Messaging;
 
-public class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
+public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
 {
     private readonly IOrderRepository _orderRepository;
     private readonly ITenantRepository _tenantRepository;

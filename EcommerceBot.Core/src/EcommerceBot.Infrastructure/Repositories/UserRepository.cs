@@ -5,10 +5,10 @@ using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
 using EcommerceBot.Infrastructure.Data;
 
-namespace EcommerceBot.Infrastructure.Repositories
+namespace EcommerceBot.Infrastructure.Repositories;
+
+public sealed class UserRepository : IUserRepository
 {
-    public class UserRepository : IUserRepository
-    {
         private readonly IDbConnectionFactory _connectionFactory;
 
         public UserRepository(IDbConnectionFactory connectionFactory)
@@ -73,4 +73,3 @@ namespace EcommerceBot.Infrastructure.Repositories
             return rowsAffected > 0;
         }
     }
-}

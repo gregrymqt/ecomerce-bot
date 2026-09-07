@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Messaging;
 
-public class ProcessedProductConsumer : IConsumer<ProductProcessedEvent>
+public sealed class ProcessedProductConsumer : IConsumer<ProductProcessedEvent>
 {
     private readonly IProductRepository _productRepository;
     private readonly ITenantRepository _tenantRepository;

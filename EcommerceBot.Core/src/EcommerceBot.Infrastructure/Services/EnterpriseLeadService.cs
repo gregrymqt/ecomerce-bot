@@ -9,10 +9,10 @@ using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
 
-namespace EcommerceBot.Infrastructure.Services
+namespace EcommerceBot.Infrastructure.Services;
+
+public sealed class EnterpriseLeadService : IEnterpriseLeadService
 {
-    public class EnterpriseLeadService : IEnterpriseLeadService
-    {
         private readonly IEnterpriseLeadRepository _leadRepository;
         private readonly ITenantRepository _tenantRepository;
         private readonly IUserRepository _userRepository;
@@ -214,4 +214,3 @@ namespace EcommerceBot.Infrastructure.Services
             };
         }
     }
-}

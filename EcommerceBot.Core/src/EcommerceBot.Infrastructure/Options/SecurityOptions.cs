@@ -3,7 +3,7 @@ namespace EcommerceBot.Infrastructure.Options;
 /// <summary>
 /// Configurações de chaves mestres de segurança e criptografia.
 /// </summary>
-public class SecurityOptions
+public sealed class SecurityOptions
 {
     public const string SectionName = "Security";
 

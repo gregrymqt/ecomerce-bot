@@ -11,7 +11,7 @@ namespace EcommerceBot.Infrastructure.Services;
 /// Implementação padronizada de IRedisService encapsulando IConnectionMultiplexer,
 /// serialização JSON com System.Text.Json, tratamento resiliente de erros e Pub/Sub.
 /// </summary>
-public class RedisService : IRedisService
+public sealed class RedisService : IRedisService
 {
     private readonly IConnectionMultiplexer _redis;
     private readonly ILogger<RedisService> _logger;

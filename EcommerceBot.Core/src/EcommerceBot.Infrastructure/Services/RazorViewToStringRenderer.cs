@@ -17,7 +17,7 @@ namespace EcommerceBot.Infrastructure.Services;
 /// <summary>
 /// Motor de renderização dinâmico que localiza, compila e renderiza views Razor (.cshtml) para strings HTML.
 /// </summary>
-public class RazorViewToStringRenderer : IRazorTemplateRenderer
+public sealed class RazorViewToStringRenderer : IRazorTemplateRenderer
 {
     private readonly IRazorViewEngine _viewEngine;
     private readonly ITempDataProvider _tempDataProvider;

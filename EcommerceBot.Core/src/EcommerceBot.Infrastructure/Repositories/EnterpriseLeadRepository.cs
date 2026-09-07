@@ -7,10 +7,10 @@ using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
 using EcommerceBot.Infrastructure.Data;
 
-namespace EcommerceBot.Infrastructure.Repositories
+namespace EcommerceBot.Infrastructure.Repositories;
+
+public sealed class EnterpriseLeadRepository : IEnterpriseLeadRepository
 {
-    public class EnterpriseLeadRepository : IEnterpriseLeadRepository
-    {
         private readonly IDbConnectionFactory _connectionFactory;
 
         public EnterpriseLeadRepository(IDbConnectionFactory connectionFactory)
@@ -151,4 +151,3 @@ namespace EcommerceBot.Infrastructure.Repositories
             return rows > 0;
         }
     }
-}

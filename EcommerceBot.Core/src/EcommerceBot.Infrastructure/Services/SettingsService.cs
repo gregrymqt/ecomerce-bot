@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class SettingsService : ISettingsService
+public sealed class SettingsService : ISettingsService
 {
     private readonly ITenantConfigRepository _repository;
     private readonly IRedisService _redisService;

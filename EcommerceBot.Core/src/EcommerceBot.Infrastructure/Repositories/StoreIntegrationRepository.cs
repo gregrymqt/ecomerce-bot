@@ -7,7 +7,7 @@ using EcommerceBot.Domain.Interfaces;
 
 namespace EcommerceBot.Infrastructure.Repositories;
 
-public class StoreIntegrationRepository : IStoreIntegrationRepository
+public sealed class StoreIntegrationRepository : IStoreIntegrationRepository
 {
     private readonly IDbConnectionFactory _connectionFactory;
 

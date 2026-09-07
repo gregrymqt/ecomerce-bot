@@ -3,7 +3,7 @@ namespace EcommerceBot.Infrastructure.Options;
 /// <summary>
 /// Configurações de Connection Strings do banco de dados relacional e serviços de cache.
 /// </summary>
-public class DatabaseOptions
+public sealed class DatabaseOptions
 {
     public const string SectionName = "ConnectionStrings";
 

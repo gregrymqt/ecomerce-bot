@@ -14,7 +14,7 @@ using Dapper;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class SystemService : ISystemService
+public sealed class SystemService : ISystemService
 {
     private readonly IProductRepository _productRepository;
     private readonly IRobotActivityRepository _activityRepository;

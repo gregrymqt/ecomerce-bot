@@ -3,7 +3,7 @@ namespace EcommerceBot.Infrastructure.Options;
 /// <summary>
 /// Configurações do broker de mensageria RabbitMQ / MassTransit.
 /// </summary>
-public class RabbitMqOptions
+public sealed class RabbitMqOptions
 {
     public const string SectionName = "RabbitMQ";
 

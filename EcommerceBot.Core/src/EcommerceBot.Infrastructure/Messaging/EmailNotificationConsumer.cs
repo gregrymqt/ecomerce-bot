@@ -12,10 +12,10 @@ using EcommerceBot.Infrastructure.Gateways;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 
-namespace EcommerceBot.Infrastructure.Messaging
+namespace EcommerceBot.Infrastructure.Messaging;
+
+public sealed class EmailNotificationConsumer : IConsumer<EmailEventPayload>
 {
-    public class EmailNotificationConsumer : IConsumer<EmailEventPayload>
-    {
         private readonly IResendGateway _resendGateway;
         private readonly IEmailRepository _emailRepository;
         private readonly IRazorTemplateRenderer _templateRenderer;
@@ -218,4 +218,3 @@ namespace EcommerceBot.Infrastructure.Messaging
             }
         }
     }
-}

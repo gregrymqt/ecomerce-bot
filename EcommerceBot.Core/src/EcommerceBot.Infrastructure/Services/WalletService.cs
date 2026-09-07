@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class WalletService : IWalletService
+public sealed class WalletService : IWalletService
 {
     private readonly ITenantRepository _tenantRepository;
     private readonly IPlanRepository _planRepository;

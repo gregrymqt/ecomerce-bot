@@ -3,7 +3,7 @@ namespace EcommerceBot.Infrastructure.Options;
 /// <summary>
 /// Configurações do serviço de Cache e Pub/Sub Redis.
 /// </summary>
-public class RedisOptions
+public sealed class RedisOptions
 {
     public const string SectionName = "Redis";
 

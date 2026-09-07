@@ -12,7 +12,7 @@ using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class EmailWebhookService : IEmailWebhookService
+public sealed class EmailWebhookService : IEmailWebhookService
 {
     private readonly IEmailRepository _emailRepository;
     private readonly ILogger<EmailWebhookService> _logger;

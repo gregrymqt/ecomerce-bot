@@ -8,7 +8,7 @@ using EcommerceBot.Infrastructure.Data;
 
 namespace EcommerceBot.Infrastructure.Repositories;
 
-public class TenantSsoMappingRepository : ITenantSsoMappingRepository
+public sealed class TenantSsoMappingRepository : ITenantSsoMappingRepository
 {
     private readonly IDbConnectionFactory _connectionFactory;
 

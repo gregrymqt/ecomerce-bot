@@ -8,7 +8,7 @@ using EcommerceBot.Infrastructure.Data;
 
 namespace EcommerceBot.Infrastructure.Repositories;
 
-public class RoleRepository : IRoleRepository
+public sealed class RoleRepository : IRoleRepository
 {
     private readonly IDbConnectionFactory _connectionFactory;
 

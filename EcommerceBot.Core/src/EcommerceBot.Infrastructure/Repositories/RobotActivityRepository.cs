@@ -7,7 +7,7 @@ using EcommerceBot.Domain.Interfaces;
 
 namespace EcommerceBot.Infrastructure.Repositories;
 
-public class RobotActivityRepository : IRobotActivityRepository
+public sealed class RobotActivityRepository : IRobotActivityRepository
 {
     private readonly IDbConnectionFactory _dbConnectionFactory;
 

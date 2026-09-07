@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class PlanService : IPlanService
+public sealed class PlanService : IPlanService
 {
     private readonly IPlanRepository _planRepository;
     private readonly IDistributedCache _cache;

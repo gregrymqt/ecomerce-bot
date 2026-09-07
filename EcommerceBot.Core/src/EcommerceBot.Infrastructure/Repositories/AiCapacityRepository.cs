@@ -8,7 +8,7 @@ using EcommerceBot.Domain.Interfaces;
 
 namespace EcommerceBot.Infrastructure.Repositories;
 
-public class AiCapacityRepository : IAiCapacityRepository
+public sealed class AiCapacityRepository : IAiCapacityRepository
 {
     private readonly IDbConnectionFactory _connectionFactory;
 

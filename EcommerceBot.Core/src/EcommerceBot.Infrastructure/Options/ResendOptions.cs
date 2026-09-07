@@ -3,7 +3,7 @@ namespace EcommerceBot.Infrastructure.Options;
 /// <summary>
 /// Configurações do serviço de e-mail transacional Resend.
 /// </summary>
-public class ResendOptions
+public sealed class ResendOptions
 {
     public const string SectionName = "Resend";
 

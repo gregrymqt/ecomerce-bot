@@ -12,7 +12,7 @@ using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Gateways;
 
-public class MercadoPagoGateway : IMercadoPagoGateway
+public sealed class MercadoPagoGateway : IMercadoPagoGateway
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<MercadoPagoGateway> _logger;

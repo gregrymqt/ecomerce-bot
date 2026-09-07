@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Messaging;
 
-public class ShopifyBulkSyncConsumer : IConsumer<ShopifyBulkSyncMessage>
+public sealed class ShopifyBulkSyncConsumer : IConsumer<ShopifyBulkSyncMessage>
 {
     private readonly IEcommerceGatewayFactory _gatewayFactory;
     private readonly IProductRepository _productRepository;

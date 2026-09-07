@@ -3,7 +3,7 @@ namespace EcommerceBot.Infrastructure.Options;
 /// <summary>
 /// Configurações do canal de alertas críticos via Discord Webhook.
 /// </summary>
-public class DiscordOptions
+public sealed class DiscordOptions
 {
     public const string SectionName = "Discord";
 

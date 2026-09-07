@@ -1,3 +1,4 @@
+using System;
 using System.Data;
 using System.Threading.Tasks;
 using EcommerceBot.Domain.Interfaces;
@@ -7,7 +8,10 @@ using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Data;
 
-public class DbConnectionFactory : IDbConnectionFactory
+/// <summary>
+/// Fábrica de conexões ADO.NET / Microsoft.Data.SqlClient para consultas de alta performance via Dapper.
+/// </summary>
+public sealed class DbConnectionFactory : IDbConnectionFactory
 {
     private readonly string _connectionString;
 
@@ -17,7 +21,7 @@ public class DbConnectionFactory : IDbConnectionFactory
 
         if (string.IsNullOrWhiteSpace(_connectionString))
         {
-            throw new System.ArgumentNullException(nameof(databaseOptions), "Connection string 'DefaultConnection' not found in configuration.");
+            throw new ArgumentNullException(nameof(databaseOptions), "Connection string 'DefaultConnection' not found in configuration.");
         }
     }
 

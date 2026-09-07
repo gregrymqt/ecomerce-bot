@@ -8,7 +8,7 @@ using EcommerceBot.Domain.Interfaces;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class SaasGrowthService : ISaasGrowthService
+public sealed class SaasGrowthService : ISaasGrowthService
 {
     private readonly ISaasAnalyticsRepository _analyticsRepository;
 

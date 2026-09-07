@@ -5,10 +5,10 @@ using Dapper;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
 
-namespace EcommerceBot.Infrastructure.Repositories
+namespace EcommerceBot.Infrastructure.Repositories;
+
+public sealed class OrderRepository : IOrderRepository
 {
-    public class OrderRepository : IOrderRepository
-    {
         private readonly IDbConnectionFactory _connectionFactory;
 
         public OrderRepository(IDbConnectionFactory connectionFactory)
@@ -131,4 +131,3 @@ namespace EcommerceBot.Infrastructure.Repositories
             await connection.ExecuteAsync(sql, order);
         }
     }
-}

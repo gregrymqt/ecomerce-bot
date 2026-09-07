@@ -8,7 +8,7 @@ using EcommerceBot.Domain.Interfaces;
 
 namespace EcommerceBot.Infrastructure.Repositories;
 
-public class TenantRepository : ITenantRepository
+public sealed class TenantRepository : ITenantRepository
 {
     private readonly IDbConnectionFactory _connectionFactory;
 

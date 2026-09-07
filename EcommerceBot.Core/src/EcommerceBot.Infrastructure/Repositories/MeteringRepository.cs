@@ -6,10 +6,10 @@ using Dapper;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
 
-namespace EcommerceBot.Infrastructure.Repositories
+namespace EcommerceBot.Infrastructure.Repositories;
+
+public sealed class MeteringRepository : IMeteringRepository
 {
-    public class MeteringRepository : IMeteringRepository
-    {
         private readonly IDbConnectionFactory _connectionFactory;
 
         public MeteringRepository(IDbConnectionFactory connectionFactory)
@@ -144,4 +144,3 @@ namespace EcommerceBot.Infrastructure.Repositories
             return (items, totalCount);
         }
     }
-}

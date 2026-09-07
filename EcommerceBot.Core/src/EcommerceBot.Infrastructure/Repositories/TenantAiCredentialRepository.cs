@@ -6,7 +6,7 @@ using EcommerceBot.Domain.Interfaces;
 
 namespace EcommerceBot.Infrastructure.Repositories;
 
-public class TenantAiCredentialRepository : ITenantAiCredentialRepository
+public sealed class TenantAiCredentialRepository : ITenantAiCredentialRepository
 {
     private readonly IDbConnectionFactory _connectionFactory;
 

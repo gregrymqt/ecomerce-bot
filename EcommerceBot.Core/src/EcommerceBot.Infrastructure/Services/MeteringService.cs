@@ -8,10 +8,10 @@ using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 
-namespace EcommerceBot.Infrastructure.Services
+namespace EcommerceBot.Infrastructure.Services;
+
+public sealed class MeteringService : IMeteringService
 {
-    public class MeteringService : IMeteringService
-    {
         private readonly IMeteringRepository _repository;
         private readonly ILogger<MeteringService> _logger;
 
@@ -163,4 +163,3 @@ namespace EcommerceBot.Infrastructure.Services
             };
         }
     }
-}

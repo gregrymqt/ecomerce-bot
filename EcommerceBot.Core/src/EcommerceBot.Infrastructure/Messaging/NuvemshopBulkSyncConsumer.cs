@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Messaging;
 
-public class NuvemshopBulkSyncConsumer : IConsumer<NuvemshopBulkSyncMessage>
+public sealed class NuvemshopBulkSyncConsumer : IConsumer<NuvemshopBulkSyncMessage>
 {
     private readonly IEcommerceGatewayFactory _gatewayFactory;
     private readonly IProductRepository _productRepository;

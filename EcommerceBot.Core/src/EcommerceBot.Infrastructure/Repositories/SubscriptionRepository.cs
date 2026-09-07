@@ -6,7 +6,7 @@ using EcommerceBot.Domain.Interfaces;
 
 namespace EcommerceBot.Infrastructure.Repositories;
 
-public class SubscriptionRepository : ISubscriptionRepository
+public sealed class SubscriptionRepository : ISubscriptionRepository
 {
     private readonly IDbConnectionFactory _connectionFactory;
 

@@ -11,7 +11,7 @@ using EcommerceBot.Domain.Interfaces;
 
 namespace EcommerceBot.Infrastructure.Repositories;
 
-public class SaasAnalyticsRepository : ISaasAnalyticsRepository
+public sealed class SaasAnalyticsRepository : ISaasAnalyticsRepository
 {
     private readonly IDbConnectionFactory _connectionFactory;
 

@@ -3,7 +3,7 @@ namespace EcommerceBot.Infrastructure.Options;
 /// <summary>
 /// Configurações do provedor de autenticação Google OAuth 2.0.
 /// </summary>
-public class GoogleAuthOptions
+public sealed class GoogleAuthOptions
 {
     public const string SectionName = "Google";
 

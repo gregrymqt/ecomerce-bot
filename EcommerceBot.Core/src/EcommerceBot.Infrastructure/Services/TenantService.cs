@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class TenantService : ITenantService
+public sealed class TenantService : ITenantService
 {
     private readonly ITenantRepository _tenantRepository;
     private readonly ILogger<TenantService> _logger;

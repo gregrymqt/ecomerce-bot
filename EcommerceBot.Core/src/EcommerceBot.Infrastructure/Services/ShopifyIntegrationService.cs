@@ -16,7 +16,7 @@ using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class ShopifyIntegrationService : IShopifyIntegrationService
+public sealed class ShopifyIntegrationService : IShopifyIntegrationService
 {
     private readonly IStoreIntegrationRepository _storeIntegrationRepository;
     private readonly IProductRepository _productRepository;

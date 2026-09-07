@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class StoreIntegrationService : IStoreIntegrationService
+public sealed class StoreIntegrationService : IStoreIntegrationService
 {
     private readonly IStoreIntegrationRepository _integrationRepository;
     private readonly IEcommerceGatewayFactory _gatewayFactory;

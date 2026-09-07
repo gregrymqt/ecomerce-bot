@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class AiCapacityService : IAiCapacityService
+public sealed class AiCapacityService : IAiCapacityService
 {
     private readonly IAiCapacityRepository _aiCapacityRepository;
     private readonly IPublishEndpoint _publishEndpoint;

@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class SubscriptionService : ISubscriptionService
+public sealed class SubscriptionService : ISubscriptionService
 {
     private readonly ISubscriptionRepository _subscriptionRepository;
     private readonly IPlanRepository _planRepository;
@@ -45,7 +45,7 @@ public class SubscriptionService : ISubscriptionService
 
         var existing = await _subscriptionRepository.GetActiveByTenantIdAsync(tenantId);
         var now = DateTimeOffset.UtcNow;
-        var durationDays = plan.BillingInterval.ToUpper() == "YEARLY" ? 365 : 30;
+        var durationDays = string.Equals(plan.BillingInterval, "YEARLY", StringComparison.OrdinalIgnoreCase) ? 365 : 30;
 
         if (existing != null)
         {

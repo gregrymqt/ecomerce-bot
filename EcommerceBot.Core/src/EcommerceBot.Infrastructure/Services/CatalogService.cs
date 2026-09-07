@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public class CatalogService : ICatalogService
+public sealed class CatalogService : ICatalogService
 {
     private readonly IProductRepository _productRepository;
     private readonly ITenantRepository _tenantRepository;
