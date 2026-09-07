@@ -1,10 +1,11 @@
 import asyncio
 import json
-import logging
 from typing import Dict, Any
 import aio_pika
 
 from app.core.config.settings import settings
+from app.core.shared.logger import get_logger
+from app.core.config.redis_db import redis_cache
 from app.core.config.rabbitmq import (
     QUEUE_ANALYTICS_ML,
     QUEUE_ANALYTICS_PROCESSED,
@@ -15,7 +16,7 @@ from .churn_predictor import ChurnPredictor
 from .ltv_forecaster import LTVForecaster
 from .token_capacity_forecaster import TokenCapacityForecaster
 
-logger = logging.getLogger(__name__)
+logger = get_logger("worker.ml")
 
 QUEUE_ML_INPUT = QUEUE_ANALYTICS_ML
 QUEUE_ML_OUTPUT = QUEUE_ANALYTICS_PROCESSED
@@ -29,7 +30,7 @@ class AnalyticsMLEngine:
 
     def process_analytics_sync(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Execução síncrona dos modelos de ML (executada em thread separada pelo worker).
+        Execução síncrona dos modelos de ML (executada em thread separada pelo worker via asyncio.to_thread).
         """
         tenant_id = payload.get("tenantId") or payload.get("tenant_id")
         job_type = (payload.get("jobType") or payload.get("job_type") or "FULL_ANALYTICS").upper()
@@ -38,7 +39,10 @@ class AnalyticsMLEngine:
         current_balances = payload.get("currentBalances") or payload.get("current_balances") or {}
         forecast_days = int(payload.get("forecastDays") or payload.get("forecast_days") or 30)
 
-        logger.info(f"📊 [ML Engine] Processando job={job_type} para tenant={tenant_id}.")
+        logger.info(
+            f"Processando job={job_type} para tenant={tenant_id}.",
+            extra={"tenant_id": str(tenant_id), "job_type": job_type}
+        )
 
         results = {
             "tenantId": tenant_id,
@@ -85,11 +89,23 @@ async def _process_ml_message(message: aio_pika.IncomingMessage, channel: aio_pi
             return
 
         tenant_id = payload.get("tenantId") or payload.get("tenant_id")
+        job_type = (payload.get("jobType") or payload.get("job_type") or "FULL_ANALYTICS").upper()
         if not tenant_id:
             logger.warning("Mensagem de ML recebida sem tenantId.")
             return
 
-        # Executa em thread assíncrona para não travar o loop de I/O do RabbitMQ
+        # Verificação de Idempotência se a mensagem trouxer identificador único
+        message_id = payload.get("messageId") or payload.get("jobId") or message.message_id
+        idempotency_key = f"worker:idempotency:ml:{tenant_id}:{job_type}:{message_id}" if message_id else None
+
+        if idempotency_key and await redis_cache.is_already_processed(idempotency_key):
+            logger.info(
+                "Job analítico já processado anteriormente (idempotência ativa). Ignorando.",
+                extra={"tenant_id": str(tenant_id), "job_type": job_type}
+            )
+            return
+
+        # Executa em thread assíncrona para não travar o loop de I/O do RabbitMQ (GIL/CPU-bound)
         result_data = await asyncio.to_thread(engine.process_analytics_sync, payload)
 
         # Publica o resultado no RabbitMQ
@@ -102,7 +118,15 @@ async def _process_ml_message(message: aio_pika.IncomingMessage, channel: aio_pi
                 ),
                 routing_key=QUEUE_ML_OUTPUT
             )
-            logger.info(f"✅ Resultados de ML publicados em '{QUEUE_ML_OUTPUT}' para tenant {tenant_id}.")
+            logger.info(
+                f"Resultados de ML publicados em '{QUEUE_ML_OUTPUT}' para tenant {tenant_id}.",
+                extra={"tenant_id": str(tenant_id), "job_type": job_type}
+            )
+
+            # Registra idempotência se message_id presente
+            if idempotency_key:
+                await redis_cache.set_idempotency_key(idempotency_key, ttl_seconds=86400)
+
         except Exception as pub_err:
             logger.error(f"Erro ao publicar resultados de ML: {pub_err}")
 
@@ -111,7 +135,7 @@ async def consume_ml_queue():
     """
     Worker assíncrono para consumo da fila analytics_ml_queue.
     """
-    logger.info(f"📡 Inicializando MLWorker conectado a {settings.RABBITMQ_URL}...")
+    logger.info(f"Inicializando MLWorker conectado a {settings.RABBITMQ_URL}...")
     engine = AnalyticsMLEngine()
 
     while True:
@@ -129,14 +153,14 @@ async def consume_ml_queue():
                 )
                 await channel.declare_queue(QUEUE_ML_OUTPUT, durable=True)
 
-                logger.info(f"🚀 MLWorker operacional e escutando em '{QUEUE_ML_INPUT}'...")
+                logger.info(f"MLWorker operacional e escutando em '{QUEUE_ML_INPUT}'...")
 
                 async for message in input_q:
                     await _process_ml_message(message, channel, engine)
 
         except asyncio.CancelledError:
-            logger.info("🛑 MLWorker encerrado graciosamente.")
+            logger.info("MLWorker encerrado graciosamente.")
             break
         except Exception as e:
-            logger.warning(f"⚠️ Erro de conexão RabbitMQ no MLWorker ({e}). Reconectando em 5s...")
+            logger.warning(f"Erro de conexão RabbitMQ no MLWorker ({e}). Reconectando em 5s...")
             await asyncio.sleep(5)

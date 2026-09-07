@@ -52,7 +52,7 @@ public sealed class AiCapacityRepository : IAiCapacityRepository
             ORDER BY CreatedAt DESC";
 
         var items = await connection.QueryAsync<AiProviderCredit>(sql, new { Limit = limit });
-        return items.ToList();
+        return [.. items];
     }
 
     public async Task<Dictionary<string, decimal>> GetLatestBalancesAsync()
@@ -73,9 +73,9 @@ public sealed class AiCapacityRepository : IAiCapacityRepository
         var rows = await connection.QueryAsync<(string Provider, decimal BalanceRemaining)>(sql);
         var dict = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var row in rows)
+        foreach (var (Provider, BalanceRemaining) in rows)
         {
-            dict[row.Provider] = row.BalanceRemaining;
+            dict[Provider] = BalanceRemaining;
         }
 
         // Garante que os 3 provedores existam no dicionário

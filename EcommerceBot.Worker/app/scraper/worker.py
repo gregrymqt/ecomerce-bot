@@ -1,9 +1,11 @@
 import asyncio
 import json
-import logging
 import aio_pika
 from .parser import ScraperAndLLMParser
 from app.core.config.settings import settings
+from app.core.shared.logger import get_logger
+from app.core.shared.security import validate_url_safety
+from app.core.config.redis_db import redis_cache
 from app.core.config.rabbitmq import (
     QUEUE_ECOMMERCE,
     QUEUE_ECOMMERCE_PROCESSED,
@@ -11,7 +13,7 @@ from app.core.config.rabbitmq import (
     ECOMMERCE_QUEUE_ARGS
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger("worker.scraper")
 
 QUEUE_INPUT = QUEUE_ECOMMERCE
 QUEUE_OUTPUT = QUEUE_ECOMMERCE_PROCESSED
@@ -32,10 +34,52 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
         is_byok = bool(payload.get("isByok") or payload.get("IsByok") or False)
 
         if not url or not tenant_id or not sku:
-            logger.warning(f"Payload inválido ou incompleto: {payload}")
+            logger.warning("Payload inválido ou incompleto recebido no ScraperWorker", extra={"payload": payload})
             return
 
-        logger.info(f"🕷️ [ScraperWorker] Processando Scraping com Scrapling para Tenant {tenant_id} | SKU {sku} | URL {url} | BYOK: {is_byok}")
+        # 1. Verificação de Idempotência no Redis (TTL 24h)
+        idempotency_key = f"worker:idempotency:scraper:{tenant_id}:{sku}"
+        if await redis_cache.is_already_processed(idempotency_key):
+            logger.info(
+                "Mensagem já processada anteriormente (idempotência ativa). Ignorando reexecução redundante.",
+                extra={"tenant_id": str(tenant_id), "sku": str(sku)}
+            )
+            return
+
+        logger.info(
+            f"Processando Scraping com Scrapling para Tenant {tenant_id} | SKU {sku} | URL {url} | BYOK: {is_byok}",
+            extra={"tenant_id": str(tenant_id), "sku": str(sku), "url": str(url)}
+        )
+
+        # 2. Defesa em Profundidade Anti-SSRF antes do acionamento do scraper
+        try:
+            validate_url_safety(url)
+        except ValueError as ssrf_err:
+            logger.warning(
+                f"Bloqueio de segurança Anti-SSRF para URL {url}: {ssrf_err}",
+                extra={"tenant_id": str(tenant_id), "sku": str(sku), "reason": str(ssrf_err)}
+            )
+            failed_event = {
+                "tenantId": tenant_id,
+                "sku": sku,
+                "title": "",
+                "description": "",
+                "status": "FAILED",
+                "errorMessage": f"Bloqueado pela política Anti-SSRF: {ssrf_err}",
+                "aiMetadataJson": "{}"
+            }
+            try:
+                await channel.default_exchange.publish(
+                    aio_pika.Message(
+                        body=json.dumps(failed_event).encode("utf-8"),
+                        content_type="application/json",
+                        delivery_mode=aio_pika.DeliveryMode.PERSISTENT
+                    ),
+                    routing_key=QUEUE_OUTPUT
+                )
+            except Exception as pub_err:
+                logger.error(f"Erro ao publicar falha de SSRF no RabbitMQ: {pub_err}")
+            return
 
         try:
             result = await parser.parse_and_enrich(url, prompt_context=prompt_ctx)
@@ -55,7 +99,7 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
                     "images": result.get("images", [])
                 })
             }
-            logger.info(f"✅ Scraping bem-sucedido para SKU {sku}. Publicando no {QUEUE_OUTPUT}")
+            logger.info(f"Scraping bem-sucedido para SKU {sku}. Publicando no {QUEUE_OUTPUT}")
 
             # Publica evento assíncrono de telemetria de LLM em llm_usage_queue
             usage_event = {
@@ -79,8 +123,11 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
                 routing_key=QUEUE_LLM_USAGE
             )
 
+            # 3. Registra chave de idempotência com TTL de 24h
+            await redis_cache.set_idempotency_key(idempotency_key, ttl_seconds=86400)
+
         except Exception as ex:
-            logger.error(f"❌ Falha no Scraping para SKU {sku} ({url}): {ex}", exc_info=True)
+            logger.error(f"Falha no Scraping para SKU {sku} ({url}): {ex}", exc_info=True)
             response_event = {
                 "tenantId": tenant_id,
                 "sku": sku,
@@ -109,7 +156,7 @@ async def start_scraper_worker():
     """
     Worker resiliente com reconexão automática ao RabbitMQ e DLQs configuradas.
     """
-    logger.info(f"📡 Inicializando ScraperWorker conectado a {settings.RABBITMQ_URL}...")
+    logger.info(f"Inicializando ScraperWorker conectado a {settings.RABBITMQ_URL}...")
     parser = ScraperAndLLMParser()
 
     while True:
@@ -124,14 +171,14 @@ async def start_scraper_worker():
                 await channel.declare_queue(QUEUE_OUTPUT, durable=True)
                 await channel.declare_queue(QUEUE_LLM_USAGE, durable=True)
 
-                logger.info(f"🚀 ScraperWorker pronto e escutando na fila '{QUEUE_INPUT}'...")
+                logger.info(f"ScraperWorker pronto e escutando na fila '{QUEUE_INPUT}'...")
 
                 async for message in queue:
                     await _process_single_message(message, channel, parser)
 
         except asyncio.CancelledError:
-            logger.info("🛑 ScraperWorker cancelado.")
+            logger.info("ScraperWorker cancelado graciosamente.")
             break
         except Exception as e:
-            logger.warning(f"⚠️ Conexão RabbitMQ perdida no ScraperWorker ({e}). Reconectando em 5 segundos...")
+            logger.warning(f"Conexão RabbitMQ perdida no ScraperWorker ({e}). Reconectando em 5 segundos...")
             await asyncio.sleep(5)

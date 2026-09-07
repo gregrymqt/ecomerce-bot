@@ -1,8 +1,9 @@
-﻿import logging
 from typing import Optional, Any
 import httpx
+from app.core.shared.logger import get_logger
+from app.core.shared.security import validate_url_safety
 
-logger = logging.getLogger(__name__)
+logger = get_logger("worker.scrapling")
 
 # Tenta importar Scrapling de forma resiliente com fallbacks
 try:
@@ -27,6 +28,8 @@ class ScraplingEngineService:
       - Tier 1: Stealth HTTP com impersonation de TLS/JA3/JA4 (50-100ms)
       - Tier 2: Stealth Browser com resolução de Cloudflare Turnstile / SPAs JS
       - Tier 3: Fallback HTTP seguro com emulação de cabeçalhos
+    
+    Todas as chamadas realizam validação preventiva Anti-SSRF antes de emitir tráfego de rede.
     """
 
     def __init__(self, proxy_url: Optional[str] = None):
@@ -42,8 +45,11 @@ class ScraplingEngineService:
         """
         Tier 1: Requisição TLS stealth ultra-rápida via curl_cffi / Scrapling.
         """
+        # Validação preventiva Anti-SSRF antes de abrir socket de rede
+        validate_url_safety(url)
+
         if self._async_fetcher is not None:
-            logger.info(f"⚡ [Scrapling Tier 1] Requisitando com TLS impersonate={impersonate}: {url}")
+            logger.info(f"Requisitando com TLS impersonate={impersonate}: {url}")
             response = await self._async_fetcher.get(
                 url,
                 impersonate=impersonate,
@@ -73,8 +79,10 @@ class ScraplingEngineService:
         """
         Tier 2: Stealth Browser para contornar Cloudflare Turnstile e renderizar SPAs JS.
         """
+        validate_url_safety(url)
+
         if SCRAPLING_AVAILABLE and StealthFetcher is not None:
-            logger.info(f"🛡️ [Scrapling Tier 2] Acionando Stealth Browser para: {url}")
+            logger.info(f"Acionando Stealth Browser para: {url}")
             try:
                 stealth = StealthFetcher()
                 response = await stealth.async_get(
@@ -94,6 +102,8 @@ class ScraplingEngineService:
         """
         Orquestra a busca inteligente com escalonamento automático de Tier 1 para Tier 2.
         """
+        validate_url_safety(url)
+
         page = None
         try:
             page = await self.fetch_tier1_http(url)
@@ -101,7 +111,7 @@ class ScraplingEngineService:
             
             # Se a resposta indicar bloqueio de anti-bot (403, 503, 429), escala para Tier 2
             if status_code in [403, 429, 503]:
-                logger.info(f"🛡️ Status {status_code} detectado no Tier 1. Escalando para Tier 2 (Stealth Browser).")
+                logger.info(f"Status {status_code} detectado no Tier 1. Escalando para Tier 2 (Stealth Browser).")
                 page = await self.fetch_tier2_browser(url)
         except Exception as e:
             logger.warning(f"Erro no Tier 1 ({e}). Escalando para Tier 2.")
