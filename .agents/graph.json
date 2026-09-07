@@ -1159,7 +1159,8 @@
       "metadata": {
         "base_route": "api/v1/tenant",
         "endpoints": [
-          "GET api/v1/tenant/me"
+          "GET api/v1/tenant/me",
+          "GET api/v1/tenant/api/v1/tenant-info"
         ]
       }
     },

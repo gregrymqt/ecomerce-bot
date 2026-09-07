@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -35,10 +36,10 @@ export const Drawer: React.FC<DrawerProps> = ({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[60] overflow-hidden">
       <div
         className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity animate-fade-in"
         onClick={onClose}
@@ -47,6 +48,7 @@ export const Drawer: React.FC<DrawerProps> = ({
 
       <div className="fixed inset-y-0 flex max-w-full">
         <div
+          onClick={(e) => e.stopPropagation()}
           className={cn(
             'relative w-screen max-w-md bg-white dark:bg-slate-900 shadow-2xl flex flex-col border-slate-200 dark:border-slate-800 transition-transform duration-300 ease-in-out',
             position === 'right' ? 'right-0 border-l ml-auto' : 'left-0 border-r mr-auto'
@@ -57,8 +59,9 @@ export const Drawer: React.FC<DrawerProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 -mr-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-             aria-label="Fechar drawer">
+              className="p-2 -mr-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center min-w-[44px] min-h-[44px] cursor-pointer"
+              aria-label="Fechar drawer"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -72,6 +75,8 @@ export const Drawer: React.FC<DrawerProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
+

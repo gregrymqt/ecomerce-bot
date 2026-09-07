@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using EcommerceBot.Application.Interfaces;
 using Microsoft.AspNetCore.Http;
@@ -9,7 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace EcommerceBot.Api.Filters;
 
 /// <summary>
-/// Action Filter para Rate Limiting distribuído com bloqueio temporário de IP via Redis.
+/// Action Filter para Rate Limiting distribuído com bloqueio temporário de IP via Redis
+/// e respostas de erro em conformidade com a RFC 7807 (ProblemDetails).
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
 public class RateLimitAttribute : Attribute, IAsyncActionFilter
@@ -49,16 +51,10 @@ public class RateLimitAttribute : Attribute, IAsyncActionFilter
         if (await redisService.KeyExistsAsync(blockKey))
         {
             httpContext.Response.Headers.Append("Retry-After", BlockDurationSeconds.ToString());
-            context.Result = new ObjectResult(new
-            {
-                statusCode = StatusCodes.Status429TooManyRequests,
-                error = "Too Many Requests",
-                message = "Seu IP foi temporariamente bloqueado por excesso de requisições suspeitas.",
-                retryAfterSeconds = BlockDurationSeconds
-            })
-            {
-                StatusCode = StatusCodes.Status429TooManyRequests
-            };
+            context.Result = CreateProblemResult(
+                httpContext,
+                "Seu IP foi temporariamente bloqueado por excesso de requisições suspeitas.",
+                BlockDurationSeconds);
             return;
         }
 
@@ -72,16 +68,10 @@ public class RateLimitAttribute : Attribute, IAsyncActionFilter
             await redisService.SetAsync(blockKey, "blocked", TimeSpan.FromSeconds(BlockDurationSeconds));
 
             httpContext.Response.Headers.Append("Retry-After", BlockDurationSeconds.ToString());
-            context.Result = new ObjectResult(new
-            {
-                statusCode = StatusCodes.Status429TooManyRequests,
-                error = "Too Many Requests",
-                message = $"Limite de requisições excedido ({MaxRequests} req/{WindowSeconds}s). IP bloqueado por {BlockDurationSeconds} segundos.",
-                retryAfterSeconds = BlockDurationSeconds
-            })
-            {
-                StatusCode = StatusCodes.Status429TooManyRequests
-            };
+            context.Result = CreateProblemResult(
+                httpContext,
+                $"Limite de requisições excedido ({MaxRequests} req/{WindowSeconds}s). IP bloqueado por {BlockDurationSeconds} segundos.",
+                BlockDurationSeconds);
             return;
         }
 
@@ -90,6 +80,28 @@ public class RateLimitAttribute : Attribute, IAsyncActionFilter
         httpContext.Response.Headers.Append("X-RateLimit-Remaining", Math.Max(0, MaxRequests - currentCount).ToString());
 
         await next();
+    }
+
+    private static ObjectResult CreateProblemResult(HttpContext context, string detail, int retryAfterSeconds)
+    {
+        var problem = new ProblemDetails
+        {
+            Type = "https://datatracker.ietf.org/doc/html/rfc7807",
+            Title = "Too Many Requests",
+            Status = StatusCodes.Status429TooManyRequests,
+            Detail = detail,
+            Instance = context.Request.Path
+        };
+        problem.Extensions["retryAfterSeconds"] = retryAfterSeconds;
+        problem.Extensions["correlationId"] = Activity.Current?.Id ?? context.TraceIdentifier;
+        problem.Extensions["error"] = "Too Many Requests";
+        problem.Extensions["message"] = detail;
+
+        return new ObjectResult(problem)
+        {
+            StatusCode = StatusCodes.Status429TooManyRequests,
+            ContentTypes = { "application/problem+json" }
+        };
     }
 
     private static string GetClientIp(HttpContext context)

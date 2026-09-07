@@ -30,4 +30,14 @@ public class TenantController : BaseApiController
 
         return Ok(profile);
     }
+
+    /// <summary>
+    /// Endpoint de inspeção do TenantId autenticado para diagnóstico e testes de conectividade.
+    /// </summary>
+    [HttpGet("/api/v1/tenant-info")]
+    public IActionResult GetTenantInfo()
+    {
+        var tenantId = _tenantContext.TenantId != Guid.Empty ? _tenantContext.TenantId : CurrentTenantId;
+        return Ok(new { TenantId = tenantId, Message = "Acesso autorizado!" });
+    }
 }

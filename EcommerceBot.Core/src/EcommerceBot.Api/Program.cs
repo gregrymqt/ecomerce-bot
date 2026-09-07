@@ -44,9 +44,7 @@ app.UseMiddleware<TenantHeaderMiddleware>();
 // Roteamento de Controllers
 app.MapControllers();
 
-// Endpoints mínimos de saúde e inspeção
-app.MapGet("/health", () => new { Status = "OK", Service = "EcommerceBot.Core.API" });
-app.MapGet("/api/v1/tenant-info", (ITenantContext tenantContext) => 
-    new { tenantContext.TenantId, Message = "Acesso autorizado!" });
+// Mapeamento modular de Health Checks segregados (/health/live, /health/ready, /health)
+app.MapApiHealthChecks();
 
 app.Run();

@@ -1,6 +1,9 @@
 using System;
+using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Interfaces;
 
@@ -57,15 +60,13 @@ public class TenantHeaderMiddleware
 
         if (!context.Request.Headers.TryGetValue("X-Tenant-ID", out var tenantIdHeader))
         {
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await context.Response.WriteAsJsonAsync(new { detail = "O header X-Tenant-ID é obrigatório." });
+            await WriteProblemResponseAsync(context, StatusCodes.Status400BadRequest, "Missing Tenant Header", "O header X-Tenant-ID é obrigatório.");
             return;
         }
 
         if (!Guid.TryParse(tenantIdHeader, out var tenantId))
         {
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await context.Response.WriteAsJsonAsync(new { detail = "O X-Tenant-ID fornecido não é um GUID válido." });
+            await WriteProblemResponseAsync(context, StatusCodes.Status400BadRequest, "Invalid Tenant Header", "O X-Tenant-ID fornecido não é um GUID válido.");
             return;
         }
 
@@ -80,8 +81,7 @@ public class TenantHeaderMiddleware
             {
                 if (!Guid.TryParse(userTenantClaim, out var claimTenantId) || claimTenantId != tenantId)
                 {
-                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                    await context.Response.WriteAsJsonAsync(new { detail = "Acesso negado: o token de autenticação não pertence ao Tenant solicitado." });
+                    await WriteProblemResponseAsync(context, StatusCodes.Status403Forbidden, "Tenant Forbidden", "Acesso negado: o token de autenticação não pertence ao Tenant solicitado.");
                     return;
                 }
             }
@@ -91,8 +91,7 @@ public class TenantHeaderMiddleware
         var tenant = await tenantRepository.GetByIdAsync(tenantId);
         if (tenant == null)
         {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await context.Response.WriteAsJsonAsync(new { detail = "Tenant inválido ou inativo." });
+            await WriteProblemResponseAsync(context, StatusCodes.Status401Unauthorized, "Tenant Unauthorized", "Tenant inválido ou inativo.");
             return;
         }
 
@@ -100,5 +99,25 @@ public class TenantHeaderMiddleware
         tenantContext.SetTenantId(tenantId);
 
         await _next(context);
+    }
+
+    private static async Task WriteProblemResponseAsync(HttpContext context, int statusCode, string title, string detail)
+    {
+        context.Response.StatusCode = statusCode;
+        context.Response.ContentType = "application/problem+json";
+
+        var problem = new ProblemDetails
+        {
+            Type = "https://datatracker.ietf.org/doc/html/rfc7807",
+            Title = title,
+            Status = statusCode,
+            Detail = detail,
+            Instance = context.Request.Path
+        };
+        problem.Extensions["correlationId"] = Activity.Current?.Id ?? context.TraceIdentifier;
+        problem.Extensions["detail"] = detail;
+        problem.Extensions["message"] = detail;
+
+        await context.Response.WriteAsJsonAsync(problem, context.RequestAborted);
     }
 }

@@ -8,7 +8,6 @@ import { PageLoader } from '@/components/ui/feedback/PageLoader';
 const AuthPage = lazy(() => import('@/features/auth/pages/AuthPage'));
 const ResetPasswordPage = lazy(() => import('@/features/auth/pages/ResetPasswordPage'));
 const GoogleCallbackPage = lazy(() => import('@/features/auth/pages/GoogleCallbackPage'));
-
 const LiveDemoPage = lazy(() => import('@/features/live-demo/pages/LiveDemoPage'));
 const CatalogPage = lazy(() => import('@/features/catalog/pages/CatalogPage'));
 const AdminPlansPage = lazy(() => import('@/features/plans/pages/AdminPlansPage'));

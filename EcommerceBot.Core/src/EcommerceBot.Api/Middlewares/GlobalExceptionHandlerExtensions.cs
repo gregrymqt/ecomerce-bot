@@ -1,8 +1,10 @@
 using System;
+using System.Diagnostics;
 using EcommerceBot.Application.Interfaces;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -10,7 +12,8 @@ using Microsoft.Extensions.Logging;
 namespace EcommerceBot.Api.Middlewares;
 
 /// <summary>
-/// Métodos de extensão para configuração desacoplada do pipeline global de tratamento de exceções e alertas Discord.
+/// Métodos de extensão para configuração desacoplada do pipeline global de tratamento de exceções,
+/// conformidade com RFC 7807 (ProblemDetails) e alertas críticos via Discord.
 /// </summary>
 public static class GlobalExceptionHandlerExtensions
 {
@@ -29,28 +32,37 @@ public static class GlobalExceptionHandlerExtensions
                 var ex = exceptionHandlerPathFeature.Error;
                 var path = exceptionHandlerPathFeature.Path;
                 var services = context.RequestServices;
+                var correlationId = Activity.Current?.Id ?? context.TraceIdentifier;
 
-                // Tratamento semântico para Saldo Insuficiente (HTTP 402 Payment Required)
+                // Tratamento semântico para Saldo Insuficiente (HTTP 402 Payment Required - RFC 7807)
                 if (ex is Domain.Exceptions.InsufficientCreditsException creditsEx)
                 {
                     context.Response.StatusCode = StatusCodes.Status402PaymentRequired;
-                    context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new
+                    context.Response.ContentType = "application/problem+json";
+
+                    var creditsProblem = new ProblemDetails
                     {
-                        status = StatusCodes.Status402PaymentRequired,
-                        error = "Insufficient Credits",
-                        code = "insufficient_credits",
-                        message = creditsEx.Message,
-                        timestamp = DateTimeOffset.UtcNow
-                    });
+                        Type = "https://datatracker.ietf.org/doc/html/rfc7807",
+                        Title = "Insufficient Credits",
+                        Status = StatusCodes.Status402PaymentRequired,
+                        Detail = creditsEx.Message,
+                        Instance = path
+                    };
+                    creditsProblem.Extensions["code"] = "insufficient_credits";
+                    creditsProblem.Extensions["error"] = "Insufficient Credits";
+                    creditsProblem.Extensions["message"] = creditsEx.Message;
+                    creditsProblem.Extensions["correlationId"] = correlationId;
+                    creditsProblem.Extensions["timestamp"] = DateTimeOffset.UtcNow;
+
+                    await context.Response.WriteAsJsonAsync(creditsProblem, context.RequestAborted);
                     return;
                 }
 
                 // 1. Log estruturado local via ILogger
                 var loggerFactory = services.GetService<ILoggerFactory>();
                 var logger = loggerFactory?.CreateLogger("GlobalExceptionHandler");
-                logger?.LogError(ex, "Exceção não tratada na requisição {Method} {Path}: {Message}",
-                    context.Request.Method, path, ex.Message);
+                logger?.LogError(ex, "Exceção não tratada na requisição {Method} {Path} [CorrelationId: {CorrelationId}]: {Message}",
+                    context.Request.Method, path, correlationId, ex.Message);
 
                 // 2. Disparo de alerta crítico assíncrono para o Discord Webhook
                 var discordAlertService = services.GetService<IDiscordAlertService>();
@@ -58,26 +70,34 @@ public static class GlobalExceptionHandlerExtensions
                 {
                     await discordAlertService.SendCriticalAlertAsync(
                         title: $"Exceção Não Tratada na Rota {path}",
-                        description: $"Ocorreu uma falha interna na requisição HTTP `{context.Request.Method} {path}`: {ex.Message}",
+                        description: $"Ocorreu uma falha interna na requisição HTTP `{context.Request.Method} {path}` (CorrelationId: `{correlationId}`): {ex.Message}",
                         exception: ex,
                         source: "Core API Exception Handler"
                     );
                 }
 
-                // 3. Resposta padronizada JSON 500 para o cliente HTTP
+                // 3. Resposta padronizada RFC 7807 (ProblemDetails 500) para o cliente HTTP
                 var hostEnvironment = services.GetService<IHostEnvironment>();
                 var isDevelopment = hostEnvironment?.IsDevelopment() ?? false;
 
                 context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                context.Response.ContentType = "application/json";
+                context.Response.ContentType = "application/problem+json";
 
-                await context.Response.WriteAsJsonAsync(new
+                var serverErrorProblem = new ProblemDetails
                 {
-                    status = StatusCodes.Status500InternalServerError,
-                    error = "Internal Server Error",
-                    message = isDevelopment ? ex.Message : "Ocorreu um erro interno no servidor.",
-                    timestamp = DateTimeOffset.UtcNow
-                });
+                    Type = "https://datatracker.ietf.org/doc/html/rfc7807",
+                    Title = "Internal Server Error",
+                    Status = StatusCodes.Status500InternalServerError,
+                    Detail = isDevelopment ? ex.Message : "Ocorreu um erro interno no servidor. Consulte o suporte informando o correlationId.",
+                    Instance = path
+                };
+                serverErrorProblem.Extensions["code"] = "internal_server_error";
+                serverErrorProblem.Extensions["error"] = "Internal Server Error";
+                serverErrorProblem.Extensions["message"] = serverErrorProblem.Detail;
+                serverErrorProblem.Extensions["correlationId"] = correlationId;
+                serverErrorProblem.Extensions["timestamp"] = DateTimeOffset.UtcNow;
+
+                await context.Response.WriteAsJsonAsync(serverErrorProblem, context.RequestAborted);
             });
         });
     }
