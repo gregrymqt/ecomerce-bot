@@ -2,23 +2,23 @@ using System;
 
 namespace EcommerceBot.Application.ViewModels.Emails;
 
-public class PaymentApprovedEmailViewModel
+public sealed record PaymentApprovedEmailViewModel
 {
-    public string RecipientName { get; set; } = string.Empty;
-    public string PackageName { get; set; } = "Recarga de Créditos IA";
-    public int CreditsAdded { get; set; }
-    public int NewBalance { get; set; }
-    public decimal Amount { get; set; }
-    public string Currency { get; set; } = "BRL";
-    public string PaymentMethod { get; set; } = "PIX";
-    public string TransactionId { get; set; } = string.Empty;
-    public string DashboardUrl { get; set; } = "https://app.ecommercebot.com/dashboard";
-    public string Year { get; set; } = DateTime.UtcNow.Year.ToString();
+    public string RecipientName { get; init; } = string.Empty;
+    public string PackageName { get; init; } = "Recarga de Créditos IA";
+    public int CreditsAdded { get; init; }
+    public int NewBalance { get; init; }
+    public decimal Amount { get; init; }
+    public string Currency { get; init; } = "BRL";
+    public string PaymentMethod { get; init; } = "PIX";
+    public string TransactionId { get; init; } = string.Empty;
+    public string DashboardUrl { get; init; } = "https://app.ecommercebot.com/dashboard";
+    public string Year { get; init; } = DateTime.UtcNow.Year.ToString();
 
     // Propriedade de compatibilidade
     public string PlanName
     {
         get => PackageName;
-        set => PackageName = value;
+        init => PackageName = value;
     }
 }

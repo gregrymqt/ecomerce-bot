@@ -5,165 +5,165 @@ using System.Text.Json.Serialization;
 
 namespace EcommerceBot.Application.DTOs.Nuvemshop;
 
-public class NuvemshopCredentialsPayloadDto
+public sealed record NuvemshopCredentialsPayloadDto
 {
     [JsonPropertyName("store_id")]
-    public string StoreId { get; set; } = string.Empty;
+    public string StoreId { get; init; } = string.Empty;
 
     [JsonPropertyName("access_token")]
-    public string AccessToken { get; set; } = string.Empty;
+    public string AccessToken { get; init; } = string.Empty;
 }
 
-public class NuvemshopOAuthTokenResponse
+public sealed record NuvemshopOAuthTokenResponse
 {
     [JsonPropertyName("access_token")]
-    public string? AccessToken { get; set; }
+    public string? AccessToken { get; init; }
 
     [JsonPropertyName("token_type")]
-    public string? TokenType { get; set; }
+    public string? TokenType { get; init; }
 
     [JsonPropertyName("scope")]
-    public string? Scope { get; set; }
+    public string? Scope { get; init; }
 
     [JsonPropertyName("user_id")]
-    public long UserId { get; set; }
+    public long UserId { get; init; }
 
     [JsonPropertyName("error")]
-    public string? Error { get; set; }
+    public string? Error { get; init; }
 
     [JsonPropertyName("error_description")]
-    public string? ErrorDescription { get; set; }
+    public string? ErrorDescription { get; init; }
 }
 
-public class NuvemshopProductPayload
+public sealed record NuvemshopProductPayload
 {
     [JsonPropertyName("name")]
-    public Dictionary<string, string> Name { get; set; } = new();
+    public Dictionary<string, string> Name { get; init; } = new();
 
     [JsonPropertyName("description")]
-    public Dictionary<string, string> Description { get; set; } = new();
+    public Dictionary<string, string> Description { get; init; } = new();
 
     [JsonPropertyName("brand")]
-    public string? Brand { get; set; }
+    public string? Brand { get; init; }
 
     [JsonPropertyName("categories")]
-    public List<long>? Categories { get; set; }
+    public List<long>? Categories { get; init; }
 
     [JsonPropertyName("variants")]
-    public List<NuvemshopVariantPayload> Variants { get; set; } = new();
+    public List<NuvemshopVariantPayload> Variants { get; init; } = new();
 
     [JsonPropertyName("images")]
-    public List<NuvemshopImagePayload>? Images { get; set; }
+    public List<NuvemshopImagePayload>? Images { get; init; }
 
     [JsonPropertyName("published")]
-    public bool Published { get; set; } = true;
+    public bool Published { get; init; } = true;
 
     [JsonPropertyName("free_shipping")]
-    public bool FreeShipping { get; set; } = false;
+    public bool FreeShipping { get; init; } = false;
 }
 
-public class NuvemshopVariantPayload
+public sealed record NuvemshopVariantPayload
 {
     [JsonPropertyName("price")]
-    public string Price { get; set; } = "0.00";
+    public string Price { get; init; } = "0.00";
 
     [JsonPropertyName("promotional_price")]
-    public string? PromotionalPrice { get; set; }
+    public string? PromotionalPrice { get; init; }
 
     [JsonPropertyName("stock")]
-    public int Stock { get; set; }
+    public int Stock { get; init; }
 
     [JsonPropertyName("sku")]
-    public string Sku { get; set; } = string.Empty;
+    public string Sku { get; init; } = string.Empty;
 
     [JsonPropertyName("stock_management")]
-    public bool StockManagement { get; set; } = true;
+    public bool StockManagement { get; init; } = true;
 
     [JsonPropertyName("weight")]
-    public string? Weight { get; set; }
+    public string? Weight { get; init; }
 
     [JsonPropertyName("width")]
-    public string? Width { get; set; }
+    public string? Width { get; init; }
 
     [JsonPropertyName("height")]
-    public string? Height { get; set; }
+    public string? Height { get; init; }
 
     [JsonPropertyName("depth")]
-    public string? Depth { get; set; }
+    public string? Depth { get; init; }
 }
 
-public class NuvemshopImagePayload
+public sealed record NuvemshopImagePayload
 {
     [JsonPropertyName("src")]
-    public string Src { get; set; } = string.Empty;
+    public string Src { get; init; } = string.Empty;
 
     [JsonPropertyName("position")]
-    public int? Position { get; set; }
+    public int? Position { get; init; }
 }
 
-public class NuvemshopProductResponse
+public sealed record NuvemshopProductResponse
 {
     [JsonPropertyName("id")]
-    public long Id { get; set; }
+    public long Id { get; init; }
 
     [JsonPropertyName("name")]
-    public Dictionary<string, string>? Name { get; set; }
+    public Dictionary<string, string>? Name { get; init; }
 
     [JsonPropertyName("variants")]
-    public List<NuvemshopVariantResponse>? Variants { get; set; }
+    public List<NuvemshopVariantResponse>? Variants { get; init; }
 }
 
-public class NuvemshopVariantResponse
+public sealed record NuvemshopVariantResponse
 {
     [JsonPropertyName("id")]
-    public long Id { get; set; }
+    public long Id { get; init; }
 
     [JsonPropertyName("product_id")]
-    public long ProductId { get; set; }
+    public long ProductId { get; init; }
 
     [JsonPropertyName("sku")]
-    public string? Sku { get; set; }
+    public string? Sku { get; init; }
 
     [JsonPropertyName("price")]
-    public string? Price { get; set; }
+    public string? Price { get; init; }
 
     [JsonPropertyName("stock")]
-    public int? Stock { get; set; }
+    public int? Stock { get; init; }
 }
 
-public class NuvemshopLocationDto
+public sealed record NuvemshopLocationDto
 {
     [JsonPropertyName("id")]
-    public long Id { get; set; }
+    public long Id { get; init; }
 
     [JsonPropertyName("name")]
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
 
     [JsonPropertyName("type")]
-    public string Type { get; set; } = string.Empty;
+    public string Type { get; init; } = string.Empty;
 
     [JsonPropertyName("is_default")]
-    public bool IsDefault { get; set; }
+    public bool IsDefault { get; init; }
 }
 
-public class NuvemshopSyncResultDto
+public sealed record NuvemshopSyncResultDto
 {
-    public bool Success { get; set; }
-    public string? NuvemshopProductId { get; set; }
-    public string? NuvemshopVariantId { get; set; }
-    public string Message { get; set; } = string.Empty;
+    public bool Success { get; init; }
+    public string? NuvemshopProductId { get; init; }
+    public string? NuvemshopVariantId { get; init; }
+    public string Message { get; init; } = string.Empty;
 }
 
-public class NuvemshopWebhookPayload
+public sealed record NuvemshopWebhookPayload
 {
     [JsonPropertyName("store_id")]
-    public JsonElement StoreId { get; set; }
+    public JsonElement StoreId { get; init; }
 
     [JsonPropertyName("event")]
-    public string? Event { get; set; }
+    public string? Event { get; init; }
 
     [JsonPropertyName("id")]
-    public JsonElement Id { get; set; }
+    public JsonElement Id { get; init; }
 
     public string GetStoreIdString()
     {
@@ -184,12 +184,11 @@ public class NuvemshopWebhookPayload
     }
 }
 
-public class NuvemshopWebhookRegistrationPayload
+public sealed record NuvemshopWebhookRegistrationPayload
 {
     [JsonPropertyName("event")]
-    public string Event { get; set; } = string.Empty;
+    public string Event { get; init; } = string.Empty;
 
     [JsonPropertyName("url")]
-    public string Url { get; set; } = string.Empty;
+    public string Url { get; init; } = string.Empty;
 }
-

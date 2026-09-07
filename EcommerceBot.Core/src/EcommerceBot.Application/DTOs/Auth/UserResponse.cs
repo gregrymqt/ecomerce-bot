@@ -2,35 +2,34 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace EcommerceBot.Application.DTOs.Auth
+namespace EcommerceBot.Application.DTOs.Auth;
+
+public sealed record UserResponse
 {
-    public class UserResponse
-    {
-        [JsonPropertyName("id")]
-        public Guid Id { get; set; }
+    [JsonPropertyName("id")]
+    public Guid Id { get; init; }
 
-        [JsonPropertyName("email")]
-        public string Email { get; set; } = string.Empty;
+    [JsonPropertyName("email")]
+    public string Email { get; init; } = string.Empty;
 
-        [JsonPropertyName("name")]
-        public string? Name { get; set; }
+    [JsonPropertyName("name")]
+    public string? Name { get; init; }
 
-        [JsonPropertyName("role")]
-        public string Role { get; set; } = string.Empty;
+    [JsonPropertyName("role")]
+    public string Role { get; init; } = string.Empty;
 
-        [JsonPropertyName("tenants")]
-        public List<string> Tenants { get; set; } = new();
+    [JsonPropertyName("tenants")]
+    public List<string> Tenants { get; init; } = new();
 
-        [JsonPropertyName("createdAt")]
-        public DateTimeOffset CreatedAt { get; set; }
+    [JsonPropertyName("createdAt")]
+    public DateTimeOffset CreatedAt { get; init; }
 
-        [JsonPropertyName("accessToken")]
-        public string? AccessToken { get; set; }
+    [JsonPropertyName("accessToken")]
+    public string? AccessToken { get; init; }
 
-        [JsonPropertyName("creditsBalance")]
-        public int CreditsBalance { get; set; }
+    [JsonPropertyName("creditsBalance")]
+    public int CreditsBalance { get; init; }
 
-        [JsonPropertyName("hasActiveCredits")]
-        public bool HasActiveCredits { get; set; }
-    }
+    [JsonPropertyName("hasActiveCredits")]
+    public bool HasActiveCredits { get; init; }
 }

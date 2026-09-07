@@ -52,8 +52,8 @@ public class AdminAiCapacityController : BaseApiController
 
         try
         {
-            request.Source = "MANUAL_ADMIN";
-            var result = await _aiCapacityService.RegisterTopupAsync(request);
+            var topupRequest = request with { Source = "MANUAL_ADMIN" };
+            var result = await _aiCapacityService.RegisterTopupAsync(topupRequest);
             return Ok(result);
         }
         catch (ArgumentException ex)

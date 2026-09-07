@@ -2,14 +2,14 @@ using System;
 
 namespace EcommerceBot.Application.DTOs.Scraper;
 
-public class WebScraperRequest
+public sealed record WebScraperRequest
 {
-    public string Url { get; set; } = string.Empty;
+    public string Url { get; init; } = string.Empty;
 }
 
-public class ImportRequestMessage
+public sealed record ImportRequestMessage
 {
-    public string ProductId { get; set; } = string.Empty;
-    public string TenantId { get; set; } = string.Empty;
-    public string TargetUrl { get; set; } = string.Empty;
+    public string ProductId { get; init; } = string.Empty;
+    public string TenantId { get; init; } = string.Empty;
+    public string TargetUrl { get; init; } = string.Empty;
 }

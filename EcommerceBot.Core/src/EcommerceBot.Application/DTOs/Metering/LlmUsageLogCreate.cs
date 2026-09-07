@@ -1,18 +1,17 @@
 using System;
 
-namespace EcommerceBot.Application.DTOs.Metering
+namespace EcommerceBot.Application.DTOs.Metering;
+
+public sealed record LlmUsageLogCreate
 {
-    public class LlmUsageLogCreate
-    {
-        public string? ProductId { get; set; }
-        public string Provider { get; set; } = string.Empty;
-        public string ModelUsed { get; set; } = string.Empty;
-        public int PromptTokens { get; set; }
-        public int CompletionTokens { get; set; }
-        public int TotalTokens { get; set; }
-        public decimal EstimatedCostUsd { get; set; }
-        public bool IsByok { get; set; }
-        public int? ExecutionTimeMs { get; set; }
-        public decimal? ReservedCost { get; set; }
-    }
+    public string? ProductId { get; init; }
+    public string Provider { get; init; } = string.Empty;
+    public string ModelUsed { get; init; } = string.Empty;
+    public int PromptTokens { get; init; }
+    public int CompletionTokens { get; init; }
+    public int TotalTokens { get; init; }
+    public decimal EstimatedCostUsd { get; init; }
+    public bool IsByok { get; init; }
+    public int? ExecutionTimeMs { get; init; }
+    public decimal? ReservedCost { get; init; }
 }

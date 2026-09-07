@@ -36,7 +36,7 @@ public class AiCapacityService : IAiCapacityService
         {
             provider = "OPENROUTER"; // Fallback seguro para roteador multimodelo
         }
-        request.Provider = provider;
+        request = request with { Provider = provider };
 
         var balances = await _aiCapacityRepository.GetLatestBalancesAsync();
         var currentBalance = balances.GetValueOrDefault(provider, 0m);

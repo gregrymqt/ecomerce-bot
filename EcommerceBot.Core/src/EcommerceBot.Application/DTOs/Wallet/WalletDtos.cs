@@ -4,138 +4,138 @@ using System.Text.Json.Serialization;
 
 namespace EcommerceBot.Application.DTOs.Wallet;
 
-public class WalletBalanceResponseDto
+public sealed record WalletBalanceResponseDto
 {
     [JsonPropertyName("tenant_id")]
-    public Guid TenantId { get; set; }
+    public Guid TenantId { get; init; }
 
     [JsonPropertyName("balance_credits")]
-    public int BalanceCredits { get; set; }
+    public int BalanceCredits { get; init; }
 
     [JsonPropertyName("credits_balance")]
     public int CreditsBalance => BalanceCredits;
 
     [JsonPropertyName("managed_credit_balance")]
-    public decimal ManagedCreditBalance { get; set; }
+    public decimal ManagedCreditBalance { get; init; }
 
     [JsonPropertyName("updated_at")]
-    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; init; }
 }
 
-public class CreditTransactionDto
+public sealed record CreditTransactionDto
 {
     [JsonPropertyName("id")]
-    public string Id { get; set; } = string.Empty;
+    public string Id { get; init; } = string.Empty;
 
     [JsonPropertyName("tenant_id")]
-    public Guid TenantId { get; set; }
+    public Guid TenantId { get; init; }
 
     [JsonPropertyName("amount")]
-    public decimal Amount { get; set; }
+    public decimal Amount { get; init; }
 
     [JsonPropertyName("balance_after")]
-    public int BalanceAfter { get; set; }
+    public int BalanceAfter { get; init; }
 
     [JsonPropertyName("type")]
-    public string Type { get; set; } = "RECHARGE"; // 'WELCOME_BONUS' | 'RECHARGE' | 'PRODUCT_ENRICHMENT' | 'REFUND'
+    public string Type { get; init; } = "RECHARGE"; // 'WELCOME_BONUS' | 'RECHARGE' | 'PRODUCT_ENRICHMENT' | 'REFUND'
 
     [JsonPropertyName("description")]
-    public string? Description { get; set; }
+    public string? Description { get; init; }
 
     [JsonPropertyName("reference_id")]
-    public string? ReferenceId { get; set; }
+    public string? ReferenceId { get; init; }
 
     [JsonPropertyName("external_payment_id")]
-    public string? ExternalPaymentId { get; set; }
+    public string? ExternalPaymentId { get; init; }
 
     [JsonPropertyName("created_at")]
-    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; init; }
 }
 
-public class WalletStatementResponseDto
+public sealed record WalletStatementResponseDto
 {
     [JsonPropertyName("balance_credits")]
-    public int BalanceCredits { get; set; }
+    public int BalanceCredits { get; init; }
 
     [JsonPropertyName("managed_credit_balance")]
-    public decimal ManagedCreditBalance { get; set; }
+    public decimal ManagedCreditBalance { get; init; }
 
     [JsonPropertyName("transactions")]
-    public List<CreditTransactionDto> Transactions { get; set; } = new();
+    public List<CreditTransactionDto> Transactions { get; init; } = new();
 
     [JsonPropertyName("total_count")]
-    public int TotalCount { get; set; }
+    public int TotalCount { get; init; }
 }
 
-public class RechargeRequestDto
+public sealed record RechargeRequestDto
 {
     [JsonPropertyName("credits_package")]
-    public int CreditsPackage { get; set; }
+    public int CreditsPackage { get; init; }
 
     [JsonPropertyName("package_id")]
-    public string? PackageId { get; set; }
+    public string? PackageId { get; init; }
 
     [JsonPropertyName("amount")]
-    public decimal Amount { get; set; }
+    public decimal Amount { get; init; }
 
     [JsonPropertyName("payment_method")]
-    public string PaymentMethod { get; set; } = "pix"; // 'pix' | 'credit_card'
+    public string PaymentMethod { get; init; } = "pix"; // 'pix' | 'credit_card'
 
     [JsonPropertyName("card_token")]
-    public string? CardToken { get; set; }
+    public string? CardToken { get; init; }
 
     [JsonPropertyName("payment_method_id")]
-    public string? PaymentMethodId { get; set; }
+    public string? PaymentMethodId { get; init; }
 
     [JsonPropertyName("installments")]
-    public int Installments { get; set; } = 1;
+    public int Installments { get; init; } = 1;
 
     [JsonPropertyName("payer_email")]
-    public string? PayerEmail { get; set; }
+    public string? PayerEmail { get; init; }
 
     [JsonPropertyName("payer")]
-    public CardPaymentPayerDto? Payer { get; set; }
+    public CardPaymentPayerDto? Payer { get; init; }
 }
 
-public class CardPaymentPayerDto
+public sealed record CardPaymentPayerDto
 {
     [JsonPropertyName("email")]
-    public string? Email { get; set; }
+    public string? Email { get; init; }
 
     [JsonPropertyName("identification")]
-    public IdentificationDto? Identification { get; set; }
+    public IdentificationDto? Identification { get; init; }
 }
 
-public class IdentificationDto
+public sealed record IdentificationDto
 {
     [JsonPropertyName("type")]
-    public string Type { get; set; } = "CPF";
+    public string Type { get; init; } = "CPF";
 
     [JsonPropertyName("number")]
-    public string Number { get; set; } = string.Empty;
+    public string Number { get; init; } = string.Empty;
 }
 
-public class RechargeResponseDto
+public sealed record RechargeResponseDto
 {
     [JsonPropertyName("payment_id")]
-    public string PaymentId { get; set; } = string.Empty;
+    public string PaymentId { get; init; } = string.Empty;
 
     [JsonPropertyName("status")]
-    public string Status { get; set; } = "pending";
+    public string Status { get; init; } = "pending";
 
     [JsonPropertyName("pix_qr_code")]
-    public string? PixQrCode { get; set; }
+    public string? PixQrCode { get; init; }
 
     [JsonPropertyName("pix_copia_e_cola")]
-    public string? PixCopiaECola { get; set; }
+    public string? PixCopiaECola { get; init; }
 
     [JsonPropertyName("expiration_date")]
-    public string? ExpirationDate { get; set; }
+    public string? ExpirationDate { get; init; }
 }
 
-public class StatementFiltersDto
+public sealed record StatementFiltersDto
 {
-    public int Page { get; set; } = 1;
-    public int Limit { get; set; } = 20;
-    public string? Type { get; set; } // 'RECHARGE' | 'USAGE' | 'ALL'
+    public int Page { get; init; } = 1;
+    public int Limit { get; init; } = 20;
+    public string? Type { get; init; } // 'RECHARGE' | 'USAGE' | 'ALL'
 }

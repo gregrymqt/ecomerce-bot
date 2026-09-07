@@ -4,122 +4,122 @@ using System.Text.Json.Serialization;
 
 namespace EcommerceBot.Application.DTOs.Analytics;
 
-public class RecordTenantVisitRequestDto
+public sealed record RecordTenantVisitRequestDto
 {
     [JsonPropertyName("tenant_id")]
-    public Guid TenantId { get; set; }
+    public Guid TenantId { get; init; }
 
     [JsonPropertyName("session_id")]
-    public string SessionId { get; set; } = string.Empty;
+    public string SessionId { get; init; } = string.Empty;
 
     [JsonPropertyName("utm_source")]
-    public string? UtmSource { get; set; }
+    public string? UtmSource { get; init; }
 
     [JsonPropertyName("utm_medium")]
-    public string? UtmMedium { get; set; }
+    public string? UtmMedium { get; init; }
 
     [JsonPropertyName("utm_campaign")]
-    public string? UtmCampaign { get; set; }
+    public string? UtmCampaign { get; init; }
 
     [JsonPropertyName("utm_term")]
-    public string? UtmTerm { get; set; }
+    public string? UtmTerm { get; init; }
 
     [JsonPropertyName("utm_content")]
-    public string? UtmContent { get; set; }
+    public string? UtmContent { get; init; }
 
     [JsonPropertyName("ad_id")]
-    public string? AdId { get; set; }
+    public string? AdId { get; init; }
 
     [JsonPropertyName("fbclid")]
-    public string? FbClid { get; set; }
+    public string? FbClid { get; init; }
 
     [JsonPropertyName("gclid")]
-    public string? GClid { get; set; }
+    public string? GClid { get; init; }
 }
 
-public class CreativePerformanceDto
+public sealed record CreativePerformanceDto
 {
     [JsonPropertyName("ad_id")]
-    public string AdId { get; set; } = string.Empty;
+    public string AdId { get; init; } = string.Empty;
 
     [JsonPropertyName("campaign")]
-    public string Campaign { get; set; } = string.Empty;
+    public string Campaign { get; init; } = string.Empty;
 
     [JsonPropertyName("source")]
-    public string Source { get; set; } = string.Empty;
+    public string Source { get; init; } = string.Empty;
 
     [JsonPropertyName("orders_count")]
-    public int OrdersCount { get; set; }
+    public int OrdersCount { get; init; }
 
     [JsonPropertyName("total_revenue_brl")]
-    public decimal TotalRevenueBrl { get; set; }
+    public decimal TotalRevenueBrl { get; init; }
 
     [JsonPropertyName("average_ticket_brl")]
-    public decimal AverageTicketBrl { get; set; }
+    public decimal AverageTicketBrl { get; init; }
 }
 
-public class SourcePerformanceDto
+public sealed record SourcePerformanceDto
 {
     [JsonPropertyName("source")]
-    public string Source { get; set; } = string.Empty;
+    public string Source { get; init; } = string.Empty;
 
     [JsonPropertyName("visits_count")]
-    public int VisitsCount { get; set; }
+    public int VisitsCount { get; init; }
 
     [JsonPropertyName("orders_count")]
-    public int OrdersCount { get; set; }
+    public int OrdersCount { get; init; }
 
     [JsonPropertyName("conversion_rate")]
-    public decimal ConversionRate { get; set; }
+    public decimal ConversionRate { get; init; }
 
     [JsonPropertyName("revenue_brl")]
-    public decimal RevenueBrl { get; set; }
+    public decimal RevenueBrl { get; init; }
 }
 
-public class TenantTrafficOverviewDto
+public sealed record TenantTrafficOverviewDto
 {
     [JsonPropertyName("total_attributed_revenue_brl")]
-    public decimal TotalAttributedRevenueBrl { get; set; }
+    public decimal TotalAttributedRevenueBrl { get; init; }
 
     [JsonPropertyName("total_tracked_orders")]
-    public int TotalTrackedOrders { get; set; }
+    public int TotalTrackedOrders { get; init; }
 
     [JsonPropertyName("total_visits")]
-    public int TotalVisits { get; set; }
+    public int TotalVisits { get; init; }
 
     [JsonPropertyName("average_ticket_brl")]
-    public decimal AverageTicketBrl { get; set; }
+    public decimal AverageTicketBrl { get; init; }
 
     [JsonPropertyName("top_source")]
-    public string TopSource { get; set; } = "Direto / Orgânico";
+    public string TopSource { get; init; } = "Direto / Orgânico";
 
     [JsonPropertyName("period_days")]
-    public int PeriodDays { get; set; }
+    public int PeriodDays { get; init; }
 
     [JsonPropertyName("sources")]
-    public List<SourcePerformanceDto> Sources { get; set; } = new();
+    public List<SourcePerformanceDto> Sources { get; init; } = new();
 
     [JsonPropertyName("creatives")]
-    public List<CreativePerformanceDto> Creatives { get; set; } = new();
+    public List<CreativePerformanceDto> Creatives { get; init; } = new();
 }
 
-public class VerifyTagRequestDto
+public sealed record VerifyTagRequestDto
 {
     [JsonPropertyName("store_url")]
-    public string StoreUrl { get; set; } = string.Empty;
+    public string StoreUrl { get; init; } = string.Empty;
 }
 
-public class VerifyTagResponseDto
+public sealed record VerifyTagResponseDto
 {
     [JsonPropertyName("is_installed")]
-    public bool IsInstalled { get; set; }
+    public bool IsInstalled { get; init; }
 
     [JsonPropertyName("store_url")]
-    public string StoreUrl { get; set; } = string.Empty;
+    public string StoreUrl { get; init; } = string.Empty;
 
     [JsonPropertyName("checked_at")]
-    public DateTimeOffset CheckedAt { get; set; }
+    public DateTimeOffset CheckedAt { get; init; }
 
     [JsonPropertyName("message")]
-    public string Message { get; set; } = string.Empty;
+    public string Message { get; init; } = string.Empty;
 }

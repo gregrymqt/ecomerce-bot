@@ -64,15 +64,23 @@ public class SystemService : ISystemService
             WHERE TenantId = @TenantId AND CreatedAt >= @Cutoff
             GROUP BY Status";
         var statuses = await conn.QueryAsync(statusSql, new { TenantId = tenantId, Cutoff = cutoff });
-        var productStatus = new ProductStatusSummary();
+        int raw = 0, processing = 0, processed = 0, failed = 0;
         foreach (var status in statuses)
         {
             var s = ((string)status.Status).ToLower();
-            if (s == "raw") productStatus.Raw += (int)status.Count;
-            else if (s == "processing") productStatus.Processing += (int)status.Count;
-            else if (s == "processed") productStatus.Processed += (int)status.Count;
-            else if (s == "failed") productStatus.Failed += (int)status.Count;
+            if (s == "raw") raw += (int)status.Count;
+            else if (s == "processing") processing += (int)status.Count;
+            else if (s == "processed") processed += (int)status.Count;
+            else if (s == "failed") failed += (int)status.Count;
         }
+
+        var productStatus = new ProductStatusSummary
+        {
+            Raw = raw,
+            Processing = processing,
+            Processed = processed,
+            Failed = failed
+        };
 
         // 3. Average Latency
         var avgLatency = await _activityRepository.GetAverageLatencyAsync(tenantId, timeSpan);
@@ -108,25 +116,38 @@ public class SystemService : ISystemService
 
     public async Task<SystemHealthResponse> CheckSystemHealthAsync()
     {
-        var health = new SystemHealthResponse { Status = "OK", Services = new() };
+        var services = new Dictionary<string, string>();
+        var status = "OK";
         
         try
         {
             using var conn = await _dbConnectionFactory.CreateConnectionAsync();
             await conn.ExecuteScalarAsync<int>("SELECT 1");
-            health.Services["SQLServer"] = "UP";
+            services["SQLServer"] = "UP";
         }
-        catch { health.Services["SQLServer"] = "DOWN"; health.Status = "DEGRADED"; }
+        catch 
+        { 
+            services["SQLServer"] = "DOWN"; 
+            status = "DEGRADED"; 
+        }
 
         try
         {
             var db = _redis.GetDatabase();
             await db.PingAsync();
-            health.Services["Redis"] = "UP";
+            services["Redis"] = "UP";
         }
-        catch { health.Services["Redis"] = "DOWN"; health.Status = "DEGRADED"; }
+        catch 
+        { 
+            services["Redis"] = "DOWN"; 
+            status = "DEGRADED"; 
+        }
 
-        return health;
+        return new SystemHealthResponse 
+        { 
+            Status = status, 
+            Services = services 
+        };
     }
 
     public async Task ProcessDemoRequestAsync(List<string> urls)

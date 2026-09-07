@@ -2,44 +2,44 @@ using System;
 
 namespace EcommerceBot.Application.DTOs.Plans;
 
-public class CreatePlanRequest
+public sealed record CreatePlanRequest
 {
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public decimal Price { get; set; }
-    public int CreditsIncluded { get; set; }
-    public string? Badge { get; set; }
-    public bool IsActive { get; set; } = true;
-    public string? BillingInterval { get; set; }
-    public string? MpPreapprovalPlanId { get; set; }
-    public int? TrialDays { get; set; }
+    public string Name { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public decimal Price { get; init; }
+    public int CreditsIncluded { get; init; }
+    public string? Badge { get; init; }
+    public bool IsActive { get; init; } = true;
+    public string? BillingInterval { get; init; }
+    public string? MpPreapprovalPlanId { get; init; }
+    public int? TrialDays { get; init; }
 }
 
-public class UpdatePlanRequest
+public sealed record UpdatePlanRequest
 {
-    public string? Name { get; set; }
-    public string? Description { get; set; }
-    public decimal? Price { get; set; }
-    public int? CreditsIncluded { get; set; }
-    public string? Badge { get; set; }
-    public bool? IsActive { get; set; }
-    public string? BillingInterval { get; set; }
-    public string? MpPreapprovalPlanId { get; set; }
-    public int? TrialDays { get; set; }
+    public string? Name { get; init; }
+    public string? Description { get; init; }
+    public decimal? Price { get; init; }
+    public int? CreditsIncluded { get; init; }
+    public string? Badge { get; init; }
+    public bool? IsActive { get; init; }
+    public string? BillingInterval { get; init; }
+    public string? MpPreapprovalPlanId { get; init; }
+    public int? TrialDays { get; init; }
 }
 
-public class PlanResponse
+public sealed record PlanResponse
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public decimal Price { get; set; }
-    public int CreditsIncluded { get; set; }
-    public string? Badge { get; set; }
-    public bool IsActive { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset UpdatedAt { get; set; }
-    public string? BillingInterval { get; set; }
-    public string? MpPreapprovalPlanId { get; set; }
-    public int? TrialDays { get; set; }
+    public Guid Id { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public decimal Price { get; init; }
+    public int CreditsIncluded { get; init; }
+    public string? Badge { get; init; }
+    public bool IsActive { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset UpdatedAt { get; init; }
+    public string? BillingInterval { get; init; }
+    public string? MpPreapprovalPlanId { get; init; }
+    public int? TrialDays { get; init; }
 }

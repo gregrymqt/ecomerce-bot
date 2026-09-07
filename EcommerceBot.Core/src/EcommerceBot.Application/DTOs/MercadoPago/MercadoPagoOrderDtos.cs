@@ -4,337 +4,337 @@ using System.Text.Json.Serialization;
 
 namespace EcommerceBot.Application.DTOs.MercadoPago;
 
-public class MercadoPagoOrderRequest
+public sealed record MercadoPagoOrderRequest
 {
     [JsonPropertyName("type")]
-    public string Type { get; set; } = "online";
+    public string Type { get; init; } = "online";
 
     [JsonPropertyName("processing_mode")]
-    public string ProcessingMode { get; set; } = "automatic";
+    public string ProcessingMode { get; init; } = "automatic";
 
     [JsonPropertyName("external_reference")]
-    public string? ExternalReference { get; set; }
+    public string? ExternalReference { get; init; }
 
     [JsonPropertyName("total_amount")]
-    public string TotalAmount { get; set; } = "0.00";
+    public string TotalAmount { get; init; } = "0.00";
 
     [JsonPropertyName("description")]
-    public string? Description { get; set; }
+    public string? Description { get; init; }
 
     [JsonPropertyName("payer")]
-    public MercadoPagoPayerRequest? Payer { get; set; }
+    public MercadoPagoPayerRequest? Payer { get; init; }
 
     [JsonPropertyName("shipment")]
-    public MercadoPagoShipmentRequest? Shipment { get; set; }
+    public MercadoPagoShipmentRequest? Shipment { get; init; }
 
     [JsonPropertyName("transactions")]
-    public MercadoPagoTransactionsRequest? Transactions { get; set; }
+    public MercadoPagoTransactionsRequest? Transactions { get; init; }
 
     [JsonPropertyName("items")]
-    public List<MercadoPagoItemRequest>? Items { get; set; }
+    public List<MercadoPagoItemRequest>? Items { get; init; }
 
     [JsonPropertyName("config")]
-    public MercadoPagoConfigRequest? Config { get; set; }
+    public MercadoPagoConfigRequest? Config { get; init; }
 }
 
-public class MercadoPagoPayerRequest
+public sealed record MercadoPagoPayerRequest
 {
     [JsonPropertyName("email")]
-    public string? Email { get; set; }
+    public string? Email { get; init; }
 
     [JsonPropertyName("entity_type")]
-    public string? EntityType { get; set; } = "individual";
+    public string? EntityType { get; init; } = "individual";
 
     [JsonPropertyName("first_name")]
-    public string? FirstName { get; set; }
+    public string? FirstName { get; init; }
 
     [JsonPropertyName("last_name")]
-    public string? LastName { get; set; }
+    public string? LastName { get; init; }
 
     [JsonPropertyName("identification")]
-    public MercadoPagoIdentificationRequest? Identification { get; set; }
+    public MercadoPagoIdentificationRequest? Identification { get; init; }
 
     [JsonPropertyName("phone")]
-    public MercadoPagoPhoneRequest? Phone { get; set; }
+    public MercadoPagoPhoneRequest? Phone { get; init; }
 
     [JsonPropertyName("address")]
-    public MercadoPagoAddressRequest? Address { get; set; }
+    public MercadoPagoAddressRequest? Address { get; init; }
 }
 
-public class MercadoPagoIdentificationRequest
+public sealed record MercadoPagoIdentificationRequest
 {
     [JsonPropertyName("type")]
-    public string Type { get; set; } = "CPF";
+    public string Type { get; init; } = "CPF";
 
     [JsonPropertyName("number")]
-    public string Number { get; set; } = string.Empty;
+    public string Number { get; init; } = string.Empty;
 }
 
-public class MercadoPagoPhoneRequest
+public sealed record MercadoPagoPhoneRequest
 {
     [JsonPropertyName("area_code")]
-    public string? AreaCode { get; set; }
+    public string? AreaCode { get; init; }
 
     [JsonPropertyName("number")]
-    public string? Number { get; set; }
+    public string? Number { get; init; }
 }
 
-public class MercadoPagoAddressRequest
+public sealed record MercadoPagoAddressRequest
 {
     [JsonPropertyName("zip_code")]
-    public string? ZipCode { get; set; }
+    public string? ZipCode { get; init; }
 
     [JsonPropertyName("street_name")]
-    public string? StreetName { get; set; }
+    public string? StreetName { get; init; }
 
     [JsonPropertyName("street_number")]
-    public string? StreetNumber { get; set; }
+    public string? StreetNumber { get; init; }
 
     [JsonPropertyName("neighborhood")]
-    public string? Neighborhood { get; set; }
+    public string? Neighborhood { get; init; }
 
     [JsonPropertyName("city")]
-    public string? City { get; set; }
+    public string? City { get; init; }
 
     [JsonPropertyName("state")]
-    public string? State { get; set; }
+    public string? State { get; init; }
 
     [JsonPropertyName("complement")]
-    public string? Complement { get; set; }
+    public string? Complement { get; init; }
 }
 
-public class MercadoPagoShipmentRequest
+public sealed record MercadoPagoShipmentRequest
 {
     [JsonPropertyName("address")]
-    public MercadoPagoAddressRequest? Address { get; set; }
+    public MercadoPagoAddressRequest? Address { get; init; }
 }
 
-public class MercadoPagoTransactionsRequest
+public sealed record MercadoPagoTransactionsRequest
 {
     [JsonPropertyName("payments")]
-    public MercadoPagoPaymentRequest? Payments { get; set; }
+    public MercadoPagoPaymentRequest? Payments { get; init; }
 }
 
-public class MercadoPagoPaymentRequest
+public sealed record MercadoPagoPaymentRequest
 {
     [JsonPropertyName("amount")]
-    public string Amount { get; set; } = "0.00";
+    public string Amount { get; init; } = "0.00";
 
     [JsonPropertyName("payment_method")]
-    public MercadoPagoPaymentMethodRequest? PaymentMethod { get; set; }
+    public MercadoPagoPaymentMethodRequest? PaymentMethod { get; init; }
 
     [JsonPropertyName("expiration_time")]
-    public string? ExpirationTime { get; set; }
+    public string? ExpirationTime { get; init; }
 
     [JsonPropertyName("date_of_expiration")]
-    public string? DateOfExpiration { get; set; }
+    public string? DateOfExpiration { get; init; }
 }
 
-public class MercadoPagoPaymentMethodRequest
+public sealed record MercadoPagoPaymentMethodRequest
 {
     [JsonPropertyName("id")]
-    public string? Id { get; set; } // "pix", "visa", "master", "boleto", etc.
+    public string? Id { get; init; } // "pix", "visa", "master", "boleto", etc.
 
     [JsonPropertyName("type")]
-    public string? Type { get; set; } // "credit_card", "bank_transfer", "ticket"
+    public string? Type { get; init; } // "credit_card", "bank_transfer", "ticket"
 
     [JsonPropertyName("token")]
-    public string? Token { get; set; }
+    public string? Token { get; init; }
 
     [JsonPropertyName("installments")]
-    public int? Installments { get; set; }
+    public int? Installments { get; init; }
 
     [JsonPropertyName("statement_descriptor")]
-    public string? StatementDescriptor { get; set; }
+    public string? StatementDescriptor { get; init; }
 }
 
-public class MercadoPagoItemRequest
+public sealed record MercadoPagoItemRequest
 {
     [JsonPropertyName("title")]
-    public string Title { get; set; } = string.Empty;
+    public string Title { get; init; } = string.Empty;
 
     [JsonPropertyName("unit_price")]
-    public string UnitPrice { get; set; } = "0.00";
+    public string UnitPrice { get; init; } = "0.00";
 
     [JsonPropertyName("quantity")]
-    public int Quantity { get; set; } = 1;
+    public int Quantity { get; init; } = 1;
 
     [JsonPropertyName("description")]
-    public string? Description { get; set; }
+    public string? Description { get; init; }
 
     [JsonPropertyName("external_code")]
-    public string? ExternalCode { get; set; }
+    public string? ExternalCode { get; init; }
 }
 
-public class MercadoPagoConfigRequest
+public sealed record MercadoPagoConfigRequest
 {
     [JsonPropertyName("online")]
-    public MercadoPagoOnlineConfigRequest? Online { get; set; }
+    public MercadoPagoOnlineConfigRequest? Online { get; init; }
 }
 
-public class MercadoPagoOnlineConfigRequest
+public sealed record MercadoPagoOnlineConfigRequest
 {
     [JsonPropertyName("transaction_security")]
-    public MercadoPagoTransactionSecurityRequest? TransactionSecurity { get; set; }
+    public MercadoPagoTransactionSecurityRequest? TransactionSecurity { get; init; }
 
     [JsonPropertyName("callback_url")]
-    public string? CallbackUrl { get; set; }
+    public string? CallbackUrl { get; init; }
 }
 
-public class MercadoPagoTransactionSecurityRequest
+public sealed record MercadoPagoTransactionSecurityRequest
 {
     [JsonPropertyName("validation")]
-    public string Validation { get; set; } = "never"; // "on_fraud_risk", "never"
+    public string Validation { get; init; } = "never"; // "on_fraud_risk", "never"
 
     [JsonPropertyName("liability_shift")]
-    public string? LiabilityShift { get; set; }
+    public string? LiabilityShift { get; init; }
 }
 
 // -------------------------------------------------------------
 // Respostas da API /v1/orders
 // -------------------------------------------------------------
 
-public class MercadoPagoOrderResponse
+public sealed record MercadoPagoOrderResponse
 {
     [JsonPropertyName("id")]
-    public string? Id { get; set; }
+    public string? Id { get; init; }
 
     [JsonPropertyName("type")]
-    public string? Type { get; set; }
+    public string? Type { get; init; }
 
     [JsonPropertyName("processing_mode")]
-    public string? ProcessingMode { get; set; }
+    public string? ProcessingMode { get; init; }
 
     [JsonPropertyName("external_reference")]
-    public string? ExternalReference { get; set; }
+    public string? ExternalReference { get; init; }
 
     [JsonPropertyName("total_amount")]
-    public object? TotalAmount { get; set; }
+    public object? TotalAmount { get; init; }
 
     [JsonPropertyName("total_paid_amount")]
-    public object? TotalPaidAmount { get; set; }
+    public object? TotalPaidAmount { get; init; }
 
     [JsonPropertyName("status")]
-    public string? Status { get; set; }
+    public string? Status { get; init; }
 
     [JsonPropertyName("status_detail")]
-    public string? StatusDetail { get; set; }
+    public string? StatusDetail { get; init; }
 
     [JsonPropertyName("created_date")]
-    public string? CreatedDate { get; set; }
+    public string? CreatedDate { get; init; }
 
     [JsonPropertyName("last_updated_date")]
-    public string? LastUpdatedDate { get; set; }
+    public string? LastUpdatedDate { get; init; }
 
     [JsonPropertyName("country_code")]
-    public string? CountryCode { get; set; }
+    public string? CountryCode { get; init; }
 
     [JsonPropertyName("capture_mode")]
-    public string? CaptureMode { get; set; }
+    public string? CaptureMode { get; init; }
 
     [JsonPropertyName("transactions")]
-    public MercadoPagoOrderTransactionsResponse? Transactions { get; set; }
+    public MercadoPagoOrderTransactionsResponse? Transactions { get; init; }
 }
 
-public class MercadoPagoOrderTransactionsResponse
+public sealed record MercadoPagoOrderTransactionsResponse
 {
     [JsonPropertyName("payments")]
-    public List<MercadoPagoOrderPaymentResponse>? Payments { get; set; }
+    public List<MercadoPagoOrderPaymentResponse>? Payments { get; init; }
 }
 
-public class MercadoPagoOrderPaymentResponse
+public sealed record MercadoPagoOrderPaymentResponse
 {
     [JsonPropertyName("id")]
-    public string? Id { get; set; }
+    public string? Id { get; init; }
 
     [JsonPropertyName("amount")]
-    public object? Amount { get; set; }
+    public object? Amount { get; init; }
 
     [JsonPropertyName("paid_amount")]
-    public object? PaidAmount { get; set; }
+    public object? PaidAmount { get; init; }
 
     [JsonPropertyName("status")]
-    public string? Status { get; set; }
+    public string? Status { get; init; }
 
     [JsonPropertyName("status_detail")]
-    public string? StatusDetail { get; set; }
+    public string? StatusDetail { get; init; }
 
     [JsonPropertyName("date_of_expiration")]
-    public string? DateOfExpiration { get; set; }
+    public string? DateOfExpiration { get; init; }
 
     [JsonPropertyName("payment_method")]
-    public MercadoPagoOrderPaymentMethodResponse? PaymentMethod { get; set; }
+    public MercadoPagoOrderPaymentMethodResponse? PaymentMethod { get; init; }
 }
 
-public class MercadoPagoOrderPaymentMethodResponse
+public sealed record MercadoPagoOrderPaymentMethodResponse
 {
     [JsonPropertyName("id")]
-    public string? Id { get; set; }
+    public string? Id { get; init; }
 
     [JsonPropertyName("type")]
-    public string? Type { get; set; }
+    public string? Type { get; init; }
 
     [JsonPropertyName("qr_code")]
-    public string? QrCode { get; set; }
+    public string? QrCode { get; init; }
 
     [JsonPropertyName("qr_code_base64")]
-    public string? QrCodeBase64 { get; set; }
+    public string? QrCodeBase64 { get; init; }
 
     [JsonPropertyName("ticket_url")]
-    public string? TicketUrl { get; set; }
+    public string? TicketUrl { get; init; }
 
     [JsonPropertyName("e2e_id")]
-    public string? E2eId { get; set; }
+    public string? E2eId { get; init; }
 }
 
 // -------------------------------------------------------------
 // Resposta da API /v1/payments/{id} (Fallback)
 // -------------------------------------------------------------
 
-public class MercadoPagoPaymentResponse
+public sealed record MercadoPagoPaymentResponse
 {
     [JsonPropertyName("id")]
-    public object? Id { get; set; }
+    public object? Id { get; init; }
 
     [JsonPropertyName("status")]
-    public string? Status { get; set; }
+    public string? Status { get; init; }
 
     [JsonPropertyName("status_detail")]
-    public string? StatusDetail { get; set; }
+    public string? StatusDetail { get; init; }
 
     [JsonPropertyName("transaction_amount")]
-    public decimal? TransactionAmount { get; set; }
+    public decimal? TransactionAmount { get; init; }
 
     [JsonPropertyName("external_reference")]
-    public string? ExternalReference { get; set; }
+    public string? ExternalReference { get; init; }
 
     [JsonPropertyName("payment_method_id")]
-    public string? PaymentMethodId { get; set; }
+    public string? PaymentMethodId { get; init; }
 
     [JsonPropertyName("date_approved")]
-    public DateTimeOffset? DateApproved { get; set; }
+    public DateTimeOffset? DateApproved { get; init; }
 
     [JsonPropertyName("payer")]
-    public MercadoPagoPayerRequest? Payer { get; set; }
+    public MercadoPagoPayerRequest? Payer { get; init; }
 
     [JsonPropertyName("point_of_interaction")]
-    public MercadoPagoPointOfInteraction? PointOfInteraction { get; set; }
+    public MercadoPagoPointOfInteraction? PointOfInteraction { get; init; }
 }
 
-public class MercadoPagoPointOfInteraction
+public sealed record MercadoPagoPointOfInteraction
 {
     [JsonPropertyName("transaction_data")]
-    public MercadoPagoTransactionData? TransactionData { get; set; }
+    public MercadoPagoTransactionData? TransactionData { get; init; }
 }
 
-public class MercadoPagoTransactionData
+public sealed record MercadoPagoTransactionData
 {
     [JsonPropertyName("qr_code")]
-    public string? QrCode { get; set; }
+    public string? QrCode { get; init; }
 
     [JsonPropertyName("qr_code_base64")]
-    public string? QrCodeBase64 { get; set; }
+    public string? QrCodeBase64 { get; init; }
 
     [JsonPropertyName("ticket_url")]
-    public string? TicketUrl { get; set; }
+    public string? TicketUrl { get; init; }
 }

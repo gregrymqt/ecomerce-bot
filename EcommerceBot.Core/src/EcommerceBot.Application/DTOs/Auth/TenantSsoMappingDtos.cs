@@ -1,49 +1,48 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace EcommerceBot.Application.DTOs.Auth
+namespace EcommerceBot.Application.DTOs.Auth;
+
+public sealed record RoleDto
 {
-    public class RoleDto
-    {
-        public Guid Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public bool IsSystemRole { get; set; }
-    }
+    public Guid Id { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
+    public bool IsSystemRole { get; init; }
+}
 
-    public class TenantSsoMappingDto
-    {
-        public Guid Id { get; set; }
-        public Guid TenantId { get; set; }
-        public string IdpGroupName { get; set; } = string.Empty;
-        public Guid RoleId { get; set; }
-        public string RoleName { get; set; } = string.Empty;
-        public bool IsDefaultRole { get; set; }
-        public DateTimeOffset CreatedAt { get; set; }
-        public DateTimeOffset UpdatedAt { get; set; }
-    }
+public sealed record TenantSsoMappingDto
+{
+    public Guid Id { get; init; }
+    public Guid TenantId { get; init; }
+    public string IdpGroupName { get; init; } = string.Empty;
+    public Guid RoleId { get; init; }
+    public string RoleName { get; init; } = string.Empty;
+    public bool IsDefaultRole { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset UpdatedAt { get; init; }
+}
 
-    public class CreateTenantSsoMappingRequest
-    {
-        [Required(ErrorMessage = "O nome do grupo do Provedor de Identidade (IdP) é obrigatório.")]
-        [MaxLength(150, ErrorMessage = "O nome do grupo não pode exceder 150 caracteres.")]
-        public string IdpGroupName { get; set; } = string.Empty;
+public sealed record CreateTenantSsoMappingRequest
+{
+    [Required(ErrorMessage = "O nome do grupo do Provedor de Identidade (IdP) é obrigatório.")]
+    [MaxLength(150, ErrorMessage = "O nome do grupo não pode exceder 150 caracteres.")]
+    public string IdpGroupName { get; init; } = string.Empty;
 
-        [Required(ErrorMessage = "O RoleId de destino é obrigatório.")]
-        public Guid RoleId { get; set; }
+    [Required(ErrorMessage = "O RoleId de destino é obrigatório.")]
+    public Guid RoleId { get; init; }
 
-        public bool IsDefaultRole { get; set; } = false;
-    }
+    public bool IsDefaultRole { get; init; } = false;
+}
 
-    public class UpdateTenantSsoMappingRequest
-    {
-        [Required(ErrorMessage = "O nome do grupo do Provedor de Identidade (IdP) é obrigatório.")]
-        [MaxLength(150, ErrorMessage = "O nome do grupo não pode exceder 150 caracteres.")]
-        public string IdpGroupName { get; set; } = string.Empty;
+public sealed record UpdateTenantSsoMappingRequest
+{
+    [Required(ErrorMessage = "O nome do grupo do Provedor de Identidade (IdP) é obrigatório.")]
+    [MaxLength(150, ErrorMessage = "O nome do grupo não pode exceder 150 caracteres.")]
+    public string IdpGroupName { get; init; } = string.Empty;
 
-        [Required(ErrorMessage = "O RoleId de destino é obrigatório.")]
-        public Guid RoleId { get; set; }
+    [Required(ErrorMessage = "O RoleId de destino é obrigatório.")]
+    public Guid RoleId { get; init; }
 
-        public bool IsDefaultRole { get; set; } = false;
-    }
+    public bool IsDefaultRole { get; init; } = false;
 }

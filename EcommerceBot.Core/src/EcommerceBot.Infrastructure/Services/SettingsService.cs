@@ -74,23 +74,32 @@ public class SettingsService : ISettingsService
 
         if (data.AiSettings != null)
         {
-            if (!string.IsNullOrEmpty(data.AiSettings.ToneOfVoice)) currentAi.ToneOfVoice = data.AiSettings.ToneOfVoice;
-            if (!string.IsNullOrEmpty(data.AiSettings.TargetLanguage)) currentAi.TargetLanguage = data.AiSettings.TargetLanguage;
-            currentAi.SeoTagsEnabled = data.AiSettings.SeoTagsEnabled;
-            if (data.AiSettings.CustomInstructions != null) currentAi.CustomInstructions = data.AiSettings.CustomInstructions;
+            currentAi = currentAi with
+            {
+                ToneOfVoice = !string.IsNullOrEmpty(data.AiSettings.ToneOfVoice) ? data.AiSettings.ToneOfVoice : currentAi.ToneOfVoice,
+                TargetLanguage = !string.IsNullOrEmpty(data.AiSettings.TargetLanguage) ? data.AiSettings.TargetLanguage : currentAi.TargetLanguage,
+                SeoTagsEnabled = data.AiSettings.SeoTagsEnabled,
+                CustomInstructions = data.AiSettings.CustomInstructions ?? currentAi.CustomInstructions
+            };
         }
 
         if (data.PricingSettings != null)
         {
-            currentPricing.MarginPercentage = data.PricingSettings.MarginPercentage;
-            currentPricing.RoundCents = data.PricingSettings.RoundCents;
+            currentPricing = currentPricing with
+            {
+                MarginPercentage = data.PricingSettings.MarginPercentage,
+                RoundCents = data.PricingSettings.RoundCents
+            };
         }
 
         if (data.StoreProfile != null)
         {
-            if (data.StoreProfile.StoreName != null) currentProfile.StoreName = data.StoreProfile.StoreName;
-            if (data.StoreProfile.Niche != null) currentProfile.Niche = data.StoreProfile.Niche;
-            if (data.StoreProfile.SupportEmail != null) currentProfile.SupportEmail = data.StoreProfile.SupportEmail;
+            currentProfile = currentProfile with
+            {
+                StoreName = data.StoreProfile.StoreName ?? currentProfile.StoreName,
+                Niche = data.StoreProfile.Niche ?? currentProfile.Niche,
+                SupportEmail = data.StoreProfile.SupportEmail ?? currentProfile.SupportEmail
+            };
         }
 
         config.AiSettingsJson = JsonSerializer.Serialize(currentAi);

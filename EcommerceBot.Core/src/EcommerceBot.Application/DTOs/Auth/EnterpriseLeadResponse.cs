@@ -1,10 +1,11 @@
-namespace EcommerceBot.Application.DTOs.Auth
+using System;
+
+namespace EcommerceBot.Application.DTOs.Auth;
+
+public sealed record EnterpriseLeadResponse
 {
-    public class EnterpriseLeadResponse
-    {
-        public Guid Id { get; set; }
-        public string Email { get; set; } = string.Empty;
-        public string? CompanyName { get; set; }
-        public string Message { get; set; } = string.Empty;
-    }
+    public Guid Id { get; init; }
+    public string Email { get; init; } = string.Empty;
+    public string? CompanyName { get; init; }
+    public string Message { get; init; } = string.Empty;
 }

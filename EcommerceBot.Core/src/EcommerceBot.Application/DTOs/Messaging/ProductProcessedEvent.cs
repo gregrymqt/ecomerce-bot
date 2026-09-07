@@ -2,7 +2,7 @@ using System;
 
 namespace EcommerceBot.Application.DTOs.Messaging;
 
-public record ProductProcessedEvent
+public sealed record ProductProcessedEvent
 {
     public Guid TenantId { get; init; }
     public string Sku { get; init; } = string.Empty;

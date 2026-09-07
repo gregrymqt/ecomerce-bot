@@ -3,95 +3,95 @@ using System.Text.Json.Serialization;
 
 namespace EcommerceBot.Application.DTOs.Checkout;
 
-public class PixPaymentRequestDto
+public sealed record PixPaymentRequestDto
 {
     [JsonPropertyName("plan_id")]
-    public string PlanId { get; set; } = string.Empty;
+    public string PlanId { get; init; } = string.Empty;
 
     [JsonPropertyName("tenant_id")]
-    public string? TenantId { get; set; }
+    public string? TenantId { get; init; }
 
     [JsonPropertyName("payer_email")]
-    public string? PayerEmail { get; set; }
+    public string? PayerEmail { get; init; }
 
     [JsonPropertyName("payer_document")]
-    public string? PayerDocument { get; set; }
+    public string? PayerDocument { get; init; }
 }
 
-public class PixPaymentResponseDto
+public sealed record PixPaymentResponseDto
 {
     [JsonPropertyName("payment_id")]
-    public string PaymentId { get; set; } = string.Empty;
+    public string PaymentId { get; init; } = string.Empty;
 
     [JsonPropertyName("qr_code_base64")]
-    public string QrCodeBase64 { get; set; } = string.Empty;
+    public string QrCodeBase64 { get; init; } = string.Empty;
 
     [JsonPropertyName("qr_code_copy_paste")]
-    public string QrCodeCopyPaste { get; set; } = string.Empty;
+    public string QrCodeCopyPaste { get; init; } = string.Empty;
 
     [JsonPropertyName("expires_at")]
-    public string ExpiresAt { get; set; } = string.Empty;
+    public string ExpiresAt { get; init; } = string.Empty;
 
     [JsonPropertyName("status")]
-    public string Status { get; set; } = "PENDING";
+    public string Status { get; init; } = "PENDING";
 }
 
-public class CreditCardPaymentRequestDto
+public sealed record CreditCardPaymentRequestDto
 {
     [JsonPropertyName("plan_id")]
-    public string PlanId { get; set; } = string.Empty;
+    public string PlanId { get; init; } = string.Empty;
 
     [JsonPropertyName("card_number")]
-    public string? CardNumber { get; set; }
+    public string? CardNumber { get; init; }
 
     [JsonPropertyName("cardholder_name")]
-    public string? CardholderName { get; set; }
+    public string? CardholderName { get; init; }
 
     [JsonPropertyName("expiration_month")]
-    public string? ExpirationMonth { get; set; }
+    public string? ExpirationMonth { get; init; }
 
     [JsonPropertyName("expiration_year")]
-    public string? ExpirationYear { get; set; }
+    public string? ExpirationYear { get; init; }
 
     [JsonPropertyName("security_code")]
-    public string? SecurityCode { get; set; }
+    public string? SecurityCode { get; init; }
 
     [JsonPropertyName("installments")]
-    public int Installments { get; set; } = 1;
+    public int Installments { get; init; } = 1;
 
     [JsonPropertyName("doc_number")]
-    public string? DocNumber { get; set; }
+    public string? DocNumber { get; init; }
 
     [JsonPropertyName("card_token")]
-    public string? CardToken { get; set; }
+    public string? CardToken { get; init; }
 
     [JsonPropertyName("payment_method_id")]
-    public string? PaymentMethodId { get; set; }
+    public string? PaymentMethodId { get; init; }
 
     [JsonPropertyName("payer_email")]
-    public string? PayerEmail { get; set; }
+    public string? PayerEmail { get; init; }
 }
 
-public class CreditCardPaymentResponseDto
+public sealed record CreditCardPaymentResponseDto
 {
     [JsonPropertyName("payment_id")]
-    public string PaymentId { get; set; } = string.Empty;
+    public string PaymentId { get; init; } = string.Empty;
 
     [JsonPropertyName("status")]
-    public string Status { get; set; } = "PENDING";
+    public string Status { get; init; } = "PENDING";
 
     [JsonPropertyName("message")]
-    public string? Message { get; set; }
+    public string? Message { get; init; }
 }
 
-public class OrderStatusSyncResponseDto
+public sealed record OrderStatusSyncResponseDto
 {
     [JsonPropertyName("payment_id")]
-    public string PaymentId { get; set; } = string.Empty;
+    public string PaymentId { get; init; } = string.Empty;
 
     [JsonPropertyName("status")]
-    public string Status { get; set; } = "PENDING";
+    public string Status { get; init; } = "PENDING";
 
     [JsonPropertyName("is_approved")]
-    public bool IsApproved { get; set; }
+    public bool IsApproved { get; init; }
 }

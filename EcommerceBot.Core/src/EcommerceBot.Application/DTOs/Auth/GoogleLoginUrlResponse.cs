@@ -1,7 +1,6 @@
-namespace EcommerceBot.Application.DTOs.Auth
+namespace EcommerceBot.Application.DTOs.Auth;
+
+public sealed record GoogleLoginUrlResponse
 {
-    public class GoogleLoginUrlResponse
-    {
-        public string Url { get; set; } = string.Empty;
-    }
+    public string Url { get; init; } = string.Empty;
 }

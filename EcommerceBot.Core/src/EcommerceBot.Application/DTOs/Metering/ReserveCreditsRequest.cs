@@ -1,9 +1,8 @@
-namespace EcommerceBot.Application.DTOs.Metering
+namespace EcommerceBot.Application.DTOs.Metering;
+
+public sealed record ReserveCreditsRequest
 {
-    public class ReserveCreditsRequest
-    {
-        public string ModelUsed { get; set; } = string.Empty;
-        public int EstimatedPromptTokens { get; set; }
-        public int EstimatedCompletionTokens { get; set; }
-    }
+    public string ModelUsed { get; init; } = string.Empty;
+    public int EstimatedPromptTokens { get; init; }
+    public int EstimatedCompletionTokens { get; init; }
 }

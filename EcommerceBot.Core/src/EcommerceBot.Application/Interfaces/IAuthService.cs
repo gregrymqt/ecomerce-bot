@@ -2,16 +2,15 @@ using System;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Auth;
 
-namespace EcommerceBot.Application.Interfaces
+namespace EcommerceBot.Application.Interfaces;
+
+public interface IAuthService
 {
-    public interface IAuthService
-    {
-        Task<(UserResponse User, string AccessToken)> RegisterUserAsync(CreateUserRequest request);
-        Task<(UserResponse User, string AccessToken)> AuthenticateUserAsync(LoginRequest request);
-        Task<UserResponse> UpdateProfileAsync(Guid userId, UpdateUserRequest request);
-        Task RevokeTokenAsync(string token);
-        Task<AuthenticatedUser> ResolveUserActivePlanAsync(AuthenticatedUser currentUser, string? tenantId);
-        Task ForgotPasswordAsync(string email, string? clientOrigin = null);
-        Task<string> ResetPasswordAsync(ResetPasswordRequest request);
-    }
+    Task<(UserResponse User, string AccessToken)> RegisterUserAsync(CreateUserRequest request);
+    Task<(UserResponse User, string AccessToken)> AuthenticateUserAsync(LoginRequest request);
+    Task<UserResponse> UpdateProfileAsync(Guid userId, UpdateUserRequest request);
+    Task RevokeTokenAsync(string token);
+    Task<AuthenticatedUser> ResolveUserActivePlanAsync(AuthenticatedUser currentUser, string? tenantId);
+    Task ForgotPasswordAsync(string email, string? clientOrigin = null);
+    Task<string> ResetPasswordAsync(ResetPasswordRequest request);
 }

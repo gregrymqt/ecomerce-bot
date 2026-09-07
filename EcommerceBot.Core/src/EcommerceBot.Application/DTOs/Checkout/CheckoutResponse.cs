@@ -1,20 +1,18 @@
 using System;
-using System.Collections.Generic;
 
-namespace EcommerceBot.Application.DTOs.Checkout
+namespace EcommerceBot.Application.DTOs.Checkout;
+
+public sealed record CheckoutResponse
 {
-    public class CheckoutResponse
-    {
-        public Guid Id { get; set; }
-        public string ExternalReference { get; set; } = string.Empty;
-        public decimal TotalAmount { get; set; }
-        public string Status { get; set; } = string.Empty;
-        public string PaymentMethod { get; set; } = string.Empty;
-        
-        public string? PixQrCode { get; set; }
-        public string? PixQrCodeBase64 { get; set; }
-        public string? TicketUrl { get; set; }
-        
-        public DateTimeOffset CreatedAt { get; set; }
-    }
+    public Guid Id { get; init; }
+    public string ExternalReference { get; init; } = string.Empty;
+    public decimal TotalAmount { get; init; }
+    public string Status { get; init; } = string.Empty;
+    public string PaymentMethod { get; init; } = string.Empty;
+    
+    public string? PixQrCode { get; init; }
+    public string? PixQrCodeBase64 { get; init; }
+    public string? TicketUrl { get; init; }
+    
+    public DateTimeOffset CreatedAt { get; init; }
 }

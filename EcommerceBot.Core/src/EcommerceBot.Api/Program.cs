@@ -1,5 +1,6 @@
 using EcommerceBot.Api.Configurations;
 using EcommerceBot.Api.Middlewares;
+using EcommerceBot.Application.Configurations;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Infrastructure.Configurations;
 
@@ -13,6 +14,9 @@ builder.Configuration.AddDotEnvConfiguration();
 
 // Configuração modular de serviços da API (JSON, Contexto de Tenant, Controllers, Razor e OpenAPI)
 builder.Services.AddApiServices();
+
+// Configuração modular da camada de Aplicação
+builder.Services.AddApplicationServices();
 
 // Configuração modular de Infraestrutura (Scrutor DIP, Redis, JWT, RabbitMQ, Gateways, Discord, Razor)
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);

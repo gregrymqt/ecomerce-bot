@@ -1,14 +1,13 @@
 using System;
 
-namespace EcommerceBot.Application.DTOs.Metering
+namespace EcommerceBot.Application.DTOs.Metering;
+
+public sealed record TenantCreditBalanceResponse
 {
-    public class TenantCreditBalanceResponse
-    {
-        public string TenantId { get; set; } = string.Empty;
-        public decimal ManagedCreditBalance { get; set; }
-        public int MonthlyTotalTokens { get; set; }
-        public decimal MonthlyTotalCostUsd { get; set; }
-        public bool IsByokEnabled { get; set; }
-        public string ActiveMode { get; set; } = "managed";
-    }
+    public string TenantId { get; init; } = string.Empty;
+    public decimal ManagedCreditBalance { get; init; }
+    public int MonthlyTotalTokens { get; init; }
+    public decimal MonthlyTotalCostUsd { get; init; }
+    public bool IsByokEnabled { get; init; }
+    public string ActiveMode { get; init; } = "managed";
 }

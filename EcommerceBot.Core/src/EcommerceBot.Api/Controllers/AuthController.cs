@@ -36,7 +36,7 @@ public class AuthController : BaseApiController
         try
         {
             var (user, token) = await _authService.RegisterUserAsync(request);
-            user.AccessToken = token;
+            user = user with { AccessToken = token };
             AppendAuthCookie(token);
             return Created("", user);
         }
@@ -54,7 +54,7 @@ public class AuthController : BaseApiController
         try
         {
             var (user, token) = await _authService.AuthenticateUserAsync(request);
-            user.AccessToken = token;
+            user = user with { AccessToken = token };
             AppendAuthCookie(token);
             return Ok(user);
         }

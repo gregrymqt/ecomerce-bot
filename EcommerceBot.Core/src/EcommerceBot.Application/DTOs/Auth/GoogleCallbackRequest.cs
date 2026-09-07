@@ -1,8 +1,7 @@
-namespace EcommerceBot.Application.DTOs.Auth
+namespace EcommerceBot.Application.DTOs.Auth;
+
+public sealed record GoogleCallbackRequest
 {
-    public class GoogleCallbackRequest
-    {
-        public string Code { get; set; } = string.Empty;
-        public string? TenantName { get; set; }
-    }
+    public string Code { get; init; } = string.Empty;
+    public string? TenantName { get; init; }
 }

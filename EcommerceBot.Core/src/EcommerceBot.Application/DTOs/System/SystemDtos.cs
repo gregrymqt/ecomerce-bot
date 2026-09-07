@@ -3,47 +3,47 @@ using System.Collections.Generic;
 
 namespace EcommerceBot.Application.DTOs.System;
 
-public class DashboardTelemetryResponse
+public sealed record DashboardTelemetryResponse
 {
-    public ProductStatusSummary ProductStatus { get; set; } = new();
-    public List<TokenTelemetrySchema> TokenUsage { get; set; } = new();
-    public double AverageLatencyMs { get; set; }
-    public double HoursSaved { get; set; }
+    public ProductStatusSummary ProductStatus { get; init; } = new();
+    public List<TokenTelemetrySchema> TokenUsage { get; init; } = new();
+    public double AverageLatencyMs { get; init; }
+    public double HoursSaved { get; init; }
 }
 
-public class ProductStatusSummary
+public sealed record ProductStatusSummary
 {
-    public int Raw { get; set; }
-    public int Processing { get; set; }
-    public int Processed { get; set; }
-    public int Failed { get; set; }
+    public int Raw { get; init; }
+    public int Processing { get; init; }
+    public int Processed { get; init; }
+    public int Failed { get; init; }
 }
 
-public class TokenTelemetrySchema
+public sealed record TokenTelemetrySchema
 {
-    public string Provider { get; set; } = string.Empty;
-    public int TotalPromptTokens { get; set; }
-    public int TotalCompletionTokens { get; set; }
-    public int TotalTokens { get; set; }
+    public string Provider { get; init; } = string.Empty;
+    public int TotalPromptTokens { get; init; }
+    public int TotalCompletionTokens { get; init; }
+    public int TotalTokens { get; init; }
 }
 
-public class RobotActivityDto
+public sealed record RobotActivityDto
 {
-    public Guid Id { get; set; }
-    public string WorkerType { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-    public string? DetailsJson { get; set; }
-    public int? DurationMs { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
+    public Guid Id { get; init; }
+    public string WorkerType { get; init; } = string.Empty;
+    public string Status { get; init; } = string.Empty;
+    public string? DetailsJson { get; init; }
+    public int? DurationMs { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
 }
 
-public class SystemHealthResponse
+public sealed record SystemHealthResponse
 {
-    public string Status { get; set; } = string.Empty;
-    public Dictionary<string, string> Services { get; set; } = new();
+    public string Status { get; init; } = string.Empty;
+    public Dictionary<string, string> Services { get; init; } = new();
 }
 
-public class DemoRequest
+public sealed record DemoRequest
 {
-    public List<string> Urls { get; set; } = new();
+    public List<string> Urls { get; init; } = new();
 }

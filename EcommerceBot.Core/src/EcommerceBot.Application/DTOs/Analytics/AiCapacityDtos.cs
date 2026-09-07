@@ -1,79 +1,78 @@
 using System;
 using System.Collections.Generic;
-using System.Text.Json;
 
 namespace EcommerceBot.Application.DTOs.Analytics;
 
-public class AiProviderCreditTopupRequest
+public sealed record AiProviderCreditTopupRequest
 {
-    public string Provider { get; set; } = string.Empty;
-    public decimal AmountPaid { get; set; }
-    public string Currency { get; set; } = "USD";
-    public long TokensCredited { get; set; }
-    public string? TransactionReference { get; set; }
-    public string Source { get; set; } = "MANUAL_ADMIN";
-    public string? Notes { get; set; }
+    public string Provider { get; init; } = string.Empty;
+    public decimal AmountPaid { get; init; }
+    public string Currency { get; init; } = "USD";
+    public long TokensCredited { get; init; }
+    public string? TransactionReference { get; init; }
+    public string Source { get; init; } = "MANUAL_ADMIN";
+    public string? Notes { get; init; }
 }
 
-public class AiProviderCreditDto
+public sealed record AiProviderCreditDto
 {
-    public Guid Id { get; set; }
-    public string Provider { get; set; } = string.Empty;
-    public decimal AmountPaid { get; set; }
-    public string Currency { get; set; } = "USD";
-    public long TokensCredited { get; set; }
-    public decimal BalanceRemaining { get; set; }
-    public string? TransactionReference { get; set; }
-    public string Source { get; set; } = string.Empty;
-    public string? Notes { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
+    public Guid Id { get; init; }
+    public string Provider { get; init; } = string.Empty;
+    public decimal AmountPaid { get; init; }
+    public string Currency { get; init; } = "USD";
+    public long TokensCredited { get; init; }
+    public decimal BalanceRemaining { get; init; }
+    public string? TransactionReference { get; init; }
+    public string Source { get; init; } = string.Empty;
+    public string? Notes { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
 }
 
-public class ScenarioDetailDto
+public sealed record ScenarioDetailDto
 {
-    public string Label { get; set; } = string.Empty;
-    public long Tokens { get; set; }
-    public decimal EstimatedCostUsd { get; set; }
-    public string Description { get; set; } = string.Empty;
+    public string Label { get; init; } = string.Empty;
+    public long Tokens { get; init; }
+    public decimal EstimatedCostUsd { get; init; }
+    public string Description { get; init; } = string.Empty;
 }
 
-public class ProviderCapacityDetailDto
+public sealed record ProviderCapacityDetailDto
 {
-    public string Provider { get; set; } = string.Empty;
-    public decimal CurrentBalanceUsd { get; set; }
-    public long DailyBurnRateTokens { get; set; }
-    public decimal DailyBurnRateUsd { get; set; }
-    public decimal GrowthRatePercent { get; set; }
-    public decimal RunwayDays { get; set; }
-    public bool IsCritical { get; set; }
-    public decimal RecommendedTopupUsd { get; set; }
-    public Dictionary<string, ScenarioDetailDto> Scenarios { get; set; } = new();
+    public string Provider { get; init; } = string.Empty;
+    public decimal CurrentBalanceUsd { get; init; }
+    public long DailyBurnRateTokens { get; init; }
+    public decimal DailyBurnRateUsd { get; init; }
+    public decimal GrowthRatePercent { get; init; }
+    public decimal RunwayDays { get; init; }
+    public bool IsCritical { get; init; }
+    public decimal RecommendedTopupUsd { get; init; }
+    public Dictionary<string, ScenarioDetailDto> Scenarios { get; init; } = new();
 }
 
-public class ConsolidatedCapacityDto
+public sealed record ConsolidatedCapacityDto
 {
-    public decimal CurrentTotalBalanceUsd { get; set; }
-    public long DailyBurnRateTokensTotal { get; set; }
-    public decimal DailyBurnRateUsdTotal { get; set; }
-    public decimal ConsolidatedRunwayDays { get; set; }
-    public bool IsCritical { get; set; }
-    public decimal RecommendedTopupUsd { get; set; }
-    public Dictionary<string, ScenarioDetailDto> Scenarios { get; set; } = new();
+    public decimal CurrentTotalBalanceUsd { get; init; }
+    public long DailyBurnRateTokensTotal { get; init; }
+    public decimal DailyBurnRateUsdTotal { get; init; }
+    public decimal ConsolidatedRunwayDays { get; init; }
+    public bool IsCritical { get; init; }
+    public decimal RecommendedTopupUsd { get; init; }
+    public Dictionary<string, ScenarioDetailDto> Scenarios { get; init; } = new();
 }
 
-public class AiCapacityOverviewResponse
+public sealed record AiCapacityOverviewResponse
 {
-    public int ForecastHorizonDays { get; set; } = 30;
-    public DateTimeOffset GeneratedAt { get; set; } = DateTimeOffset.UtcNow;
-    public ConsolidatedCapacityDto Consolidated { get; set; } = new();
-    public Dictionary<string, ProviderCapacityDetailDto> Providers { get; set; } = new();
-    public List<AiProviderCreditDto> RecentTopups { get; set; } = new();
+    public int ForecastHorizonDays { get; init; } = 30;
+    public DateTimeOffset GeneratedAt { get; init; } = DateTimeOffset.UtcNow;
+    public ConsolidatedCapacityDto Consolidated { get; init; } = new();
+    public Dictionary<string, ProviderCapacityDetailDto> Providers { get; init; } = new();
+    public List<AiProviderCreditDto> RecentTopups { get; init; } = new();
 }
 
-public class TokenUsageDayDto
+public sealed record TokenUsageDayDto
 {
-    public string Date { get; set; } = string.Empty;
-    public string Provider { get; set; } = string.Empty;
-    public long Tokens { get; set; }
-    public decimal CostUsd { get; set; }
+    public string Date { get; init; } = string.Empty;
+    public string Provider { get; init; } = string.Empty;
+    public long Tokens { get; init; }
+    public decimal CostUsd { get; init; }
 }

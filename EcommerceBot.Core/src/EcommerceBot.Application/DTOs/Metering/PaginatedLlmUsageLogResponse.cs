@@ -1,13 +1,12 @@
 using System.Collections.Generic;
 
-namespace EcommerceBot.Application.DTOs.Metering
+namespace EcommerceBot.Application.DTOs.Metering;
+
+public sealed record PaginatedLlmUsageLogResponse
 {
-    public class PaginatedLlmUsageLogResponse
-    {
-        public IEnumerable<LlmUsageLogResponse> Items { get; set; } = new List<LlmUsageLogResponse>();
-        public int Total { get; set; }
-        public int Page { get; set; }
-        public int Limit { get; set; }
-        public int TotalPages { get; set; }
-    }
+    public IEnumerable<LlmUsageLogResponse> Items { get; init; } = new List<LlmUsageLogResponse>();
+    public int Total { get; init; }
+    public int Page { get; init; }
+    public int Limit { get; init; }
+    public int TotalPages { get; init; }
 }

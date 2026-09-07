@@ -4,122 +4,122 @@ using System.Text.Json.Serialization;
 
 namespace EcommerceBot.Application.DTOs.Shopify;
 
-public class ShopifyOAuthRequest
+public sealed record ShopifyOAuthRequest
 {
     [JsonPropertyName("code")]
-    public string Code { get; set; } = string.Empty;
+    public string Code { get; init; } = string.Empty;
 
     [JsonPropertyName("shop")]
-    public string Shop { get; set; } = string.Empty;
+    public string Shop { get; init; } = string.Empty;
 
     [JsonPropertyName("state")]
-    public string? State { get; set; }
+    public string? State { get; init; }
 
     [JsonPropertyName("hmac")]
-    public string? Hmac { get; set; }
+    public string? Hmac { get; init; }
 }
 
-public class ShopifyTokenResponse
+public sealed record ShopifyTokenResponse
 {
     [JsonPropertyName("access_token")]
-    public string AccessToken { get; set; } = string.Empty;
+    public string AccessToken { get; init; } = string.Empty;
 
     [JsonPropertyName("scope")]
-    public string Scope { get; set; } = string.Empty;
+    public string Scope { get; init; } = string.Empty;
 }
 
-public class ShopifyCredentialsPayloadDto
+public sealed record ShopifyCredentialsPayloadDto
 {
     [JsonPropertyName("store_domain")]
-    public string StoreDomain { get; set; } = string.Empty;
+    public string StoreDomain { get; init; } = string.Empty;
 
     [JsonPropertyName("admin_access_token")]
-    public string AdminAccessToken { get; set; } = string.Empty;
+    public string AdminAccessToken { get; init; } = string.Empty;
 }
 
-public class ShopifySyncRequestDto
+public sealed record ShopifySyncRequestDto
 {
     [JsonPropertyName("tenant_id")]
-    public string? TenantId { get; set; }
+    public string? TenantId { get; init; }
 
     [JsonPropertyName("sku")]
-    public string Sku { get; set; } = string.Empty;
+    public string Sku { get; init; } = string.Empty;
 
     [JsonPropertyName("title")]
-    public string Title { get; set; } = string.Empty;
+    public string Title { get; init; } = string.Empty;
 
     [JsonPropertyName("description")]
-    public string? Description { get; set; }
+    public string? Description { get; init; }
 
     [JsonPropertyName("vendor")]
-    public string? Vendor { get; set; }
+    public string? Vendor { get; init; }
 
     [JsonPropertyName("price")]
-    public decimal? Price { get; set; }
+    public decimal? Price { get; init; }
 
     [JsonPropertyName("images")]
-    public List<string>? Images { get; set; }
+    public List<string>? Images { get; init; }
 
     [JsonPropertyName("tags")]
-    public string? Tags { get; set; }
+    public string? Tags { get; init; }
 
     [JsonPropertyName("seo_title")]
-    public string? SeoTitle { get; set; }
+    public string? SeoTitle { get; init; }
 
     [JsonPropertyName("seo_description")]
-    public string? SeoDescription { get; set; }
+    public string? SeoDescription { get; init; }
 }
 
-public class ShopifyProductResponseDto
+public sealed record ShopifyProductResponseDto
 {
     [JsonPropertyName("shopify_id")]
-    public string? ShopifyId { get; set; }
+    public string? ShopifyId { get; init; }
 
     [JsonPropertyName("status")]
-    public string Status { get; set; } = "success";
+    public string Status { get; init; } = "success";
 
     [JsonPropertyName("message")]
-    public string? Message { get; set; }
+    public string? Message { get; init; }
 
     [JsonPropertyName("errors")]
-    public List<string>? Errors { get; set; }
+    public List<string>? Errors { get; init; }
 }
 
-public class ShopifyInventoryUpdateDto
+public sealed record ShopifyInventoryUpdateDto
 {
     [JsonPropertyName("available_quantity")]
-    public int AvailableQuantity { get; set; }
+    public int AvailableQuantity { get; init; }
 
     [JsonPropertyName("inventory_item_id")]
-    public string? InventoryItemId { get; set; }
+    public string? InventoryItemId { get; init; }
 
     [JsonPropertyName("location_id")]
-    public string? LocationId { get; set; }
+    public string? LocationId { get; init; }
 }
 
-public class ShopifyStatusUpdateDto
+public sealed record ShopifyStatusUpdateDto
 {
     [JsonPropertyName("status")]
-    public string Status { get; set; } = "ACTIVE"; // 'ACTIVE' | 'DRAFT' | 'ARCHIVED'
+    public string Status { get; init; } = "ACTIVE"; // 'ACTIVE' | 'DRAFT' | 'ARCHIVED'
 }
 
-public class ShopifyBulkSyncRequestDto
+public sealed record ShopifyBulkSyncRequestDto
 {
     [JsonPropertyName("skus")]
-    public List<string> Skus { get; set; } = new();
+    public List<string> Skus { get; init; } = new();
 }
 
-public class ShopifyBulkSyncResponseDto
+public sealed record ShopifyBulkSyncResponseDto
 {
     [JsonPropertyName("job_id")]
-    public string JobId { get; set; } = string.Empty;
+    public string JobId { get; init; } = string.Empty;
 
     [JsonPropertyName("total_enqueued")]
-    public int TotalEnqueued { get; set; }
+    public int TotalEnqueued { get; init; }
 
     [JsonPropertyName("status")]
-    public string Status { get; set; } = "queued";
+    public string Status { get; init; } = "queued";
 
     [JsonPropertyName("message")]
-    public string Message { get; set; } = string.Empty;
+    public string Message { get; init; } = string.Empty;
 }

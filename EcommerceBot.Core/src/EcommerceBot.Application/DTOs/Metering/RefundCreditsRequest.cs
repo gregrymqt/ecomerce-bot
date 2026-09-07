@@ -1,7 +1,6 @@
-namespace EcommerceBot.Application.DTOs.Metering
+namespace EcommerceBot.Application.DTOs.Metering;
+
+public sealed record RefundCreditsRequest
 {
-    public class RefundCreditsRequest
-    {
-        public decimal ReservedCost { get; set; }
-    }
+    public decimal ReservedCost { get; init; }
 }

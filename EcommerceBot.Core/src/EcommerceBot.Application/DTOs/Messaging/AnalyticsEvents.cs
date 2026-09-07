@@ -4,27 +4,27 @@ using System.Text.Json;
 
 namespace EcommerceBot.Application.DTOs.Messaging;
 
-public class CustomerTransactionDto
+public sealed record CustomerTransactionDto
 {
-    public string CustomerId { get; set; } = string.Empty;
-    public decimal Amount { get; set; }
-    public DateTimeOffset Date { get; set; }
+    public string CustomerId { get; init; } = string.Empty;
+    public decimal Amount { get; init; }
+    public DateTimeOffset Date { get; init; }
 }
 
-public class MlAnalysisRequestMessage
+public sealed record MlAnalysisRequestMessage
 {
-    public Guid TenantId { get; set; }
-    public string JobType { get; set; } = "FULL_ANALYTICS";
-    public List<CustomerTransactionDto> Transactions { get; set; } = new();
+    public Guid TenantId { get; init; }
+    public string JobType { get; init; } = "FULL_ANALYTICS";
+    public List<CustomerTransactionDto> Transactions { get; init; } = new();
 }
 
-public class MlAnalysisResultMessage
+public sealed record MlAnalysisResultMessage
 {
-    public Guid TenantId { get; set; }
-    public string JobType { get; set; } = "FULL_ANALYTICS";
-    public string Status { get; set; } = "SUCCESS";
-    public JsonElement? Rfm { get; set; }
-    public JsonElement? Churn { get; set; }
-    public JsonElement? Ltv { get; set; }
-    public string? ErrorMessage { get; set; }
+    public Guid TenantId { get; init; }
+    public string JobType { get; init; } = "FULL_ANALYTICS";
+    public string Status { get; init; } = "SUCCESS";
+    public JsonElement? Rfm { get; init; }
+    public JsonElement? Churn { get; init; }
+    public JsonElement? Ltv { get; init; }
+    public string? ErrorMessage { get; init; }
 }

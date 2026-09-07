@@ -242,15 +242,20 @@ namespace EcommerceBot.Infrastructure.Services
 
         public async Task<AuthenticatedUser> ResolveUserActivePlanAsync(AuthenticatedUser currentUser, string? tenantId)
         {
+            var result = currentUser;
+
             if (Guid.TryParse(currentUser.UserId, out var userId))
             {
                 var user = await _userRepository.GetByIdAsync(userId);
                 if (user != null)
                 {
-                    currentUser.Name = user.FullName;
-                    currentUser.Email = user.Email;
-                    currentUser.Role = user.Role;
-                    currentUser.Tenants = new List<string> { user.TenantId.ToString() };
+                    result = result with
+                    {
+                        Name = user.FullName,
+                        Email = user.Email,
+                        Role = user.Role,
+                        Tenants = new List<string> { user.TenantId.ToString() }
+                    };
 
                     var targetTenantId = user.TenantId;
                     if (!string.IsNullOrEmpty(tenantId) && Guid.TryParse(tenantId, out var parsedTenantId))
@@ -261,24 +266,36 @@ namespace EcommerceBot.Infrastructure.Services
                     var tenant = await _tenantRepository.GetByIdAsync(targetTenantId);
                     if (tenant != null)
                     {
-                        currentUser.CreditsBalance = tenant.CreditsBalance;
-                        currentUser.HasActiveCredits = user.Role == "ADMIN" || tenant.CreditsBalance > 0;
-                        currentUser.Plan = user.Role == "ADMIN" ? "admin" : (currentUser.HasActiveCredits ? "active" : "free");
+                        var hasActiveCredits = user.Role == "ADMIN" || tenant.CreditsBalance > 0;
+                        var plan = user.Role == "ADMIN" ? "admin" : (hasActiveCredits ? "active" : "free");
+
+                        result = result with
+                        {
+                            CreditsBalance = tenant.CreditsBalance,
+                            HasActiveCredits = hasActiveCredits,
+                            Plan = plan
+                        };
                     }
                 }
             }
 
-            if (currentUser.Role == "ADMIN")
+            if (result.Role == "ADMIN")
             {
-                currentUser.HasActiveCredits = true;
-                currentUser.Plan = "admin";
+                result = result with
+                {
+                    HasActiveCredits = true,
+                    Plan = "admin"
+                };
             }
-            else if (string.IsNullOrEmpty(currentUser.Plan))
+            else if (string.IsNullOrEmpty(result.Plan))
             {
-                currentUser.Plan = currentUser.HasActiveCredits ? "active" : "free";
+                result = result with
+                {
+                    Plan = result.HasActiveCredits ? "active" : "free"
+                };
             }
 
-            return currentUser;
+            return result;
         }
 
         public async Task ForgotPasswordAsync(string email, string? clientOrigin = null)

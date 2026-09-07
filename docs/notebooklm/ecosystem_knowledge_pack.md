@@ -1,7 +1,7 @@
 # 📚 E-commerce Bot — Master Knowledge Pack & Technical Specification
 
-> **Data de Compilação:** 2026-09-07 16:03:42 UTC  
-> **Versão da Topologia:** v2.0 (184 nós, 207 arestas catalogadas)  
+> **Data de Compilação:** 2026-09-07 16:38:44 UTC  
+> **Versão da Topologia:** v2.0 (185 nós, 207 arestas catalogadas)  
 > **Finalidade:** Base de Conhecimento Canônica para Grounding e Consultas de Engenharia no **Google NotebookLM** (Card 83 do Trello).
 
 ---

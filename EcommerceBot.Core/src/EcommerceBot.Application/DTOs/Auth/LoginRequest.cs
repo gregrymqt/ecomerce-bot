@@ -1,9 +1,8 @@
-namespace EcommerceBot.Application.DTOs.Auth
+namespace EcommerceBot.Application.DTOs.Auth;
+
+public sealed record LoginRequest
 {
-    public class LoginRequest
-    {
-        public string Email { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-        public string? TenantId { get; set; }
-    }
+    public string Email { get; init; } = string.Empty;
+    public string Password { get; init; } = string.Empty;
+    public string? TenantId { get; init; }
 }

@@ -2,10 +2,10 @@ using System;
 
 namespace EcommerceBot.Application.ViewModels.Emails;
 
-public class WelcomeEmailViewModel
+public sealed record WelcomeEmailViewModel
 {
-    public string RecipientName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string LoginUrl { get; set; } = "https://app.ecommercebot.com/login";
-    public string Year { get; set; } = DateTime.UtcNow.Year.ToString();
+    public string RecipientName { get; init; } = string.Empty;
+    public string Email { get; init; } = string.Empty;
+    public string LoginUrl { get; init; } = "https://app.ecommercebot.com/login";
+    public string Year { get; init; } = DateTime.UtcNow.Year.ToString();
 }

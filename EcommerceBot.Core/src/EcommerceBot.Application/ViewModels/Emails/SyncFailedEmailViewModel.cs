@@ -2,11 +2,11 @@ using System;
 
 namespace EcommerceBot.Application.ViewModels.Emails;
 
-public class SyncFailedEmailViewModel
+public sealed record SyncFailedEmailViewModel
 {
-    public string RecipientName { get; set; } = string.Empty;
-    public string PlatformName { get; set; } = "Shopify";
-    public string ErrorMessage { get; set; } = string.Empty;
-    public string ReconnectUrl { get; set; } = "https://app.ecommercebot.com/integrations";
-    public string Year { get; set; } = DateTime.UtcNow.Year.ToString();
+    public string RecipientName { get; init; } = string.Empty;
+    public string PlatformName { get; init; } = "Shopify";
+    public string ErrorMessage { get; init; } = string.Empty;
+    public string ReconnectUrl { get; init; } = "https://app.ecommercebot.com/integrations";
+    public string Year { get; init; } = DateTime.UtcNow.Year.ToString();
 }

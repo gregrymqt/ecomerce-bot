@@ -2,7 +2,7 @@
   "metadata": {
     "version": "2.0",
     "generator": "generate_knowledge_graph.py",
-    "total_nodes": 184,
+    "total_nodes": 185,
     "total_edges": 207
   },
   "nodes": [
@@ -669,6 +669,13 @@
       "label": "IUserRepository",
       "type": "CoreServiceOrRepo",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/IUserRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:ApplicationServiceExtensions",
+      "label": "ApplicationServiceExtensions",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Application/Configurations/ApplicationServiceExtensions.cs",
       "metadata": {}
     },
     {
