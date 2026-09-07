@@ -1,6 +1,8 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapper;
+using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
 
@@ -9,25 +11,39 @@ namespace EcommerceBot.Infrastructure.Repositories;
 public sealed class TenantConfigRepository : ITenantConfigRepository
 {
     private readonly IDbConnectionFactory _connectionFactory;
+    private readonly IRedisService _redisService;
 
-    public TenantConfigRepository(IDbConnectionFactory connectionFactory)
+    public TenantConfigRepository(IDbConnectionFactory connectionFactory, IRedisService redisService)
     {
         _connectionFactory = connectionFactory;
+        _redisService = redisService;
     }
 
-    public async Task<TenantConfig?> GetByTenantIdAsync(Guid tenantId)
+    private static string GetConfigCacheKey(Guid tenantId) => $"tenant:config:{tenantId}";
+
+    public async Task<TenantConfig?> GetByTenantIdAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
-        
-        const string sql = """
-            SELECT * FROM dbo.TenantConfigs 
-            WHERE TenantId = @TenantId
-        """;
+        var cacheKey = GetConfigCacheKey(tenantId);
 
-        return await connection.QueryFirstOrDefaultAsync<TenantConfig>(sql, new { TenantId = tenantId });
+        return await _redisService.GetOrCreateAsync(
+            cacheKey,
+            async () =>
+            {
+                using var connection = await _connectionFactory.CreateConnectionAsync();
+                
+                const string sql = """
+                    SELECT * FROM dbo.TenantConfigs 
+                    WHERE TenantId = @TenantId
+                """;
+
+                var cmd = new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken);
+                return await connection.QueryFirstOrDefaultAsync<TenantConfig>(cmd);
+            },
+            TimeSpan.FromMinutes(30),
+            cancellationToken);
     }
 
-    public async Task UpsertAsync(TenantConfig config)
+    public async Task UpsertAsync(TenantConfig config, CancellationToken cancellationToken = default)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();
         
@@ -48,6 +64,10 @@ public sealed class TenantConfigRepository : ITenantConfigRepository
             END
         """;
 
-        await connection.ExecuteAsync(sql, config);
+        var cmd = new CommandDefinition(sql, config, cancellationToken: cancellationToken);
+        await connection.ExecuteAsync(cmd);
+
+        // Invalida cache de configuração do tenant
+        await _redisService.RemoveAsync(GetConfigCacheKey(config.TenantId), cancellationToken);
     }
 }

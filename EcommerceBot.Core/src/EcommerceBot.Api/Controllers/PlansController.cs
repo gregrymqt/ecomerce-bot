@@ -28,7 +28,7 @@ public class PlansController : BaseApiController
     [ProducesResponseType(typeof(IEnumerable<PlanResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll([FromQuery] bool onlyActive = false, CancellationToken cancellationToken = default)
     {
-        var plans = await _planService.GetAllPlansAsync(onlyActive);
+        var plans = await _planService.GetAllPlansAsync(onlyActive, cancellationToken);
         return Ok(plans);
     }
 
@@ -38,7 +38,7 @@ public class PlansController : BaseApiController
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var plan = await _planService.GetPlanByIdAsync(id);
+        var plan = await _planService.GetPlanByIdAsync(id, cancellationToken);
         if (plan == null)
         {
             return NotFoundProblem($"Plano '{id}' não encontrado.");
@@ -54,7 +54,7 @@ public class PlansController : BaseApiController
     {
         try
         {
-            var plan = await _planService.CreatePlanAsync(request);
+            var plan = await _planService.CreatePlanAsync(request, cancellationToken);
             return CreatedAtAction(nameof(GetById), new { id = plan.Id }, plan);
         }
         catch (ArgumentException ex)
@@ -78,7 +78,7 @@ public class PlansController : BaseApiController
     {
         try
         {
-            var plan = await _planService.UpdatePlanAsync(id, request);
+            var plan = await _planService.UpdatePlanAsync(id, request, cancellationToken);
             if (plan == null)
             {
                 return NotFoundProblem($"Plano '{id}' não encontrado.");

@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Tenant;
 using EcommerceBot.Application.Interfaces;
@@ -18,9 +19,9 @@ public sealed class TenantService : ITenantService
         _logger = logger;
     }
 
-    public async Task<TenantProfileDto?> GetTenantProfileAsync(Guid tenantId)
+    public async Task<TenantProfileDto?> GetTenantProfileAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        var tenant = await _tenantRepository.GetByIdAsync(tenantId);
+        var tenant = await _tenantRepository.GetByIdAsync(tenantId, cancellationToken);
         if (tenant == null)
         {
             _logger.LogWarning("Tenant '{TenantId}' not found.", tenantId);

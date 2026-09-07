@@ -31,7 +31,7 @@ public class ProductsController : BaseApiController
         if (activeTenantId == Guid.Empty)
             return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
-        var response = await _catalogService.GetProductsAsync(activeTenantId, statusFilter, search, page, limit);
+        var response = await _catalogService.GetProductsAsync(activeTenantId, statusFilter, search, page, limit, cancellationToken);
         return Ok(response);
     }
 
@@ -48,7 +48,7 @@ public class ProductsController : BaseApiController
 
         try
         {
-            var result = await _catalogService.RequestScrapingAsync(activeTenantId, request);
+            var result = await _catalogService.RequestScrapingAsync(activeTenantId, request, cancellationToken);
             return Accepted(result);
         }
         catch (ArgumentException ex)
@@ -72,7 +72,7 @@ public class ProductsController : BaseApiController
         if (activeTenantId == Guid.Empty)
             return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
-        var result = await _catalogService.UpdateProductAsync(activeTenantId, sku, payload);
+        var result = await _catalogService.UpdateProductAsync(activeTenantId, sku, payload, cancellationToken);
         if (result == null)
             return NotFoundProblem($"Produto com SKU '{sku}' não encontrado.");
 
@@ -89,7 +89,7 @@ public class ProductsController : BaseApiController
         if (activeTenantId == Guid.Empty)
             return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
-        var deleted = await _catalogService.DeleteProductAsync(activeTenantId, sku);
+        var deleted = await _catalogService.DeleteProductAsync(activeTenantId, sku, cancellationToken);
         if (!deleted)
             return NotFoundProblem($"Produto com SKU '{sku}' não encontrado.");
 

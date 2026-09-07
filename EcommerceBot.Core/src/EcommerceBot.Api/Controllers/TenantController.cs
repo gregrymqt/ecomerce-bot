@@ -25,7 +25,7 @@ public class TenantController : BaseApiController
         if (tenantId == Guid.Empty)
             return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
-        var profile = await _tenantService.GetTenantProfileAsync(tenantId);
+        var profile = await _tenantService.GetTenantProfileAsync(tenantId, cancellationToken);
         if (profile == null)
             return NotFoundProblem("Tenant não encontrado.");
 

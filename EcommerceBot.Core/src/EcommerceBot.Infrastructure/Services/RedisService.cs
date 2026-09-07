@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -9,12 +11,15 @@ namespace EcommerceBot.Infrastructure.Services;
 
 /// <summary>
 /// Implementação padronizada de IRedisService encapsulando IConnectionMultiplexer,
-/// serialização JSON com System.Text.Json, tratamento resiliente de erros e Pub/Sub.
+/// serialização JSON com System.Text.Json, tratamento resiliente de erros, Pub/Sub,
+/// Double-Checked Locking (proteção contra Cache Stampede) e aplicação de Jitter pseudoaleatório no TTL.
 /// </summary>
 public sealed class RedisService : IRedisService
 {
     private readonly IConnectionMultiplexer _redis;
     private readonly ILogger<RedisService> _logger;
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> _keyedLocks = new();
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -29,9 +34,22 @@ public sealed class RedisService : IRedisService
 
     private IDatabase GetDb() => _redis.GetDatabase();
 
-    public async Task<T?> GetAsync<T>(string key)
+    /// <summary>
+    /// Aplica uma variação pseudoaleatória (Jitter) de até 10% no TTL para evitar expiração sincronizada de chaves.
+    /// </summary>
+    private static TimeSpan? ApplyJitter(TimeSpan? expiry)
     {
-        if (string.IsNullOrWhiteSpace(key)) return default;
+        if (!expiry.HasValue || expiry.Value <= TimeSpan.Zero)
+            return expiry;
+
+        var maxJitterMs = Math.Max(1, (int)(expiry.Value.TotalMilliseconds * 0.10));
+        var jitterMs = Random.Shared.Next(0, maxJitterMs);
+        return expiry.Value + TimeSpan.FromMilliseconds(jitterMs);
+    }
+
+    public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(key) || cancellationToken.IsCancellationRequested) return default;
 
         try
         {
@@ -52,9 +70,9 @@ public sealed class RedisService : IRedisService
         }
     }
 
-    public async Task<bool> SetAsync<T>(string key, T value, TimeSpan? expiry = null)
+    public async Task<bool> SetAsync<T>(string key, T value, TimeSpan? expiry = null, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(key)) return false;
+        if (string.IsNullOrWhiteSpace(key) || cancellationToken.IsCancellationRequested) return false;
 
         try
         {
@@ -62,9 +80,11 @@ public sealed class RedisService : IRedisService
                 ? strVal
                 : JsonSerializer.Serialize(value, JsonOptions);
 
+            var finalExpiry = ApplyJitter(expiry);
             var db = GetDb();
-            return expiry.HasValue
-                ? await db.StringSetAsync(key, payload, expiry.Value)
+
+            return finalExpiry.HasValue
+                ? await db.StringSetAsync(key, payload, finalExpiry.Value)
                 : await db.StringSetAsync(key, payload);
         }
         catch (Exception ex)
@@ -84,7 +104,8 @@ public sealed class RedisService : IRedisService
             var result = await db.StringIncrementAsync(key, value);
             if (result == value && expiry.HasValue)
             {
-                await db.KeyExpireAsync(key, expiry.Value);
+                var finalExpiry = ApplyJitter(expiry);
+                await db.KeyExpireAsync(key, finalExpiry);
             }
             return result;
         }
@@ -95,28 +116,53 @@ public sealed class RedisService : IRedisService
         }
     }
 
-    public async Task<T?> GetOrCreateAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiry = null)
+    public async Task<T?> GetOrCreateAsync<T>(
+        string key, 
+        Func<Task<T>> factory, 
+        TimeSpan? expiry = null, 
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(key)) return await factory();
+        if (cancellationToken.IsCancellationRequested) return default;
 
-        var cached = await GetAsync<T>(key);
+        // 1. Fast path (sem contenção)
+        var cached = await GetAsync<T>(key, cancellationToken);
         if (cached != null)
         {
             return cached;
         }
 
-        var result = await factory();
-        if (result != null)
-        {
-            await SetAsync(key, result, expiry);
-        }
+        // 2. Proteção contra Cache Stampede: semáforo local por chave
+        var semaphore = _keyedLocks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
+        await semaphore.WaitAsync(cancellationToken);
 
-        return result;
+        try
+        {
+            // 3. Double-check após obter o lock
+            cached = await GetAsync<T>(key, cancellationToken);
+            if (cached != null)
+            {
+                return cached;
+            }
+
+            // 4. Executa a factory para buscar no banco e armazena no Redis com Jitter
+            var result = await factory();
+            if (result != null)
+            {
+                await SetAsync(key, result, expiry, cancellationToken);
+            }
+
+            return result;
+        }
+        finally
+        {
+            semaphore.Release();
+        }
     }
 
-    public async Task<bool> RemoveAsync(string key)
+    public async Task<bool> RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(key)) return false;
+        if (string.IsNullOrWhiteSpace(key) || cancellationToken.IsCancellationRequested) return false;
 
         try
         {
@@ -129,9 +175,9 @@ public sealed class RedisService : IRedisService
         }
     }
 
-    public async Task<bool> KeyExistsAsync(string key)
+    public async Task<bool> KeyExistsAsync(string key, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(key)) return false;
+        if (string.IsNullOrWhiteSpace(key) || cancellationToken.IsCancellationRequested) return false;
 
         try
         {
@@ -144,13 +190,14 @@ public sealed class RedisService : IRedisService
         }
     }
 
-    public async Task<bool> SetIfNotExistsAsync(string key, string value, TimeSpan expiry)
+    public async Task<bool> SetIfNotExistsAsync(string key, string value, TimeSpan expiry, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(key)) return false;
+        if (string.IsNullOrWhiteSpace(key) || cancellationToken.IsCancellationRequested) return false;
 
         try
         {
-            return await GetDb().StringSetAsync(key, value, expiry, When.NotExists);
+            var finalExpiry = ApplyJitter(expiry) ?? expiry;
+            return await GetDb().StringSetAsync(key, value, finalExpiry, When.NotExists);
         }
         catch (Exception ex)
         {

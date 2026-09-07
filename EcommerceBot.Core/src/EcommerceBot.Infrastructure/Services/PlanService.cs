@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Plans;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Services;
@@ -15,21 +14,17 @@ namespace EcommerceBot.Infrastructure.Services;
 public sealed class PlanService : IPlanService
 {
     private readonly IPlanRepository _planRepository;
-    private readonly IDistributedCache _cache;
     private readonly ILogger<PlanService> _logger;
-    private const string PlansCacheKey = "Plans:All";
 
     public PlanService(
         IPlanRepository planRepository, 
-        IDistributedCache cache, 
         ILogger<PlanService> logger)
     {
         _planRepository = planRepository;
-        _cache = cache;
         _logger = logger;
     }
 
-    private PlanResponse MapToResponse(Plan plan)
+    private static PlanResponse MapToResponse(Plan plan)
     {
         return new PlanResponse
         {
@@ -48,38 +43,20 @@ public sealed class PlanService : IPlanService
         };
     }
 
-    public async Task<PlanResponse?> GetPlanByIdAsync(Guid id)
+    public async Task<PlanResponse?> GetPlanByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var plan = await _planRepository.GetByIdAsync(id);
+        var plan = await _planRepository.GetByIdAsync(id, cancellationToken);
         return plan != null ? MapToResponse(plan) : null;
     }
 
-    public async Task<IEnumerable<PlanResponse>> GetAllPlansAsync(bool onlyActive = false)
+    public async Task<IEnumerable<PlanResponse>> GetAllPlansAsync(bool onlyActive = false, CancellationToken cancellationToken = default)
     {
-        var cacheKey = onlyActive ? $"{PlansCacheKey}:Active" : $"{PlansCacheKey}:All";
-        var cached = await _cache.GetStringAsync(cacheKey);
-
-        if (!string.IsNullOrEmpty(cached))
-        {
-            _logger.LogInformation("Returning plans from cache {Key}", cacheKey);
-            var result = JsonSerializer.Deserialize<List<PlanResponse>>(cached);
-            if (result != null) return result;
-        }
-
-        _logger.LogInformation("Fetching plans from database");
-        var plans = await _planRepository.GetAllAsync(onlyActive);
-        var responses = plans.Select(MapToResponse).ToList();
-
-        var cacheOptions = new DistributedCacheEntryOptions
-        {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30)
-        };
-        await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(responses), cacheOptions);
-
-        return responses;
+        _logger.LogInformation("Buscando catálogo de planos (onlyActive: {OnlyActive})", onlyActive);
+        var plans = await _planRepository.GetAllAsync(onlyActive, cancellationToken);
+        return plans.Select(MapToResponse).ToList();
     }
 
-    public async Task<PlanResponse> CreatePlanAsync(CreatePlanRequest request)
+    public async Task<PlanResponse> CreatePlanAsync(CreatePlanRequest request, CancellationToken cancellationToken = default)
     {
         var plan = new Plan
         {
@@ -94,18 +71,15 @@ public sealed class PlanService : IPlanService
             IsActive = request.IsActive
         };
 
-        plan.Id = await _planRepository.CreateAsync(plan);
+        plan.Id = await _planRepository.CreateAsync(plan, cancellationToken);
 
-        await InvalidateCacheAsync();
-        
-        // Fetch to get exact CreatedAt
-        var created = await _planRepository.GetByIdAsync(plan.Id);
+        var created = await _planRepository.GetByIdAsync(plan.Id, cancellationToken);
         return MapToResponse(created ?? plan);
     }
 
-    public async Task<PlanResponse?> UpdatePlanAsync(Guid id, UpdatePlanRequest request)
+    public async Task<PlanResponse?> UpdatePlanAsync(Guid id, UpdatePlanRequest request, CancellationToken cancellationToken = default)
     {
-        var plan = await _planRepository.GetByIdAsync(id);
+        var plan = await _planRepository.GetByIdAsync(id, cancellationToken);
         if (plan == null) return null;
 
         if (request.Name != null) plan.Name = request.Name;
@@ -118,18 +92,9 @@ public sealed class PlanService : IPlanService
         if (request.Badge != null) plan.Badge = request.Badge;
         if (request.IsActive.HasValue) plan.IsActive = request.IsActive.Value;
 
-        await _planRepository.UpdateAsync(plan);
+        await _planRepository.UpdateAsync(plan, cancellationToken);
 
-        await InvalidateCacheAsync();
-
-        var updated = await _planRepository.GetByIdAsync(id);
+        var updated = await _planRepository.GetByIdAsync(id, cancellationToken);
         return updated != null ? MapToResponse(updated) : null;
-    }
-
-    private async Task InvalidateCacheAsync()
-    {
-        _logger.LogInformation("Invalidating plans cache");
-        await _cache.RemoveAsync($"{PlansCacheKey}:All");
-        await _cache.RemoveAsync($"{PlansCacheKey}:Active");
     }
 }

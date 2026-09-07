@@ -3,7 +3,7 @@
     "version": "2.0",
     "generator": "generate_knowledge_graph.py",
     "total_nodes": 170,
-    "total_edges": 169
+    "total_edges": 173
   },
   "nodes": [
     {
@@ -189,6 +189,13 @@
       "metadata": {}
     },
     {
+      "id": "code:RedisService",
+      "label": "RedisService",
+      "type": "CoreServiceOrRepo",
+      "file": "",
+      "metadata": {}
+    },
+    {
       "id": "code:ProductRepository",
       "label": "ProductRepository",
       "type": "CoreServiceOrRepo",
@@ -291,13 +298,6 @@
       "label": "AuthService",
       "type": "CoreServiceOrRepo",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/AuthService.cs",
-      "metadata": {}
-    },
-    {
-      "id": "code:RedisService",
-      "label": "RedisService",
-      "type": "CoreServiceOrRepo",
-      "file": "",
       "metadata": {}
     },
     {
@@ -1541,8 +1541,18 @@
     },
     {
       "source": "code:PlanRepository",
+      "target": "code:RedisService",
+      "relationship": "invokes"
+    },
+    {
+      "source": "code:PlanRepository",
       "target": "table:Plans",
       "relationship": "queries"
+    },
+    {
+      "source": "code:ProductRepository",
+      "target": "code:RedisService",
+      "relationship": "invokes"
     },
     {
       "source": "code:ProductRepository",
@@ -1601,8 +1611,18 @@
     },
     {
       "source": "code:TenantConfigRepository",
+      "target": "code:RedisService",
+      "relationship": "invokes"
+    },
+    {
+      "source": "code:TenantConfigRepository",
       "target": "table:TenantConfigs",
       "relationship": "queries"
+    },
+    {
+      "source": "code:TenantRepository",
+      "target": "code:RedisService",
+      "relationship": "invokes"
     },
     {
       "source": "code:TenantRepository",

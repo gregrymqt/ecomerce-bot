@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Messaging;
 using EcommerceBot.Application.DTOs.Products;
@@ -54,9 +55,15 @@ public sealed class CatalogService : ICatalogService
         };
     }
 
-    public async Task<PaginatedProductsResponse> GetProductsAsync(Guid tenantId, string? status, string? search, int page, int limit)
+    public async Task<PaginatedProductsResponse> GetProductsAsync(
+        Guid tenantId, 
+        string? status, 
+        string? search, 
+        int page, 
+        int limit, 
+        CancellationToken cancellationToken = default)
     {
-        var result = await _productRepository.GetPaginatedAsync(tenantId, status, search, page, limit);
+        var result = await _productRepository.GetPaginatedAsync(tenantId, status, search, page, limit, cancellationToken);
 
         return new PaginatedProductsResponse
         {
@@ -67,9 +74,13 @@ public sealed class CatalogService : ICatalogService
         };
     }
 
-    public async Task<ProductResponseDto?> UpdateProductAsync(Guid tenantId, string sku, ProductUpdateDto dto)
+    public async Task<ProductResponseDto?> UpdateProductAsync(
+        Guid tenantId, 
+        string sku, 
+        ProductUpdateDto dto, 
+        CancellationToken cancellationToken = default)
     {
-        var product = await _productRepository.GetBySkuAsync(tenantId, sku);
+        var product = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
         if (product == null) return null;
 
         if (dto.Title != null) product.Title = dto.Title;
@@ -82,22 +93,25 @@ public sealed class CatalogService : ICatalogService
         if (dto.Status != null) product.Status = dto.Status;
         if (dto.ImagesJson != null) product.ImagesJson = dto.ImagesJson;
 
-        await _productRepository.UpdateAsync(product);
+        await _productRepository.UpdateAsync(product, cancellationToken);
 
-        var updated = await _productRepository.GetBySkuAsync(tenantId, sku);
+        var updated = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
         return updated != null ? MapToResponse(updated) : null;
     }
 
-    public async Task<bool> DeleteProductAsync(Guid tenantId, string sku)
+    public async Task<bool> DeleteProductAsync(Guid tenantId, string sku, CancellationToken cancellationToken = default)
     {
-        var product = await _productRepository.GetBySkuAsync(tenantId, sku);
+        var product = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
         if (product == null) return false;
 
-        await _productRepository.DeleteAsync(tenantId, sku);
+        await _productRepository.DeleteAsync(tenantId, sku, cancellationToken);
         return true;
     }
 
-    public async Task<ScrapingResponseDto> RequestScrapingAsync(Guid tenantId, ScrapingRequestDto request)
+    public async Task<ScrapingResponseDto> RequestScrapingAsync(
+        Guid tenantId, 
+        ScrapingRequestDto request, 
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(request.Url) || !UrlSecurityValidator.IsSafePublicUrl(request.Url))
         {
@@ -116,7 +130,8 @@ public sealed class CatalogService : ICatalogService
                 1,
                 type: "PRODUCT_ENRICHMENT",
                 description: "Extração e enriquecimento de catálogo com IA",
-                referenceId: sku);
+                referenceId: sku,
+                cancellationToken: cancellationToken);
         }
         else
         {
@@ -132,7 +147,7 @@ public sealed class CatalogService : ICatalogService
             Status = "RAW"
         };
 
-        await _productRepository.AddAsync(product);
+        await _productRepository.AddAsync(product, cancellationToken);
 
         await _publishEndpoint.Publish(new ScrapingRequestMessage
         {
@@ -141,7 +156,7 @@ public sealed class CatalogService : ICatalogService
             Url = request.Url,
             PromptContext = request.CustomPrompt ?? string.Empty,
             IsByok = hasByok
-        });
+        }, cancellationToken);
 
         _logger.LogInformation("Scraping enqueued for SKU '{Sku}', Tenant '{TenantId}'", sku, tenantId);
 
