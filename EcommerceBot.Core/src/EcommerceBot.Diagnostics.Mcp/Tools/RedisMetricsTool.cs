@@ -1,7 +1,6 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Diagnostics.Mcp.Protocol;
 using StackExchange.Redis;
@@ -11,8 +10,9 @@ namespace EcommerceBot.Diagnostics.Mcp.Tools;
 /// <summary>
 /// Ferramenta de diagnóstico de saúde, latência e memória do Redis 7.
 /// Totalmente Read-Only (proibido FLUSH ou DEL).
+/// Suporta cancelamento cooperativo via CancellationToken.
 /// </summary>
-public class RedisMetricsTool : ISystemDiagnosticTool
+public sealed class RedisMetricsTool : ISystemDiagnosticTool
 {
     private readonly IConnectionMultiplexer _redis;
 
@@ -31,10 +31,12 @@ public class RedisMetricsTool : ISystemDiagnosticTool
         properties = new { }
     };
 
-    public async Task<McpToolCallResult> ExecuteAsync(JsonElement? arguments)
+    public async Task<McpToolCallResult> ExecuteAsync(JsonElement? arguments, CancellationToken cancellationToken = default)
     {
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var db = _redis.GetDatabase();
             var endpoints = _redis.GetEndPoints();
 
@@ -43,15 +45,17 @@ public class RedisMetricsTool : ISystemDiagnosticTool
                 return new McpToolCallResult
                 {
                     IsError = true,
-                    Content = new List<McpContentItem>
-                    {
+                    Content =
+                    [
                         new() { Type = "text", Text = "Nenhum endpoint Redis configurado ou disponível." }
-                    }
+                    ]
                 };
             }
 
             var server = _redis.GetServer(endpoints[0]);
             var pingLatency = await db.PingAsync();
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             string usedMemoryHuman = "N/A";
             string connectedClients = "N/A";
@@ -82,23 +86,38 @@ public class RedisMetricsTool : ISystemDiagnosticTool
             {
                 status = _redis.IsConnected ? "CONNECTED" : "DISCONNECTED",
                 pingLatencyMs = Math.Round(pingLatency.TotalMilliseconds, 2),
-                redisVersion = redisVersion,
+                redisVersion,
                 usedMemory = usedMemoryHuman,
-                connectedClients = connectedClients,
+                connectedClients,
                 endpointsCount = endpoints.Length
             };
 
             return new McpToolCallResult
             {
                 IsError = false,
-                Content = new List<McpContentItem>
-                {
+                Content =
+                [
                     new()
                     {
                         Type = "text",
                         Text = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true })
                     }
-                }
+                ]
+            };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return new McpToolCallResult
+            {
+                IsError = true,
+                Content =
+                [
+                    new()
+                    {
+                        Type = "text",
+                        Text = "Operação de diagnóstico do Redis cancelada."
+                    }
+                ]
             };
         }
         catch (Exception ex)
@@ -106,14 +125,14 @@ public class RedisMetricsTool : ISystemDiagnosticTool
             return new McpToolCallResult
             {
                 IsError = true,
-                Content = new List<McpContentItem>
-                {
+                Content =
+                [
                     new()
                     {
                         Type = "text",
                         Text = $"Erro ao obter métricas do Redis: {ex.Message}"
                     }
-                }
+                ]
             };
         }
     }

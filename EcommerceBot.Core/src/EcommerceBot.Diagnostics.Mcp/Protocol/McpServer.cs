@@ -13,9 +13,9 @@ namespace EcommerceBot.Diagnostics.Mcp.Protocol;
 /// <summary>
 /// Servidor MCP padrão via stdio (Standard I/O).
 /// Processa requisições JSON-RPC 2.0 recebidas na stdin e responde na stdout.
-/// Todos os logs de telemetria/diagnóstico são enviados para stderr.
+/// Todos os logs operacionais e de telemetria são enviados para stderr.
 /// </summary>
-public class McpServer
+public sealed class McpServer
 {
     private readonly Dictionary<string, ISystemDiagnosticTool> _tools;
     private readonly RunbookResourceProvider _resourceProvider;
@@ -43,7 +43,7 @@ public class McpServer
             var line = await reader.ReadLineAsync(cancellationToken);
             if (line == null)
             {
-                // EOF alcançado (o cliente fechou a conexão stdin)
+                // EOF alcançado (o cliente encerrou a conexão stdin)
                 break;
             }
 
@@ -54,13 +54,17 @@ public class McpServer
 
             try
             {
-                var response = await ProcessMessageAsync(line);
+                var response = await ProcessMessageAsync(line, cancellationToken);
                 if (response != null)
                 {
                     var json = JsonSerializer.Serialize(response, JsonOptions);
                     Console.WriteLine(json);
                     Console.Out.Flush();
                 }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                break;
             }
             catch (Exception ex)
             {
@@ -71,7 +75,7 @@ public class McpServer
         Console.Error.WriteLine("🛑 [EcommerceBot.Diagnostics.Mcp] Servidor MCP finalizado.");
     }
 
-    private async Task<JsonRpcResponse?> ProcessMessageAsync(string rawJson)
+    private async Task<JsonRpcResponse?> ProcessMessageAsync(string rawJson, CancellationToken cancellationToken)
     {
         JsonRpcRequest? request;
         try
@@ -100,7 +104,7 @@ public class McpServer
             "initialize" => HandleInitialize(request),
             "ping" => new JsonRpcResponse { Id = request.Id, Result = new { } },
             "tools/list" => HandleToolsList(request),
-            "tools/call" => await HandleToolsCallAsync(request),
+            "tools/call" => await HandleToolsCallAsync(request, cancellationToken),
             "resources/list" => HandleResourcesList(request),
             "resources/read" => HandleResourcesRead(request),
             _ => new JsonRpcResponse
@@ -115,7 +119,7 @@ public class McpServer
         };
     }
 
-    private JsonRpcResponse HandleInitialize(JsonRpcRequest request)
+    private static JsonRpcResponse HandleInitialize(JsonRpcRequest request)
     {
         var result = new McpInitializeResult();
         return new JsonRpcResponse
@@ -141,7 +145,7 @@ public class McpServer
         };
     }
 
-    private async Task<JsonRpcResponse> HandleToolsCallAsync(JsonRpcRequest request)
+    private async Task<JsonRpcResponse> HandleToolsCallAsync(JsonRpcRequest request, CancellationToken cancellationToken)
     {
         if (!request.Params.HasValue)
         {
@@ -175,7 +179,7 @@ public class McpServer
         JsonElement? arguments = paramsElement.TryGetProperty("arguments", out var argsProp) ? argsProp : null;
         Console.Error.WriteLine($"⚡ Executando ferramenta MCP: {toolName}");
 
-        var toolResult = await tool.ExecuteAsync(arguments);
+        var toolResult = await tool.ExecuteAsync(arguments, cancellationToken);
 
         return new JsonRpcResponse
         {

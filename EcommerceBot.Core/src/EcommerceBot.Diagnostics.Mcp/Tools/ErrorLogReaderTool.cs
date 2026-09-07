@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Diagnostics.Mcp.Common;
 using EcommerceBot.Diagnostics.Mcp.Protocol;
@@ -13,8 +14,9 @@ namespace EcommerceBot.Diagnostics.Mcp.Tools;
 /// <summary>
 /// Ferramenta de leitura de logs de erro estruturados gerados pelo Serilog (logs/errors-*.json).
 /// Abre os arquivos em modo compartilhado (FileShare.ReadWrite) para leitura sem travar o processo da API.
+/// Suporta cancelamento cooperativo via CancellationToken.
 /// </summary>
-public class ErrorLogReaderTool : ISystemDiagnosticTool
+public sealed class ErrorLogReaderTool : ISystemDiagnosticTool
 {
     public string Name => "get_recent_application_errors";
 
@@ -38,7 +40,7 @@ public class ErrorLogReaderTool : ISystemDiagnosticTool
         }
     };
 
-    public Task<McpToolCallResult> ExecuteAsync(JsonElement? arguments)
+    public async Task<McpToolCallResult> ExecuteAsync(JsonElement? arguments, CancellationToken cancellationToken = default)
     {
         int limit = 10;
         string minLevel = "Warning";
@@ -54,14 +56,16 @@ public class ErrorLogReaderTool : ISystemDiagnosticTool
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var logFiles = FindErrorLogFiles();
             if (logFiles.Count == 0)
             {
-                return Task.FromResult(new McpToolCallResult
+                return new McpToolCallResult
                 {
                     IsError = false,
-                    Content = new List<McpContentItem>
-                    {
+                    Content =
+                    [
                         new()
                         {
                             Type = "text",
@@ -71,17 +75,19 @@ public class ErrorLogReaderTool : ISystemDiagnosticTool
                                 message = "Nenhum arquivo de log de erro rotativo encontrado ainda em logs/errors-*.json. A API ainda não registrou falhas ou o diretório de logs não foi criado."
                             }, new JsonSerializerOptions { WriteIndented = true })
                         }
-                    }
-                });
+                    ]
+                };
             }
 
             // Ler o arquivo mais recente
-            var newestLogFile = logFiles.OrderByDescending(f => File.GetLastWriteTimeUtc(f)).First();
-            var rawLines = ReadTailLines(newestLogFile, limit * 5);
+            var newestLogFile = logFiles.OrderByDescending(File.GetLastWriteTimeUtc).First();
+            var rawLines = await ReadTailLinesAsync(newestLogFile, limit * 5, cancellationToken);
 
             var parsedErrors = new List<object>();
             foreach (var line in rawLines.AsEnumerable().Reverse())
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 if (string.IsNullOrWhiteSpace(line)) continue;
 
                 try
@@ -125,39 +131,54 @@ public class ErrorLogReaderTool : ISystemDiagnosticTool
                 errors = parsedErrors
             };
 
-            return Task.FromResult(new McpToolCallResult
+            return new McpToolCallResult
             {
                 IsError = false,
-                Content = new List<McpContentItem>
-                {
+                Content =
+                [
                     new()
                     {
                         Type = "text",
                         Text = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true })
                     }
-                }
-            });
+                ]
+            };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return new McpToolCallResult
+            {
+                IsError = true,
+                Content =
+                [
+                    new()
+                    {
+                        Type = "text",
+                        Text = "Operação de leitura de logs cancelada."
+                    }
+                ]
+            };
         }
         catch (Exception ex)
         {
-            return Task.FromResult(new McpToolCallResult
+            return new McpToolCallResult
             {
                 IsError = true,
-                Content = new List<McpContentItem>
-                {
+                Content =
+                [
                     new()
                     {
                         Type = "text",
                         Text = $"Erro ao ler logs de aplicação: {ex.Message}"
                     }
-                }
-            });
+                ]
+            };
         }
     }
 
     private static bool ShouldInclude(string currentLevel, string minLevel)
     {
-        int Rank(string lvl) => lvl.ToUpperInvariant() switch
+        static int Rank(string lvl) => lvl.ToUpperInvariant() switch
         {
             "INFORMATION" or "INFO" => 1,
             "WARNING" or "WARN" => 2,
@@ -199,14 +220,14 @@ public class ErrorLogReaderTool : ISystemDiagnosticTool
         return candidates.Distinct().ToList();
     }
 
-    private static List<string> ReadTailLines(string filePath, int lineCount)
+    private static async Task<List<string>> ReadTailLinesAsync(string filePath, int lineCount, CancellationToken cancellationToken)
     {
         var lines = new List<string>();
-        using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        await using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         using var reader = new StreamReader(fs, Encoding.UTF8);
 
         string? line;
-        while ((line = reader.ReadLine()) != null)
+        while ((line = await reader.ReadLineAsync(cancellationToken)) != null)
         {
             lines.Add(line);
             if (lines.Count > lineCount * 2)

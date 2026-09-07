@@ -2,8 +2,8 @@
   "metadata": {
     "version": "2.0",
     "generator": "generate_knowledge_graph.py",
-    "total_nodes": 185,
-    "total_edges": 207
+    "total_nodes": 179,
+    "total_edges": 197
   },
   "nodes": [
     {
@@ -1499,66 +1499,6 @@
       }
     },
     {
-      "id": "mcp_tool:get_recent_application_errors",
-      "label": "get_recent_application_errors",
-      "type": "McpDiagnosticTool",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Diagnostics.Mcp/Tools/ErrorLogReaderTool.cs",
-      "metadata": {
-        "className": "ErrorLogReaderTool",
-        "description": "Lê as últimas falhas (Warning, Error, Fatal) registradas pelo Serilog nos arquivos rotativos JSON da API Core sem bloquear a aplicação."
-      }
-    },
-    {
-      "id": "mcp_tool:inspect_ml_artifacts",
-      "label": "inspect_ml_artifacts",
-      "type": "McpDiagnosticTool",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Diagnostics.Mcp/Tools/MlModelArtifactsTool.cs",
-      "metadata": {
-        "className": "MlModelArtifactsTool",
-        "description": "Inspeciona os artefatos de Machine Learning (.joblib) e o manifesto de metadados gerados pelo Google Spark / PySpark no ecossistema."
-      }
-    },
-    {
-      "id": "mcp_tool:inspect_rabbitmq_queues",
-      "label": "inspect_rabbitmq_queues",
-      "type": "McpDiagnosticTool",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Diagnostics.Mcp/Tools/RabbitMqQueueTool.cs",
-      "metadata": {
-        "className": "RabbitMqQueueTool",
-        "description": "Inspeciona o backlog de mensagens, consumidores ativos e taxas nas filas críticas e DLQs do RabbitMQ."
-      }
-    },
-    {
-      "id": "mcp_tool:check_redis_metrics",
-      "label": "check_redis_metrics",
-      "type": "McpDiagnosticTool",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Diagnostics.Mcp/Tools/RedisMetricsTool.cs",
-      "metadata": {
-        "className": "RedisMetricsTool",
-        "description": "Inspeciona o estado do Redis: conectividade, latência de ping, uso de memória, número de clientes conectados e status de cluster/standalone."
-      }
-    },
-    {
-      "id": "mcp_tool:check_spark_pipeline_status",
-      "label": "check_spark_pipeline_status",
-      "type": "McpDiagnosticTool",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Diagnostics.Mcp/Tools/SparkPipelineStatusTool.cs",
-      "metadata": {
-        "className": "SparkPipelineStatusTool",
-        "description": "Inspeciona o status e histórico de execuções do pipeline Google Spark Batch, verificando relatórios de métricas do NotebookLM e periodicidade."
-      }
-    },
-    {
-      "id": "mcp_tool:check_sql_health",
-      "label": "check_sql_health",
-      "type": "McpDiagnosticTool",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Diagnostics.Mcp/Tools/SqlHealthTool.cs",
-      "metadata": {
-        "className": "SqlHealthTool",
-        "description": "Inspeciona a saúde do SQL Server 2022 via DMVs (sys.dm_*): bloqueios ativos, deadlocks em andamento, conexões e top queries lentas."
-      }
-    },
-    {
       "id": "ml_model:ChurnPredictor",
       "label": "ChurnPredictor",
       "type": "MachineLearningModel",
@@ -2570,56 +2510,6 @@
       "source": "worker:rabbitmq",
       "target": "queue:llm_usage_queue",
       "relationship": "interacts_with"
-    },
-    {
-      "source": "service:EcommerceBot.Diagnostics.Mcp",
-      "target": "mcp_tool:get_recent_application_errors",
-      "relationship": "registers_tool"
-    },
-    {
-      "source": "mcp_tool:get_recent_application_errors",
-      "target": "infrastructure:Serilog",
-      "relationship": "inspects_logs"
-    },
-    {
-      "source": "service:EcommerceBot.Diagnostics.Mcp",
-      "target": "mcp_tool:inspect_ml_artifacts",
-      "relationship": "registers_tool"
-    },
-    {
-      "source": "service:EcommerceBot.Diagnostics.Mcp",
-      "target": "mcp_tool:inspect_rabbitmq_queues",
-      "relationship": "registers_tool"
-    },
-    {
-      "source": "mcp_tool:inspect_rabbitmq_queues",
-      "target": "infrastructure:RabbitMQ",
-      "relationship": "inspects_queues"
-    },
-    {
-      "source": "service:EcommerceBot.Diagnostics.Mcp",
-      "target": "mcp_tool:check_redis_metrics",
-      "relationship": "registers_tool"
-    },
-    {
-      "source": "mcp_tool:check_redis_metrics",
-      "target": "infrastructure:Redis",
-      "relationship": "inspects_metrics"
-    },
-    {
-      "source": "service:EcommerceBot.Diagnostics.Mcp",
-      "target": "mcp_tool:check_spark_pipeline_status",
-      "relationship": "registers_tool"
-    },
-    {
-      "source": "service:EcommerceBot.Diagnostics.Mcp",
-      "target": "mcp_tool:check_sql_health",
-      "relationship": "registers_tool"
-    },
-    {
-      "source": "mcp_tool:check_sql_health",
-      "target": "infrastructure:SqlServer",
-      "relationship": "inspects_dmvs"
     },
     {
       "source": "worker:ml_worker",

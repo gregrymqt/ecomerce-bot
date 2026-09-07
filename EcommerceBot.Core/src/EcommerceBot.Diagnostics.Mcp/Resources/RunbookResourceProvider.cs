@@ -11,7 +11,7 @@ namespace EcommerceBot.Diagnostics.Mcp.Resources;
 /// <summary>
 /// Provedor de recursos MCP que expõe dinamicamente a documentação operacional e runbooks em docs/runbooks/*.md.
 /// </summary>
-public class RunbookResourceProvider
+public sealed class RunbookResourceProvider
 {
     private const string UriPrefix = "resource://runbooks/";
 

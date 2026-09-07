@@ -4,145 +4,145 @@ using System.Text.Json.Serialization;
 
 namespace EcommerceBot.Diagnostics.Mcp.Protocol;
 
-public class JsonRpcRequest
+public sealed record JsonRpcRequest
 {
     [JsonPropertyName("jsonrpc")]
-    public string JsonRpc { get; set; } = "2.0";
+    public string JsonRpc { get; init; } = "2.0";
 
     [JsonPropertyName("id")]
-    public object? Id { get; set; }
+    public object? Id { get; init; }
 
     [JsonPropertyName("method")]
-    public string Method { get; set; } = string.Empty;
+    public string Method { get; init; } = string.Empty;
 
     [JsonPropertyName("params")]
-    public JsonElement? Params { get; set; }
+    public JsonElement? Params { get; init; }
 }
 
-public class JsonRpcResponse
+public sealed record JsonRpcResponse
 {
     [JsonPropertyName("jsonrpc")]
-    public string JsonRpc { get; set; } = "2.0";
+    public string JsonRpc { get; init; } = "2.0";
 
     [JsonPropertyName("id")]
-    public object? Id { get; set; }
+    public object? Id { get; init; }
 
     [JsonPropertyName("result")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public object? Result { get; set; }
+    public object? Result { get; init; }
 
     [JsonPropertyName("error")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public JsonRpcError? Error { get; set; }
+    public JsonRpcError? Error { get; init; }
 }
 
-public class JsonRpcError
+public sealed record JsonRpcError
 {
     [JsonPropertyName("code")]
-    public int Code { get; set; }
+    public int Code { get; init; }
 
     [JsonPropertyName("message")]
-    public string Message { get; set; } = string.Empty;
+    public string Message { get; init; } = string.Empty;
 
     [JsonPropertyName("data")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public object? Data { get; set; }
+    public object? Data { get; init; }
 }
 
-public class McpServerInfo
+public sealed record McpServerInfo
 {
     [JsonPropertyName("name")]
-    public string Name { get; set; } = "ecommercebot-diagnostics-mcp";
+    public string Name { get; init; } = "ecommercebot-diagnostics-mcp";
 
     [JsonPropertyName("version")]
-    public string Version { get; set; } = "1.0.0";
+    public string Version { get; init; } = "1.0.0";
 }
 
-public class McpCapabilities
+public sealed record McpCapabilities
 {
     [JsonPropertyName("tools")]
-    public Dictionary<string, object> Tools { get; set; } = new();
+    public Dictionary<string, object> Tools { get; init; } = new();
 
     [JsonPropertyName("resources")]
-    public Dictionary<string, object> Resources { get; set; } = new();
+    public Dictionary<string, object> Resources { get; init; } = new();
 }
 
-public class McpInitializeResult
+public sealed record McpInitializeResult
 {
     [JsonPropertyName("protocolVersion")]
-    public string ProtocolVersion { get; set; } = "2024-11-05";
+    public string ProtocolVersion { get; init; } = "2024-11-05";
 
     [JsonPropertyName("capabilities")]
-    public McpCapabilities Capabilities { get; set; } = new();
+    public McpCapabilities Capabilities { get; init; } = new();
 
     [JsonPropertyName("serverInfo")]
-    public McpServerInfo ServerInfo { get; set; } = new();
+    public McpServerInfo ServerInfo { get; init; } = new();
 }
 
-public class McpToolDefinition
+public sealed record McpToolDefinition
 {
     [JsonPropertyName("name")]
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
 
     [JsonPropertyName("description")]
-    public string Description { get; set; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
 
     [JsonPropertyName("inputSchema")]
-    public object InputSchema { get; set; } = new
+    public object InputSchema { get; init; } = new
     {
         type = "object",
         properties = new Dictionary<string, object>()
     };
 }
 
-public class McpContentItem
+public sealed record McpContentItem
 {
     [JsonPropertyName("type")]
-    public string Type { get; set; } = "text";
+    public string Type { get; init; } = "text";
 
     [JsonPropertyName("text")]
-    public string Text { get; set; } = string.Empty;
+    public string Text { get; init; } = string.Empty;
 }
 
-public class McpToolCallResult
+public sealed record McpToolCallResult
 {
     [JsonPropertyName("content")]
-    public List<McpContentItem> Content { get; set; } = new();
+    public List<McpContentItem> Content { get; init; } = new();
 
     [JsonPropertyName("isError")]
-    public bool IsError { get; set; }
+    public bool IsError { get; init; }
 }
 
-public class McpResourceDefinition
+public sealed record McpResourceDefinition
 {
     [JsonPropertyName("uri")]
-    public string Uri { get; set; } = string.Empty;
+    public string Uri { get; init; } = string.Empty;
 
     [JsonPropertyName("name")]
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
 
     [JsonPropertyName("description")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Description { get; set; }
+    public string? Description { get; init; }
 
     [JsonPropertyName("mimeType")]
-    public string MimeType { get; set; } = "text/markdown";
+    public string MimeType { get; init; } = "text/markdown";
 }
 
-public class McpResourceContent
+public sealed record McpResourceContent
 {
     [JsonPropertyName("uri")]
-    public string Uri { get; set; } = string.Empty;
+    public string Uri { get; init; } = string.Empty;
 
     [JsonPropertyName("mimeType")]
-    public string MimeType { get; set; } = "text/markdown";
+    public string MimeType { get; init; } = "text/markdown";
 
     [JsonPropertyName("text")]
-    public string Text { get; set; } = string.Empty;
+    public string Text { get; init; } = string.Empty;
 }
 
-public class McpResourceReadResult
+public sealed record McpResourceReadResult
 {
     [JsonPropertyName("contents")]
-    public List<McpResourceContent> Contents { get; set; } = new();
+    public List<McpResourceContent> Contents { get; init; } = new();
 }

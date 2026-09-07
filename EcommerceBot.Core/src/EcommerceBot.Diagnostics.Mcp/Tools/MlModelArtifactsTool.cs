@@ -1,8 +1,8 @@
 using System;
 using System.IO;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Diagnostics.Mcp.Common;
 using EcommerceBot.Diagnostics.Mcp.Protocol;
@@ -12,8 +12,9 @@ namespace EcommerceBot.Diagnostics.Mcp.Tools;
 /// <summary>
 /// Ferramenta de inspeção de artefatos de Machine Learning (.joblib) e metadados gerados pelo Google Spark.
 /// Permite aos agentes de IA auditar a calibração de modelos (RFM, Churn) e métricas de acurácia (Silhouette Score).
+/// Totalmente Read-Only e cooperativa com CancellationToken.
 /// </summary>
-public class MlModelArtifactsTool : ISystemDiagnosticTool
+public sealed class MlModelArtifactsTool : ISystemDiagnosticTool
 {
     public string Name => "inspect_ml_artifacts";
 
@@ -32,7 +33,7 @@ public class MlModelArtifactsTool : ISystemDiagnosticTool
         }
     };
 
-    public Task<McpToolCallResult> ExecuteAsync(JsonElement? arguments)
+    public async Task<McpToolCallResult> ExecuteAsync(JsonElement? arguments, CancellationToken cancellationToken = default)
     {
         string modelName = "rfm_pipeline";
         if (arguments.HasValue && arguments.Value.TryGetProperty("modelName", out var mProp))
@@ -47,7 +48,7 @@ public class MlModelArtifactsTool : ISystemDiagnosticTool
         var rootDir = FindWorkspaceRoot();
         if (rootDir == null)
         {
-            return Task.FromResult(new McpToolCallResult
+            return new McpToolCallResult
             {
                 IsError = true,
                 Content =
@@ -58,7 +59,7 @@ public class MlModelArtifactsTool : ISystemDiagnosticTool
                         Text = "Não foi possível localizar o diretório raiz do workspace para inspecionar os artefatos de ML."
                     }
                 ]
-            });
+            };
         }
 
         var artifactsDir = Path.Combine(rootDir, "EcommerceBot.Worker", "app", "ml", "models", "artifacts");
@@ -72,7 +73,7 @@ public class MlModelArtifactsTool : ISystemDiagnosticTool
         if (!Directory.Exists(artifactsDir))
         {
             sb.AppendLine($"❌ **Diretório de artefatos não encontrado:** `{artifactsDir}`");
-            return Task.FromResult(CreateResult(sb.ToString(), false));
+            return CreateResult(sb.ToString(), false);
         }
 
         bool joblibExists = File.Exists(joblibFile);
@@ -84,7 +85,7 @@ public class MlModelArtifactsTool : ISystemDiagnosticTool
             sb.AppendLine("O Worker Python utilizará o fallback heurístico em tempo real até que o primeiro job Spark seja executado.");
             sb.AppendLine();
             sb.AppendLine("💡 **Como gerar:** Execute `python -m app.ml.spark.run_batch` no `EcommerceBot.Worker`.");
-            return Task.FromResult(CreateResult(sb.ToString(), false));
+            return CreateResult(sb.ToString(), false);
         }
 
         // Informações do binário .joblib
@@ -112,7 +113,8 @@ public class MlModelArtifactsTool : ISystemDiagnosticTool
         {
             try
             {
-                var jsonContent = File.ReadAllText(metadataFile, Encoding.UTF8);
+                cancellationToken.ThrowIfCancellationRequested();
+                var jsonContent = await File.ReadAllTextAsync(metadataFile, Encoding.UTF8, cancellationToken);
                 using var doc = JsonDocument.Parse(jsonContent);
                 var root = doc.RootElement;
 
@@ -151,6 +153,14 @@ public class MlModelArtifactsTool : ISystemDiagnosticTool
                     }
                 }
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return new McpToolCallResult
+                {
+                    IsError = true,
+                    Content = [new McpContentItem { Type = "text", Text = "Inspeção de artefatos cancelada." }]
+                };
+            }
             catch (Exception ex)
             {
                 sb.AppendLine($"⚠️ Falha ao ler o manifesto JSON de metadados: {ex.Message}");
@@ -165,7 +175,7 @@ public class MlModelArtifactsTool : ISystemDiagnosticTool
         sb.AppendLine("---");
         sb.AppendLine("✅ *Artefatos de inferência em conformidade com a Arquitetura Tripartite de ML.*");
 
-        return Task.FromResult(CreateResult(sb.ToString(), false));
+        return CreateResult(sb.ToString(), false);
     }
 
     private static string FormatTimeSpan(TimeSpan ts)

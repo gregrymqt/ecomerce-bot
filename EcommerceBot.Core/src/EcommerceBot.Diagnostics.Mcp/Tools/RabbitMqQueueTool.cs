@@ -5,6 +5,7 @@ using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Diagnostics.Mcp.Protocol;
 using EcommerceBot.Infrastructure.Options;
@@ -15,12 +16,15 @@ namespace EcommerceBot.Diagnostics.Mcp.Tools;
 /// <summary>
 /// Ferramenta de inspeção de profundidade de filas e Dead Letter Queues (DLQs) no RabbitMQ 3.13.
 /// Consulta a RabbitMQ Management API (HTTP 15672) ou valida conectividade TCP no broker (AMQP 5672).
+/// Totalmente Read-Only e com suporte a cancelamento cooperativo.
 /// </summary>
-public class RabbitMqQueueTool : ISystemDiagnosticTool
+public sealed class RabbitMqQueueTool : ISystemDiagnosticTool
 {
     private readonly RabbitMqOptions _options;
-    private static readonly string[] CriticalQueues = new[]
-    {
+    private readonly IHttpClientFactory _httpClientFactory;
+
+    private static readonly string[] CriticalQueues =
+    [
         "queue:ecommerce",
         "queue:analytics_ml",
         "ecommerce_processed_queue",
@@ -28,11 +32,12 @@ public class RabbitMqQueueTool : ISystemDiagnosticTool
         "nuvemshop_bulk_sync",
         "queue:ecommerce_error",
         "analytics_ml_error"
-    };
+    ];
 
-    public RabbitMqQueueTool(IOptions<RabbitMqOptions> options)
+    public RabbitMqQueueTool(IOptions<RabbitMqOptions> options, IHttpClientFactory httpClientFactory)
     {
         _options = options.Value;
+        _httpClientFactory = httpClientFactory;
     }
 
     public string Name => "inspect_rabbitmq_queues";
@@ -52,7 +57,7 @@ public class RabbitMqQueueTool : ISystemDiagnosticTool
         }
     };
 
-    public async Task<McpToolCallResult> ExecuteAsync(JsonElement? arguments)
+    public async Task<McpToolCallResult> ExecuteAsync(JsonElement? arguments, CancellationToken cancellationToken = default)
     {
         string? targetQueue = null;
         if (arguments.HasValue && arguments.Value.TryGetProperty("queueName", out var qProp))
@@ -62,12 +67,12 @@ public class RabbitMqQueueTool : ISystemDiagnosticTool
 
         var queuesToCheck = string.IsNullOrWhiteSpace(targetQueue)
             ? CriticalQueues
-            : new[] { targetQueue };
+            : [targetQueue];
 
         try
         {
-            // Tentar consulta via RabbitMQ Management API (Porta 15672)
-            using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(4) };
+            // Consulta via RabbitMQ Management API reutilizando HttpClient configurado
+            var httpClient = _httpClientFactory.CreateClient("RabbitMqManagement");
             var authBytes = Encoding.ASCII.GetBytes($"{_options.Username}:{_options.Password}");
             httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
 
@@ -76,16 +81,18 @@ public class RabbitMqQueueTool : ISystemDiagnosticTool
 
             foreach (var q in queuesToCheck)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var encodedVhost = Uri.EscapeDataString(_options.VirtualHost);
                 var encodedQueue = Uri.EscapeDataString(q);
                 var managementUrl = $"http://{_options.Host}:15672/api/queues/{encodedVhost}/{encodedQueue}";
 
                 try
                 {
-                    var response = await httpClient.GetAsync(managementUrl);
+                    using var response = await httpClient.GetAsync(managementUrl, cancellationToken);
                     if (response.IsSuccessStatusCode)
                     {
-                        var json = await response.Content.ReadAsStringAsync();
+                        var json = await response.Content.ReadAsStringAsync(cancellationToken);
                         using var doc = JsonDocument.Parse(json);
                         var root = doc.RootElement;
 
@@ -114,6 +121,10 @@ public class RabbitMqQueueTool : ISystemDiagnosticTool
                         });
                     }
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
                 catch
                 {
                     managementApiAvailable = false;
@@ -134,21 +145,21 @@ public class RabbitMqQueueTool : ISystemDiagnosticTool
                 return new McpToolCallResult
                 {
                     IsError = false,
-                    Content = new List<McpContentItem>
-                    {
+                    Content =
+                    [
                         new()
                         {
                             Type = "text",
                             Text = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true })
                         }
-                    }
+                    ]
                 };
             }
 
             // Fallback: Teste de conectividade TCP na porta AMQP 5672
             using var tcpClient = new TcpClient();
-            var connectTask = tcpClient.ConnectAsync(_options.Host, _options.Port);
-            var completedTask = await Task.WhenAny(connectTask, Task.Delay(2000));
+            var connectTask = tcpClient.ConnectAsync(_options.Host, _options.Port, cancellationToken).AsTask();
+            var completedTask = await Task.WhenAny(connectTask, Task.Delay(2000, cancellationToken));
 
             bool tcpConnected = completedTask == connectTask && tcpClient.Connected;
 
@@ -156,7 +167,7 @@ public class RabbitMqQueueTool : ISystemDiagnosticTool
             {
                 host = _options.Host,
                 amqpPort = _options.Port,
-                tcpConnected = tcpConnected,
+                tcpConnected,
                 managementApi = "UNAVAILABLE_OR_PORT_CLOSED",
                 notice = tcpConnected
                     ? $"Broker AMQP em {_options.Host}:{_options.Port} está online. A API de Management HTTP (porta 15672) não respondeu."
@@ -166,14 +177,29 @@ public class RabbitMqQueueTool : ISystemDiagnosticTool
             return new McpToolCallResult
             {
                 IsError = !tcpConnected,
-                Content = new List<McpContentItem>
-                {
+                Content =
+                [
                     new()
                     {
                         Type = "text",
                         Text = JsonSerializer.Serialize(fallbackReport, new JsonSerializerOptions { WriteIndented = true })
                     }
-                }
+                ]
+            };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return new McpToolCallResult
+            {
+                IsError = true,
+                Content =
+                [
+                    new()
+                    {
+                        Type = "text",
+                        Text = "Operação de inspeção do RabbitMQ cancelada."
+                    }
+                ]
             };
         }
         catch (Exception ex)
@@ -181,14 +207,14 @@ public class RabbitMqQueueTool : ISystemDiagnosticTool
             return new McpToolCallResult
             {
                 IsError = true,
-                Content = new List<McpContentItem>
-                {
+                Content =
+                [
                     new()
                     {
                         Type = "text",
                         Text = $"Erro ao inspecionar RabbitMQ: {ex.Message}"
                     }
-                }
+                ]
             };
         }
     }

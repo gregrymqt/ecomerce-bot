@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Diagnostics.Mcp.Common;
 using EcommerceBot.Diagnostics.Mcp.Protocol;
@@ -12,8 +13,9 @@ namespace EcommerceBot.Diagnostics.Mcp.Tools;
 /// <summary>
 /// Ferramenta de diagnóstico do ciclo de vida e histórico do pipeline Google Spark / PySpark Batch.
 /// Permite aos agentes de IA verificar a saúde dos jobs periódicos de treino e a disponibilidade de relatórios para o NotebookLM.
+/// Totalmente Read-Only e cooperativa com CancellationToken.
 /// </summary>
-public class SparkPipelineStatusTool : ISystemDiagnosticTool
+public sealed class SparkPipelineStatusTool : ISystemDiagnosticTool
 {
     public string Name => "check_spark_pipeline_status";
 
@@ -32,7 +34,7 @@ public class SparkPipelineStatusTool : ISystemDiagnosticTool
         }
     };
 
-    public Task<McpToolCallResult> ExecuteAsync(JsonElement? arguments)
+    public async Task<McpToolCallResult> ExecuteAsync(JsonElement? arguments, CancellationToken cancellationToken = default)
     {
         int limit = 5;
         if (arguments.HasValue && arguments.Value.TryGetProperty("limit", out var lProp))
@@ -43,7 +45,7 @@ public class SparkPipelineStatusTool : ISystemDiagnosticTool
         var rootDir = FindWorkspaceRoot();
         if (rootDir == null)
         {
-            return Task.FromResult(new McpToolCallResult
+            return new McpToolCallResult
             {
                 IsError = true,
                 Content =
@@ -54,7 +56,7 @@ public class SparkPipelineStatusTool : ISystemDiagnosticTool
                         Text = "Não foi possível localizar o diretório raiz do workspace para inspecionar os relatórios do Spark."
                     }
                 ]
-            });
+            };
         }
 
         var reportsDir = Path.Combine(rootDir, "docs", "notebooklm", "reports");
@@ -68,7 +70,7 @@ public class SparkPipelineStatusTool : ISystemDiagnosticTool
         {
             sb.AppendLine($"⚠️ **Diretório de relatórios não encontrado:** `{reportsDir}`");
             sb.AppendLine("Nenhum ciclo Spark foi executado neste ambiente ainda.");
-            return Task.FromResult(CreateResult(sb.ToString(), false));
+            return CreateResult(sb.ToString(), false);
         }
 
         var allReportFiles = Directory.GetFiles(reportsDir, "metrics_report_*.md", SearchOption.TopDirectoryOnly)
@@ -82,7 +84,7 @@ public class SparkPipelineStatusTool : ISystemDiagnosticTool
             sb.AppendLine("O pipeline agendado ainda não concluiu seu primeiro ciclo de calibração.");
             sb.AppendLine();
             sb.AppendLine("💡 **Como executar:** `python -m app.ml.spark.run_batch` na pasta `EcommerceBot.Worker`.");
-            return Task.FromResult(CreateResult(sb.ToString(), false));
+            return CreateResult(sb.ToString(), false);
         }
 
         var mostRecent = allReportFiles.First();
@@ -101,7 +103,9 @@ public class SparkPipelineStatusTool : ISystemDiagnosticTool
             var targetFile = File.Exists(latestReportFile) ? latestReportFile : mostRecent.FullName;
             try
             {
-                var summaryLines = File.ReadLines(targetFile)
+                cancellationToken.ThrowIfCancellationRequested();
+                var allLines = await File.ReadAllLinesAsync(targetFile, cancellationToken);
+                var summaryLines = allLines
                     .Take(30)
                     .Where(l => l.StartsWith("- **") || l.StartsWith("**"))
                     .Take(5);
@@ -112,6 +116,14 @@ public class SparkPipelineStatusTool : ISystemDiagnosticTool
                     sb.AppendLine(line);
                 }
                 sb.AppendLine();
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return new McpToolCallResult
+                {
+                    IsError = true,
+                    Content = [new McpContentItem { Type = "text", Text = "Inspeção do pipeline Spark cancelada." }]
+                };
             }
             catch
             {
@@ -133,7 +145,7 @@ public class SparkPipelineStatusTool : ISystemDiagnosticTool
         sb.AppendLine("---");
         sb.AppendLine("💡 *Para consultar o relatório completo formatado, utilize o recurso:* `resource://ml/latest-metrics`");
 
-        return Task.FromResult(CreateResult(sb.ToString(), false));
+        return CreateResult(sb.ToString(), false);
     }
 
     private static string FormatTimeSpan(TimeSpan ts)

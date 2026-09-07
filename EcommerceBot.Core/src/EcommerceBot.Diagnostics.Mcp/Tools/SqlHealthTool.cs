@@ -1,21 +1,21 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapper;
 using EcommerceBot.Diagnostics.Mcp.Protocol;
 using EcommerceBot.Domain.Interfaces;
-using Microsoft.Data.SqlClient;
 
 namespace EcommerceBot.Diagnostics.Mcp.Tools;
 
 /// <summary>
 /// Ferramenta de diagnóstico do SQL Server 2022 estritamente Read-Only.
 /// Consulta DMVs (sys.dm_*) com WITH (NOLOCK) para identificar locks, bloqueios e queries lentas.
+/// Suporta cancelamento cooperativo via CancellationToken.
 /// </summary>
-public class SqlHealthTool : ISystemDiagnosticTool
+public sealed class SqlHealthTool : ISystemDiagnosticTool
 {
     private readonly IDbConnectionFactory _connectionFactory;
 
@@ -41,7 +41,7 @@ public class SqlHealthTool : ISystemDiagnosticTool
         }
     };
 
-    public async Task<McpToolCallResult> ExecuteAsync(JsonElement? arguments)
+    public async Task<McpToolCallResult> ExecuteAsync(JsonElement? arguments, CancellationToken cancellationToken = default)
     {
         bool includeSlowQueries = true;
         if (arguments.HasValue && arguments.Value.TryGetProperty("includeSlowQueries", out var prop))
@@ -53,16 +53,16 @@ public class SqlHealthTool : ISystemDiagnosticTool
         {
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
-            // 1. Informações básicas e conexões
-            var versionInfo = await connection.QueryFirstOrDefaultAsync<string>(
-                "SELECT @@VERSION;"
-            );
+            // 1. Informações básicas e conexões com CancellationToken
+            var versionCmd = new CommandDefinition("SELECT @@VERSION;", cancellationToken: cancellationToken);
+            var versionInfo = await connection.QueryFirstOrDefaultAsync<string>(versionCmd);
 
-            var connectionCount = await connection.ExecuteScalarAsync<int>(
-                "SELECT COUNT(*) FROM sys.sysprocesses WITH (NOLOCK) WHERE dbid = DB_ID();"
-            );
+            var countCmd = new CommandDefinition(
+                "SELECT COUNT(*) FROM sys.sysprocesses WITH (NOLOCK) WHERE dbid = DB_ID();",
+                cancellationToken: cancellationToken);
+            var connectionCount = await connection.ExecuteScalarAsync<int>(countCmd);
 
-            // 2. Bloqueios ativos (Locks e Blocking Sessions)
+            // 2. Bloqueios ativos (Locks e Blocking Sessions) via sys.dm_exec_requests
             const string blockingSql = @"
                 SELECT 
                     r.session_id AS SessionId,
@@ -74,9 +74,10 @@ public class SqlHealthTool : ISystemDiagnosticTool
                 WHERE r.session_id != @@SPID 
                   AND (r.blocking_session_id != 0 OR r.wait_time > 1000);";
 
-            var blockingSessions = (await connection.QueryAsync(blockingSql)).ToList();
+            var blockingCmd = new CommandDefinition(blockingSql, cancellationToken: cancellationToken);
+            var blockingSessions = (await connection.QueryAsync(blockingCmd)).ToList();
 
-            // 3. Top queries lentas (se solicitado)
+            // 3. Top queries lentas via sys.dm_exec_query_stats (se solicitado)
             IEnumerable<dynamic> slowQueries = Enumerable.Empty<dynamic>();
             if (includeSlowQueries)
             {
@@ -95,7 +96,8 @@ public class SqlHealthTool : ISystemDiagnosticTool
                     CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) st
                     ORDER BY (qs.total_worker_time / qs.execution_count) DESC;";
 
-                slowQueries = await connection.QueryAsync(slowQuerySql);
+                var slowCmd = new CommandDefinition(slowQuerySql, cancellationToken: cancellationToken);
+                slowQueries = await connection.QueryAsync(slowCmd);
             }
 
             var report = new
@@ -104,7 +106,7 @@ public class SqlHealthTool : ISystemDiagnosticTool
                 database = connection.Database,
                 activeConnections = connectionCount,
                 blockingSessionsCount = blockingSessions.Count,
-                blockingSessions = blockingSessions,
+                blockingSessions,
                 slowQueries = slowQueries.Select(q => new
                 {
                     executionCount = (long)q.ExecutionCount,
@@ -119,14 +121,29 @@ public class SqlHealthTool : ISystemDiagnosticTool
             return new McpToolCallResult
             {
                 IsError = false,
-                Content = new List<McpContentItem>
-                {
+                Content =
+                [
                     new()
                     {
                         Type = "text",
                         Text = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true })
                     }
-                }
+                ]
+            };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return new McpToolCallResult
+            {
+                IsError = true,
+                Content =
+                [
+                    new()
+                    {
+                        Type = "text",
+                        Text = "Operação de diagnóstico do SQL Server cancelada."
+                    }
+                ]
             };
         }
         catch (Exception ex)
@@ -134,14 +151,14 @@ public class SqlHealthTool : ISystemDiagnosticTool
             return new McpToolCallResult
             {
                 IsError = true,
-                Content = new List<McpContentItem>
-                {
+                Content =
+                [
                     new()
                     {
                         Type = "text",
                         Text = $"Erro ao executar diagnóstico do SQL Server: {ex.Message}"
                     }
-                }
+                ]
             };
         }
     }
