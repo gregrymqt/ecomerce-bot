@@ -2,8 +2,8 @@
   "metadata": {
     "version": "2.0",
     "generator": "generate_knowledge_graph.py",
-    "total_nodes": 170,
-    "total_edges": 173
+    "total_nodes": 171,
+    "total_edges": 175
   },
   "nodes": [
     {
@@ -147,6 +147,13 @@
       "metadata": {}
     },
     {
+      "id": "table:UserAddresses",
+      "label": "UserAddresses",
+      "type": "DatabaseTable",
+      "file": "Database.Migrations/Scripts/022_UserAddresses.sql",
+      "metadata": {}
+    },
+    {
       "id": "code:AiCapacityRepository",
       "label": "AiCapacityRepository",
       "type": "CoreServiceOrRepo",
@@ -182,17 +189,17 @@
       "metadata": {}
     },
     {
-      "id": "code:PlanRepository",
-      "label": "PlanRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/PlanRepository.cs",
-      "metadata": {}
-    },
-    {
       "id": "code:RedisService",
       "label": "RedisService",
       "type": "CoreServiceOrRepo",
       "file": "",
+      "metadata": {}
+    },
+    {
+      "id": "code:PlanRepository",
+      "label": "PlanRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/PlanRepository.cs",
       "metadata": {}
     },
     {
@@ -867,8 +874,6 @@
       "metadata": {
         "base_route": "api/v1/[controller]",
         "endpoints": [
-          "POST api/v1/[controller]/pix",
-          "POST api/v1/[controller]/card",
           "GET api/v1/[controller]/status/{paymentId}",
           "POST api/v1/[controller]/orders",
           "GET api/v1/[controller]/orders/{id:guid}"
@@ -1531,6 +1536,11 @@
     },
     {
       "source": "code:OrderRepository",
+      "target": "code:RedisService",
+      "relationship": "invokes"
+    },
+    {
+      "source": "code:OrderRepository",
       "target": "table:Orders",
       "relationship": "queries"
     },
@@ -1702,6 +1712,11 @@
     {
       "source": "code:CheckoutService",
       "target": "code:TenantRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "code:CheckoutService",
+      "target": "code:UserRepository",
       "relationship": "invokes"
     },
     {

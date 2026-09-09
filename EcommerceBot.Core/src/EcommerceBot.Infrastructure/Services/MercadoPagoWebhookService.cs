@@ -181,7 +181,7 @@ public sealed class MercadoPagoWebhookService : IMercadoPagoWebhookService
 
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
         var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(manifestBuilder.ToString()));
-        var computedHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
+        var computedHash = Convert.ToHexStringLower(hashBytes);
 
         return CryptographicOperations.FixedTimeEquals(
             Encoding.UTF8.GetBytes(computedHash),

@@ -142,19 +142,22 @@ public sealed class WalletService : IWalletService
             },
             Transactions = new MercadoPagoTransactionsRequest
             {
-                Payments = new MercadoPagoPaymentRequest
-                {
-                    Amount = amount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
-                    PaymentMethod = new MercadoPagoPaymentMethodRequest
+                Payments =
+                [
+                    new MercadoPagoPaymentRequest
                     {
-                        Id = isPix ? "pix" : (request.PaymentMethodId ?? "visa"),
-                        Type = isPix ? "bank_transfer" : "credit_card",
-                        Token = request.CardToken,
-                        Installments = isPix ? null : request.Installments,
-                        StatementDescriptor = "ECOMAUTOBOT"
-                    },
-                    ExpirationTime = isPix ? "PT30M" : null
-                }
+                        Amount = amount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
+                        PaymentMethod = new MercadoPagoPaymentMethodRequest
+                        {
+                            Id = isPix ? "pix" : (request.PaymentMethodId ?? "visa"),
+                            Type = isPix ? "bank_transfer" : "credit_card",
+                            Token = request.CardToken,
+                            Installments = isPix ? null : request.Installments,
+                            StatementDescriptor = "ECOMAUTOBOT"
+                        },
+                        ExpirationTime = isPix ? "PT30M" : null
+                    }
+                ]
             },
             Items = new List<MercadoPagoItemRequest>
             {

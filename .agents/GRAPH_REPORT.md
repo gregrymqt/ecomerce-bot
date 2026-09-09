@@ -20,7 +20,7 @@
 - `Fila:` **`queue:ecommerce`**
 
 ## 🗄️ 3. Tabelas Mapeadas no Banco de Dados (DbUp)
-- **Total de Tabelas Detectadas:** 21
+- **Total de Tabelas Detectadas:** 22
 - **Tabelas Core:** Tenants, Users, TenantAiCredentials, Products, Plans, Subscriptions, Orders, TrafficAttributions, EnterpriseLeads, LLMUsageLogs, OrderItems, EmailLogs...
 
 ## ⚡ 4. Controllers e Rotas da API Core
@@ -30,7 +30,7 @@
 - **AiCreditsWebhookController** (`/api/v1/webhooks/ai-credits`): 1 endpoints mapeados.
 - **AnalyticsController** (`/api/v1/[controller]`): 2 endpoints mapeados.
 - **AuthController** (`/api/v1/[controller]`): 10 endpoints mapeados.
-- **CheckoutController** (`/api/v1/[controller]`): 5 endpoints mapeados.
+- **CheckoutController** (`/api/v1/[controller]`): 3 endpoints mapeados.
 - **EmailWebhookController** (`/api/v1/emails/webhooks`): 1 endpoints mapeados.
 - **IntegrationsController** (`/api/v1/integrations`): 4 endpoints mapeados.
 - **MercadoPagoWebhookController** (`/api/v1/webhooks/mercadopago`): 1 endpoints mapeados.

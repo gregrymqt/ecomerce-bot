@@ -1,7 +1,7 @@
 # 📚 E-commerce Bot — Master Knowledge Pack & Technical Specification
 
-> **Data de Compilação:** 2026-09-07 18:11:47 UTC  
-> **Versão da Topologia:** v2.0 (170 nós, 173 arestas catalogadas)  
+> **Data de Compilação:** 2026-09-08 16:42:43 UTC  
+> **Versão da Topologia:** v2.0 (171 nós, 175 arestas catalogadas)  
 > **Finalidade:** Base de Conhecimento Canônica para Grounding e Consultas de Engenharia no **Google NotebookLM** (Card 83 do Trello).
 
 ---
@@ -400,6 +400,21 @@ Este módulo detalha o modelo de persistência relacional do **SQL Server 2022**
   - `REFERENCES`: `dbo` (NULL)
   - `REFERENCES`: `dbo` (NULL)
   - `Type`: `IN` (NULL)
+
+### 🗄️ Tabela `dbo.UserAddresses` (Script: `022_UserAddresses.sql`)
+  - `Id`: `UNIQUEIDENTIFIER` (NOT NULL)
+  - `TenantId`: `UNIQUEIDENTIFIER` (NOT NULL)
+  - `UserId`: `UNIQUEIDENTIFIER` (NOT NULL)
+  - `ZipCode`: `NVARCHAR(10)` (NOT NULL)
+  - `Street`: `NVARCHAR(150)` (NOT NULL)
+  - `Number`: `NVARCHAR(20)` (NOT NULL)
+  - `Complement`: `NVARCHAR(50)` (NULL)
+  - `Neighborhood`: `NVARCHAR(100)` (NOT NULL)
+  - `City`: `NVARCHAR(100)` (NOT NULL)
+  - `State`: `NVARCHAR(2)` (NOT NULL)
+  - `IsDefault`: `BIT` (NOT NULL)
+  - `CreatedAt`: `DATETIMEOFFSET` (NOT NULL)
+  - *...e mais 2 colunas.*
 
 
 ---

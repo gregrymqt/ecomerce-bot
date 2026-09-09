@@ -4,6 +4,10 @@ using System.Text.Json.Serialization;
 
 namespace EcommerceBot.Application.DTOs.MercadoPago;
 
+// =============================================================================
+// REQUESTS (/v1/orders)
+// =============================================================================
+
 public sealed record MercadoPagoOrderRequest
 {
     [JsonPropertyName("type")]
@@ -13,28 +17,81 @@ public sealed record MercadoPagoOrderRequest
     public string ProcessingMode { get; init; } = "automatic";
 
     [JsonPropertyName("external_reference")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ExternalReference { get; init; }
 
     [JsonPropertyName("total_amount")]
     public string TotalAmount { get; init; } = "0.00";
 
     [JsonPropertyName("description")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Description { get; init; }
 
     [JsonPropertyName("payer")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public MercadoPagoPayerRequest? Payer { get; init; }
 
-    [JsonPropertyName("shipment")]
-    public MercadoPagoShipmentRequest? Shipment { get; init; }
-
     [JsonPropertyName("transactions")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public MercadoPagoTransactionsRequest? Transactions { get; init; }
 
     [JsonPropertyName("items")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<MercadoPagoItemRequest>? Items { get; init; }
 
+    [JsonPropertyName("shipment")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public MercadoPagoShipmentRequest? Shipment { get; init; }
+
     [JsonPropertyName("config")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public MercadoPagoConfigRequest? Config { get; init; }
+}
+
+public sealed record MercadoPagoTransactionsRequest
+{
+    [JsonPropertyName("payments")]
+    public required List<MercadoPagoPaymentRequest> Payments { get; init; } = [];
+}
+
+public sealed record MercadoPagoPaymentRequest
+{
+    [JsonPropertyName("amount")]
+    public string Amount { get; init; } = "0.00";
+
+    [JsonPropertyName("payment_method")]
+    public MercadoPagoPaymentMethodRequest? PaymentMethod { get; init; }
+
+    [JsonPropertyName("expiration_time")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ExpirationTime { get; init; }
+
+    [JsonPropertyName("date_of_expiration")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? DateOfExpiration { get; init; }
+}
+
+public sealed record MercadoPagoPaymentMethodRequest
+{
+    [JsonPropertyName("id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Id { get; init; } // "pix", "visa", "master", etc.
+
+    [JsonPropertyName("type")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Type { get; init; } // "bank_transfer", "credit_card"
+
+    [JsonPropertyName("token")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Token { get; init; }
+
+    [JsonPropertyName("installments")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? Installments { get; init; }
+
+    [JsonPropertyName("statement_descriptor")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? StatementDescriptor { get; init; }
 }
 
 public sealed record MercadoPagoPayerRequest
@@ -43,21 +100,26 @@ public sealed record MercadoPagoPayerRequest
     public string? Email { get; init; }
 
     [JsonPropertyName("entity_type")]
-    public string? EntityType { get; init; } = "individual";
+    public string EntityType { get; init; } = "individual";
 
     [JsonPropertyName("first_name")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? FirstName { get; init; }
 
     [JsonPropertyName("last_name")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? LastName { get; init; }
 
     [JsonPropertyName("identification")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public MercadoPagoIdentificationRequest? Identification { get; init; }
 
     [JsonPropertyName("phone")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public MercadoPagoPhoneRequest? Phone { get; init; }
 
     [JsonPropertyName("address")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public MercadoPagoAddressRequest? Address { get; init; }
 }
 
@@ -68,15 +130,6 @@ public sealed record MercadoPagoIdentificationRequest
 
     [JsonPropertyName("number")]
     public string Number { get; init; } = string.Empty;
-}
-
-public sealed record MercadoPagoPhoneRequest
-{
-    [JsonPropertyName("area_code")]
-    public string? AreaCode { get; init; }
-
-    [JsonPropertyName("number")]
-    public string? Number { get; init; }
 }
 
 public sealed record MercadoPagoAddressRequest
@@ -96,56 +149,27 @@ public sealed record MercadoPagoAddressRequest
     [JsonPropertyName("city")]
     public string? City { get; init; }
 
-    [JsonPropertyName("state")]
-    public string? State { get; init; }
+    [JsonPropertyName("federal_unit")]
+    public string? FederalUnit { get; init; }
 
     [JsonPropertyName("complement")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Complement { get; init; }
+}
+
+public sealed record MercadoPagoPhoneRequest
+{
+    [JsonPropertyName("area_code")]
+    public string? AreaCode { get; init; }
+
+    [JsonPropertyName("number")]
+    public string? Number { get; init; }
 }
 
 public sealed record MercadoPagoShipmentRequest
 {
     [JsonPropertyName("address")]
     public MercadoPagoAddressRequest? Address { get; init; }
-}
-
-public sealed record MercadoPagoTransactionsRequest
-{
-    [JsonPropertyName("payments")]
-    public MercadoPagoPaymentRequest? Payments { get; init; }
-}
-
-public sealed record MercadoPagoPaymentRequest
-{
-    [JsonPropertyName("amount")]
-    public string Amount { get; init; } = "0.00";
-
-    [JsonPropertyName("payment_method")]
-    public MercadoPagoPaymentMethodRequest? PaymentMethod { get; init; }
-
-    [JsonPropertyName("expiration_time")]
-    public string? ExpirationTime { get; init; }
-
-    [JsonPropertyName("date_of_expiration")]
-    public string? DateOfExpiration { get; init; }
-}
-
-public sealed record MercadoPagoPaymentMethodRequest
-{
-    [JsonPropertyName("id")]
-    public string? Id { get; init; } // "pix", "visa", "master", "boleto", etc.
-
-    [JsonPropertyName("type")]
-    public string? Type { get; init; } // "credit_card", "bank_transfer", "ticket"
-
-    [JsonPropertyName("token")]
-    public string? Token { get; init; }
-
-    [JsonPropertyName("installments")]
-    public int? Installments { get; init; }
-
-    [JsonPropertyName("statement_descriptor")]
-    public string? StatementDescriptor { get; init; }
 }
 
 public sealed record MercadoPagoItemRequest
@@ -160,9 +184,11 @@ public sealed record MercadoPagoItemRequest
     public int Quantity { get; init; } = 1;
 
     [JsonPropertyName("description")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Description { get; init; }
 
     [JsonPropertyName("external_code")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ExternalCode { get; init; }
 }
 
@@ -175,24 +201,27 @@ public sealed record MercadoPagoConfigRequest
 public sealed record MercadoPagoOnlineConfigRequest
 {
     [JsonPropertyName("transaction_security")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public MercadoPagoTransactionSecurityRequest? TransactionSecurity { get; init; }
 
     [JsonPropertyName("callback_url")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? CallbackUrl { get; init; }
 }
 
 public sealed record MercadoPagoTransactionSecurityRequest
 {
     [JsonPropertyName("validation")]
-    public string Validation { get; init; } = "never"; // "on_fraud_risk", "never"
+    public string Validation { get; init; } = "never";
 
     [JsonPropertyName("liability_shift")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? LiabilityShift { get; init; }
 }
 
-// -------------------------------------------------------------
-// Respostas da API /v1/orders
-// -------------------------------------------------------------
+// =============================================================================
+// RESPONSES (/v1/orders)
+// =============================================================================
 
 public sealed record MercadoPagoOrderResponse
 {
@@ -287,9 +316,9 @@ public sealed record MercadoPagoOrderPaymentMethodResponse
     public string? E2eId { get; init; }
 }
 
-// -------------------------------------------------------------
-// Resposta da API /v1/payments/{id} (Fallback)
-// -------------------------------------------------------------
+// =============================================================================
+// RESPONSES (Fallback /v1/payments/{id})
+// =============================================================================
 
 public sealed record MercadoPagoPaymentResponse
 {

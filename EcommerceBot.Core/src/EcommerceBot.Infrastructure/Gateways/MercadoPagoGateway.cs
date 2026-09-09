@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.MercadoPago;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Infrastructure.Options;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -42,7 +43,7 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
         {
             var key = string.IsNullOrWhiteSpace(idempotencyKey) ? Guid.NewGuid().ToString() : idempotencyKey;
             var jsonPayload = JsonSerializer.Serialize(request, JsonOptions);
-            
+
             using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/v1/orders")
             {
                 Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json")
@@ -54,7 +55,7 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
                 httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
             }
 
-            _logger.LogInformation("Sending CreateOrder request to Mercado Pago. ExternalReference: {Ref}, IdempotencyKey: {Key}", 
+            _logger.LogInformation("Sending CreateOrder request to Mercado Pago. ExternalReference: {Ref}, IdempotencyKey: {Key}",
                 request.ExternalReference, key);
 
             // Mock defensivo se chave não estiver configurada no ambiente local de dev
@@ -198,8 +199,8 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
 
     private static MercadoPagoOrderResponse GenerateSimulatedOrderResponse(MercadoPagoOrderRequest request)
     {
-        var isPix = request.Transactions?.Payments?.PaymentMethod?.Id == "pix" || 
-                    request.Transactions?.Payments?.PaymentMethod?.Type == "bank_transfer";
+        var isPix = request?.Transactions?.Payments?.Any(p =>
+            string.Equals(p?.PaymentMethod?.Type, "pix", StringComparison.OrdinalIgnoreCase)) ?? false;
 
         var orderId = "ORD_SIM_" + Guid.NewGuid().ToString("N")[..12].ToUpper();
         var payId = "PAY_SIM_" + Guid.NewGuid().ToString("N")[..12].ToUpper();
@@ -209,9 +210,9 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
             Id = orderId,
             Type = "online",
             ProcessingMode = "automatic",
-            ExternalReference = request.ExternalReference,
-            TotalAmount = request.TotalAmount,
-            TotalPaidAmount = isPix ? "0.00" : request.TotalAmount,
+            ExternalReference = request?.ExternalReference,
+            TotalAmount = request?.TotalAmount,
+            TotalPaidAmount = isPix ? "0.00" : request?.TotalAmount,
             Status = isPix ? "action_required" : "processed",
             StatusDetail = isPix ? "waiting_transfer" : "accredited",
             CreatedDate = DateTimeOffset.UtcNow.ToString("o"),
@@ -224,14 +225,14 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
                     new()
                     {
                         Id = payId,
-                        Amount = request.TotalAmount,
-                        PaidAmount = isPix ? "0.00" : request.TotalAmount,
+                        Amount = request?.TotalAmount,
+                        PaidAmount = isPix ? "0.00" : request?.TotalAmount,
                         Status = isPix ? "action_required" : "processed",
                         StatusDetail = isPix ? "waiting_transfer" : "accredited",
                         PaymentMethod = new MercadoPagoOrderPaymentMethodResponse
                         {
-                            Id = request.Transactions?.Payments?.PaymentMethod?.Id ?? (isPix ? "pix" : "visa"),
-                            Type = request.Transactions?.Payments?.PaymentMethod?.Type ?? (isPix ? "bank_transfer" : "credit_card"),
+                            Id = isPix ? "pix" : "visa",
+                            Type = isPix ? "bank_transfer" : "credit_card",
                             QrCode = isPix ? "00020126580014br.gov.bcb.pix0136ecom-autobot-mp-pix-key-99182305204000053039865405149.005802BR5916ECOM AUTOBOT SAO PAULO6009SAO PAULO62070503***6304E8A2" : null,
                             QrCodeBase64 = isPix ? "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" : null,
                             TicketUrl = isPix ? "https://www.mercadopago.com.br/payments/ticket/simulated" : null

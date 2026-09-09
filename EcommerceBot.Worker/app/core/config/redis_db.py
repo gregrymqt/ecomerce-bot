@@ -1,3 +1,4 @@
+import inspect
 import json
 import asyncio
 import os
@@ -174,7 +175,7 @@ class RedisCache:
                 return cached  # type: ignore
 
             # 4. Executa computação
-            if asyncio.iscoroutinefunction(compute_fn):
+            if inspect.iscoroutinefunction(compute_fn):
                 result = await compute_fn()
             else:
                 result = compute_fn()

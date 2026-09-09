@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Domain.Entities;
 
@@ -9,10 +10,10 @@ namespace EcommerceBot.Domain.Interfaces;
 /// </summary>
 public interface IOrderRepository
 {
-    Task<Order> CreateOrderAsync(Order order);
-    Task<Order?> GetOrderByIdAsync(Guid id, Guid tenantId);
-    Task<Order?> GetOrderByExternalReferenceAsync(string externalReference, Guid tenantId);
-    Task<Order?> GetOrderByExternalReferenceGlobalAsync(string externalReference);
-    Task<Order?> GetOrderByMpPaymentIdAsync(string mpPaymentId);
-    Task UpdateOrderAsync(Order order);
+    Task<Order> CreateOrderAsync(Order order, CancellationToken cancellationToken = default);
+    Task<Order?> GetOrderByIdAsync(Guid id, Guid tenantId, CancellationToken cancellationToken = default);
+    Task<Order?> GetOrderByExternalReferenceAsync(string externalReference, Guid tenantId, CancellationToken cancellationToken = default);
+    Task<Order?> GetOrderByExternalReferenceGlobalAsync(string externalReference, CancellationToken cancellationToken = default);
+    Task<Order?> GetOrderByMpPaymentIdAsync(string mpPaymentId, CancellationToken cancellationToken = default);
+    Task UpdateOrderAsync(Order order, CancellationToken cancellationToken = default);
 }

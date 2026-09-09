@@ -253,6 +253,21 @@ Este módulo detalha o modelo de persistência relacional do **SQL Server 2022**
   - `REFERENCES`: `dbo` (NULL)
   - `Type`: `IN` (NULL)
 
+### 🗄️ Tabela `dbo.UserAddresses` (Script: `022_UserAddresses.sql`)
+  - `Id`: `UNIQUEIDENTIFIER` (NOT NULL)
+  - `TenantId`: `UNIQUEIDENTIFIER` (NOT NULL)
+  - `UserId`: `UNIQUEIDENTIFIER` (NOT NULL)
+  - `ZipCode`: `NVARCHAR(10)` (NOT NULL)
+  - `Street`: `NVARCHAR(150)` (NOT NULL)
+  - `Number`: `NVARCHAR(20)` (NOT NULL)
+  - `Complement`: `NVARCHAR(50)` (NULL)
+  - `Neighborhood`: `NVARCHAR(100)` (NOT NULL)
+  - `City`: `NVARCHAR(100)` (NOT NULL)
+  - `State`: `NVARCHAR(2)` (NOT NULL)
+  - `IsDefault`: `BIT` (NOT NULL)
+  - `CreatedAt`: `DATETIMEOFFSET` (NOT NULL)
+  - *...e mais 2 colunas.*
+
 
 ---
 
