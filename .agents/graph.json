@@ -2,8 +2,8 @@
   "metadata": {
     "version": "2.0",
     "generator": "generate_knowledge_graph.py",
-    "total_nodes": 171,
-    "total_edges": 175
+    "total_nodes": 167,
+    "total_edges": 169
   },
   "nodes": [
     {
@@ -238,13 +238,6 @@
       "metadata": {}
     },
     {
-      "id": "code:SubscriptionRepository",
-      "label": "SubscriptionRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/SubscriptionRepository.cs",
-      "metadata": {}
-    },
-    {
       "id": "code:TenantAiCredentialRepository",
       "label": "TenantAiCredentialRepository",
       "type": "CoreServiceOrRepo",
@@ -420,13 +413,6 @@
       "metadata": {}
     },
     {
-      "id": "code:SubscriptionService",
-      "label": "SubscriptionService",
-      "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/SubscriptionService.cs",
-      "metadata": {}
-    },
-    {
       "id": "code:SystemService",
       "label": "SystemService",
       "type": "CoreServiceOrRepo",
@@ -529,13 +515,6 @@
       "label": "IStoreIntegrationRepository",
       "type": "CoreServiceOrRepo",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/IStoreIntegrationRepository.cs",
-      "metadata": {}
-    },
-    {
-      "id": "code:ISubscriptionRepository",
-      "label": "ISubscriptionRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/ISubscriptionRepository.cs",
       "metadata": {}
     },
     {
@@ -725,13 +704,6 @@
       "label": "IStoreIntegrationService",
       "type": "CoreServiceOrRepo",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IStoreIntegrationService.cs",
-      "metadata": {}
-    },
-    {
-      "id": "code:ISubscriptionService",
-      "label": "ISubscriptionService",
-      "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/ISubscriptionService.cs",
       "metadata": {}
     },
     {
@@ -1610,11 +1582,6 @@
       "relationship": "queries"
     },
     {
-      "source": "code:SubscriptionRepository",
-      "target": "table:Subscriptions",
-      "relationship": "queries"
-    },
-    {
       "source": "code:TenantAiCredentialRepository",
       "target": "table:TenantAiCredentials",
       "relationship": "queries"
@@ -1860,21 +1827,6 @@
       "relationship": "invokes"
     },
     {
-      "source": "code:SubscriptionService",
-      "target": "code:SubscriptionRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "code:SubscriptionService",
-      "target": "code:PlanRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "code:SubscriptionService",
-      "target": "code:TenantRepository",
-      "relationship": "invokes"
-    },
-    {
       "source": "code:SystemService",
       "target": "code:ProductRepository",
       "relationship": "invokes"
@@ -1977,11 +1929,6 @@
     {
       "source": "code:IStoreIntegrationRepository",
       "target": "code:StoreIntegrationRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "code:ISubscriptionRepository",
-      "target": "code:SubscriptionRepository",
       "relationship": "invokes"
     },
     {
@@ -2112,11 +2059,6 @@
     {
       "source": "code:IStoreIntegrationService",
       "target": "code:StoreIntegrationService",
-      "relationship": "invokes"
-    },
-    {
-      "source": "code:ISubscriptionService",
-      "target": "code:SubscriptionService",
       "relationship": "invokes"
     },
     {

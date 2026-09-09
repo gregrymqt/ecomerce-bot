@@ -33,9 +33,6 @@ public sealed class PlanService : IPlanService
             Description = plan.Description,
             Price = plan.Price,
             CreditsIncluded = plan.CreditsIncluded,
-            BillingInterval = plan.BillingInterval,
-            MpPreapprovalPlanId = plan.MpPreapprovalPlanId,
-            TrialDays = plan.TrialDays,
             Badge = plan.Badge,
             IsActive = plan.IsActive,
             CreatedAt = plan.CreatedAt,
@@ -64,9 +61,6 @@ public sealed class PlanService : IPlanService
             Description = request.Description,
             Price = request.Price,
             CreditsIncluded = request.CreditsIncluded,
-            BillingInterval = request.BillingInterval,
-            MpPreapprovalPlanId = request.MpPreapprovalPlanId,
-            TrialDays = request.TrialDays,
             Badge = request.Badge,
             IsActive = request.IsActive
         };
@@ -86,9 +80,6 @@ public sealed class PlanService : IPlanService
         if (request.Description != null) plan.Description = request.Description;
         if (request.Price.HasValue) plan.Price = request.Price.Value;
         if (request.CreditsIncluded.HasValue) plan.CreditsIncluded = request.CreditsIncluded.Value;
-        if (request.BillingInterval != null) plan.BillingInterval = request.BillingInterval;
-        if (request.MpPreapprovalPlanId != null) plan.MpPreapprovalPlanId = request.MpPreapprovalPlanId;
-        if (request.TrialDays.HasValue) plan.TrialDays = request.TrialDays.Value;
         if (request.Badge != null) plan.Badge = request.Badge;
         if (request.IsActive.HasValue) plan.IsActive = request.IsActive.Value;
 

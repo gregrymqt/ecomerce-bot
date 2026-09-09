@@ -100,7 +100,6 @@ export const plansService = {
         (p) =>
           p.name?.toLowerCase().includes(q) ||
           p.id?.toLowerCase().includes(q) ||
-          p.mpPreapprovalPlanId?.toLowerCase().includes(q) ||
           p.description?.toLowerCase().includes(q)
       );
     }
@@ -124,9 +123,7 @@ export const plansService = {
    */
   getPlanByExternalId: async (externalId: string): Promise<PlanResponse> => {
     const plans = await plansService.listPlans(false);
-    const found = plans.find(
-      (p) => p.mpPreapprovalPlanId === externalId || p.id === externalId
-    );
+    const found = plans.find((p) => p.id === externalId);
     if (!found) {
       throw new Error('Plano não encontrado.');
     }

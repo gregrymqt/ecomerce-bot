@@ -1,9 +1,8 @@
 /**
  * src/features/plans/types/plans.type.ts
  *
- * Contratos de tipos e DTOs canônicos para a feature Planos de Assinatura.
- * Alinhado estritamente com a API ASP.NET Core (EcommerceBot.Application.DTOs.Plans)
- * com compatibilidade para o ecossistema Mercado Pago Preapproval.
+ * Contratos de tipos e DTOs canônicos para a feature Planos e Pacotes de Créditos.
+ * Alinhado estritamente com a API ASP.NET Core (EcommerceBot.Application.DTOs.Plans).
  */
 
 export interface CreatePlanRequest {
@@ -12,9 +11,6 @@ export interface CreatePlanRequest {
   price: number;
   creditsIncluded: number;
   badge?: string;
-  billingInterval?: string;
-  mpPreapprovalPlanId?: string;
-  trialDays?: number;
   isActive: boolean;
 }
 
@@ -24,9 +20,6 @@ export interface UpdatePlanRequest {
   price?: number;
   creditsIncluded?: number;
   badge?: string;
-  billingInterval?: string;
-  mpPreapprovalPlanId?: string;
-  trialDays?: number;
   isActive?: boolean;
 }
 
@@ -37,9 +30,6 @@ export interface PlanResponse {
   price: number;
   creditsIncluded: number;
   badge?: string;
-  billingInterval?: string;
-  mpPreapprovalPlanId?: string;
-  trialDays?: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

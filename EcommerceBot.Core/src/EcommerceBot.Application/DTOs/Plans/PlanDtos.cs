@@ -10,9 +10,6 @@ public sealed record CreatePlanRequest
     public int CreditsIncluded { get; init; }
     public string? Badge { get; init; }
     public bool IsActive { get; init; } = true;
-    public string? BillingInterval { get; init; }
-    public string? MpPreapprovalPlanId { get; init; }
-    public int? TrialDays { get; init; }
 }
 
 public sealed record UpdatePlanRequest
@@ -23,9 +20,6 @@ public sealed record UpdatePlanRequest
     public int? CreditsIncluded { get; init; }
     public string? Badge { get; init; }
     public bool? IsActive { get; init; }
-    public string? BillingInterval { get; init; }
-    public string? MpPreapprovalPlanId { get; init; }
-    public int? TrialDays { get; init; }
 }
 
 public sealed record PlanResponse
@@ -39,7 +33,4 @@ public sealed record PlanResponse
     public bool IsActive { get; init; }
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
-    public string? BillingInterval { get; init; }
-    public string? MpPreapprovalPlanId { get; init; }
-    public int? TrialDays { get; init; }
 }

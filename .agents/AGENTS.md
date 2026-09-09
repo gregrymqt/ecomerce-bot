@@ -50,7 +50,7 @@ NUNCA carregue todas as skills simultaneamente. Inspecione e ative estritamente 
 | **Interface / Web** | `.agents/skills/impeccable/SKILL.md` | **MANDATÓRIO:** Sempre que for criar, modificar ou refatorar qualquer arquivo do frontend (`EcommerceBot.Web`), incluindo páginas React, componentes, hooks, estilização Tailwind, formulários, A11y e SSE. |
 | **Comandos / Terminal** | `.agents/skills/token-density/SKILL.md` | Padrão obrigatório para execuções concisas no terminal (RTK pattern). |
 | **Integrações / Shopify** | `.agents/skills/shopify-expert/SKILL.md` | Ao implementar ou refatorar endpoints Shopify (GraphQL 2024+, OAuth 2.0, Webhooks HMAC). |
-| **Pagamentos / Mercado Pago** | `.agents/skills/mercadopago-expert/SKILL.md` | Ao mexer em checkout transparente (PIX/Cartão), assinaturas recorrentes SaaS, recargas de IA, conciliação e webhooks Mercado Pago. |
+| **Pagamentos / Mercado Pago** | `.agents/skills/mercadopago-expert/SKILL.md` | Ao mexer em checkout transparente (PIX/Cartão), recargas de créditos IA (Ledger), conciliação e webhooks Mercado Pago. |
 | **Backend Transacional / C#** | `.agents/skills/c#-best-pratices/SKILL.md` | **MANDATÓRIO:** Sempre que for criar, modificar ou refatorar qualquer arquivo do backend transacional (`EcommerceBot.Core`), incluindo controllers, application, domain, infrastructure e middlewares. |
 | **Backend Worker / Python** | `.agents/skills/python-best-pratices/SKILL.md` | **MANDATÓRIO:** Sempre que for criar, modificar ou refatorar qualquer arquivo do backend worker (`EcommerceBot.Worker`), incluindo workers assíncronos, rotas FastAPI, scraping, inferência ML, mensageria RabbitMQ e Jinja2 templates. |
 | **Integrações / Nuvemshop** | `.agents/skills/nuvemshop-expert/SKILL.md` | Ao implementar ou refatorar conexões Nuvemshop (OAuth 2.0, BYOK AES-256, REST V1, Webhooks Thin e Bulk Sync RabbitMQ). |
@@ -81,7 +81,7 @@ O **E-commerce Bot** é uma plataforma SaaS monorepo dividida em 4 pilares:
                                │    EcommerceBot.Core (API .NET 8/9)    │
                                │  • Auth JWT & Multi-Tenancy Estrito    │
                                │  • Dapper + SQL Server 2022            │
-                               │  • Mercado Pago (PIX / CC / Recurring) │
+                               │  • Mercado Pago (PIX / CC / Ledger)    │
                                │  • Shopify (GraphQL) & Nuvemshop (REST)│
                                │  • MassTransit Producer & Consumers    │
                                │  • Redis Cache, RateLimit & SSE Stream │
@@ -112,7 +112,7 @@ O **E-commerce Bot** é uma plataforma SaaS monorepo dividida em 4 pilares:
 - **Idempotência no Redis:** Chave registrada com TTL de 24h via `SET NX` (`StringSetAsync($"webhook:idempotency:{id}", "processed", TimeSpan.FromHours(24), When.NotExists)`). Duplicidades respondem imediatamente `200 OK`.
 - **Tempo Constante:** Validações de HMAC devem usar `CryptographicOperations.FixedTimeEquals`.
 - **Especificações Canônicas por Provedor:**
-  - **Mercado Pago** (`x-signature`, manifesto `ts`/`v1`, conciliação e assinaturas): consulte estritamente `.agents/skills/mercadopago-expert/SKILL.md`.
+  - **Mercado Pago** (`x-signature`, manifesto `ts`/`v1`, conciliação e pacotes de crédito): consulte estritamente `.agents/skills/mercadopago-expert/SKILL.md`.
   - **Nuvemshop** (`X-LinkedStore-HMAC-SHA256`, Thin Payload, OAuth 2.0 e Bulk Sync): consulte estritamente `.agents/skills/nuvemshop-expert/SKILL.md`.
   - **Shopify** (`X-Shopify-Hmac-Sha256`, GraphQL 2024+ e Bulk API): consulte estritamente `.agents/skills/shopify-expert/SKILL.md`.
 

@@ -71,13 +71,11 @@ public sealed class PlanRepository : IPlanRepository
         using var connection = await _connectionFactory.CreateConnectionAsync();
         const string sql = @"
             INSERT INTO dbo.Plans (
-                Name, Description, Price, CreditsIncluded, Badge, BillingInterval, 
-                MpPreapprovalPlanId, TrialDays, IsActive
+                Name, Description, Price, CreditsIncluded, Badge, IsActive
             )
             OUTPUT INSERTED.Id
             VALUES (
-                @Name, @Description, @Price, @CreditsIncluded, @Badge, @BillingInterval, 
-                @MpPreapprovalPlanId, @TrialDays, @IsActive
+                @Name, @Description, @Price, @CreditsIncluded, @Badge, @IsActive
             );";
             
         var cmd = new CommandDefinition(sql, plan, cancellationToken: cancellationToken);
@@ -99,9 +97,6 @@ public sealed class PlanRepository : IPlanRepository
                 Price = @Price,
                 CreditsIncluded = @CreditsIncluded,
                 Badge = @Badge,
-                BillingInterval = @BillingInterval,
-                MpPreapprovalPlanId = @MpPreapprovalPlanId,
-                TrialDays = @TrialDays,
                 IsActive = @IsActive,
                 UpdatedAt = SYSDATETIMEOFFSET()
             WHERE Id = @Id;";

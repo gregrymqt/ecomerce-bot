@@ -1,7 +1,7 @@
 /**
  * src/features/plans/hooks/useAdminPlans.ts
  *
- * Hook reativo para gerenciar o estado do Painel Admin de Planos de Assinatura.
+ * Hook reativo para gerenciar o estado do Painel Admin de Planos de Créditos.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -79,14 +79,13 @@ export function useAdminPlans(): UseAdminPlansReturn {
             p.name?.toLowerCase().includes(q) ||
             p.reason?.toLowerCase().includes(q) ||
             p.id?.toLowerCase().includes(q) ||
-            p.mpPreapprovalPlanId?.toLowerCase().includes(q) ||
             p.description?.toLowerCase().includes(q)
         );
       }
 
       setPlans(filtered);
     } catch (err: unknown) {
-      const msg = getErrorMessage(err, 'Falha ao carregar planos de assinatura.');
+      const msg = getErrorMessage(err, 'Falha ao carregar planos de créditos.');
       setError(msg);
     } finally {
       setLoading(false);
@@ -112,7 +111,6 @@ export function useAdminPlans(): UseAdminPlansReturn {
                 p.name?.toLowerCase().includes(q) ||
                 p.reason?.toLowerCase().includes(q) ||
                 p.id?.toLowerCase().includes(q) ||
-                p.mpPreapprovalPlanId?.toLowerCase().includes(q) ||
                 p.description?.toLowerCase().includes(q)
             );
           }
@@ -121,7 +119,7 @@ export function useAdminPlans(): UseAdminPlansReturn {
       })
       .catch((err: unknown) => {
         if (!isCancelled) {
-          setError(getErrorMessage(err, 'Falha ao carregar planos de assinatura.'));
+          setError(getErrorMessage(err, 'Falha ao carregar planos de créditos.'));
         }
       })
       .finally(() => {

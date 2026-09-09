@@ -1,19 +1,19 @@
 ---
 name: mercadopago-expert
-description: "Guia canônico, arquitetura e especificações das features de checkout transparente (PIX, Cartão de Crédito), assinaturas SaaS (preapproval), recarga de créditos IA, webhooks criptográficos e conciliação do Mercado Pago."
+description: "Guia canônico, arquitetura e especificações das features de checkout transparente (PIX, Cartão de Crédito), pacotes de créditos IA (Ledger perpétuo), webhooks criptográficos e conciliação do Mercado Pago."
 ---
 
 # 💳 Mercado Pago SaaS Payments & Gateway — Guia Canônico & AI Toolkit
 
-Este documento é a **Fonte Canônica da Verdade** sobre o fluxo de pagamentos, checkout transparente, assinaturas recorrentes, segurança de webhooks, conciliação e mensageria assíncrona do **Mercado Pago** no ecossistema **E-commerce Bot**.
+Este documento é a **Fonte Canônica da Verdade** sobre o fluxo de pagamentos, checkout transparente, pacotes de créditos para IA (Ledger), segurança de webhooks, conciliação e mensageria assíncrona do **Mercado Pago** no ecossistema **E-commerce Bot**.
 
 ---
 
 ## 🏛️ 1. Visão Geral & Arquitetura Multi-Tenant
 
 O Mercado Pago é o provedor financeiro central da plataforma SaaS, responsável por:
-1. **Assinaturas Recorrentes de Planos SaaS:** Cobrança mensal/anual dos planos Starter, Pro e Enterprise (`dbo.Plans` e `dbo.Subscriptions`).
-2. **Recargas de Saldo Gerenciado de IA:** Compra de créditos de tokens OpenRouter para tenants (`AddManagedBalanceAsync` em `dbo.Tenants`).
+1. **Pacotes de Créditos IA (Ledger Perpétuo):** Venda de pacotes avulsos de créditos de IA (`dbo.Plans` e `dbo.Tenants.CreditBalance` / `ManagedCreditBalance`).
+2. **Recargas de Saldo Gerenciado de IA:** Compra de saldo avulso para consumo de IA (`AddManagedBalanceAsync` em `dbo.Tenants`).
 3. **Checkout Transparente:** Pagamento direto via PIX (QR Code e Copia e Cola) ou Cartão de Crédito tokenizado via SDK oficial sem redirecionamento externo.
 
 ```text
@@ -46,7 +46,7 @@ O Mercado Pago é o provedor financeiro central da plataforma SaaS, responsável
   │         PaymentProcessingConsumer (MassTransit Worker)       │
   │     • Reconciliação na API do Mercado Pago                   │
   │     • Atualização do Pedido (dbo.Orders -> approved)         │
-  │     • Ativação de Plano SaaS ou Saldo IA                     │
+  │     • Concessão de Créditos IA no Ledger                     │
   │     • Disparo SSE no Redis: type = "payment_approved"        │
   │     • Fila de E-mail: email_notifications (Resend)           │
   │     • Telemetria: dbo.RobotActivities (PAYMENT_PROCESSOR)    │
@@ -112,14 +112,14 @@ Para permitir testes locais de ponta a ponta sem internet ou sem credenciais ati
 
 ---
 
-## 🔄 4. Assinaturas SaaS & Gestão de Créditos IA
+## 🔄 4. Gestão de Pacotes & Créditos IA (Ledger Perpétuo)
 
 No momento da aprovação do pagamento pelo webhook ou gateway:
 
-1. **Assinatura Recorrente de Plano (`order.PlanId.HasValue`):**
-   - Dispara [`ISubscriptionService.ActivateOrRenewSubscriptionAsync`](file:///c:/Users/digob/Desktop/ecommerce-bot/EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/ISubscriptionService.cs).
-   - Atualiza `dbo.Subscriptions`: define `Status = "authorized"`, `CurrentPeriodStart = UtcNow`, `CurrentPeriodEnd = UtcNow.AddMonths(1)`, e persiste `MpPreapprovalId`.
-   - Concede créditos mensais inclusos no plano (`CreditsIncluded`).
+1. **Pacote de Créditos de IA (`order.PlanId.HasValue`):**
+   - Obtém a quantidade de créditos vinculada ao pacote (`plan.CreditsIncluded`).
+   - Dispara [`ITenantRepository.AddCreditsAsync(order.TenantId, plan.CreditsIncluded)`](file:///c:/Users/digob/Desktop/ecommerce-bot/EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/ITenantRepository.cs).
+   - Os créditos são perpétuos e somados diretamente à carteira do tenant (`dbo.Tenants.CreditBalance`).
 2. **Recarga de Saldo Gerenciado de IA (`order.PlanId == null`):**
    - Dispara [`ITenantRepository.AddManagedBalanceAsync(order.TenantId, order.TotalAmount)`](file:///c:/Users/digob/Desktop/ecommerce-bot/EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/ITenantRepository.cs).
    - O valor pago é convertido diretamente em créditos de carteira para consumo do proxy OpenRouter (`dbo.Tenants.ManagedCreditBalance`).
@@ -173,7 +173,7 @@ Executa em background em [`PaymentProcessingConsumer.cs`](file:///c:/Users/digob
 2. **Localização do Pedido:** Busca a entidade `dbo.Orders` por `ExternalReference` ou `MpPaymentId`.
 3. **Aprovação do Pagamento (`processed` / `accredited` / `approved`):**
    - Atualiza `dbo.Orders.Status = "approved"` e preenche `PaidAt`.
-   - Ativa assinatura SaaS ou adiciona saldo de IA.
+   - Concede créditos de IA no Ledger do tenant (`AddCreditsAsync`) ou adiciona saldo de IA (`AddManagedBalanceAsync`).
 4. **Streaming SSE para o Frontend (Zero Polling):**
    - Publica mensagem JSON no canal Redis Pub/Sub: `events:tenant:{tenantId}`:
      ```json
@@ -192,7 +192,7 @@ Executa em background em [`PaymentProcessingConsumer.cs`](file:///c:/Users/digob
      - Idempotência: `email:payment:{resourceId}`
 6. **Estornos & Chargebacks (`refunded` / `charged_back`):**
    - Marca pedido como `refunded`.
-   - Cancela a assinatura correspondente via `subscriptionService.CancelSubscriptionAsync`.
+   - Reverte os créditos concedidos via `tenantRepository.ReverseCreditsAsync`.
 7. **Auditoria de Robô:**
    - Registra execução na tabela `dbo.RobotActivities` com `WorkerType = "PAYMENT_PROCESSOR"`.
 
@@ -227,11 +227,6 @@ ON dbo.Orders (ExternalReference);
 CREATE NONCLUSTERED INDEX IX_Orders_Tenant_CreatedAt
 ON dbo.Orders (TenantId, CreatedAt DESC)
 INCLUDE (TotalAmount, Status, PaymentMethod, MpPaymentId, PaidAt);
-
--- Subscriptions ativas do tenant
-CREATE NONCLUSTERED INDEX IX_Subscriptions_Tenant_Status
-ON dbo.Subscriptions (TenantId, Status)
-INCLUDE (PlanId, CurrentPeriodStart, CurrentPeriodEnd, MpPreapprovalId);
 ```
 
 ---
