@@ -25,7 +25,7 @@ public class IntegrationsController : BaseApiController
         if (activeTenantId == Guid.Empty)
             return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
-        var summary = await _storeIntegrationService.GetSummaryAsync(activeTenantId);
+        var summary = await _storeIntegrationService.GetSummaryAsync(activeTenantId, cancellationToken);
         return Ok(summary);
     }
 
@@ -38,7 +38,7 @@ public class IntegrationsController : BaseApiController
         if (activeTenantId == Guid.Empty)
             return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
-        var integrations = await _storeIntegrationService.ListIntegrationsAsync(activeTenantId);
+        var integrations = await _storeIntegrationService.ListIntegrationsAsync(activeTenantId, cancellationToken);
         return Ok(integrations);
     }
 
@@ -52,7 +52,7 @@ public class IntegrationsController : BaseApiController
         if (activeTenantId == Guid.Empty)
             return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
-        var result = await _storeIntegrationService.TestHealthCheckAsync(activeTenantId, id);
+        var result = await _storeIntegrationService.TestHealthCheckAsync(activeTenantId, id, cancellationToken);
         return Ok(result);
     }
 
@@ -66,7 +66,7 @@ public class IntegrationsController : BaseApiController
         if (activeTenantId == Guid.Empty)
             return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
-        var success = await _storeIntegrationService.DisconnectStoreAsync(activeTenantId, id);
+        var success = await _storeIntegrationService.DisconnectStoreAsync(activeTenantId, id, cancellationToken);
         if (!success)
             return NotFoundProblem("Integração não encontrada.");
 

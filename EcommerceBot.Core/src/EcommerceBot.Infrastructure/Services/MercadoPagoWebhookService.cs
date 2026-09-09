@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Messaging;
 using EcommerceBot.Application.Interfaces;
@@ -13,14 +14,14 @@ using Microsoft.Extensions.Options;
 
 namespace EcommerceBot.Infrastructure.Services;
 
-public sealed class MercadoPagoWebhookService : IMercadoPagoWebhookService
+public sealed partial class MercadoPagoWebhookService : IMercadoPagoWebhookService
 {
     private readonly IRedisService _redisService;
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly ILogger<MercadoPagoWebhookService> _logger;
     private readonly string? _webhookSecret;
 
-    private static readonly Regex TsV1Regex = new(@"(?:ts=(?<ts>\d+))|(?:v1=(?<v1>[a-fA-F0-9]+))", RegexOptions.Compiled);
+    private static readonly Regex TsV1Regex = MyRegex();
 
     public MercadoPagoWebhookService(
         IRedisService redisService,
@@ -39,7 +40,8 @@ public sealed class MercadoPagoWebhookService : IMercadoPagoWebhookService
         string? dataId,
         string? idParam,
         string? xSignature,
-        string? xRequestId)
+        string? xRequestId,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -110,7 +112,7 @@ public sealed class MercadoPagoWebhookService : IMercadoPagoWebhookService
             if (!string.IsNullOrEmpty(resourceId))
             {
                 var idempotencyKey = $"webhook:idempotency:mp:{resourceId}:{action}";
-                var isNew = await _redisService.SetIfNotExistsAsync(idempotencyKey, "processed", TimeSpan.FromHours(24));
+                var isNew = await _redisService.SetIfNotExistsAsync(idempotencyKey, "processed", TimeSpan.FromHours(24), cancellationToken);
                 if (!isNew)
                 {
                     _logger.LogInformation("Mercado Pago webhook already processed for resource {ResourceId} and action {Action}", resourceId, action);
@@ -132,7 +134,7 @@ public sealed class MercadoPagoWebhookService : IMercadoPagoWebhookService
             }, ctx =>
             {
                 ctx.SetRoutingKey("payments_process_queue");
-            });
+            }, cancellationToken);
 
             _logger.LogInformation("Published PaymentReceivedEvent to RabbitMQ queue 'payments_process_queue' for {ResourceId}", resourceId);
 
@@ -187,4 +189,8 @@ public sealed class MercadoPagoWebhookService : IMercadoPagoWebhookService
             Encoding.UTF8.GetBytes(computedHash),
             Encoding.UTF8.GetBytes(v1.ToLower()));
     }
+
+    [GeneratedRegex(@"(?:ts=(?<ts>\d+))|(?:v1=(?<v1>[a-fA-F0-9]+))", RegexOptions.Compiled)]
+    private static partial Regex MyRegex();
+
 }

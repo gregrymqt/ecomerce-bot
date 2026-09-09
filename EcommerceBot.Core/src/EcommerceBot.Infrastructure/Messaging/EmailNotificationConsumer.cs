@@ -35,6 +35,7 @@ public sealed class EmailNotificationConsumer : IConsumer<EmailEventPayload>
 
         public async Task Consume(ConsumeContext<EmailEventPayload> context)
         {
+            var ct = context.CancellationToken;
             var payload = context.Message;
             _logger.LogInformation("Processando e-mail transacional para {Event} destinatário {Email}", payload.Event, payload.RecipientEmail);
 
@@ -46,7 +47,8 @@ public sealed class EmailNotificationConsumer : IConsumer<EmailEventPayload>
                     to: payload.RecipientEmail,
                     subject: subject,
                     htmlContent: html,
-                    idempotencyKey: payload.IdempotencyKey
+                    idempotencyKey: payload.IdempotencyKey,
+                    cancellationToken: ct
                 );
 
                 var isSimulated = !string.IsNullOrEmpty(resendId) && resendId.StartsWith("simulated_", StringComparison.OrdinalIgnoreCase);
@@ -64,7 +66,7 @@ public sealed class EmailNotificationConsumer : IConsumer<EmailEventPayload>
                     MetadataInfo = JsonSerializer.Serialize(payload.Data)
                 };
 
-                await _emailRepository.CreateEmailLogAsync(log);
+                await _emailRepository.CreateEmailLogAsync(log, ct);
                 _logger.LogInformation("E-mail processado com sucesso [{Status}]. ResendId={ResendId}, Evento={Event}", status, resendId, payload.Event);
             }
             catch (ResendPermanentException ex)
@@ -81,7 +83,7 @@ public sealed class EmailNotificationConsumer : IConsumer<EmailEventPayload>
                     ErrorMessage = ex.Message,
                     MetadataInfo = JsonSerializer.Serialize(payload.Data)
                 };
-                await _emailRepository.CreateEmailLogAsync(logError);
+                await _emailRepository.CreateEmailLogAsync(logError, ct);
                 // Não re-lança exceção: evita re-tentativas desnecessárias e poluição de DLQ
             }
             catch (Exception ex)
@@ -98,7 +100,7 @@ public sealed class EmailNotificationConsumer : IConsumer<EmailEventPayload>
                     ErrorMessage = ex.Message,
                     MetadataInfo = JsonSerializer.Serialize(payload.Data)
                 };
-                await _emailRepository.CreateEmailLogAsync(logError);
+                await _emailRepository.CreateEmailLogAsync(logError, ct);
                 throw; // Aciona política de retry do MassTransit para falhas transitórias
             }
         }

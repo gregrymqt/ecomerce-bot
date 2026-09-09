@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Analytics;
 using EcommerceBot.Application.Interfaces;
@@ -29,7 +30,7 @@ public sealed class AiCapacityService : IAiCapacityService
         _logger = logger;
     }
 
-    public async Task<AiProviderCreditDto> RegisterTopupAsync(AiProviderCreditTopupRequest request)
+    public async Task<AiProviderCreditDto> RegisterTopupAsync(AiProviderCreditTopupRequest request, CancellationToken cancellationToken = default)
     {
         var provider = request.Provider.ToUpperInvariant().Trim();
         if (!SupportedProviders.Contains(provider))
@@ -38,7 +39,7 @@ public sealed class AiCapacityService : IAiCapacityService
         }
         request = request with { Provider = provider };
 
-        var balances = await _aiCapacityRepository.GetLatestBalancesAsync();
+        var balances = await _aiCapacityRepository.GetLatestBalancesAsync(cancellationToken);
         var currentBalance = balances.GetValueOrDefault(provider, 0m);
         var newBalance = currentBalance + request.AmountPaid;
 
@@ -54,7 +55,7 @@ public sealed class AiCapacityService : IAiCapacityService
             Notes = request.Notes
         };
 
-        var id = await _aiCapacityRepository.AddTopupAsync(credit);
+        var id = await _aiCapacityRepository.AddTopupAsync(credit, cancellationToken);
 
         _logger.LogInformation(
             "Recarga de IA registrada com sucesso: {Provider} +${Amount} (Novo Saldo: ${NewBalance}) [Origem: {Source}]",
@@ -75,11 +76,11 @@ public sealed class AiCapacityService : IAiCapacityService
         };
     }
 
-    public async Task<AiCapacityOverviewResponse> GetCapacityOverviewAsync(int horizonDays = 30)
+    public async Task<AiCapacityOverviewResponse> GetCapacityOverviewAsync(int horizonDays = 30, CancellationToken cancellationToken = default)
     {
-        var balances = await _aiCapacityRepository.GetLatestBalancesAsync();
-        var domainTopups = await _aiCapacityRepository.GetRecentTopupsAsync(20);
-        var history = await _aiCapacityRepository.GetDailyUsageHistoryAsync(90);
+        var balances = await _aiCapacityRepository.GetLatestBalancesAsync(cancellationToken);
+        var domainTopups = await _aiCapacityRepository.GetRecentTopupsAsync(20, cancellationToken);
+        var history = await _aiCapacityRepository.GetDailyUsageHistoryAsync(90, cancellationToken);
 
         var topups = domainTopups.Select(t => new AiProviderCreditDto
         {
@@ -117,12 +118,12 @@ public sealed class AiCapacityService : IAiCapacityService
         };
     }
 
-    public async Task<bool> TriggerForecastRecalculationAsync()
+    public async Task<bool> TriggerForecastRecalculationAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var balances = await _aiCapacityRepository.GetLatestBalancesAsync();
-            var history = await _aiCapacityRepository.GetDailyUsageHistoryAsync(90);
+            var balances = await _aiCapacityRepository.GetLatestBalancesAsync(cancellationToken);
+            var history = await _aiCapacityRepository.GetDailyUsageHistoryAsync(90, cancellationToken);
 
             var message = new
             {
@@ -142,7 +143,7 @@ public sealed class AiCapacityService : IAiCapacityService
             await _publishEndpoint.Publish(message, ctx =>
             {
                 ctx.SetRoutingKey("analytics_ml_queue");
-            });
+            }, cancellationToken);
 
             _logger.LogInformation("Job de TOKEN_CAPACITY_FORECAST enfileirado no RabbitMQ.");
             return true;

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Domain.Entities;
 
@@ -10,11 +11,11 @@ namespace EcommerceBot.Domain.Interfaces;
 /// </summary>
 public interface IEnterpriseLeadRepository
 {
-    Task<EnterpriseLead?> GetByIdAsync(Guid id);
-    Task<EnterpriseLead?> GetByEmailAsync(string email);
-    Task<EnterpriseLead> CreateAsync(EnterpriseLead lead);
-    Task<(List<EnterpriseLead> Leads, int TotalCount)> GetAllAsync(string? status, string? search, int page, int pageSize);
-    Task<Dictionary<string, int>> GetMetricsAsync();
-    Task<bool> UpdateStatusAsync(Guid id, string status, string? internalNotes);
-    Task<bool> MarkConvertedAsync(Guid id, Guid tenantId, Guid userId, string? internalNotes);
+    Task<EnterpriseLead?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<EnterpriseLead?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
+    Task<EnterpriseLead> CreateAsync(EnterpriseLead lead, CancellationToken cancellationToken = default);
+    Task<(List<EnterpriseLead> Leads, int TotalCount)> GetAllAsync(string? status, string? search, int page, int pageSize, CancellationToken cancellationToken = default);
+    Task<Dictionary<string, int>> GetMetricsAsync(CancellationToken cancellationToken = default);
+    Task<bool> UpdateStatusAsync(Guid id, string status, string? internalNotes, CancellationToken cancellationToken = default);
+    Task<bool> MarkConvertedAsync(Guid id, Guid tenantId, Guid userId, string? internalNotes, CancellationToken cancellationToken = default);
 }

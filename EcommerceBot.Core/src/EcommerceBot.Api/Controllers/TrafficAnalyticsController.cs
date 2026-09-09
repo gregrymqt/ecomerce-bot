@@ -43,7 +43,7 @@ public class TrafficAnalyticsController : BaseApiController
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
         var userAgent = Request.Headers.UserAgent.ToString();
 
-        var id = await _trafficService.RecordTenantVisitAsync(request, ip, userAgent);
+        var id = await _trafficService.RecordTenantVisitAsync(request, ip, userAgent, cancellationToken);
         return Ok(new { success = true, id });
     }
 
@@ -65,7 +65,7 @@ public class TrafficAnalyticsController : BaseApiController
             return BadRequestProblem("X-Tenant-ID header é obrigatório.");
         }
 
-        var result = await _trafficService.GetTenantTrafficOverviewAsync(tenantId, days, source);
+        var result = await _trafficService.GetTenantTrafficOverviewAsync(tenantId, days, source, cancellationToken);
         return Ok(result);
     }
 
@@ -89,7 +89,7 @@ public class TrafficAnalyticsController : BaseApiController
             return BadRequestProblem("StoreUrl é obrigatório.");
         }
 
-        var result = await _trafficService.VerifyStoreTagAsync(tenantId, request.StoreUrl);
+        var result = await _trafficService.VerifyStoreTagAsync(tenantId, request.StoreUrl, cancellationToken);
         return Ok(result);
     }
 }

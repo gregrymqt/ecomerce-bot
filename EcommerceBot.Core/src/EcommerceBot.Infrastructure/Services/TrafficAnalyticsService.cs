@@ -1,5 +1,6 @@
 using System;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using EcommerceBot.Application.DTOs.Analytics;
@@ -25,7 +26,7 @@ public sealed class TrafficAnalyticsService : ITrafficAnalyticsService
         _logger = logger;
     }
 
-    public async Task<Guid> RecordTenantVisitAsync(RecordTenantVisitRequestDto request, string? ipAddress, string? userAgent)
+    public async Task<Guid> RecordTenantVisitAsync(RecordTenantVisitRequestDto request, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default)
     {
         var attribution = new TrafficAttribution
         {
@@ -45,15 +46,15 @@ public sealed class TrafficAnalyticsService : ITrafficAnalyticsService
             CreatedAt = DateTimeOffset.UtcNow
         };
 
-        return await _attributionRepository.RecordTenantVisitAsync(attribution);
+        return await _attributionRepository.RecordTenantVisitAsync(attribution, cancellationToken);
     }
 
-    public async Task<TenantTrafficOverviewDto> GetTenantTrafficOverviewAsync(Guid tenantId, int days = 30, string? sourceFilter = null)
+    public async Task<TenantTrafficOverviewDto> GetTenantTrafficOverviewAsync(Guid tenantId, int days = 30, string? sourceFilter = null, CancellationToken cancellationToken = default)
     {
-        return await _attributionRepository.GetTenantTrafficOverviewAsync(tenantId, days, sourceFilter);
+        return await _attributionRepository.GetTenantTrafficOverviewAsync(tenantId, days, sourceFilter, cancellationToken);
     }
 
-    public async Task<VerifyTagResponseDto> VerifyStoreTagAsync(Guid tenantId, string storeUrl)
+    public async Task<VerifyTagResponseDto> VerifyStoreTagAsync(Guid tenantId, string storeUrl, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(storeUrl))
         {
@@ -97,7 +98,7 @@ public sealed class TrafficAnalyticsService : ITrafficAnalyticsService
             client.Timeout = TimeSpan.FromSeconds(10);
             client.DefaultRequestHeaders.Add("User-Agent", "ECom-Auto-Bot-TagVerifier/1.0");
 
-            var response = await client.GetAsync(uri);
+            var response = await client.GetAsync(uri, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 return new VerifyTagResponseDto
@@ -109,7 +110,7 @@ public sealed class TrafficAnalyticsService : ITrafficAnalyticsService
                 };
             }
 
-            var html = await response.Content.ReadAsStringAsync();
+            var html = await response.Content.ReadAsStringAsync(cancellationToken);
             var tenantStr = tenantId.ToString().ToLowerInvariant();
 
             // Verifica se a tag tracker.js ou o tenant_id estão presentes no DOM da loja

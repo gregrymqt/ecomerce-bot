@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace EcommerceBot.Application.Interfaces;
@@ -24,5 +25,6 @@ public interface IMercadoPagoWebhookService
         string? dataId,
         string? idParam,
         string? xSignature,
-        string? xRequestId);
+        string? xRequestId,
+        CancellationToken cancellationToken = default);
 }

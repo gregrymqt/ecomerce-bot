@@ -27,7 +27,7 @@ public class WalletController : BaseApiController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCreditPackages([FromServices] IPlanService planService, CancellationToken cancellationToken = default)
     {
-        var packages = await planService.GetAllPlansAsync(onlyActive: true);
+        var packages = await planService.GetAllPlansAsync(onlyActive: true, cancellationToken: cancellationToken);
         return Ok(packages);
     }
 
@@ -44,7 +44,7 @@ public class WalletController : BaseApiController
 
         try
         {
-            var result = await _walletService.GetBalanceAsync(tenantId);
+            var result = await _walletService.GetBalanceAsync(tenantId, cancellationToken);
             return Ok(result);
         }
         catch (InvalidOperationException ex)
@@ -81,7 +81,7 @@ public class WalletController : BaseApiController
             Type = type
         };
 
-        var result = await _walletService.GetStatementAsync(tenantId, filters);
+        var result = await _walletService.GetStatementAsync(tenantId, filters, cancellationToken);
         return Ok(result);
     }
 
@@ -98,7 +98,7 @@ public class WalletController : BaseApiController
 
         try
         {
-            var result = await _walletService.CreateRechargeAsync(tenantId, request);
+            var result = await _walletService.CreateRechargeAsync(tenantId, request, cancellationToken);
             return Ok(result);
         }
         catch (ArgumentException ex)

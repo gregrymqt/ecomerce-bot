@@ -50,7 +50,7 @@ public sealed class AnalyticsProcessedConsumer : IConsumer<MlAnalysisResultMessa
             Status = msg.Status,
             DetailsJson = detailsJson,
             DurationMs = 1500
-        });
+        }, context.CancellationToken);
 
         // 2. Dispara evento em tempo real no canal SSE do Tenant
         var channel = $"events:tenant:{msg.TenantId}";

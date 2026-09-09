@@ -33,7 +33,7 @@ public class EmailWebhookController : BaseApiController
         [FromHeader(Name = "svix-signature")] string? svixSignature,
         CancellationToken cancellationToken = default)
     {
-        var result = await _emailWebhookService.ProcessResendWebhookAsync(payload, svixId, svixTimestamp, svixSignature);
+        var result = await _emailWebhookService.ProcessResendWebhookAsync(payload, svixId, svixTimestamp, svixSignature, cancellationToken);
 
         return result.Status switch
         {

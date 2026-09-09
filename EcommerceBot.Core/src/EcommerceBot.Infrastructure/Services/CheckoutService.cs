@@ -161,7 +161,7 @@ public sealed class CheckoutService : ICheckoutService
             Payer = payerRequest
         };
 
-        var mpResponse = await _mercadoPagoGateway.CreateOrderAsync(mpRequest);
+        var mpResponse = await _mercadoPagoGateway.CreateOrderAsync(mpRequest, cancellationToken: cancellationToken);
         var firstPayment = mpResponse.Transactions?.Payments?.FirstOrDefault();
 
         // 5. Atualiza o pedido com a resposta do gateway
@@ -224,7 +224,7 @@ public sealed class CheckoutService : ICheckoutService
         }
 
         // 1. Consulta Order no Mercado Pago
-        var mpOrder = await _mercadoPagoGateway.GetOrderByIdAsync(paymentOrOrderId);
+        var mpOrder = await _mercadoPagoGateway.GetOrderByIdAsync(paymentOrOrderId, cancellationToken);
         if (mpOrder is not null)
         {
             var isAccredited = mpOrder is { Status: "processed", StatusDetail: "accredited" };
@@ -237,7 +237,7 @@ public sealed class CheckoutService : ICheckoutService
         }
 
         // 2. Fallback para payments/{id}
-        var mpPayment = await _mercadoPagoGateway.GetPaymentByIdAsync(paymentOrOrderId);
+        var mpPayment = await _mercadoPagoGateway.GetPaymentByIdAsync(paymentOrOrderId, cancellationToken);
         if (mpPayment is not null)
         {
             var isApproved = mpPayment.Status is "approved";
@@ -409,7 +409,7 @@ public sealed class CheckoutService : ICheckoutService
         if (string.IsNullOrWhiteSpace(rawName))
             return ("Cliente", "Cliente");
 
-        ReadOnlySpan<char> span = rawName.AsSpan().Trim();
+        var span = rawName.AsSpan().Trim();
         var spaceIndex = span.IndexOf(' ');
 
         if (spaceIndex < 0)

@@ -45,6 +45,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
 
     public async Task Consume(ConsumeContext<PaymentReceivedEvent> context)
     {
+        var ct = context.CancellationToken;
         var msg = context.Message;
         var resourceId = msg.ResourceId;
 
@@ -66,7 +67,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
             decimal paidAmount = 0m;
             string? payerEmail = null;
 
-            var mpOrder = await _mercadoPagoGateway.GetOrderByIdAsync(resourceId);
+            var mpOrder = await _mercadoPagoGateway.GetOrderByIdAsync(resourceId, ct);
             if (mpOrder != null)
             {
                 externalRef = mpOrder.ExternalReference;
@@ -84,7 +85,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
             }
             else
             {
-                var mpPayment = await _mercadoPagoGateway.GetPaymentByIdAsync(resourceId);
+                var mpPayment = await _mercadoPagoGateway.GetPaymentByIdAsync(resourceId, ct);
                 if (mpPayment != null)
                 {
                     externalRef = mpPayment.ExternalReference;
@@ -102,12 +103,12 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
             Order? order = null;
             if (!string.IsNullOrEmpty(externalRef))
             {
-                order = await _orderRepository.GetOrderByExternalReferenceGlobalAsync(externalRef);
+                order = await _orderRepository.GetOrderByExternalReferenceGlobalAsync(externalRef, ct);
             }
 
             if (order == null)
             {
-                order = await _orderRepository.GetOrderByMpPaymentIdAsync(resourceId);
+                order = await _orderRepository.GetOrderByMpPaymentIdAsync(resourceId, ct);
             }
 
             var tenantId = order?.TenantId ?? Guid.Empty;
@@ -128,12 +129,12 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                     order.PaidAt = DateTimeOffset.UtcNow;
                     order.TotalPaidAmount = paidAmount > 0 ? paidAmount : order.TotalAmount;
                     order.MpPaymentId = resourceId;
-                    await _orderRepository.UpdateOrderAsync(order);
+                    await _orderRepository.UpdateOrderAsync(order, ct);
 
                     // Concessão de créditos de IA desvinculada de assinaturas
                     if (order.PlanId.HasValue)
                     {
-                        var plan = await _planRepository.GetByIdAsync(order.PlanId.Value);
+                        var plan = await _planRepository.GetByIdAsync(order.PlanId.Value, ct);
                         if (plan != null)
                         {
                             creditsToAdd = plan.CreditsIncluded;
@@ -155,7 +156,8 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                         type: "RECHARGE",
                         description: $"Recarga de IA aprovada: {packageName} (+{creditsToAdd} créditos)",
                         referenceId: order.ExternalReference ?? resourceId,
-                        orderId: order.Id
+                        orderId: order.Id,
+                        cancellationToken: ct
                     );
 
                     tenantId = order.TenantId;
@@ -197,7 +199,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                 }, ctx =>
                 {
                     ctx.SetRoutingKey("email_notifications");
-                });
+                }, ct);
 
                 _logger.LogInformation("Payment {ResourceId} approved and credited successfully for tenant {TenantId}", resourceId, tenantId);
             }
@@ -206,7 +208,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                 if (order != null)
                 {
                     order.Status = "rejected";
-                    await _orderRepository.UpdateOrderAsync(order);
+                    await _orderRepository.UpdateOrderAsync(order, ct);
                 }
                 _logger.LogWarning("Payment {ResourceId} rejected or failed with detail {Detail}", resourceId, statusDetail);
             }
@@ -218,14 +220,14 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                     bool alreadyReverted = order.Status == "refunded" || order.Status == "charged_back";
 
                     order.Status = status == "charged_back" ? "charged_back" : "refunded";
-                    await _orderRepository.UpdateOrderAsync(order);
+                    await _orderRepository.UpdateOrderAsync(order, ct);
 
                     if (wasPaid && !alreadyReverted)
                     {
                         int creditsToRevert = 0;
                         if (order.PlanId.HasValue)
                         {
-                            var plan = await _planRepository.GetByIdAsync(order.PlanId.Value);
+                            var plan = await _planRepository.GetByIdAsync(order.PlanId.Value, ct);
                             if (plan != null)
                             {
                                 creditsToRevert = plan.CreditsIncluded;
@@ -246,7 +248,8 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                             type: "CHARGEBACK_REVERSAL",
                             description: $"Estorno / Chargeback Mercado Pago ({status}): -{creditsToRevert} créditos",
                             referenceId: order.ExternalReference ?? resourceId,
-                            orderId: order.Id
+                            orderId: order.Id,
+                            cancellationToken: ct
                         );
 
                         if (newBalance < 0)

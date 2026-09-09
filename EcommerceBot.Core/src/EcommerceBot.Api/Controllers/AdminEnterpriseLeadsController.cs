@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -41,7 +41,7 @@ public class AdminEnterpriseLeadsController : BaseApiController
     {
         try
         {
-            var response = await _enterpriseLeadService.GetLeadsAsync(status, search, page, pageSize);
+            var response = await _enterpriseLeadService.GetLeadsAsync(status, search, page, pageSize, cancellationToken);
             return Ok(response);
         }
         catch (ArgumentException ex)
@@ -70,7 +70,7 @@ public class AdminEnterpriseLeadsController : BaseApiController
     {
         try
         {
-            var success = await _enterpriseLeadService.UpdateLeadStatusAsync(id, request);
+            var success = await _enterpriseLeadService.UpdateLeadStatusAsync(id, request, cancellationToken);
             if (!success)
             {
                 return NotFoundProblem("Lead corporativo nao encontrado.");
@@ -104,7 +104,7 @@ public class AdminEnterpriseLeadsController : BaseApiController
     {
         try
         {
-            var response = await _enterpriseLeadService.ProvisionEnterpriseAccountAsync(id, request);
+            var response = await _enterpriseLeadService.ProvisionEnterpriseAccountAsync(id, request, cancellationToken);
             return Ok(response);
         }
         catch (KeyNotFoundException ex)

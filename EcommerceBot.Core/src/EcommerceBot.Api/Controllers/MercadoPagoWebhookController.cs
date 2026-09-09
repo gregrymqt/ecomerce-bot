@@ -37,7 +37,7 @@ public class MercadoPagoWebhookController : BaseApiController
         using var reader = new StreamReader(Request.Body, Encoding.UTF8);
         var rawBody = await reader.ReadToEndAsync(cancellationToken);
 
-        var result = await _webhookService.ProcessWebhookAsync(rawBody, dataId, idParam, xSignature, xRequestId);
+        var result = await _webhookService.ProcessWebhookAsync(rawBody, dataId, idParam, xSignature, xRequestId, cancellationToken);
 
         return result.Status switch
         {

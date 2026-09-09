@@ -1,9 +1,10 @@
 using System.Data;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace EcommerceBot.Domain.Interfaces;
 
 public interface IDbConnectionFactory
 {
-    Task<IDbConnection> CreateConnectionAsync();
+    Task<IDbConnection> CreateConnectionAsync(CancellationToken cancellationToken = default);
 }

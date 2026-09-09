@@ -25,7 +25,7 @@ public class TenantSsoController : BaseApiController
     [HttpGet("roles")]
     public async Task<IActionResult> GetRoles(CancellationToken cancellationToken = default)
     {
-        var roles = await _tenantSsoService.GetRolesAsync();
+        var roles = await _tenantSsoService.GetRolesAsync(cancellationToken);
         return Ok(roles);
     }
 
@@ -39,7 +39,7 @@ public class TenantSsoController : BaseApiController
         if (tenantId == Guid.Empty)
             return BadRequestProblem("Tenant não identificado no contexto da requisição.");
 
-        var mappings = await _tenantSsoService.GetMappingsByTenantIdAsync(tenantId);
+        var mappings = await _tenantSsoService.GetMappingsByTenantIdAsync(tenantId, cancellationToken);
         return Ok(mappings);
     }
 
@@ -55,7 +55,7 @@ public class TenantSsoController : BaseApiController
 
         try
         {
-            var result = await _tenantSsoService.CreateMappingAsync(tenantId, request);
+            var result = await _tenantSsoService.CreateMappingAsync(tenantId, request, cancellationToken);
             return CreatedAtAction(nameof(GetMappings), new { id = result.Id }, result);
         }
         catch (ArgumentException ex)
@@ -80,7 +80,7 @@ public class TenantSsoController : BaseApiController
 
         try
         {
-            var success = await _tenantSsoService.UpdateMappingAsync(id, tenantId, request);
+            var success = await _tenantSsoService.UpdateMappingAsync(id, tenantId, request, cancellationToken);
             if (!success)
                 return NotFoundProblem("Mapeamento SSO não encontrado.");
 
@@ -102,7 +102,7 @@ public class TenantSsoController : BaseApiController
         if (tenantId == Guid.Empty)
             return BadRequestProblem("Tenant não identificado no contexto da requisição.");
 
-        var success = await _tenantSsoService.DeleteMappingAsync(id, tenantId);
+        var success = await _tenantSsoService.DeleteMappingAsync(id, tenantId, cancellationToken);
         if (!success)
             return NotFoundProblem("Mapeamento SSO não encontrado.");
 

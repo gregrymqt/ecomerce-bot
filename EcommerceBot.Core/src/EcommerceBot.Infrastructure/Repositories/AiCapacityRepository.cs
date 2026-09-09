@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapper;
 using EcommerceBot.Domain.Entities;
@@ -17,9 +18,9 @@ public sealed class AiCapacityRepository : IAiCapacityRepository
         _connectionFactory = connectionFactory;
     }
 
-    public async Task<Guid> AddTopupAsync(AiProviderCredit credit)
+    public async Task<Guid> AddTopupAsync(AiProviderCredit credit, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = @"
             INSERT INTO dbo.AiProviderCredits 
                 (Provider, AmountPaid, Currency, TokensCredited, BalanceRemaining, TransactionReference, Source, Notes)
@@ -27,7 +28,7 @@ public sealed class AiCapacityRepository : IAiCapacityRepository
             VALUES 
                 (@Provider, @AmountPaid, @Currency, @TokensCredited, @BalanceRemaining, @TransactionReference, @Source, @Notes)";
 
-        var id = await connection.ExecuteScalarAsync<Guid>(sql, new
+        var cmd = new CommandDefinition(sql, new
         {
             Provider = credit.Provider.ToUpperInvariant(),
             credit.AmountPaid,
@@ -37,27 +38,28 @@ public sealed class AiCapacityRepository : IAiCapacityRepository
             credit.TransactionReference,
             Source = string.IsNullOrWhiteSpace(credit.Source) ? "MANUAL_ADMIN" : credit.Source.ToUpperInvariant(),
             credit.Notes
-        });
+        }, cancellationToken: cancellationToken);
 
-        return id;
+        return await connection.ExecuteScalarAsync<Guid>(cmd);
     }
 
-    public async Task<List<AiProviderCredit>> GetRecentTopupsAsync(int limit = 20)
+    public async Task<List<AiProviderCredit>> GetRecentTopupsAsync(int limit = 20, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = @"
             SELECT TOP (@Limit) 
                 Id, Provider, AmountPaid, Currency, TokensCredited, BalanceRemaining, TransactionReference, Source, Notes, CreatedAt
             FROM dbo.AiProviderCredits
             ORDER BY CreatedAt DESC";
 
-        var items = await connection.QueryAsync<AiProviderCredit>(sql, new { Limit = limit });
+        var cmd = new CommandDefinition(sql, new { Limit = limit }, cancellationToken: cancellationToken);
+        var items = await connection.QueryAsync<AiProviderCredit>(cmd);
         return [.. items];
     }
 
-    public async Task<Dictionary<string, decimal>> GetLatestBalancesAsync()
+    public async Task<Dictionary<string, decimal>> GetLatestBalancesAsync(CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = @"
             WITH RankedCredits AS (
                 SELECT 
@@ -70,7 +72,8 @@ public sealed class AiCapacityRepository : IAiCapacityRepository
             FROM RankedCredits
             WHERE rn = 1";
 
-        var rows = await connection.QueryAsync<(string Provider, decimal BalanceRemaining)>(sql);
+        var cmd = new CommandDefinition(sql, cancellationToken: cancellationToken);
+        var rows = await connection.QueryAsync<(string Provider, decimal BalanceRemaining)>(cmd);
         var dict = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var (Provider, BalanceRemaining) in rows)
@@ -86,9 +89,9 @@ public sealed class AiCapacityRepository : IAiCapacityRepository
         return dict;
     }
 
-    public async Task<List<DailyTokenUsageSummary>> GetDailyUsageHistoryAsync(int days = 90)
+    public async Task<List<DailyTokenUsageSummary>> GetDailyUsageHistoryAsync(int days = 90, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = @"
             SELECT 
                 CONVERT(VARCHAR(10), CreatedAt, 120) AS [Date],
@@ -100,7 +103,8 @@ public sealed class AiCapacityRepository : IAiCapacityRepository
             GROUP BY CONVERT(VARCHAR(10), CreatedAt, 120), UPPER(Provider)
             ORDER BY [Date] ASC";
 
-        var rows = await connection.QueryAsync<DailyTokenUsageSummary>(sql, new { Days = days });
+        var cmd = new CommandDefinition(sql, new { Days = days }, cancellationToken: cancellationToken);
+        var rows = await connection.QueryAsync<DailyTokenUsageSummary>(cmd);
         return rows.ToList();
     }
 }

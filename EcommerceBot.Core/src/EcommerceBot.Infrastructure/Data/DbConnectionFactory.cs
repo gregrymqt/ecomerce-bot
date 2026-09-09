@@ -1,5 +1,6 @@
 using System;
 using System.Data;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Domain.Interfaces;
 using EcommerceBot.Infrastructure.Options;
@@ -25,10 +26,10 @@ public sealed class DbConnectionFactory : IDbConnectionFactory
         }
     }
 
-    public async Task<IDbConnection> CreateConnectionAsync()
+    public async Task<IDbConnection> CreateConnectionAsync(CancellationToken cancellationToken = default)
     {
         var connection = new SqlConnection(_connectionString);
-        await connection.OpenAsync();
+        await connection.OpenAsync(cancellationToken);
         return connection;
     }
 }

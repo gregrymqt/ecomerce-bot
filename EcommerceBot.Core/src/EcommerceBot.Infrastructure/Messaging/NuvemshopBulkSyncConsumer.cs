@@ -53,7 +53,8 @@ public sealed class NuvemshopBulkSyncConsumer : IConsumer<NuvemshopBulkSyncMessa
                 amount: 1,
                 type: "PRODUCT_ENRICHMENT",
                 description: $"Sincronização em lote Nuvemshop: SKU {msg.Sku}",
-                referenceId: msg.JobId
+                referenceId: msg.JobId,
+                cancellationToken: context.CancellationToken
             );
         }
         catch (InsufficientCreditsException ex)
@@ -62,7 +63,7 @@ public sealed class NuvemshopBulkSyncConsumer : IConsumer<NuvemshopBulkSyncMessa
                 msg.TenantId, ex.CurrentBalance, msg.Sku, msg.JobId);
 
             // Atualiza status da integração para 'paused_insufficient_credits'
-            await _storeIntegrationRepository.UpdateStatusAsync(msg.TenantId, "Nuvemshop", "paused_insufficient_credits");
+            await _storeIntegrationRepository.UpdateStatusAsync(msg.TenantId, "Nuvemshop", "paused_insufficient_credits", context.CancellationToken);
 
             // Emite evento SSE no Redis alertando sobre créditos esgotados
             var pauseSseEvent = new
@@ -84,7 +85,7 @@ public sealed class NuvemshopBulkSyncConsumer : IConsumer<NuvemshopBulkSyncMessa
         }
 
         var sw = Stopwatch.StartNew();
-        var product = await _productRepository.GetBySkuAsync(msg.TenantId, msg.Sku);
+        var product = await _productRepository.GetBySkuAsync(msg.TenantId, msg.Sku, context.CancellationToken);
         if (product == null)
         {
             _logger.LogWarning("Product {Sku} not found for Tenant {TenantId}", msg.Sku, msg.TenantId);
@@ -94,7 +95,8 @@ public sealed class NuvemshopBulkSyncConsumer : IConsumer<NuvemshopBulkSyncMessa
                 amount: 1,
                 type: "REFUND",
                 description: $"Estorno por produto não encontrado para Nuvemshop (SKU: {msg.Sku})",
-                referenceId: msg.JobId
+                referenceId: msg.JobId,
+                cancellationToken: context.CancellationToken
             );
             return;
         }
@@ -108,12 +110,13 @@ public sealed class NuvemshopBulkSyncConsumer : IConsumer<NuvemshopBulkSyncMessa
                 amount: 1,
                 type: "REFUND",
                 description: $"Estorno por gateway Nuvemshop não disponível (SKU: {msg.Sku})",
-                referenceId: msg.JobId
+                referenceId: msg.JobId,
+                cancellationToken: context.CancellationToken
             );
             return;
         }
 
-        var success = await nuvemshopGateway.PushProductAsync(msg.TenantId, product);
+        var success = await nuvemshopGateway.PushProductAsync(msg.TenantId, product, context.CancellationToken);
         sw.Stop();
 
         // 2. Registra telemetria de atividade do robô
@@ -155,7 +158,8 @@ public sealed class NuvemshopBulkSyncConsumer : IConsumer<NuvemshopBulkSyncMessa
                 amount: 1,
                 type: "REFUND",
                 description: $"Estorno automático por falha no envio para Nuvemshop (SKU: {msg.Sku})",
-                referenceId: msg.JobId
+                referenceId: msg.JobId,
+                cancellationToken: context.CancellationToken
             );
             return;
         }

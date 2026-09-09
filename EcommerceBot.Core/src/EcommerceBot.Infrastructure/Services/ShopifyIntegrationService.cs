@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Integrations;
 using EcommerceBot.Application.DTOs.Shopify;
@@ -58,7 +59,7 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
             : (!string.IsNullOrWhiteSpace(appOpt.BaseUrl) ? appOpt.BaseUrl : "https://app.ecommercebot.com");
     }
 
-    public async Task<StoreIntegrationResponseDto> SaveCredentialsAsync(Guid tenantId, ShopifyCredentialsPayloadDto payload)
+    public async Task<StoreIntegrationResponseDto> SaveCredentialsAsync(Guid tenantId, ShopifyCredentialsPayloadDto payload, CancellationToken cancellationToken = default)
     {
         if (tenantId == Guid.Empty) throw new ArgumentException("TenantId é obrigatório.");
         if (string.IsNullOrWhiteSpace(payload.StoreDomain)) throw new ArgumentException("Domínio da loja é obrigatório.");
@@ -87,15 +88,15 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
             UpdatedAt = DateTimeOffset.UtcNow
         };
 
-        await _storeIntegrationRepository.UpsertAsync(integration);
+        await _storeIntegrationRepository.UpsertAsync(integration, cancellationToken);
 
         // 2. Realiza Health Check imediato para testar o token
         try
         {
             var gateway = _gatewayFactory.GetGateway("Shopify");
-            var (success, latencyMs, message) = await gateway.HealthCheckAsync(tenantId);
+            var (success, latencyMs, message) = await gateway.HealthCheckAsync(tenantId, cancellationToken);
             var status = success ? "CONNECTED" : "ERROR";
-            await _storeIntegrationRepository.UpdateHealthCheckAsync(integration.Id, status, latencyMs, message);
+            await _storeIntegrationRepository.UpdateHealthCheckAsync(integration.Id, status, latencyMs, message, cancellationToken);
             integration.Status = status;
             integration.HealthCheckStatus = message;
             integration.HealthCheckLatencyMs = latencyMs;
@@ -118,7 +119,7 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
         };
     }
 
-    public Task<string> GetOAuthUrlAsync(Guid tenantId, string shopDomain)
+    public Task<string> GetOAuthUrlAsync(Guid tenantId, string shopDomain, CancellationToken cancellationToken = default)
     {
         var cleanShop = shopDomain.Replace("https://", "").Replace("http://", "").Trim().TrimEnd('/').ToLowerInvariant();
         var scopes = "write_products,read_products,write_inventory,read_inventory,write_orders,read_orders";
@@ -129,7 +130,7 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
         return Task.FromResult(authorizeUrl);
     }
 
-    public async Task HandleOAuthCallbackAsync(Guid tenantId, string code, string shopDomain)
+    public async Task HandleOAuthCallbackAsync(Guid tenantId, string code, string shopDomain, CancellationToken cancellationToken = default)
     {
         var cleanShop = shopDomain.Replace("https://", "").Replace("http://", "").Trim().TrimEnd('/').ToLowerInvariant();
         _logger.LogInformation("Exchanging OAuth code for Shopify access token. Shop: {Shop}, Tenant: {TenantId}", cleanShop, tenantId);
@@ -147,8 +148,8 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
             Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
         };
 
-        var response = await _httpClient.SendAsync(request);
-        var json = await response.Content.ReadAsStringAsync();
+        var response = await _httpClient.SendAsync(request, cancellationToken);
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -166,15 +167,15 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
                 {
                     StoreDomain = cleanShop,
                     AdminAccessToken = accessToken
-                });
+                }, cancellationToken);
                 _logger.LogInformation("Successfully saved Shopify OAuth token for Tenant {TenantId}", tenantId);
             }
         }
     }
 
-    public async Task<ShopifyProductResponseDto> SyncProductAsync(Guid tenantId, ShopifySyncRequestDto request)
+    public async Task<ShopifyProductResponseDto> SyncProductAsync(Guid tenantId, ShopifySyncRequestDto request, CancellationToken cancellationToken = default)
     {
-        var product = await _productRepository.GetBySkuAsync(tenantId, request.Sku);
+        var product = await _productRepository.GetBySkuAsync(tenantId, request.Sku, cancellationToken);
         if (product == null)
         {
             product = new Product
@@ -192,7 +193,7 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow
             };
-            await _productRepository.AddAsync(product);
+            await _productRepository.AddAsync(product, cancellationToken);
         }
         else
         {
@@ -200,15 +201,15 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
             product.Description = request.Description ?? product.Description;
             if (request.Price.HasValue) product.Price = request.Price.Value;
             if (request.Images != null) product.ImagesJson = JsonSerializer.Serialize(request.Images);
-            await _productRepository.UpdateAsync(product);
+            await _productRepository.UpdateAsync(product, cancellationToken);
         }
 
         var gateway = _gatewayFactory.GetGateway("Shopify");
-        var success = await gateway.PushProductAsync(tenantId, product);
+        var success = await gateway.PushProductAsync(tenantId, product, cancellationToken);
 
         if (success)
         {
-            var updated = await _productRepository.GetBySkuAsync(tenantId, request.Sku);
+            var updated = await _productRepository.GetBySkuAsync(tenantId, request.Sku, cancellationToken);
             return new ShopifyProductResponseDto
             {
                 ShopifyId = updated?.ShopifyProductId,
@@ -225,7 +226,7 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
         };
     }
 
-    public async Task<ShopifyBulkSyncResponseDto> TriggerBulkSyncAsync(Guid tenantId, ShopifyBulkSyncRequestDto request)
+    public async Task<ShopifyBulkSyncResponseDto> TriggerBulkSyncAsync(Guid tenantId, ShopifyBulkSyncRequestDto request, CancellationToken cancellationToken = default)
     {
         if (tenantId == Guid.Empty) throw new ArgumentException("X-Tenant-ID header é obrigatório.");
         if (request.Skus == null || request.Skus.Count == 0) throw new ArgumentException("Lista de SKUs não pode estar vazia.");
@@ -245,7 +246,7 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
             await _publishEndpoint.Publish(msg, context =>
             {
                 context.SetRoutingKey("shopify_bulk_sync");
-            });
+            }, cancellationToken);
         }
 
         _logger.LogInformation("Enqueued {Count} products for Shopify bulk sync. JobId: {JobId}, Tenant: {TenantId}", request.Skus.Count, jobId, tenantId);
@@ -259,10 +260,10 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
         };
     }
 
-    public async Task<ShopifyProductResponseDto> UpdateInventoryAsync(Guid tenantId, string sku, ShopifyInventoryUpdateDto input)
+    public async Task<ShopifyProductResponseDto> UpdateInventoryAsync(Guid tenantId, string sku, ShopifyInventoryUpdateDto input, CancellationToken cancellationToken = default)
     {
         var gateway = _gatewayFactory.GetGateway("Shopify");
-        var success = await gateway.UpdateInventoryAsync(tenantId, sku, input.AvailableQuantity, input.InventoryItemId);
+        var success = await gateway.UpdateInventoryAsync(tenantId, sku, input.AvailableQuantity, input.InventoryItemId, cancellationToken);
 
         return new ShopifyProductResponseDto
         {
@@ -271,10 +272,10 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
         };
     }
 
-    public async Task<ShopifyProductResponseDto> UpdateStatusAsync(Guid tenantId, string sku, ShopifyStatusUpdateDto input)
+    public async Task<ShopifyProductResponseDto> UpdateStatusAsync(Guid tenantId, string sku, ShopifyStatusUpdateDto input, CancellationToken cancellationToken = default)
     {
         var gateway = _gatewayFactory.GetGateway("Shopify");
-        var success = await gateway.UpdateProductStatusAsync(tenantId, sku, input.Status);
+        var success = await gateway.UpdateProductStatusAsync(tenantId, sku, input.Status, cancellationToken);
 
         return new ShopifyProductResponseDto
         {
@@ -283,10 +284,10 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
         };
     }
 
-    public async Task<ShopifyProductResponseDto> DeleteRemoteProductAsync(Guid tenantId, string sku)
+    public async Task<ShopifyProductResponseDto> DeleteRemoteProductAsync(Guid tenantId, string sku, CancellationToken cancellationToken = default)
     {
         var gateway = _gatewayFactory.GetGateway("Shopify");
-        var success = await gateway.DeleteProductAsync(tenantId, sku);
+        var success = await gateway.DeleteProductAsync(tenantId, sku, cancellationToken);
 
         return new ShopifyProductResponseDto
         {
@@ -295,7 +296,7 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
         };
     }
 
-    public async Task ProcessWebhookAsync(Guid tenantId, string topic, string shopDomain, JsonElement payload)
+    public async Task ProcessWebhookAsync(Guid tenantId, string topic, string shopDomain, JsonElement payload, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Processing Shopify webhook '{Topic}' for domain '{ShopDomain}', Tenant '{TenantId}'", topic, shopDomain, tenantId);
 
@@ -323,7 +324,7 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
                     var variantId = variant.TryGetProperty("id", out var vIdProp) ? vIdProp.GetRawText() : null;
                     var invItemId = variant.TryGetProperty("inventory_item_id", out var invProp) ? invProp.GetRawText() : null;
 
-                    var product = await _productRepository.GetBySkuAsync(tenantId, sku);
+                    var product = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
                     if (product != null)
                     {
                         product.Title = !string.IsNullOrEmpty(title) ? title : product.Title;
@@ -334,7 +335,7 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
                         product.ShopifyVariantId = variantId;
                         product.ShopifyInventoryItemId = invItemId;
                         product.UpdatedAt = DateTimeOffset.UtcNow;
-                        await _productRepository.UpdateAsync(product);
+                        await _productRepository.UpdateAsync(product, cancellationToken);
                     }
                     else
                     {
@@ -356,7 +357,7 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
                             CreatedAt = DateTimeOffset.UtcNow,
                             UpdatedAt = DateTimeOffset.UtcNow
                         };
-                        await _productRepository.AddAsync(newProd);
+                        await _productRepository.AddAsync(newProd, cancellationToken);
                     }
                 }
             }
@@ -375,10 +376,10 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
         else if (topic.StartsWith("app/uninstalled", StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogWarning("Shopify App uninstalled for domain '{ShopDomain}'. Marking integration as DISCONNECTED.", shopDomain);
-            var integration = await _storeIntegrationRepository.GetByDomainAsync("SHOPIFY", shopDomain);
+            var integration = await _storeIntegrationRepository.GetByDomainAsync("SHOPIFY", shopDomain, cancellationToken);
             if (integration != null)
             {
-                await _storeIntegrationRepository.UpdateHealthCheckAsync(integration.Id, "DISCONNECTED", 0, "App desinstalado na Shopify");
+                await _storeIntegrationRepository.UpdateHealthCheckAsync(integration.Id, "DISCONNECTED", 0, "App desinstalado na Shopify", cancellationToken);
             }
         }
     }

@@ -41,17 +41,17 @@ public sealed class LlmUsageConsumer : IConsumer<LlmUsageEvent>
             ExecutionTimeMs = msg.ExecutionTimeMs
         };
 
-        await _meteringRepository.CreateUsageLogAsync(log);
+        await _meteringRepository.CreateUsageLogAsync(log, context.CancellationToken);
 
         if (!msg.IsByok && msg.EstimatedCostUsd > 0)
         {
             if (msg.ReservedCost.HasValue)
             {
-                await _meteringRepository.AtomicSettleCreditsAsync(msg.TenantId, msg.ReservedCost.Value, msg.EstimatedCostUsd);
+                await _meteringRepository.AtomicSettleCreditsAsync(msg.TenantId, msg.ReservedCost.Value, msg.EstimatedCostUsd, context.CancellationToken);
             }
             else
             {
-                await _meteringRepository.AtomicReserveCreditsAsync(msg.TenantId, msg.EstimatedCostUsd);
+                await _meteringRepository.AtomicReserveCreditsAsync(msg.TenantId, msg.EstimatedCostUsd, context.CancellationToken);
             }
         }
     }

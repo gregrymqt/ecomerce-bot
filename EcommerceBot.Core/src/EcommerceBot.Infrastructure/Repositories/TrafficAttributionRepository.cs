@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapper;
 using EcommerceBot.Application.DTOs.Analytics;
@@ -20,9 +21,9 @@ public sealed class TrafficAttributionRepository : ITrafficAttributionRepository
         _connectionFactory = connectionFactory;
     }
 
-    public async Task<Guid> RecordTenantVisitAsync(TrafficAttribution attribution)
+    public async Task<Guid> RecordTenantVisitAsync(TrafficAttribution attribution, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = @"
             INSERT INTO dbo.TrafficAttributions (
                 Id, TenantId, OrderId, SessionId, UtmSource, UtmMedium, UtmCampaign,
@@ -35,13 +36,13 @@ public sealed class TrafficAttributionRepository : ITrafficAttributionRepository
         if (attribution.Id == Guid.Empty) attribution.Id = Guid.NewGuid();
         if (attribution.CreatedAt == default) attribution.CreatedAt = DateTimeOffset.UtcNow;
 
-        await connection.ExecuteAsync(sql, attribution);
+        await connection.ExecuteAsync(new CommandDefinition(sql, attribution, cancellationToken: cancellationToken));
         return attribution.Id;
     }
 
-    public async Task<TenantTrafficOverviewDto> GetTenantTrafficOverviewAsync(Guid tenantId, int days, string? sourceFilter = null)
+    public async Task<TenantTrafficOverviewDto> GetTenantTrafficOverviewAsync(Guid tenantId, int days, string? sourceFilter = null, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         var since = DateTimeOffset.UtcNow.AddDays(-days);
 
         // 1. Resumo Geral de Faturamento e Pedidos Atribuídos
@@ -56,12 +57,12 @@ public sealed class TrafficAttributionRepository : ITrafficAttributionRepository
               AND (@SourceFilter IS NULL OR t.UtmSource = @SourceFilter);
         ";
 
-        var summary = await connection.QueryFirstOrDefaultAsync<dynamic>(summarySql, new 
+        var summary = await connection.QueryFirstOrDefaultAsync<dynamic>(new CommandDefinition(summarySql, new 
         { 
             TenantId = tenantId, 
             Since = since,
             SourceFilter = string.IsNullOrWhiteSpace(sourceFilter) ? null : sourceFilter
-        });
+        }, cancellationToken: cancellationToken));
 
         decimal totalRevenue = summary != null ? (decimal)summary.TotalAttributedRevenue : 0m;
         int totalOrders = summary != null ? (int)summary.TotalTrackedOrders : 0;
@@ -82,7 +83,7 @@ public sealed class TrafficAttributionRepository : ITrafficAttributionRepository
             ORDER BY RevenueBrl DESC;
         ";
 
-        var sourceRows = (await connection.QueryAsync<dynamic>(sourcesSql, new { TenantId = tenantId, Since = since })).ToList();
+        var sourceRows = (await connection.QueryAsync<dynamic>(new CommandDefinition(sourcesSql, new { TenantId = tenantId, Since = since }, cancellationToken: cancellationToken))).ToList();
         var sourcesList = sourceRows.Select(r => 
         {
             int visits = (int)r.VisitsCount;
@@ -115,7 +116,7 @@ public sealed class TrafficAttributionRepository : ITrafficAttributionRepository
             ORDER BY TotalRevenueBrl DESC;
         ";
 
-        var creativeRows = (await connection.QueryAsync<dynamic>(creativesSql, new { TenantId = tenantId, Since = since })).ToList();
+        var creativeRows = (await connection.QueryAsync<dynamic>(new CommandDefinition(creativesSql, new { TenantId = tenantId, Since = since }, cancellationToken: cancellationToken))).ToList();
         var creativesList = creativeRows.Select(r => 
         {
             int orders = (int)r.OrdersCount;
@@ -148,9 +149,9 @@ public sealed class TrafficAttributionRepository : ITrafficAttributionRepository
         };
     }
 
-    public async Task<int> LinkOrderToTrafficSessionAsync(Guid tenantId, Guid orderId, string sessionId, string? utmSource, string? utmCampaign, string? adId)
+    public async Task<int> LinkOrderToTrafficSessionAsync(Guid tenantId, Guid orderId, string sessionId, string? utmSource, string? utmCampaign, string? adId, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = @"
             UPDATE dbo.TrafficAttributions
             SET OrderId = @OrderId
@@ -159,7 +160,7 @@ public sealed class TrafficAttributionRepository : ITrafficAttributionRepository
               AND OrderId IS NULL;
         ";
 
-        return await connection.ExecuteAsync(sql, new 
+        return await connection.ExecuteAsync(new CommandDefinition(sql, new 
         { 
             TenantId = tenantId, 
             OrderId = orderId, 
@@ -167,6 +168,6 @@ public sealed class TrafficAttributionRepository : ITrafficAttributionRepository
             UtmSource = utmSource,
             UtmCampaign = utmCampaign,
             AdId = adId
-        });
+        }, cancellationToken: cancellationToken));
     }
 }

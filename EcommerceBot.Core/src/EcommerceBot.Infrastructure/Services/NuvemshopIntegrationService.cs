@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Nuvemshop;
 using EcommerceBot.Application.Interfaces;
@@ -64,7 +65,7 @@ public sealed class NuvemshopIntegrationService : INuvemshopIntegrationService
         return $"https://www.nuvemshop.com.br/apps/authorize/token?client_id={_clientId}&redirect_uri={Uri.EscapeDataString(_redirectUri)}&response_type=code&state={tenantId}";
     }
 
-    public async Task<bool> HandleOAuthCallbackAsync(Guid tenantId, string code)
+    public async Task<bool> HandleOAuthCallbackAsync(Guid tenantId, string code, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Exchanging OAuth code for Tenant {TenantId}", tenantId);
 
@@ -82,8 +83,8 @@ public sealed class NuvemshopIntegrationService : INuvemshopIntegrationService
 
         try
         {
-            var response = await _httpClient.SendAsync(request);
-            var responseContent = await response.Content.ReadAsStringAsync();
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -98,7 +99,7 @@ public sealed class NuvemshopIntegrationService : INuvemshopIntegrationService
                 return false;
             }
 
-            return await SaveDirectCredentialsAsync(tenantId, tokenData.UserId.ToString(), tokenData.AccessToken);
+            return await SaveDirectCredentialsAsync(tenantId, tokenData.UserId.ToString(), tokenData.AccessToken, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -107,19 +108,19 @@ public sealed class NuvemshopIntegrationService : INuvemshopIntegrationService
         }
     }
 
-    public async Task<bool> SaveCredentialsAsync(Guid tenantId, NuvemshopCredentialsPayloadDto payload)
+    public async Task<bool> SaveCredentialsAsync(Guid tenantId, NuvemshopCredentialsPayloadDto payload, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(payload.StoreId) || string.IsNullOrWhiteSpace(payload.AccessToken))
             throw new ArgumentException("StoreId e AccessToken são obrigatórios.");
 
-        return await SaveDirectCredentialsAsync(tenantId, payload.StoreId.Trim(), payload.AccessToken.Trim());
+        return await SaveDirectCredentialsAsync(tenantId, payload.StoreId.Trim(), payload.AccessToken.Trim(), cancellationToken);
     }
 
-    private async Task<bool> SaveDirectCredentialsAsync(Guid tenantId, string storeId, string accessToken)
+    private async Task<bool> SaveDirectCredentialsAsync(Guid tenantId, string storeId, string accessToken, CancellationToken cancellationToken = default)
     {
         var encrypted = _cryptoService.Encrypt(accessToken);
 
-        var existing = await _integrationRepository.GetByTenantAndPlatformAsync(tenantId, "NUVEMSHOP");
+        var existing = await _integrationRepository.GetByTenantAndPlatformAsync(tenantId, "NUVEMSHOP", cancellationToken);
         var integration = existing ?? new StoreIntegration
         {
             Id = Guid.NewGuid(),
@@ -136,15 +137,15 @@ public sealed class NuvemshopIntegrationService : INuvemshopIntegrationService
         integration.HealthCheckStatus = "Conexão Nuvemshop Ativa";
         integration.UpdatedAt = DateTimeOffset.UtcNow;
 
-        await _integrationRepository.UpsertAsync(integration);
+        await _integrationRepository.UpsertAsync(integration, cancellationToken);
         _logger.LogInformation("Nuvemshop integration saved for Tenant {TenantId} (StoreId: {StoreId})", tenantId, storeId);
 
         // 1. Executa health check imediato
         try
         {
             var gateway = _gatewayFactory.GetGateway("Nuvemshop");
-            var (success, latencyMs, message) = await gateway.HealthCheckAsync(tenantId);
-            await _integrationRepository.UpdateHealthCheckAsync(integration.Id, success ? "CONNECTED" : "ERROR", latencyMs, message);
+            var (success, latencyMs, message) = await gateway.HealthCheckAsync(tenantId, cancellationToken);
+            await _integrationRepository.UpdateHealthCheckAsync(integration.Id, success ? "CONNECTED" : "ERROR", latencyMs, message, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -167,28 +168,28 @@ public sealed class NuvemshopIntegrationService : INuvemshopIntegrationService
         return true;
     }
 
-    public async Task<bool> RegisterWebhooksAsync(Guid tenantId)
+    public async Task<bool> RegisterWebhooksAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
         var gateway = _gatewayFactory.GetGateway("Nuvemshop") as NuvemshopGateway;
         if (gateway == null) return false;
 
         _logger.LogInformation("Triggering automatic webhook registration for Nuvemshop Tenant {TenantId}", tenantId);
-        return await gateway.RegisterWebhooksAsync(tenantId, _webhookCallbackUrl);
+        return await gateway.RegisterWebhooksAsync(tenantId, _webhookCallbackUrl, cancellationToken);
     }
 
-    public async Task ProcessWebhookAsync(Guid tenantId, string topic, string eventId, string? resourceId, JsonElement payload)
+    public async Task ProcessWebhookAsync(Guid tenantId, string topic, string eventId, string? resourceId, JsonElement payload, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Processing Nuvemshop Webhook '{Topic}' (Resource: {ResourceId}) for Tenant {TenantId}", topic, resourceId, tenantId);
 
         if (topic.Equals("app/uninstalled", StringComparison.OrdinalIgnoreCase))
         {
-            var integration = await _integrationRepository.GetByTenantAndPlatformAsync(tenantId, "NUVEMSHOP");
+            var integration = await _integrationRepository.GetByTenantAndPlatformAsync(tenantId, "NUVEMSHOP", cancellationToken);
             if (integration != null)
             {
                 integration.Status = "DISCONNECTED";
                 integration.HealthCheckStatus = "App Desinstalado na Nuvemshop";
                 integration.UpdatedAt = DateTimeOffset.UtcNow;
-                await _integrationRepository.UpsertAsync(integration);
+                await _integrationRepository.UpsertAsync(integration, cancellationToken);
                 _logger.LogInformation("Marked Nuvemshop integration as DISCONNECTED for Tenant {TenantId}", tenantId);
             }
             return;
@@ -200,13 +201,13 @@ public sealed class NuvemshopIntegrationService : INuvemshopIntegrationService
             var gateway = _gatewayFactory.GetGateway("Nuvemshop") as NuvemshopGateway;
             if (gateway != null)
             {
-                var remoteProduct = await gateway.GetProductByIdAsync(tenantId, resourceId);
+                var remoteProduct = await gateway.GetProductByIdAsync(tenantId, resourceId, cancellationToken);
                 if (remoteProduct != null)
                 {
                     var sku = remoteProduct.Variants?.FirstOrDefault()?.Sku;
                     if (!string.IsNullOrEmpty(sku))
                     {
-                        var localProduct = await _productRepository.GetBySkuAsync(tenantId, sku);
+                        var localProduct = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
                         if (localProduct != null)
                         {
                             var firstVariant = remoteProduct.Variants?.FirstOrDefault();
@@ -221,7 +222,7 @@ public sealed class NuvemshopIntegrationService : INuvemshopIntegrationService
                                 localProduct.NuvemshopVariantId = firstVariant.Id.ToString();
                                 localProduct.UpdatedAt = DateTimeOffset.UtcNow;
 
-                                await _productRepository.UpdateAsync(localProduct);
+                                await _productRepository.UpdateAsync(localProduct, cancellationToken);
                                 _logger.LogInformation("Reactively synced SKU {Sku} from Nuvemshop Webhook.", sku);
 
                                 // Dispara SSE para o Frontend
@@ -243,7 +244,7 @@ public sealed class NuvemshopIntegrationService : INuvemshopIntegrationService
         }
     }
 
-    public async Task<NuvemshopBulkSyncResponse> TriggerBulkSyncAsync(Guid tenantId, NuvemshopBulkSyncRequest request)
+    public async Task<NuvemshopBulkSyncResponse> TriggerBulkSyncAsync(Guid tenantId, NuvemshopBulkSyncRequest request, CancellationToken cancellationToken = default)
     {
         if (tenantId == Guid.Empty)
             throw new ArgumentException("TenantId é obrigatório.", nameof(tenantId));
@@ -267,7 +268,7 @@ public sealed class NuvemshopIntegrationService : INuvemshopIntegrationService
             await _publishEndpoint.Publish(msg, context =>
             {
                 context.SetRoutingKey("nuvemshop_bulk_sync");
-            });
+            }, cancellationToken);
         }
 
         _logger.LogInformation("Enqueued {Count} products for Nuvemshop sync. JobId: {JobId}", request.Skus.Count, jobId);
@@ -281,21 +282,21 @@ public sealed class NuvemshopIntegrationService : INuvemshopIntegrationService
         };
     }
 
-    public async Task<bool> UpdateInventoryAsync(Guid tenantId, string sku, int quantity)
+    public async Task<bool> UpdateInventoryAsync(Guid tenantId, string sku, int quantity, CancellationToken cancellationToken = default)
     {
         var gateway = _gatewayFactory.GetGateway("Nuvemshop");
-        return await gateway.UpdateInventoryAsync(tenantId, sku, quantity);
+        return await gateway.UpdateInventoryAsync(tenantId, sku, quantity, cancellationToken: cancellationToken);
     }
 
-    public async Task<bool> UpdateProductStatusAsync(Guid tenantId, string sku, string status)
+    public async Task<bool> UpdateProductStatusAsync(Guid tenantId, string sku, string status, CancellationToken cancellationToken = default)
     {
         var gateway = _gatewayFactory.GetGateway("Nuvemshop");
-        return await gateway.UpdateProductStatusAsync(tenantId, sku, status);
+        return await gateway.UpdateProductStatusAsync(tenantId, sku, status, cancellationToken: cancellationToken);
     }
 
-    public async Task<bool> DeleteRemoteProductAsync(Guid tenantId, string sku)
+    public async Task<bool> DeleteRemoteProductAsync(Guid tenantId, string sku, CancellationToken cancellationToken = default)
     {
         var gateway = _gatewayFactory.GetGateway("Nuvemshop");
-        return await gateway.DeleteProductAsync(tenantId, sku);
+        return await gateway.DeleteProductAsync(tenantId, sku, cancellationToken: cancellationToken);
     }
 }

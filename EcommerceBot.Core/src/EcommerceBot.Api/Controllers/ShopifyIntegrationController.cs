@@ -58,7 +58,7 @@ public class ShopifyIntegrationController : BaseApiController
 
         try
         {
-            var result = await _shopifyService.SaveCredentialsAsync(activeTenantId, payload);
+            var result = await _shopifyService.SaveCredentialsAsync(activeTenantId, payload, cancellationToken);
             return Ok(result);
         }
         catch (ArgumentException ex)
@@ -85,7 +85,7 @@ public class ShopifyIntegrationController : BaseApiController
         if (string.IsNullOrWhiteSpace(shop))
             return BadRequestProblem("O parâmetro 'shop' é obrigatório.");
 
-        var authorizeUrl = await _shopifyService.GetOAuthUrlAsync(activeTenantId, shop);
+        var authorizeUrl = await _shopifyService.GetOAuthUrlAsync(activeTenantId, shop, cancellationToken);
         return Ok(new { authorize_url = authorizeUrl });
     }
 
@@ -110,7 +110,7 @@ public class ShopifyIntegrationController : BaseApiController
 
         try
         {
-            await _shopifyService.HandleOAuthCallbackAsync(tenantId, code, shop);
+            await _shopifyService.HandleOAuthCallbackAsync(tenantId, code, shop, cancellationToken);
             return Ok(new { message = "OAuth concluído com sucesso!", shop, tenantId });
         }
         catch (Exception ex)
@@ -130,7 +130,7 @@ public class ShopifyIntegrationController : BaseApiController
         if (activeTenantId == Guid.Empty)
             return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
-        var result = await _shopifyService.SyncProductAsync(activeTenantId, request);
+        var result = await _shopifyService.SyncProductAsync(activeTenantId, request, cancellationToken);
         return Ok(result);
     }
 
@@ -146,7 +146,7 @@ public class ShopifyIntegrationController : BaseApiController
 
         try
         {
-            var result = await _shopifyService.TriggerBulkSyncAsync(activeTenantId, request);
+            var result = await _shopifyService.TriggerBulkSyncAsync(activeTenantId, request, cancellationToken);
             return Accepted(result);
         }
         catch (ArgumentException ex)
@@ -166,7 +166,7 @@ public class ShopifyIntegrationController : BaseApiController
         if (activeTenantId == Guid.Empty)
             return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
-        var result = await _shopifyService.UpdateInventoryAsync(activeTenantId, sku, payload);
+        var result = await _shopifyService.UpdateInventoryAsync(activeTenantId, sku, payload, cancellationToken);
         return Ok(result);
     }
 
@@ -181,7 +181,7 @@ public class ShopifyIntegrationController : BaseApiController
         if (activeTenantId == Guid.Empty)
             return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
-        var result = await _shopifyService.UpdateStatusAsync(activeTenantId, sku, payload);
+        var result = await _shopifyService.UpdateStatusAsync(activeTenantId, sku, payload, cancellationToken);
         return Ok(result);
     }
 
@@ -195,7 +195,7 @@ public class ShopifyIntegrationController : BaseApiController
         if (activeTenantId == Guid.Empty)
             return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
-        var result = await _shopifyService.DeleteRemoteProductAsync(activeTenantId, sku);
+        var result = await _shopifyService.DeleteRemoteProductAsync(activeTenantId, sku, cancellationToken);
         return Ok(result);
     }
 
@@ -237,7 +237,7 @@ public class ShopifyIntegrationController : BaseApiController
 
         // 3. Resolução Multi-Tenant dinâmica por Domínio da Loja
         var cleanDomain = shopDomain.Replace("https://", "").Replace("http://", "").Trim().TrimEnd('/').ToLowerInvariant();
-        var integration = await _storeIntegrationRepository.GetByDomainAsync("SHOPIFY", cleanDomain);
+        var integration = await _storeIntegrationRepository.GetByDomainAsync("SHOPIFY", cleanDomain, cancellationToken);
         if (integration == null)
         {
             _logger.LogWarning("No active Tenant found for Shopify domain '{ShopDomain}'. Webhook '{Topic}' ignored.", shopDomain, topic);
@@ -247,7 +247,7 @@ public class ShopifyIntegrationController : BaseApiController
         try
         {
             var jsonPayload = JsonSerializer.Deserialize<JsonElement>(rawBody);
-            await _shopifyService.ProcessWebhookAsync(integration.TenantId, topic, cleanDomain, jsonPayload);
+            await _shopifyService.ProcessWebhookAsync(integration.TenantId, topic, cleanDomain, jsonPayload, cancellationToken);
             return Ok();
         }
         catch (Exception ex)

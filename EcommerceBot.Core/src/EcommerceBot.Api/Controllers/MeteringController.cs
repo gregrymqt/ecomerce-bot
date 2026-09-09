@@ -64,7 +64,7 @@ public class MeteringController : BaseApiController
             return BadRequestProblem("X-Tenant-ID header is missing or invalid.");
         }
 
-        var result = await _meteringService.GetTenantCreditBalanceAsync(tenantId);
+        var result = await _meteringService.GetTenantCreditBalanceAsync(tenantId, cancellationToken);
         return Ok(result);
     }
 
@@ -84,7 +84,7 @@ public class MeteringController : BaseApiController
             return BadRequestProblem("X-Tenant-ID header is missing or invalid.");
         }
 
-        var result = await _meteringService.GetTenantUsageLogsAsync(tenantId, page, limit, startDate, endDate);
+        var result = await _meteringService.GetTenantUsageLogsAsync(tenantId, page, limit, startDate, endDate, cancellationToken);
         return Ok(result);
     }
 
@@ -110,7 +110,7 @@ public class MeteringController : BaseApiController
 
         try
         {
-            var reservedCost = await _meteringService.ReserveCreditsForLlmAsync(tenantId, request);
+            var reservedCost = await _meteringService.ReserveCreditsForLlmAsync(tenantId, request, cancellationToken);
             return Ok(new { reserved_cost = reservedCost });
         }
         catch (InvalidOperationException ex)
@@ -145,7 +145,7 @@ public class MeteringController : BaseApiController
             return BadRequestProblem("X-Tenant-ID header is required.");
         }
 
-        await _meteringService.RefundCreditsOnFailureAsync(tenantId, request.ReservedCost);
+        await _meteringService.RefundCreditsOnFailureAsync(tenantId, request.ReservedCost, cancellationToken);
         return Ok();
     }
 
@@ -169,7 +169,7 @@ public class MeteringController : BaseApiController
             return BadRequestProblem("X-Tenant-ID header is required.");
         }
 
-        var result = await _meteringService.RecordUsageAndDeductAsync(tenantId, request);
+        var result = await _meteringService.RecordUsageAndDeductAsync(tenantId, request, cancellationToken);
         return Ok(result);
     }
 }

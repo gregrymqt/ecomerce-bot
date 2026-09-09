@@ -24,7 +24,7 @@ public class ReadinessHealthCheck : IHealthCheck
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
-        var health = await _systemService.CheckSystemHealthAsync();
+        var health = await _systemService.CheckSystemHealthAsync(cancellationToken);
         var data = health.Services.ToDictionary(k => k.Key, v => (object)v.Value);
 
         return string.Equals(health.Status, "OK", System.StringComparison.OrdinalIgnoreCase)

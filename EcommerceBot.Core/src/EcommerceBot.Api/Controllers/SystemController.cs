@@ -31,7 +31,7 @@ public class SystemController : BaseApiController
         CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
-        var metrics = await _systemService.GetTelemetryMetricsAsync(activeTenantId, timeframe);
+        var metrics = await _systemService.GetTelemetryMetricsAsync(activeTenantId, timeframe, cancellationToken);
         return Ok(metrics);
     }
 
@@ -43,7 +43,7 @@ public class SystemController : BaseApiController
         CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
-        var activities = await _systemService.GetRecentActivitiesAsync(activeTenantId, limit, page);
+        var activities = await _systemService.GetRecentActivitiesAsync(activeTenantId, limit, page, cancellationToken);
         return Ok(activities);
     }
 
@@ -51,7 +51,7 @@ public class SystemController : BaseApiController
     [AllowAnonymous]
     public async Task<IActionResult> HealthCheck(CancellationToken cancellationToken = default)
     {
-        var health = await _systemService.CheckSystemHealthAsync();
+        var health = await _systemService.CheckSystemHealthAsync(cancellationToken);
         return StatusCode(health.Status == "OK" ? StatusCodes.Status200OK : StatusCodes.Status503ServiceUnavailable, health);
     }
 
@@ -63,7 +63,7 @@ public class SystemController : BaseApiController
         if (payload.Urls.Count > 3)
             return BadRequestProblem("O limite máximo permitido é de 3 URLs para a demonstração.");
 
-        await _systemService.ProcessDemoRequestAsync(payload.Urls);
+        await _systemService.ProcessDemoRequestAsync(payload.Urls, cancellationToken);
         return Ok(new { status = "enviado_para_fila" });
     }
 
@@ -81,7 +81,7 @@ public class SystemController : BaseApiController
         Response.ContentType = "text/csv";
 
         using var streamWriter = new StreamWriter(Response.Body);
-        await _systemService.ExportDataToStreamAsync(activeTenantId, platform, streamWriter);
+        await _systemService.ExportDataToStreamAsync(activeTenantId, platform, streamWriter, cancellationToken);
     }
 
     [HttpGet("demo/stream")]

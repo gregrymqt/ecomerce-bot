@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Infrastructure.Options;
 using Microsoft.Extensions.Logging;
@@ -23,7 +24,7 @@ public sealed class ResendPermanentException : Exception
 
 public interface IResendGateway
 {
-    Task<string?> SendEmailAsync(string to, string subject, string htmlContent, string? idempotencyKey);
+    Task<string?> SendEmailAsync(string to, string subject, string htmlContent, string? idempotencyKey, CancellationToken cancellationToken = default);
 }
 
 public sealed class ResendGateway : IResendGateway
@@ -39,7 +40,7 @@ public sealed class ResendGateway : IResendGateway
         _resendOptions = resendOptions.Value;
     }
 
-    public async Task<string?> SendEmailAsync(string to, string subject, string htmlContent, string? idempotencyKey)
+    public async Task<string?> SendEmailAsync(string to, string subject, string htmlContent, string? idempotencyKey, CancellationToken cancellationToken = default)
     {
         var isMockMode = !_resendOptions.Enabled ||
                          string.Equals(_resendOptions.DeliveryMode, "Mock", StringComparison.OrdinalIgnoreCase) ||
@@ -80,8 +81,8 @@ public sealed class ResendGateway : IResendGateway
             }
             request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.SendAsync(request);
-            var responseBody = await response.Content.ReadAsStringAsync();
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {

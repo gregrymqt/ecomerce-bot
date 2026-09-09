@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.System;
 using EcommerceBot.Application.Interfaces;
@@ -33,7 +34,7 @@ public sealed class SystemService : ISystemService
         _redis = redis;
     }
 
-    public async Task<DashboardTelemetryResponse> GetTelemetryMetricsAsync(Guid tenantId, string timeframe)
+    public async Task<DashboardTelemetryResponse> GetTelemetryMetricsAsync(Guid tenantId, string timeframe, CancellationToken cancellationToken = default)
     {
         var hours = timeframe switch
         {
@@ -44,7 +45,7 @@ public sealed class SystemService : ISystemService
         var timeSpan = TimeSpan.FromHours(hours);
 
         // 1. LlmUsageLogs aggregation instead of TokenTelemetryModel!
-        using var conn = await _dbConnectionFactory.CreateConnectionAsync();
+        using var conn = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
         var cutoff = DateTimeOffset.UtcNow.Subtract(timeSpan);
         var tokenSql = @"
             SELECT Provider, 
@@ -55,7 +56,7 @@ public sealed class SystemService : ISystemService
             WHERE TenantId = @TenantId AND CreatedAt >= @Cutoff
             GROUP BY Provider";
             
-        var tokenUsage = (await conn.QueryAsync<TokenTelemetrySchema>(tokenSql, new { TenantId = tenantId, Cutoff = cutoff })).ToList();
+        var tokenUsage = (await conn.QueryAsync<TokenTelemetrySchema>(new CommandDefinition(tokenSql, new { TenantId = tenantId, Cutoff = cutoff }, cancellationToken: cancellationToken))).ToList();
 
         // 2. Product status aggregation
         var statusSql = @"
@@ -63,7 +64,7 @@ public sealed class SystemService : ISystemService
             FROM dbo.Products
             WHERE TenantId = @TenantId AND CreatedAt >= @Cutoff
             GROUP BY Status";
-        var statuses = await conn.QueryAsync(statusSql, new { TenantId = tenantId, Cutoff = cutoff });
+        var statuses = await conn.QueryAsync(new CommandDefinition(statusSql, new { TenantId = tenantId, Cutoff = cutoff }, cancellationToken: cancellationToken));
         int raw = 0, processing = 0, processed = 0, failed = 0;
         foreach (var status in statuses)
         {
@@ -83,7 +84,7 @@ public sealed class SystemService : ISystemService
         };
 
         // 3. Average Latency
-        var avgLatency = await _activityRepository.GetAverageLatencyAsync(tenantId, timeSpan);
+        var avgLatency = await _activityRepository.GetAverageLatencyAsync(tenantId, timeSpan, cancellationToken);
 
         // 4. Hours Saved
         // Exemplo: 10 mins (0.16h) salvos por produto processado
@@ -98,10 +99,10 @@ public sealed class SystemService : ISystemService
         };
     }
 
-    public async Task<IEnumerable<RobotActivityDto>> GetRecentActivitiesAsync(Guid tenantId, int limit, int page)
+    public async Task<IEnumerable<RobotActivityDto>> GetRecentActivitiesAsync(Guid tenantId, int limit, int page, CancellationToken cancellationToken = default)
     {
         var offset = (page - 1) * limit;
-        var activities = await _activityRepository.GetRecentAsync(tenantId, limit, offset);
+        var activities = await _activityRepository.GetRecentAsync(tenantId, limit, offset, cancellationToken);
         
         return activities.Select(a => new RobotActivityDto
         {
@@ -114,15 +115,15 @@ public sealed class SystemService : ISystemService
         });
     }
 
-    public async Task<SystemHealthResponse> CheckSystemHealthAsync()
+    public async Task<SystemHealthResponse> CheckSystemHealthAsync(CancellationToken cancellationToken = default)
     {
         var services = new Dictionary<string, string>();
         var status = "OK";
         
         try
         {
-            using var conn = await _dbConnectionFactory.CreateConnectionAsync();
-            await conn.ExecuteScalarAsync<int>("SELECT 1");
+            using var conn = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+            await conn.ExecuteScalarAsync<int>(new CommandDefinition("SELECT 1", cancellationToken: cancellationToken));
             services["SQLServer"] = "UP";
         }
         catch 
@@ -150,19 +151,19 @@ public sealed class SystemService : ISystemService
         };
     }
 
-    public async Task ProcessDemoRequestAsync(List<string> urls)
+    public async Task ProcessDemoRequestAsync(List<string> urls, CancellationToken cancellationToken = default)
     {
         // Publica na fila (poderia ser MassTransit IBus, mas simplificando)
         // O C# processaria isso ou publicaria via RabbitMQ
         await Task.CompletedTask;
     }
 
-    public async Task ExportDataToStreamAsync(Guid tenantId, string platform, StreamWriter writer)
+    public async Task ExportDataToStreamAsync(Guid tenantId, string platform, StreamWriter writer, CancellationToken cancellationToken = default)
     {
         // Usamos Dapper unbuffered query stream
-        using var conn = await _dbConnectionFactory.CreateConnectionAsync();
+        using var conn = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
         var sql = "SELECT Sku, Title, Price, Status, Category, SeoKeywords FROM dbo.Products WHERE TenantId = @TenantId";
-        var products = await conn.QueryAsync<dynamic>(sql, new { TenantId = tenantId }); // In production use buffered=false or specific reader
+        var products = await conn.QueryAsync<dynamic>(new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken)); // In production use buffered=false or specific reader
         
         var config = new CsvConfiguration(CultureInfo.InvariantCulture) { Delimiter = "," };
         using var csv = new CsvWriter(writer, config);

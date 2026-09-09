@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using BCrypt.Net;
 using EcommerceBot.Application.DTOs.Admin;
@@ -30,7 +31,7 @@ public sealed class EnterpriseLeadService : IEnterpriseLeadService
             _discordAlertService = discordAlertService;
         }
 
-        public async Task<EnterpriseLeadResponse> RegisterLeadAsync(EnterpriseLeadRequest request, string? ipAddress)
+        public async Task<EnterpriseLeadResponse> RegisterLeadAsync(EnterpriseLeadRequest request, string? ipAddress, CancellationToken cancellationToken = default)
         {
             var lead = new EnterpriseLead
             {
@@ -45,7 +46,7 @@ public sealed class EnterpriseLeadService : IEnterpriseLeadService
                 IpAddress = ipAddress
             };
 
-            var created = await _leadRepository.CreateAsync(lead);
+            var created = await _leadRepository.CreateAsync(lead, cancellationToken);
 
             // Disparo de notificação em tempo real para o Discord do Administrador
             try
@@ -73,10 +74,10 @@ public sealed class EnterpriseLeadService : IEnterpriseLeadService
             };
         }
 
-        public async Task<EnterpriseLeadsListResponse> GetLeadsAsync(string? status, string? search, int page, int pageSize)
+        public async Task<EnterpriseLeadsListResponse> GetLeadsAsync(string? status, string? search, int page, int pageSize, CancellationToken cancellationToken = default)
         {
-            var (leads, totalCount) = await _leadRepository.GetAllAsync(status, search, page, pageSize);
-            var metricsDict = await _leadRepository.GetMetricsAsync();
+            var (leads, totalCount) = await _leadRepository.GetAllAsync(status, search, page, pageSize, cancellationToken);
+            var metricsDict = await _leadRepository.GetMetricsAsync(cancellationToken);
 
             var metrics = new EnterpriseLeadsSummaryMetrics
             {
@@ -117,14 +118,14 @@ public sealed class EnterpriseLeadService : IEnterpriseLeadService
             };
         }
 
-        public async Task<bool> UpdateLeadStatusAsync(Guid id, UpdateEnterpriseLeadStatusRequest request)
+        public async Task<bool> UpdateLeadStatusAsync(Guid id, UpdateEnterpriseLeadStatusRequest request, CancellationToken cancellationToken = default)
         {
-            return await _leadRepository.UpdateStatusAsync(id, request.Status, request.InternalNotes);
+            return await _leadRepository.UpdateStatusAsync(id, request.Status, request.InternalNotes, cancellationToken);
         }
 
-        public async Task<ProvisionEnterpriseAccountResponse> ProvisionEnterpriseAccountAsync(Guid leadId, ProvisionEnterpriseAccountRequest request)
+        public async Task<ProvisionEnterpriseAccountResponse> ProvisionEnterpriseAccountAsync(Guid leadId, ProvisionEnterpriseAccountRequest request, CancellationToken cancellationToken = default)
         {
-            var lead = await _leadRepository.GetByIdAsync(leadId);
+            var lead = await _leadRepository.GetByIdAsync(leadId, cancellationToken);
             if (lead == null)
             {
                 throw new KeyNotFoundException("Lead corporativo não encontrado.");
@@ -153,17 +154,17 @@ public sealed class EnterpriseLeadService : IEnterpriseLeadService
                 UpdatedAt = DateTimeOffset.UtcNow
             };
 
-            await _tenantRepository.CreateAsync(newTenant);
+            await _tenantRepository.CreateAsync(newTenant, cancellationToken);
 
             // 2. Criação ou Vinculação do Usuário com papel TENANT_ADMIN (Controle total da sua própria loja)
-            var existingUser = await _userRepository.GetByEmailAsync(lead.Email);
+            var existingUser = await _userRepository.GetByEmailAsync(lead.Email, cancellationToken);
             User user;
 
             if (existingUser != null)
             {
                 existingUser.Role = "TENANT_ADMIN";
                 existingUser.TenantId = tenantId;
-                await _userRepository.UpdateAsync(existingUser);
+                await _userRepository.UpdateAsync(existingUser, cancellationToken);
                 user = existingUser;
             }
             else
@@ -181,11 +182,11 @@ public sealed class EnterpriseLeadService : IEnterpriseLeadService
                     TenantId = tenantId
                 };
 
-                user = await _userRepository.CreateAsync(newUser);
+                user = await _userRepository.CreateAsync(newUser, cancellationToken);
             }
 
             // 3. Marcação do Lead como Convertido
-            await _leadRepository.MarkConvertedAsync(leadId, tenantId, user.Id, request.InternalNotes);
+            await _leadRepository.MarkConvertedAsync(leadId, tenantId, user.Id, request.InternalNotes, cancellationToken);
 
             // 4. Notificação de Sucesso no Discord
             try

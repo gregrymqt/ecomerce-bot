@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Auth;
 using EcommerceBot.Application.Interfaces;
@@ -22,9 +23,9 @@ public sealed class TenantSsoService : ITenantSsoService
             _ssoMappingRepository = ssoMappingRepository;
         }
 
-        public async Task<IEnumerable<RoleDto>> GetRolesAsync()
+        public async Task<IEnumerable<RoleDto>> GetRolesAsync(CancellationToken cancellationToken = default)
         {
-            var roles = await _roleRepository.GetAllAsync();
+            var roles = await _roleRepository.GetAllAsync(cancellationToken);
             return roles.Select(r => new RoleDto
             {
                 Id = r.Id,
@@ -34,9 +35,9 @@ public sealed class TenantSsoService : ITenantSsoService
             });
         }
 
-        public async Task<IEnumerable<TenantSsoMappingDto>> GetMappingsByTenantIdAsync(Guid tenantId)
+        public async Task<IEnumerable<TenantSsoMappingDto>> GetMappingsByTenantIdAsync(Guid tenantId, CancellationToken cancellationToken = default)
         {
-            var mappings = await _ssoMappingRepository.GetByTenantIdAsync(tenantId);
+            var mappings = await _ssoMappingRepository.GetByTenantIdAsync(tenantId, cancellationToken);
             return mappings.Select(m => new TenantSsoMappingDto
             {
                 Id = m.Id,
@@ -50,15 +51,15 @@ public sealed class TenantSsoService : ITenantSsoService
             });
         }
 
-        public async Task<TenantSsoMappingDto> CreateMappingAsync(Guid tenantId, CreateTenantSsoMappingRequest request)
+        public async Task<TenantSsoMappingDto> CreateMappingAsync(Guid tenantId, CreateTenantSsoMappingRequest request, CancellationToken cancellationToken = default)
         {
-            var role = await _roleRepository.GetByIdAsync(request.RoleId);
+            var role = await _roleRepository.GetByIdAsync(request.RoleId, cancellationToken);
             if (role == null)
             {
                 throw new ArgumentException("O papel (Role) especificado não existe.");
             }
 
-            var existing = await _ssoMappingRepository.GetByGroupAsync(tenantId, request.IdpGroupName);
+            var existing = await _ssoMappingRepository.GetByGroupAsync(tenantId, request.IdpGroupName, cancellationToken);
             if (existing != null)
             {
                 throw new InvalidOperationException($"Já existe um mapeamento para o grupo '{request.IdpGroupName}' neste Tenant.");
@@ -72,7 +73,7 @@ public sealed class TenantSsoService : ITenantSsoService
                 IsDefaultRole = request.IsDefaultRole
             };
 
-            var created = await _ssoMappingRepository.CreateAsync(mapping);
+            var created = await _ssoMappingRepository.CreateAsync(mapping, cancellationToken);
 
             return new TenantSsoMappingDto
             {
@@ -87,15 +88,15 @@ public sealed class TenantSsoService : ITenantSsoService
             };
         }
 
-        public async Task<bool> UpdateMappingAsync(Guid id, Guid tenantId, UpdateTenantSsoMappingRequest request)
+        public async Task<bool> UpdateMappingAsync(Guid id, Guid tenantId, UpdateTenantSsoMappingRequest request, CancellationToken cancellationToken = default)
         {
-            var mapping = await _ssoMappingRepository.GetByIdAsync(id, tenantId);
+            var mapping = await _ssoMappingRepository.GetByIdAsync(id, tenantId, cancellationToken);
             if (mapping == null)
             {
                 return false;
             }
 
-            var role = await _roleRepository.GetByIdAsync(request.RoleId);
+            var role = await _roleRepository.GetByIdAsync(request.RoleId, cancellationToken);
             if (role == null)
             {
                 throw new ArgumentException("O papel (Role) especificado não existe.");
@@ -105,18 +106,18 @@ public sealed class TenantSsoService : ITenantSsoService
             mapping.RoleId = request.RoleId;
             mapping.IsDefaultRole = request.IsDefaultRole;
 
-            return await _ssoMappingRepository.UpdateAsync(mapping);
+            return await _ssoMappingRepository.UpdateAsync(mapping, cancellationToken);
         }
 
-        public async Task<bool> DeleteMappingAsync(Guid id, Guid tenantId)
+        public async Task<bool> DeleteMappingAsync(Guid id, Guid tenantId, CancellationToken cancellationToken = default)
         {
-            return await _ssoMappingRepository.DeleteAsync(id, tenantId);
+            return await _ssoMappingRepository.DeleteAsync(id, tenantId, cancellationToken);
         }
 
-        public async Task<(Guid RoleId, string RoleName)> ResolveRoleForGroupsAsync(Guid tenantId, IEnumerable<string> idpGroups)
+        public async Task<(Guid RoleId, string RoleName)> ResolveRoleForGroupsAsync(Guid tenantId, IEnumerable<string> idpGroups, CancellationToken cancellationToken = default)
         {
-            var mappings = (await _ssoMappingRepository.GetByTenantIdAsync(tenantId)).ToList();
-            var allRoles = (await _roleRepository.GetAllAsync()).ToDictionary(r => r.Id, r => r.Name);
+            var mappings = (await _ssoMappingRepository.GetByTenantIdAsync(tenantId, cancellationToken)).ToList();
+            var allRoles = (await _roleRepository.GetAllAsync(cancellationToken)).ToDictionary(r => r.Id, r => r.Name);
 
             // Hierarquia de prioridade se o usuário pertencer a múltiplos grupos
             var priorityOrder = new List<string> { "TENANT_ADMIN", "CATALOG_OPERATOR", "MEMBER", "VIEWER" };
@@ -156,7 +157,7 @@ public sealed class TenantSsoService : ITenantSsoService
             }
 
             // Fallback 2: Papel padrão canônico MEMBER
-            var memberRole = await _roleRepository.GetByNameAsync("MEMBER");
+            var memberRole = await _roleRepository.GetByNameAsync("MEMBER", cancellationToken);
             if (memberRole != null)
             {
                 return (memberRole.Id, memberRole.Name);

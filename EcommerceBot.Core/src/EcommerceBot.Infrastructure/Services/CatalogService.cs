@@ -121,7 +121,7 @@ public sealed class CatalogService : ICatalogService
         var sku = Guid.NewGuid().ToString("N")[..10].ToUpper();
 
         // 1. Verificação de credencial BYOK ativa para o Tenant
-        var hasByok = await _tenantAiCredentialRepository.HasActiveByokAsync(tenantId);
+        var hasByok = await _tenantAiCredentialRepository.HasActiveByokAsync(tenantId, cancellationToken);
         if (!hasByok)
         {
             // Dedução atômica de 1 crédito anti-double-spending (lança InsufficientCreditsException se insuficiente)

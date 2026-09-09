@@ -103,7 +103,7 @@ public class AiCreditsWebhookController : BaseApiController
             Notes = payload.Notes
         };
 
-        var created = await _aiCapacityService.RegisterTopupAsync(topupRequest);
+        var created = await _aiCapacityService.RegisterTopupAsync(topupRequest, cancellationToken);
 
         _logger.LogInformation("Webhook de recarga processado com sucesso: {Provider} +${Amount} (ID: {Id})",
             provider, payload.AmountPaid, created.Id);

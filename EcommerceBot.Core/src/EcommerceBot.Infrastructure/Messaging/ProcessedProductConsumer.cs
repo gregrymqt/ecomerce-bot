@@ -39,7 +39,8 @@ public sealed class ProcessedProductConsumer : IConsumer<ProductProcessedEvent>
             tenantId: message.TenantId,
             sku: message.Sku,
             status: message.Status,
-            metadata: message.AiMetadataJson
+            metadata: message.AiMetadataJson,
+            cancellationToken: context.CancellationToken
         );
 
         // Notificar o Frontend em tempo real via SSE (Redis Pub/Sub)
@@ -66,7 +67,8 @@ public sealed class ProcessedProductConsumer : IConsumer<ProductProcessedEvent>
                 amount: 1,
                 type: "REFUND",
                 description: $"Estorno automático por falha na extração de produto (SKU: {message.Sku})",
-                referenceId: message.Sku
+                referenceId: message.Sku,
+                cancellationToken: context.CancellationToken
             );
 
             var refundPayload = JsonSerializer.Serialize(new

@@ -53,7 +53,8 @@ public sealed class ShopifyBulkSyncConsumer : IConsumer<ShopifyBulkSyncMessage>
                 amount: 1,
                 type: "PRODUCT_ENRICHMENT",
                 description: $"Sincronização em lote Shopify: SKU {msg.Sku}",
-                referenceId: msg.JobId
+                referenceId: msg.JobId,
+                cancellationToken: context.CancellationToken
             );
         }
         catch (InsufficientCreditsException ex)
@@ -62,7 +63,7 @@ public sealed class ShopifyBulkSyncConsumer : IConsumer<ShopifyBulkSyncMessage>
                 msg.TenantId, ex.CurrentBalance, msg.Sku, msg.JobId);
 
             // Atualiza status da integração para 'paused_insufficient_credits'
-            await _storeIntegrationRepository.UpdateStatusAsync(msg.TenantId, "Shopify", "paused_insufficient_credits");
+            await _storeIntegrationRepository.UpdateStatusAsync(msg.TenantId, "Shopify", "paused_insufficient_credits", context.CancellationToken);
 
             // Emite evento SSE no Redis alertando sobre créditos esgotados
             var pauseSseEvent = new
@@ -84,7 +85,7 @@ public sealed class ShopifyBulkSyncConsumer : IConsumer<ShopifyBulkSyncMessage>
         }
 
         var sw = Stopwatch.StartNew();
-        var product = await _productRepository.GetBySkuAsync(msg.TenantId, msg.Sku);
+        var product = await _productRepository.GetBySkuAsync(msg.TenantId, msg.Sku, context.CancellationToken);
         if (product == null)
         {
             _logger.LogWarning("Product with SKU '{Sku}' not found for Tenant '{TenantId}'", msg.Sku, msg.TenantId);
@@ -94,13 +95,14 @@ public sealed class ShopifyBulkSyncConsumer : IConsumer<ShopifyBulkSyncMessage>
                 amount: 1,
                 type: "REFUND",
                 description: $"Estorno por produto não encontrado para Shopify (SKU: {msg.Sku})",
-                referenceId: msg.JobId
+                referenceId: msg.JobId,
+                cancellationToken: context.CancellationToken
             );
             return;
         }
 
         var shopifyGateway = _gatewayFactory.GetGateway("Shopify");
-        var success = await shopifyGateway.PushProductAsync(msg.TenantId, product);
+        var success = await shopifyGateway.PushProductAsync(msg.TenantId, product, context.CancellationToken);
         sw.Stop();
 
         // 2. Registra na tabela RobotActivities
@@ -143,7 +145,8 @@ public sealed class ShopifyBulkSyncConsumer : IConsumer<ShopifyBulkSyncMessage>
                 amount: 1,
                 type: "REFUND",
                 description: $"Estorno automático por falha no envio para Shopify (SKU: {msg.Sku})",
-                referenceId: msg.JobId
+                referenceId: msg.JobId,
+                cancellationToken: context.CancellationToken
             );
             return;
         }

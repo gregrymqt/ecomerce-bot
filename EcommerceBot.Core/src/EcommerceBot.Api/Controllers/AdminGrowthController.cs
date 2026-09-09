@@ -38,7 +38,7 @@ public class AdminGrowthController : BaseApiController
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
         var userAgent = Request.Headers.UserAgent.ToString();
 
-        var visitId = await _growthService.RecordSaasVisitAsync(request, ip, userAgent);
+        var visitId = await _growthService.RecordSaasVisitAsync(request, ip, userAgent, cancellationToken);
         return Ok(new { success = true, visit_id = visitId });
     }
 
@@ -50,7 +50,7 @@ public class AdminGrowthController : BaseApiController
     [ProducesResponseType(typeof(AcquisitionFunnelResponseDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAcquisitionFunnel([FromQuery] int days = 30, CancellationToken cancellationToken = default)
     {
-        var result = await _growthService.GetAcquisitionFunnelAsync(days);
+        var result = await _growthService.GetAcquisitionFunnelAsync(days, cancellationToken);
         return Ok(result);
     }
 
@@ -62,7 +62,7 @@ public class AdminGrowthController : BaseApiController
     [ProducesResponseType(typeof(UnitEconomicsResponseDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUnitEconomics([FromQuery] int days = 30, CancellationToken cancellationToken = default)
     {
-        var result = await _growthService.GetUnitEconomicsAsync(days);
+        var result = await _growthService.GetUnitEconomicsAsync(days, cancellationToken);
         return Ok(result);
     }
 
@@ -77,7 +77,7 @@ public class AdminGrowthController : BaseApiController
     {
         try
         {
-            var id = await _growthService.CreateAdSpendAsync(request);
+            var id = await _growthService.CreateAdSpendAsync(request, cancellationToken);
             return StatusCode(StatusCodes.Status201Created, new { success = true, id });
         }
         catch (ArgumentException ex)
@@ -100,7 +100,7 @@ public class AdminGrowthController : BaseApiController
     [ProducesResponseType(typeof(IEnumerable<SaasAdSpend>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAdSpends([FromQuery] int days = 30, CancellationToken cancellationToken = default)
     {
-        var list = await _growthService.GetAdSpendsAsync(days);
+        var list = await _growthService.GetAdSpendsAsync(days, cancellationToken);
         return Ok(list);
     }
 }

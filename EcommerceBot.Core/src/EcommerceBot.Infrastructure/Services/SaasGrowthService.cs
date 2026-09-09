@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Admin;
 using EcommerceBot.Application.Interfaces;
@@ -17,7 +18,7 @@ public sealed class SaasGrowthService : ISaasGrowthService
         _analyticsRepository = analyticsRepository;
     }
 
-    public async Task<Guid> RecordSaasVisitAsync(RecordSaasVisitRequestDto request, string? ipAddress, string? userAgent)
+    public async Task<Guid> RecordSaasVisitAsync(RecordSaasVisitRequestDto request, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default)
     {
         var visit = new SaasTrafficVisit
         {
@@ -38,20 +39,20 @@ public sealed class SaasGrowthService : ISaasGrowthService
             CreatedAt = DateTimeOffset.UtcNow
         };
 
-        return await _analyticsRepository.RecordVisitAsync(visit);
+        return await _analyticsRepository.RecordVisitAsync(visit, cancellationToken);
     }
 
-    public async Task<AcquisitionFunnelResponseDto> GetAcquisitionFunnelAsync(int days = 30)
+    public async Task<AcquisitionFunnelResponseDto> GetAcquisitionFunnelAsync(int days = 30, CancellationToken cancellationToken = default)
     {
-        return await _analyticsRepository.GetAcquisitionFunnelAsync(days);
+        return await _analyticsRepository.GetAcquisitionFunnelAsync(days, cancellationToken);
     }
 
-    public async Task<UnitEconomicsResponseDto> GetUnitEconomicsAsync(int days = 30)
+    public async Task<UnitEconomicsResponseDto> GetUnitEconomicsAsync(int days = 30, CancellationToken cancellationToken = default)
     {
-        return await _analyticsRepository.GetUnitEconomicsAsync(days);
+        return await _analyticsRepository.GetUnitEconomicsAsync(days, cancellationToken);
     }
 
-    public async Task<Guid> CreateAdSpendAsync(CreateAdSpendRequestDto request)
+    public async Task<Guid> CreateAdSpendAsync(CreateAdSpendRequestDto request, CancellationToken cancellationToken = default)
     {
         var adSpend = new SaasAdSpend
         {
@@ -66,11 +67,11 @@ public sealed class SaasGrowthService : ISaasGrowthService
             CreatedAt = DateTimeOffset.UtcNow
         };
 
-        return await _analyticsRepository.CreateAdSpendAsync(adSpend);
+        return await _analyticsRepository.CreateAdSpendAsync(adSpend, cancellationToken);
     }
 
-    public async Task<IEnumerable<SaasAdSpend>> GetAdSpendsAsync(int days = 30)
+    public async Task<IEnumerable<SaasAdSpend>> GetAdSpendsAsync(int days = 30, CancellationToken cancellationToken = default)
     {
-        return await _analyticsRepository.GetAdSpendsAsync(days);
+        return await _analyticsRepository.GetAdSpendsAsync(days, cancellationToken);
     }
 }

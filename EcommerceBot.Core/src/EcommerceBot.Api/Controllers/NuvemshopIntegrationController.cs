@@ -69,7 +69,7 @@ public class NuvemshopIntegrationController : BaseApiController
 
         try
         {
-            var success = await _nuvemshopService.SaveCredentialsAsync(activeTenantId, payload);
+            var success = await _nuvemshopService.SaveCredentialsAsync(activeTenantId, payload, cancellationToken);
             return Ok(new { success, message = "Credenciais da Nuvemshop salvas e validadas com sucesso." });
         }
         catch (ArgumentException ex)
@@ -95,7 +95,7 @@ public class NuvemshopIntegrationController : BaseApiController
             return BadRequestProblem("Parâmetros 'code' e 'state' são obrigatórios.");
         }
 
-        var success = await _nuvemshopService.HandleOAuthCallbackAsync(tenantId, code);
+        var success = await _nuvemshopService.HandleOAuthCallbackAsync(tenantId, code, cancellationToken);
         if (!success)
         {
             return ProblemResponse(StatusCodes.Status500InternalServerError, "Falha de Autorização", "Falha ao autorizar aplicativo na Nuvemshop.");
@@ -166,7 +166,7 @@ public class NuvemshopIntegrationController : BaseApiController
         }
 
         // 4. Resolução Multi-Tenant dinâmica por Store ID
-        var integration = await _storeIntegrationRepository.GetByDomainAsync("NUVEMSHOP", storeId);
+        var integration = await _storeIntegrationRepository.GetByDomainAsync("NUVEMSHOP", storeId, cancellationToken);
         if (integration == null)
         {
             _logger.LogWarning("Nenhuma integração ativa encontrada para o Store ID '{StoreId}' da Nuvemshop.", storeId);
@@ -175,7 +175,7 @@ public class NuvemshopIntegrationController : BaseApiController
 
         try
         {
-            await _nuvemshopService.ProcessWebhookAsync(integration.TenantId, topic, idempotencyId, resourceId, jsonElement);
+            await _nuvemshopService.ProcessWebhookAsync(integration.TenantId, topic, idempotencyId, resourceId, jsonElement, cancellationToken);
             return Ok();
         }
         catch (Exception ex)
@@ -197,7 +197,7 @@ public class NuvemshopIntegrationController : BaseApiController
 
         try
         {
-            var result = await _nuvemshopService.TriggerBulkSyncAsync(activeTenantId, request);
+            var result = await _nuvemshopService.TriggerBulkSyncAsync(activeTenantId, request, cancellationToken);
             return Accepted(result);
         }
         catch (ArgumentException ex)
@@ -220,7 +220,7 @@ public class NuvemshopIntegrationController : BaseApiController
         if (!body.TryGetProperty("quantity", out var qtyElem) || !qtyElem.TryGetInt32(out var qty))
             return BadRequestProblem("O campo 'quantity' (inteiro) é obrigatório.");
 
-        var result = await _nuvemshopService.UpdateInventoryAsync(activeTenantId, sku, qty);
+        var result = await _nuvemshopService.UpdateInventoryAsync(activeTenantId, sku, qty, cancellationToken);
         return Ok(new { success = result });
     }
 
@@ -236,7 +236,7 @@ public class NuvemshopIntegrationController : BaseApiController
             return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
         var status = body.TryGetProperty("status", out var statusElem) ? statusElem.GetString() ?? "ACTIVE" : "ACTIVE";
-        var result = await _nuvemshopService.UpdateProductStatusAsync(activeTenantId, sku, status);
+        var result = await _nuvemshopService.UpdateProductStatusAsync(activeTenantId, sku, status, cancellationToken);
         return Ok(new { success = result });
     }
 
@@ -250,7 +250,7 @@ public class NuvemshopIntegrationController : BaseApiController
         if (activeTenantId == Guid.Empty)
             return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
-        var result = await _nuvemshopService.DeleteRemoteProductAsync(activeTenantId, sku);
+        var result = await _nuvemshopService.DeleteRemoteProductAsync(activeTenantId, sku, cancellationToken);
         return Ok(new { success = result });
     }
 

@@ -189,7 +189,7 @@ public class AuthController : BaseApiController
     public async Task<IActionResult> CreateEnterpriseLead([FromBody] EnterpriseLeadRequest request, CancellationToken cancellationToken = default)
     {
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-        var response = await _enterpriseLeadService.RegisterLeadAsync(request, ip);
+        var response = await _enterpriseLeadService.RegisterLeadAsync(request, ip, cancellationToken);
         return Created("", response);
     }
 

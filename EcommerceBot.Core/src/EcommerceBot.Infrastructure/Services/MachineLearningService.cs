@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapper;
 using EcommerceBot.Application.DTOs.Analytics;
@@ -42,16 +43,16 @@ public sealed class MachineLearningService : IMachineLearningService
         _logger = logger;
     }
 
-    public async Task<bool> TriggerAnalysisAsync(Guid tenantId, string jobType = "FULL_ANALYTICS")
+    public async Task<bool> TriggerAnalysisAsync(Guid tenantId, string jobType = "FULL_ANALYTICS", CancellationToken cancellationToken = default)
     {
         // 1. Validação de saldo de créditos de IA
-        if (!await _tenantRepository.HasCreditsAsync(tenantId, 1))
+        if (!await _tenantRepository.HasCreditsAsync(tenantId, 1, cancellationToken))
         {
             throw new InsufficientCreditsException("Você precisa de pelo menos 1 crédito de IA em saldo para executar a análise de Machine Learning.");
         }
 
         // 2. Cooldown de 24 horas via Redis (anti-abuso de inferência de ML)
-        var cooldownAcquired = await _redisService.SetIfNotExistsAsync($"cooldown:ml:{tenantId}", "active", TimeSpan.FromHours(24));
+        var cooldownAcquired = await _redisService.SetIfNotExistsAsync($"cooldown:ml:{tenantId}", "active", TimeSpan.FromHours(24), cancellationToken);
         if (!cooldownAcquired)
         {
             throw new InvalidOperationException("A análise preditiva de Machine Learning possui um intervalo mínimo de 24 horas entre execuções gratuitas.");
@@ -59,7 +60,7 @@ public sealed class MachineLearningService : IMachineLearningService
 
         _logger.LogInformation("Iniciando disparo de análise ML ({JobType}) para Tenant {TenantId}", jobType, tenantId);
 
-        var transactions = await GetTenantTransactionsAsync(tenantId);
+        var transactions = await GetTenantTransactionsAsync(tenantId, cancellationToken);
 
         var message = new MlAnalysisRequestMessage
         {
@@ -71,13 +72,13 @@ public sealed class MachineLearningService : IMachineLearningService
         await _publishEndpoint.Publish(message, ctx =>
         {
             ctx.SetRoutingKey("analytics_ml_queue");
-        });
+        }, cancellationToken);
 
         _logger.LogInformation("Job de ML enfileirado com sucesso na fila 'analytics_ml_queue' com {Count} transações.", transactions.Count);
         return true;
     }
 
-    public async Task<MlInsightsResponse?> GetLatestInsightsAsync(Guid tenantId)
+    public async Task<MlInsightsResponse?> GetLatestInsightsAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
         const string sql = @"
             SELECT TOP 1 Id, TenantId, WorkerType, Status, DetailsJson, CreatedAt
@@ -85,15 +86,15 @@ public sealed class MachineLearningService : IMachineLearningService
             WHERE TenantId = @TenantId AND WorkerType = 'ANALYTICS_ML'
             ORDER BY CreatedAt DESC";
 
-        using var connection = await _dbConnectionFactory.CreateConnectionAsync();
-        var activity = await connection.QueryFirstOrDefaultAsync<dynamic>(sql, new { TenantId = tenantId });
+        using var connection = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+        var activity = await connection.QueryFirstOrDefaultAsync<dynamic>(new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken));
 
         if (activity == null)
         {
             // Se ainda não houver análise processada, tenta disparar uma primeira execução em background
             try
             {
-                await TriggerAnalysisAsync(tenantId, "FULL_ANALYTICS");
+                await TriggerAnalysisAsync(tenantId, "FULL_ANALYTICS", cancellationToken);
             }
             catch (Exception ex)
             {
@@ -127,7 +128,7 @@ public sealed class MachineLearningService : IMachineLearningService
         }
     }
 
-    private async Task<List<CustomerTransactionDto>> GetTenantTransactionsAsync(Guid tenantId)
+    private async Task<List<CustomerTransactionDto>> GetTenantTransactionsAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
         // 1. Tenta buscar pedidos reais do tenant no SQL Server
         const string sql = @"
@@ -138,8 +139,8 @@ public sealed class MachineLearningService : IMachineLearningService
 
         try
         {
-            using var connection = await _dbConnectionFactory.CreateConnectionAsync();
-            var orders = (await connection.QueryAsync<CustomerTransactionDto>(sql, new { TenantId = tenantId })).ToList();
+            using var connection = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+            var orders = (await connection.QueryAsync<CustomerTransactionDto>(new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken))).ToList();
 
             if (orders.Count >= 5)
             {

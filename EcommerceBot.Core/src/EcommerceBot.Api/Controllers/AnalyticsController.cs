@@ -40,7 +40,7 @@ public class AnalyticsController : BaseApiController
         }
 
         var jobType = request?.JobType ?? "FULL_ANALYTICS";
-        var success = await _mlService.TriggerAnalysisAsync(activeTenantId, jobType);
+        var success = await _mlService.TriggerAnalysisAsync(activeTenantId, jobType, cancellationToken);
 
         return Ok(new
         {
@@ -67,7 +67,7 @@ public class AnalyticsController : BaseApiController
             return BadRequestProblem("Header X-Tenant-ID obrigatório.");
         }
 
-        var insights = await _mlService.GetLatestInsightsAsync(activeTenantId);
+        var insights = await _mlService.GetLatestInsightsAsync(activeTenantId, cancellationToken);
         if (insights == null)
         {
             return Ok(new

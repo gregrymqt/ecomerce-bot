@@ -33,7 +33,7 @@ public class AdminAiCapacityController : BaseApiController
     [ProducesResponseType(typeof(AiCapacityOverviewResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOverview([FromQuery] int days = 30, CancellationToken cancellationToken = default)
     {
-        var response = await _aiCapacityService.GetCapacityOverviewAsync(days);
+        var response = await _aiCapacityService.GetCapacityOverviewAsync(days, cancellationToken);
         return Ok(response);
     }
 
@@ -53,7 +53,7 @@ public class AdminAiCapacityController : BaseApiController
         try
         {
             var topupRequest = request with { Source = "MANUAL_ADMIN" };
-            var result = await _aiCapacityService.RegisterTopupAsync(topupRequest);
+            var result = await _aiCapacityService.RegisterTopupAsync(topupRequest, cancellationToken);
             return Ok(result);
         }
         catch (ArgumentException ex)
@@ -75,7 +75,7 @@ public class AdminAiCapacityController : BaseApiController
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> TriggerRecalculation(CancellationToken cancellationToken = default)
     {
-        var queued = await _aiCapacityService.TriggerForecastRecalculationAsync();
+        var queued = await _aiCapacityService.TriggerForecastRecalculationAsync(cancellationToken);
         return Ok(new { success = queued, message = "Recálculo de capacidade de IA enfileirado com sucesso." });
     }
 }

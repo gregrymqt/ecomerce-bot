@@ -2,6 +2,7 @@ using System;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Enums;
@@ -32,7 +33,8 @@ public sealed class EmailWebhookService : IEmailWebhookService
         JsonElement payload,
         string? svixId,
         string? svixTimestamp,
-        string? svixSignature)
+        string? svixSignature,
+        CancellationToken cancellationToken = default)
     {
         if (!string.IsNullOrEmpty(_webhookSecret))
         {
@@ -93,7 +95,7 @@ public sealed class EmailWebhookService : IEmailWebhookService
                     };
             }
 
-            await _emailRepository.UpdateEmailStatusByResendIdAsync(resendId, status, error);
+            await _emailRepository.UpdateEmailStatusByResendIdAsync(resendId, status, error, cancellationToken);
             _logger.LogInformation("Updated email {ResendId} status to {Status}", resendId, status);
 
             return new WebhookProcessResult

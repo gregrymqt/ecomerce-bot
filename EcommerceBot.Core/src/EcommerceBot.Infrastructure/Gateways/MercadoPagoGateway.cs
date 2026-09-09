@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.MercadoPago;
 using EcommerceBot.Application.Interfaces;
@@ -37,7 +38,7 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
         _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     }
 
-    public async Task<MercadoPagoOrderResponse> CreateOrderAsync(MercadoPagoOrderRequest request, string? idempotencyKey = null)
+    public async Task<MercadoPagoOrderResponse> CreateOrderAsync(MercadoPagoOrderRequest request, string? idempotencyKey = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -65,8 +66,8 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
                 return GenerateSimulatedOrderResponse(request);
             }
 
-            var response = await _httpClient.SendAsync(httpRequest);
-            var responseBody = await response.Content.ReadAsStringAsync();
+            var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -84,7 +85,7 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
         }
     }
 
-    public async Task<MercadoPagoOrderResponse?> GetOrderByIdAsync(string orderId)
+    public async Task<MercadoPagoOrderResponse?> GetOrderByIdAsync(string orderId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(orderId)) return null;
 
@@ -110,7 +111,7 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
                 };
             }
 
-            var response = await _httpClient.SendAsync(httpRequest);
+            var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
                 _logger.LogWarning("Order {OrderId} not found in Mercado Pago API.", orderId);
@@ -118,7 +119,7 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
             }
 
             response.EnsureSuccessStatusCode();
-            var responseBody = await response.Content.ReadAsStringAsync();
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
             return JsonSerializer.Deserialize<MercadoPagoOrderResponse>(responseBody, JsonOptions);
         }
         catch (Exception ex)
@@ -128,7 +129,7 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
         }
     }
 
-    public async Task<MercadoPagoPaymentResponse?> GetPaymentByIdAsync(string paymentId)
+    public async Task<MercadoPagoPaymentResponse?> GetPaymentByIdAsync(string paymentId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(paymentId)) return null;
 
@@ -153,7 +154,7 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
                 };
             }
 
-            var response = await _httpClient.SendAsync(httpRequest);
+            var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
                 _logger.LogWarning("Payment {PaymentId} not found in Mercado Pago API.", paymentId);
@@ -161,7 +162,7 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
             }
 
             response.EnsureSuccessStatusCode();
-            var responseBody = await response.Content.ReadAsStringAsync();
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
             return JsonSerializer.Deserialize<MercadoPagoPaymentResponse>(responseBody, JsonOptions);
         }
         catch (Exception ex)
@@ -171,7 +172,7 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
         }
     }
 
-    public async Task<bool> RefundPaymentAsync(string paymentId, decimal? amount = null)
+    public async Task<bool> RefundPaymentAsync(string paymentId, decimal? amount = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -187,7 +188,7 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
                 httpRequest.Content = new StringContent(payload, Encoding.UTF8, "application/json");
             }
 
-            var response = await _httpClient.SendAsync(httpRequest);
+            var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)

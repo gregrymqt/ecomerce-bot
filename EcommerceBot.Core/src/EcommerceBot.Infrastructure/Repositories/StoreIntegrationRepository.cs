@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapper;
 using EcommerceBot.Domain.Entities;
@@ -16,57 +17,62 @@ public sealed class StoreIntegrationRepository : IStoreIntegrationRepository
         _connectionFactory = connectionFactory;
     }
 
-    public async Task<StoreIntegration?> GetByIdAsync(Guid id)
+    public async Task<StoreIntegration?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = "SELECT * FROM dbo.StoreIntegrations WHERE Id = @Id";
-        return await connection.QueryFirstOrDefaultAsync<StoreIntegration>(sql, new { Id = id });
+        var cmd = new CommandDefinition(sql, new { Id = id }, cancellationToken: cancellationToken);
+        return await connection.QueryFirstOrDefaultAsync<StoreIntegration>(cmd);
     }
 
-    public async Task<StoreIntegration?> GetByTenantAndPlatformAsync(Guid tenantId, string platform)
+    public async Task<StoreIntegration?> GetByTenantAndPlatformAsync(Guid tenantId, string platform, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = """
             SELECT * FROM dbo.StoreIntegrations 
             WHERE TenantId = @TenantId AND Platform = @Platform
         """;
-        return await connection.QueryFirstOrDefaultAsync<StoreIntegration>(sql, new { TenantId = tenantId, Platform = platform });
+        var cmd = new CommandDefinition(sql, new { TenantId = tenantId, Platform = platform }, cancellationToken: cancellationToken);
+        return await connection.QueryFirstOrDefaultAsync<StoreIntegration>(cmd);
     }
 
-    public async Task<StoreIntegration?> GetByDomainAsync(string platform, string storeDomain)
+    public async Task<StoreIntegration?> GetByDomainAsync(string platform, string storeDomain, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = """
             SELECT * FROM dbo.StoreIntegrations 
             WHERE Platform = @Platform AND StoreDomain = @StoreDomain
         """;
-        return await connection.QueryFirstOrDefaultAsync<StoreIntegration>(sql, new { Platform = platform, StoreDomain = storeDomain });
+        var cmd = new CommandDefinition(sql, new { Platform = platform, StoreDomain = storeDomain }, cancellationToken: cancellationToken);
+        return await connection.QueryFirstOrDefaultAsync<StoreIntegration>(cmd);
     }
 
-    public async Task<IEnumerable<StoreIntegration>> ListByTenantAsync(Guid tenantId)
+    public async Task<IEnumerable<StoreIntegration>> ListByTenantAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = """
             SELECT * FROM dbo.StoreIntegrations 
             WHERE TenantId = @TenantId 
             ORDER BY CreatedAt DESC
         """;
-        return await connection.QueryAsync<StoreIntegration>(sql, new { TenantId = tenantId });
+        var cmd = new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken);
+        return await connection.QueryAsync<StoreIntegration>(cmd);
     }
 
-    public async Task<int> CountByTenantAsync(Guid tenantId)
+    public async Task<int> CountByTenantAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = """
             SELECT COUNT(1) FROM dbo.StoreIntegrations 
             WHERE TenantId = @TenantId AND Status = 'CONNECTED'
         """;
-        return await connection.ExecuteScalarAsync<int>(sql, new { TenantId = tenantId });
+        var cmd = new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken);
+        return await connection.ExecuteScalarAsync<int>(cmd);
     }
 
-    public async Task UpsertAsync(StoreIntegration integration)
+    public async Task UpsertAsync(StoreIntegration integration, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = """
             MERGE INTO dbo.StoreIntegrations AS Target
             USING (SELECT @TenantId AS TenantId, @Platform AS Platform, @StoreDomain AS StoreDomain) AS Source
@@ -90,20 +96,22 @@ public sealed class StoreIntegrationRepository : IStoreIntegrationRepository
         if (integration.Id == Guid.Empty)
             integration.Id = Guid.NewGuid();
 
-        await connection.ExecuteAsync(sql, integration);
+        var cmd = new CommandDefinition(sql, integration, cancellationToken: cancellationToken);
+        await connection.ExecuteAsync(cmd);
     }
 
-    public async Task<bool> DeleteAsync(Guid tenantId, Guid id)
+    public async Task<bool> DeleteAsync(Guid tenantId, Guid id, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = "DELETE FROM dbo.StoreIntegrations WHERE TenantId = @TenantId AND Id = @Id";
-        var rows = await connection.ExecuteAsync(sql, new { TenantId = tenantId, Id = id });
+        var cmd = new CommandDefinition(sql, new { TenantId = tenantId, Id = id }, cancellationToken: cancellationToken);
+        var rows = await connection.ExecuteAsync(cmd);
         return rows > 0;
     }
 
-    public async Task UpdateHealthCheckAsync(Guid id, string status, int latencyMs, string healthMessage)
+    public async Task UpdateHealthCheckAsync(Guid id, string status, int latencyMs, string healthMessage, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = """
             UPDATE dbo.StoreIntegrations 
             SET Status = @Status,
@@ -113,18 +121,20 @@ public sealed class StoreIntegrationRepository : IStoreIntegrationRepository
                 UpdatedAt = SYSDATETIMEOFFSET()
             WHERE Id = @Id
         """;
-        await connection.ExecuteAsync(sql, new { Id = id, Status = status, LatencyMs = latencyMs, HealthMessage = healthMessage });
+        var cmd = new CommandDefinition(sql, new { Id = id, Status = status, LatencyMs = latencyMs, HealthMessage = healthMessage }, cancellationToken: cancellationToken);
+        await connection.ExecuteAsync(cmd);
     }
 
-    public async Task UpdateStatusAsync(Guid tenantId, string platform, string status)
+    public async Task UpdateStatusAsync(Guid tenantId, string platform, string status, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = """
             UPDATE dbo.StoreIntegrations 
             SET Status = @Status,
                 UpdatedAt = SYSDATETIMEOFFSET()
             WHERE TenantId = @TenantId AND Platform = @Platform;
         """;
-        await connection.ExecuteAsync(sql, new { TenantId = tenantId, Platform = platform, Status = status });
+        var cmd = new CommandDefinition(sql, new { TenantId = tenantId, Platform = platform, Status = status }, cancellationToken: cancellationToken);
+        await connection.ExecuteAsync(cmd);
     }
 }

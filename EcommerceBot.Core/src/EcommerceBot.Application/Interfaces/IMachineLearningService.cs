@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Analytics;
 
@@ -9,6 +10,6 @@ namespace EcommerceBot.Application.Interfaces;
 /// </summary>
 public interface IMachineLearningService
 {
-    Task<bool> TriggerAnalysisAsync(Guid tenantId, string jobType = "FULL_ANALYTICS");
-    Task<MlInsightsResponse?> GetLatestInsightsAsync(Guid tenantId);
+    Task<bool> TriggerAnalysisAsync(Guid tenantId, string jobType = "FULL_ANALYTICS", CancellationToken cancellationToken = default);
+    Task<MlInsightsResponse?> GetLatestInsightsAsync(Guid tenantId, CancellationToken cancellationToken = default);
 }

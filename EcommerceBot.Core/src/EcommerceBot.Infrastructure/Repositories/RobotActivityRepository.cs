@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapper;
 using EcommerceBot.Domain.Entities;
@@ -16,7 +17,7 @@ public sealed class RobotActivityRepository : IRobotActivityRepository
         _dbConnectionFactory = dbConnectionFactory;
     }
 
-    public async Task<RobotActivity> CreateAsync(RobotActivity activity)
+    public async Task<RobotActivity> CreateAsync(RobotActivity activity, CancellationToken cancellationToken = default)
     {
         if (activity.TenantId == Guid.Empty)
         {
@@ -29,22 +30,22 @@ public sealed class RobotActivityRepository : IRobotActivityRepository
             OUTPUT INSERTED.Id, INSERTED.CreatedAt
             VALUES (@TenantId, @WorkerType, @Status, @DetailsJson, @DurationMs, SYSDATETIMEOFFSET())";
 
-        using var connection = await _dbConnectionFactory.CreateConnectionAsync();
-        var result = await connection.QuerySingleAsync<(Guid Id, DateTimeOffset CreatedAt)>(sql, new
+        using var connection = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+        var result = await connection.QuerySingleAsync<(Guid Id, DateTimeOffset CreatedAt)>(new CommandDefinition(sql, new
         {
             activity.TenantId,
             activity.WorkerType,
             activity.Status,
             activity.DetailsJson,
             activity.DurationMs
-        });
+        }, cancellationToken: cancellationToken));
 
         activity.Id = result.Id;
         activity.CreatedAt = result.CreatedAt;
         return activity;
     }
 
-    public async Task<IEnumerable<RobotActivity>> GetRecentAsync(Guid tenantId, int limit, int offset)
+    public async Task<IEnumerable<RobotActivity>> GetRecentAsync(Guid tenantId, int limit, int offset, CancellationToken cancellationToken = default)
     {
         var sql = @"
             SELECT Id, TenantId, WorkerType, Status, DetailsJson, DurationMs, CreatedAt
@@ -54,11 +55,11 @@ public sealed class RobotActivityRepository : IRobotActivityRepository
             OFFSET @Offset ROWS
             FETCH NEXT @Limit ROWS ONLY";
 
-        using var connection = await _dbConnectionFactory.CreateConnectionAsync();
-        return await connection.QueryAsync<RobotActivity>(sql, new { TenantId = tenantId, Limit = limit, Offset = offset });
+        using var connection = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+        return await connection.QueryAsync<RobotActivity>(new CommandDefinition(sql, new { TenantId = tenantId, Limit = limit, Offset = offset }, cancellationToken: cancellationToken));
     }
 
-    public async Task<double> GetAverageLatencyAsync(Guid tenantId, TimeSpan timeframe)
+    public async Task<double> GetAverageLatencyAsync(Guid tenantId, TimeSpan timeframe, CancellationToken cancellationToken = default)
     {
         var cutoff = DateTimeOffset.UtcNow.Subtract(timeframe);
         var sql = @"
@@ -68,7 +69,7 @@ public sealed class RobotActivityRepository : IRobotActivityRepository
               AND CreatedAt >= @Cutoff
               AND DurationMs IS NOT NULL";
 
-        using var connection = await _dbConnectionFactory.CreateConnectionAsync();
-        return await connection.QuerySingleAsync<double>(sql, new { TenantId = tenantId, Cutoff = cutoff });
+        using var connection = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+        return await connection.QuerySingleAsync<double>(new CommandDefinition(sql, new { TenantId = tenantId, Cutoff = cutoff }, cancellationToken: cancellationToken));
     }
 }

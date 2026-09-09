@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
@@ -40,10 +41,10 @@ public sealed class ShopifyGateway : IEcommerceGateway
         _logger = logger;
     }
 
-    public async Task<(string Domain, string Token)?> GetShopifyCredentialsAsync(Guid tenantId)
+    public async Task<(string Domain, string Token)?> GetShopifyCredentialsAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
         // 1. Busca na tabela StoreIntegrations (padrão canônico)
-        var integration = await _integrationRepository.GetByTenantAndPlatformAsync(tenantId, "SHOPIFY");
+        var integration = await _integrationRepository.GetByTenantAndPlatformAsync(tenantId, "SHOPIFY", cancellationToken);
         if (integration != null && integration.EncryptedAccessToken.Length > 0)
         {
             var payload = new EncryptedPayload
@@ -60,7 +61,7 @@ public sealed class ShopifyGateway : IEcommerceGateway
         }
 
         // 2. Fallback: Busca na tabela TenantAiCredentials
-        var creds = await _credentialRepository.GetByProviderAsync(tenantId, PlatformName);
+        var creds = await _credentialRepository.GetByProviderAsync(tenantId, PlatformName, cancellationToken);
         if (creds != null && creds.EncryptedApiKey.Length > 0)
         {
             var payload = new EncryptedPayload
@@ -88,9 +89,9 @@ public sealed class ShopifyGateway : IEcommerceGateway
         return $"https://{domain}/admin/api/{ApiVersion}/graphql.json";
     }
 
-    public async Task<(bool Success, int LatencyMs, string Message)> HealthCheckAsync(Guid tenantId)
+    public async Task<(bool Success, int LatencyMs, string Message)> HealthCheckAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        var creds = await GetShopifyCredentialsAsync(tenantId);
+        var creds = await GetShopifyCredentialsAsync(tenantId, cancellationToken);
         if (creds == null || string.IsNullOrEmpty(creds.Value.Token))
         {
             return (false, 0, "Credenciais da Shopify não configuradas para o tenant.");
@@ -106,11 +107,11 @@ public sealed class ShopifyGateway : IEcommerceGateway
         var sw = Stopwatch.StartNew();
         try
         {
-            var response = await _httpClient.SendAsync(request);
+            var response = await _httpClient.SendAsync(request, cancellationToken);
             sw.Stop();
             var latency = (int)sw.ElapsedMilliseconds;
 
-            var json = await response.Content.ReadAsStringAsync();
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Shopify HealthCheck failed. Status: {Status}, Body: {Body}", response.StatusCode, json);
@@ -136,7 +137,7 @@ public sealed class ShopifyGateway : IEcommerceGateway
         }
     }
 
-    public async Task<bool> PushProductAsync(Guid tenantId, Product product)
+    public async Task<bool> PushProductAsync(Guid tenantId, Product product, CancellationToken cancellationToken = default)
     {
         var creds = await GetShopifyCredentialsAsync(tenantId);
         if (creds == null || string.IsNullOrEmpty(creds.Value.Token))
@@ -230,8 +231,8 @@ public sealed class ShopifyGateway : IEcommerceGateway
 
         try
         {
-            var response = await _httpClient.SendAsync(request);
-            var responseBody = await response.Content.ReadAsStringAsync();
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -271,7 +272,7 @@ public sealed class ShopifyGateway : IEcommerceGateway
                     product.ShopifyVariantId = variantId;
                     product.ShopifyInventoryItemId = inventoryItemId;
                     product.UpdatedAt = DateTimeOffset.UtcNow;
-                    await _productRepository.UpdateAsync(product);
+                    await _productRepository.UpdateAsync(product, cancellationToken);
 
                     _logger.LogInformation("Successfully pushed product {Sku} to Shopify with ID {ShopifyId}", product.Sku, shopifyId);
                     return true;
@@ -287,12 +288,12 @@ public sealed class ShopifyGateway : IEcommerceGateway
         }
     }
 
-    public async Task<bool> UpdateInventoryAsync(Guid tenantId, string sku, int availableQuantity, string? inventoryItemId = null)
+    public async Task<bool> UpdateInventoryAsync(Guid tenantId, string sku, int availableQuantity, string? inventoryItemId = null, CancellationToken cancellationToken = default)
     {
-        var creds = await GetShopifyCredentialsAsync(tenantId);
+        var creds = await GetShopifyCredentialsAsync(tenantId, cancellationToken);
         if (creds == null || string.IsNullOrEmpty(creds.Value.Token)) return false;
 
-        var product = await _productRepository.GetBySkuAsync(tenantId, sku);
+        var product = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
         var targetInvId = inventoryItemId ?? product?.ShopifyInventoryItemId;
 
         _logger.LogInformation("Updating Shopify inventory for SKU {Sku} (ItemId: {ItemId}) to {Quantity}", sku, targetInvId, availableQuantity);
@@ -301,18 +302,18 @@ public sealed class ShopifyGateway : IEcommerceGateway
         {
             product.StockQuantity = availableQuantity;
             product.UpdatedAt = DateTimeOffset.UtcNow;
-            await _productRepository.UpdateAsync(product);
+            await _productRepository.UpdateAsync(product, cancellationToken);
         }
 
         return true;
     }
 
-    public async Task<bool> UpdateProductStatusAsync(Guid tenantId, string sku, string status)
+    public async Task<bool> UpdateProductStatusAsync(Guid tenantId, string sku, string status, CancellationToken cancellationToken = default)
     {
-        var creds = await GetShopifyCredentialsAsync(tenantId);
+        var creds = await GetShopifyCredentialsAsync(tenantId, cancellationToken);
         if (creds == null || string.IsNullOrEmpty(creds.Value.Token)) return false;
 
-        var product = await _productRepository.GetBySkuAsync(tenantId, sku);
+        var product = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
         if (product == null || string.IsNullOrEmpty(product.ShopifyProductId)) return false;
 
         var url = BuildGraphqlUrl(creds.Value.Domain);
@@ -348,16 +349,16 @@ public sealed class ShopifyGateway : IEcommerceGateway
         request.Headers.Add("X-Shopify-Access-Token", creds.Value.Token);
         request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-        var response = await _httpClient.SendAsync(request);
+        var response = await _httpClient.SendAsync(request, cancellationToken);
         return response.IsSuccessStatusCode;
     }
 
-    public async Task<bool> DeleteProductAsync(Guid tenantId, string sku)
+    public async Task<bool> DeleteProductAsync(Guid tenantId, string sku, CancellationToken cancellationToken = default)
     {
-        var creds = await GetShopifyCredentialsAsync(tenantId);
+        var creds = await GetShopifyCredentialsAsync(tenantId, cancellationToken);
         if (creds == null || string.IsNullOrEmpty(creds.Value.Token)) return false;
 
-        var product = await _productRepository.GetBySkuAsync(tenantId, sku);
+        var product = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
         if (product == null || string.IsNullOrEmpty(product.ShopifyProductId)) return false;
 
         var url = BuildGraphqlUrl(creds.Value.Domain);
@@ -389,13 +390,13 @@ public sealed class ShopifyGateway : IEcommerceGateway
         request.Headers.Add("X-Shopify-Access-Token", creds.Value.Token);
         request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-        var response = await _httpClient.SendAsync(request);
+        var response = await _httpClient.SendAsync(request, cancellationToken);
         return response.IsSuccessStatusCode;
     }
 
-    public async Task<IEnumerable<Product>> FetchProductsAsync(Guid tenantId)
+    public async Task<IEnumerable<Product>> FetchProductsAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        var creds = await GetShopifyCredentialsAsync(tenantId);
+        var creds = await GetShopifyCredentialsAsync(tenantId, cancellationToken);
         if (creds == null || string.IsNullOrEmpty(creds.Value.Token))
         {
             return Array.Empty<Product>();
@@ -437,10 +438,10 @@ public sealed class ShopifyGateway : IEcommerceGateway
 
         try
         {
-            var response = await _httpClient.SendAsync(request);
+            var response = await _httpClient.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode) return Array.Empty<Product>();
 
-            var json = await response.Content.ReadAsStringAsync();
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
             using var doc = JsonDocument.Parse(json);
             var results = new List<Product>();
 

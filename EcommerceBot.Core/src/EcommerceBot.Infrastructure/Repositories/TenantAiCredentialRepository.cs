@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapper;
 using EcommerceBot.Domain.Entities;
@@ -15,27 +16,29 @@ public sealed class TenantAiCredentialRepository : ITenantAiCredentialRepository
         _connectionFactory = connectionFactory;
     }
 
-    public async Task<TenantAiCredential?> GetByProviderAsync(Guid tenantId, string provider)
+    public async Task<TenantAiCredential?> GetByProviderAsync(Guid tenantId, string provider, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = """
             SELECT * FROM dbo.TenantAiCredentials 
             WHERE TenantId = @TenantId AND Provider = @Provider AND IsActive = 1
         """;
-        return await connection.QueryFirstOrDefaultAsync<TenantAiCredential>(sql, new { TenantId = tenantId, Provider = provider });
+        var cmd = new CommandDefinition(sql, new { TenantId = tenantId, Provider = provider }, cancellationToken: cancellationToken);
+        return await connection.QueryFirstOrDefaultAsync<TenantAiCredential>(cmd);
     }
 
-    public async Task<bool> HasActiveByokAsync(Guid tenantId)
+    public async Task<bool> HasActiveByokAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = "SELECT COUNT(1) FROM dbo.TenantAiCredentials WHERE TenantId = @TenantId AND IsActive = 1";
-        var count = await connection.ExecuteScalarAsync<int>(sql, new { TenantId = tenantId });
+        var cmd = new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken);
+        var count = await connection.ExecuteScalarAsync<int>(cmd);
         return count > 0;
     }
 
-    public async Task UpsertAsync(TenantAiCredential credential)
+    public async Task UpsertAsync(TenantAiCredential credential, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
         const string sql = """
             MERGE INTO dbo.TenantAiCredentials AS Target
             USING (SELECT @TenantId AS TenantId, @Provider AS Provider) AS Source
@@ -55,6 +58,7 @@ public sealed class TenantAiCredentialRepository : ITenantAiCredentialRepository
         if (credential.Id == Guid.Empty)
             credential.Id = Guid.NewGuid();
 
-        await connection.ExecuteAsync(sql, credential);
+        var cmd = new CommandDefinition(sql, credential, cancellationToken: cancellationToken);
+        await connection.ExecuteAsync(cmd);
     }
 }

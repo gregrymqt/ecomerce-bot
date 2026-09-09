@@ -37,9 +37,9 @@ public sealed class WalletService : IWalletService
         _logger = logger;
     }
 
-    public async Task<WalletBalanceResponseDto> GetBalanceAsync(Guid tenantId)
+    public async Task<WalletBalanceResponseDto> GetBalanceAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        var tenant = await _tenantRepository.GetByIdAsync(tenantId);
+        var tenant = await _tenantRepository.GetByIdAsync(tenantId, cancellationToken);
         if (tenant == null)
         {
             throw new ArgumentException("Tenant não encontrado.");
@@ -54,9 +54,9 @@ public sealed class WalletService : IWalletService
         };
     }
 
-    public async Task<WalletStatementResponseDto> GetStatementAsync(Guid tenantId, StatementFiltersDto filters)
+    public async Task<WalletStatementResponseDto> GetStatementAsync(Guid tenantId, StatementFiltersDto filters, CancellationToken cancellationToken = default)
     {
-        var tenant = await _tenantRepository.GetByIdAsync(tenantId);
+        var tenant = await _tenantRepository.GetByIdAsync(tenantId, cancellationToken);
         var balanceCredits = tenant?.CreditsBalance ?? 0;
         var managedBalance = tenant?.ManagedCreditBalance ?? 0.00m;
 
@@ -64,8 +64,8 @@ public sealed class WalletService : IWalletService
         var limit = filters.Limit > 0 ? filters.Limit : 50;
         var offset = (page - 1) * limit;
 
-        var transactions = await _tenantRepository.GetCreditTransactionsAsync(tenantId, limit, offset, filters.Type);
-        var totalCount = await _tenantRepository.CountCreditTransactionsAsync(tenantId, filters.Type);
+        var transactions = await _tenantRepository.GetCreditTransactionsAsync(tenantId, limit, offset, filters.Type, cancellationToken);
+        var totalCount = await _tenantRepository.CountCreditTransactionsAsync(tenantId, filters.Type, cancellationToken);
 
         var transactionDtos = transactions.Select(t => new CreditTransactionDto
         {
@@ -89,7 +89,7 @@ public sealed class WalletService : IWalletService
         };
     }
 
-    public async Task<RechargeResponseDto> CreateRechargeAsync(Guid tenantId, RechargeRequestDto request)
+    public async Task<RechargeResponseDto> CreateRechargeAsync(Guid tenantId, RechargeRequestDto request, CancellationToken cancellationToken = default)
     {
         Guid? planId = null;
         if (!string.IsNullOrEmpty(request.PackageId) && Guid.TryParse(request.PackageId, out var parsedId))
@@ -98,10 +98,10 @@ public sealed class WalletService : IWalletService
         }
 
         var amount = request.Amount > 0 ? request.Amount : (request.CreditsPackage > 0 ? request.CreditsPackage * 0.50m : 50.00m);
-        var isPix = request.PaymentMethod.ToLower() == "pix";
+        var isPix = request.PaymentMethod.Equals("pix", StringComparison.CurrentCultureIgnoreCase);
         var externalRef = $"rec_{tenantId.ToString()[..8]}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
 
-        var billingProfile = await _tenantBillingProfileRepository.GetByTenantIdAsync(tenantId);
+        var billingProfile = await _tenantBillingProfileRepository.GetByTenantIdAsync(tenantId, cancellationToken);
 
         // Se a requisição de recarga trouxe novos dados de documento, atualiza o perfil do tenant
         if (!string.IsNullOrWhiteSpace(request.Payer?.Identification?.Number) && request.Payer.Identification.Number.Length >= 11)
@@ -113,7 +113,7 @@ public sealed class WalletService : IWalletService
             {
                 billingProfile.DocumentNumber = rawDoc;
                 billingProfile.DocumentType = docType;
-                billingProfile = await _tenantBillingProfileRepository.UpsertAsync(billingProfile);
+                billingProfile = await _tenantBillingProfileRepository.UpsertAsync(billingProfile, cancellationToken);
             }
         }
 
@@ -145,8 +145,8 @@ public sealed class WalletService : IWalletService
             PayerFederalUnit = billingProfile?.FederalUnit,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
-            Items = new List<OrderItem>
-            {
+            Items =
+            [
                 new()
                 {
                     Title = $"Recarga de Carteira - Saldo IA (R$ {amount:F2})",
@@ -154,7 +154,7 @@ public sealed class WalletService : IWalletService
                     Quantity = 1,
                     ExternalCode = "WALLET_TOPUP"
                 }
-            }
+            ]
         };
 
         var mpRequest = new MercadoPagoOrderRequest
@@ -203,8 +203,8 @@ public sealed class WalletService : IWalletService
                     }
                 ]
             },
-            Items = new List<MercadoPagoItemRequest>
-            {
+            Items =
+            [
                 new()
                 {
                     Title = "Recarga de Créditos",
@@ -213,10 +213,10 @@ public sealed class WalletService : IWalletService
                     Description = "Recarga de Saldo de IA",
                     ExternalCode = "WALLET_TOPUP"
                 }
-            }
+            ]
         };
 
-        var mpResponse = await _mercadoPagoGateway.CreateOrderAsync(mpRequest);
+        var mpResponse = await _mercadoPagoGateway.CreateOrderAsync(mpRequest, cancellationToken: cancellationToken);
 
         var firstPayment = mpResponse.Transactions?.Payments?.FirstOrDefault();
         order.MpPaymentId = firstPayment?.Id ?? mpResponse.Id;
@@ -235,7 +235,7 @@ public sealed class WalletService : IWalletService
 
             if (order.PlanId.HasValue)
             {
-                var plan = await _planRepository.GetByIdAsync(order.PlanId.Value);
+                var plan = await _planRepository.GetByIdAsync(order.PlanId.Value, cancellationToken);
                 if (plan != null)
                 {
                     creditsToAdd = plan.CreditsIncluded;
@@ -254,11 +254,12 @@ public sealed class WalletService : IWalletService
                 type: "RECHARGE",
                 description: $"Recarga de IA aprovada: {packageName} (+{creditsToAdd} créditos)",
                 referenceId: order.ExternalReference ?? order.MpPaymentId,
-                orderId: order.Id
+                orderId: order.Id,
+                cancellationToken: cancellationToken
             );
         }
 
-        await _orderRepository.CreateOrderAsync(order);
+        await _orderRepository.CreateOrderAsync(order, cancellationToken);
 
         return new RechargeResponseDto
         {
