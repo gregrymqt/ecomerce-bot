@@ -1,24 +1,11 @@
 -- ==============================================================================
--- Script 007: AI Metering (Logs de Uso e Saldo)
+-- Script 007: Telemetria e Auditoria de LLM (LLMUsageLogs)
 -- E-commerce Bot SaaS
--- Padrão: Idempotente com IF NOT EXISTS, UNIQUEIDENTIFIER
+-- Padrão: Idempotente com IF NOT EXISTS, UNIQUEIDENTIFIER (NEWSEQUENTIALID()),
+--         DATETIMEOFFSET (SYSDATETIMEOFFSET()) e FKs ON DELETE CASCADE
 -- ==============================================================================
 
--- 1. Garantir existência de CreditsBalance (INT) e ManagedCreditBalance (DECIMAL) na tabela Tenants
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = N'CreditsBalance' AND Object_ID = Object_ID(N'dbo.Tenants'))
-BEGIN
-    ALTER TABLE dbo.Tenants ADD CreditsBalance INT NOT NULL DEFAULT 0;
-END
-GO
-
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = N'ManagedCreditBalance' AND Object_ID = Object_ID(N'dbo.Tenants'))
-BEGIN
-    ALTER TABLE dbo.Tenants ADD ManagedCreditBalance DECIMAL(18,6) NOT NULL DEFAULT 0.000000;
-END
-GO
-
-
--- 2. Tabela: LLMUsageLogs
+-- 1. Tabela: LLMUsageLogs (Auditoria Fina de Tokens, Latência e Custos de Inferência)
 IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'LLMUsageLogs' AND schema_id = SCHEMA_ID('dbo'))
 BEGIN
     CREATE TABLE dbo.LLMUsageLogs (
@@ -41,6 +28,7 @@ BEGIN
 END
 GO
 
+-- 2. Índice de Cobertura para Agregações e Dashboards de IA por Tenant
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_LLMUsageLogs_TenantId_CreatedAt' AND object_id = OBJECT_ID('dbo.LLMUsageLogs'))
 BEGIN
     CREATE NONCLUSTERED INDEX IX_LLMUsageLogs_TenantId_CreatedAt 

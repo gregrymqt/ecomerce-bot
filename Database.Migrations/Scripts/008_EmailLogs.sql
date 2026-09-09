@@ -1,7 +1,8 @@
 -- ==============================================================================
--- Script 009: Email Logs
+-- Script 008: Auditoria e Logs Transacionais de E-mail (Resend)
 -- E-commerce Bot SaaS
--- Padrão: Idempotente com IF NOT EXISTS
+-- Padrão: Idempotente com IF NOT EXISTS, UNIQUEIDENTIFIER (NEWSEQUENTIALID()),
+--         DATETIMEOFFSET (SYSDATETIMEOFFSET()) e Índices Non-Clustered
 -- ==============================================================================
 
 IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'EmailLogs' AND schema_id = SCHEMA_ID('dbo'))
@@ -26,18 +27,21 @@ GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_EmailLogs_TenantId_Status' AND object_id = OBJECT_ID('dbo.EmailLogs'))
 BEGIN
-    CREATE NONCLUSTERED INDEX IX_EmailLogs_TenantId_Status ON dbo.EmailLogs (TenantId, Status);
+    CREATE NONCLUSTERED INDEX IX_EmailLogs_TenantId_Status 
+    ON dbo.EmailLogs (TenantId, Status);
 END
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_EmailLogs_TenantId_EventType' AND object_id = OBJECT_ID('dbo.EmailLogs'))
 BEGIN
-    CREATE NONCLUSTERED INDEX IX_EmailLogs_TenantId_EventType ON dbo.EmailLogs (TenantId, EventType);
+    CREATE NONCLUSTERED INDEX IX_EmailLogs_TenantId_EventType 
+    ON dbo.EmailLogs (TenantId, EventType);
 END
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_EmailLogs_ResendId' AND object_id = OBJECT_ID('dbo.EmailLogs'))
 BEGIN
-    CREATE NONCLUSTERED INDEX IX_EmailLogs_ResendId ON dbo.EmailLogs (ResendId);
+    CREATE NONCLUSTERED INDEX IX_EmailLogs_ResendId 
+    ON dbo.EmailLogs (ResendId);
 END
 GO

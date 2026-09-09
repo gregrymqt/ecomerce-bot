@@ -1,6 +1,8 @@
 -- ==============================================================================
--- Script 010: Configurações do Tenant (TenantConfigs)
--- Migração do ORM Python (TenantConfigModel) para DDL Explícito em C#
+-- Script 009: Configurações do Tenant (TenantConfigs)
+-- E-commerce Bot SaaS
+-- Padrão: Idempotente com IF NOT EXISTS, UNIQUEIDENTIFIER (NEWSEQUENTIALID()),
+--         DATETIMEOFFSET (SYSDATETIMEOFFSET()) e FKs ON DELETE CASCADE
 -- ==============================================================================
 
 IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'TenantConfigs' AND schema_id = SCHEMA_ID('dbo'))

@@ -2,7 +2,7 @@
   "metadata": {
     "version": "2.0",
     "generator": "generate_knowledge_graph.py",
-    "total_nodes": 172,
+    "total_nodes": 171,
     "total_edges": 176
   },
   "nodes": [
@@ -10,21 +10,35 @@
       "id": "table:Tenants",
       "label": "Tenants",
       "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/001_Initial_Tenancy_And_Users.sql",
+      "file": "Database.Migrations/Scripts/001_Tenancy_Roles_And_Users.sql",
+      "metadata": {}
+    },
+    {
+      "id": "table:Roles",
+      "label": "Roles",
+      "type": "DatabaseTable",
+      "file": "Database.Migrations/Scripts/001_Tenancy_Roles_And_Users.sql",
       "metadata": {}
     },
     {
       "id": "table:Users",
       "label": "Users",
       "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/001_Initial_Tenancy_And_Users.sql",
+      "file": "Database.Migrations/Scripts/001_Tenancy_Roles_And_Users.sql",
       "metadata": {}
     },
     {
       "id": "table:TenantAiCredentials",
       "label": "TenantAiCredentials",
       "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/001_Initial_Tenancy_And_Users.sql",
+      "file": "Database.Migrations/Scripts/001_Tenancy_Roles_And_Users.sql",
+      "metadata": {}
+    },
+    {
+      "id": "table:TenantSsoMappings",
+      "label": "TenantSsoMappings",
+      "type": "DatabaseTable",
+      "file": "Database.Migrations/Scripts/001_Tenancy_Roles_And_Users.sql",
       "metadata": {}
     },
     {
@@ -38,26 +52,47 @@
       "id": "table:Plans",
       "label": "Plans",
       "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/003_Financial_Plans_And_Subscriptions.sql",
-      "metadata": {}
-    },
-    {
-      "id": "table:Subscriptions",
-      "label": "Subscriptions",
-      "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/003_Financial_Plans_And_Subscriptions.sql",
+      "file": "Database.Migrations/Scripts/003_Financial_Plans_Orders_And_Billing.sql",
       "metadata": {}
     },
     {
       "id": "table:Orders",
       "label": "Orders",
       "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/003_Financial_Plans_And_Subscriptions.sql",
+      "file": "Database.Migrations/Scripts/003_Financial_Plans_Orders_And_Billing.sql",
+      "metadata": {}
+    },
+    {
+      "id": "table:OrderItems",
+      "label": "OrderItems",
+      "type": "DatabaseTable",
+      "file": "Database.Migrations/Scripts/003_Financial_Plans_Orders_And_Billing.sql",
+      "metadata": {}
+    },
+    {
+      "id": "table:TenantBillingProfiles",
+      "label": "TenantBillingProfiles",
+      "type": "DatabaseTable",
+      "file": "Database.Migrations/Scripts/003_Financial_Plans_Orders_And_Billing.sql",
       "metadata": {}
     },
     {
       "id": "table:TrafficAttributions",
       "label": "TrafficAttributions",
+      "type": "DatabaseTable",
+      "file": "Database.Migrations/Scripts/004_Traffic_And_Attributions.sql",
+      "metadata": {}
+    },
+    {
+      "id": "table:SaasTrafficVisits",
+      "label": "SaasTrafficVisits",
+      "type": "DatabaseTable",
+      "file": "Database.Migrations/Scripts/004_Traffic_And_Attributions.sql",
+      "metadata": {}
+    },
+    {
+      "id": "table:SaasAdSpends",
+      "label": "SaasAdSpends",
       "type": "DatabaseTable",
       "file": "Database.Migrations/Scripts/004_Traffic_And_Attributions.sql",
       "metadata": {}
@@ -73,91 +108,49 @@
       "id": "table:LLMUsageLogs",
       "label": "LLMUsageLogs",
       "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/007_LLMUsageLogs_And_Balance.sql",
-      "metadata": {}
-    },
-    {
-      "id": "table:OrderItems",
-      "label": "OrderItems",
-      "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/008_Checkout_OrderItems.sql",
+      "file": "Database.Migrations/Scripts/007_LLMUsageLogs.sql",
       "metadata": {}
     },
     {
       "id": "table:EmailLogs",
       "label": "EmailLogs",
       "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/009_EmailLogs.sql",
+      "file": "Database.Migrations/Scripts/008_EmailLogs.sql",
       "metadata": {}
     },
     {
       "id": "table:TenantConfigs",
       "label": "TenantConfigs",
       "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/010_Tenant_Configs.sql",
+      "file": "Database.Migrations/Scripts/009_Tenant_Configs.sql",
       "metadata": {}
     },
     {
-      "id": "table:dbo",
-      "label": "dbo",
+      "id": "table:RobotActivities",
+      "label": "RobotActivities",
       "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/011_RobotActivities.sql",
-      "metadata": {}
-    },
-    {
-      "id": "table:SaasTrafficVisits",
-      "label": "SaasTrafficVisits",
-      "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/012_Admin_Growth_And_Attributions.sql",
-      "metadata": {}
-    },
-    {
-      "id": "table:SaasAdSpends",
-      "label": "SaasAdSpends",
-      "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/012_Admin_Growth_And_Attributions.sql",
+      "file": "Database.Migrations/Scripts/010_RobotActivities.sql",
       "metadata": {}
     },
     {
       "id": "table:StoreIntegrations",
       "label": "StoreIntegrations",
       "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/013_Store_Integrations.sql",
+      "file": "Database.Migrations/Scripts/011_Store_Integrations.sql",
       "metadata": {}
     },
     {
-      "id": "table:Roles",
-      "label": "Roles",
+      "id": "table:AiProviderCredits",
+      "label": "AiProviderCredits",
       "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/016_Roles_And_TenantSsoMappings.sql",
-      "metadata": {}
-    },
-    {
-      "id": "table:TenantSsoMappings",
-      "label": "TenantSsoMappings",
-      "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/016_Roles_And_TenantSsoMappings.sql",
+      "file": "Database.Migrations/Scripts/012_Credit_Ledger_And_AiProviderCredits.sql",
       "metadata": {}
     },
     {
       "id": "table:CreditTransactions",
       "label": "CreditTransactions",
       "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/020_Credit_Ledger_And_Packages.sql",
-      "metadata": {}
-    },
-    {
-      "id": "table:UserAddresses",
-      "label": "UserAddresses",
-      "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/022_UserAddresses.sql",
-      "metadata": {}
-    },
-    {
-      "id": "table:TenantBillingProfiles",
-      "label": "TenantBillingProfiles",
-      "type": "DatabaseTable",
-      "file": "Database.Migrations/Scripts/024_Create_Tenant_Billing_Profiles.sql",
+      "file": "Database.Migrations/Scripts/012_Credit_Ledger_And_AiProviderCredits.sql",
       "metadata": {}
     },
     {

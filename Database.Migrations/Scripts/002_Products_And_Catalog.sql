@@ -1,10 +1,11 @@
 -- ==============================================================================
--- Script 002: Produtos, Catálogo e Enriquecimento via IA
+-- Script 002: Produtos, Catálogo Multi-Tenant e Integrações E-commerce
 -- E-commerce Bot SaaS
--- Padrão: Idempotente com IF NOT EXISTS, Clustered Index Composto (TenantId, Sku)
+-- Padrão: Idempotente com IF NOT EXISTS, Clustered Index Composto (TenantId, Sku),
+--         DATETIMEOFFSET (SYSDATETIMEOFFSET()) e FKs ON DELETE CASCADE
 -- ==============================================================================
 
--- 1. Tabela: Products (Catálogo de Produtos Multi-Tenant)
+-- 1. Tabela: Products (Catálogo de Produtos Multi-Tenant com suporte nativo Shopify e Nuvemshop)
 IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Products' AND schema_id = SCHEMA_ID('dbo'))
 BEGIN
     CREATE TABLE dbo.Products (
@@ -23,6 +24,11 @@ BEGIN
         ImagesJson NVARCHAR(MAX) NULL, -- Array JSON de URLs de imagens
         EnrichmentMetadata NVARCHAR(MAX) NULL, -- JSON com model_used, prompt_tokens, completion_tokens, response_time_ms
         ErrorMessage NVARCHAR(MAX) NULL,
+        ShopifyProductId NVARCHAR(100) NULL,
+        ShopifyVariantId NVARCHAR(100) NULL,
+        ShopifyInventoryItemId NVARCHAR(100) NULL,
+        NuvemshopProductId NVARCHAR(100) NULL,
+        NuvemshopVariantId NVARCHAR(100) NULL,
         CreatedAt DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
         UpdatedAt DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
         CONSTRAINT PK_Products PRIMARY KEY NONCLUSTERED (Id),
@@ -49,5 +55,15 @@ BEGIN
     CREATE NONCLUSTERED INDEX IX_Products_Tenant_Status_CreatedAt
     ON dbo.Products (TenantId, Status, CreatedAt DESC)
     INCLUDE (Sku, Title, Price, Brand, Category, StockQuantity);
+END
+GO
+
+-- 4. Índice de Cobertura para Resolução Rápida de Webhooks Nuvemshop
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Products_Tenant_NuvemshopProduct' AND object_id = OBJECT_ID('dbo.Products'))
+BEGIN
+    CREATE NONCLUSTERED INDEX IX_Products_Tenant_NuvemshopProduct
+    ON dbo.Products (TenantId, NuvemshopProductId)
+    INCLUDE (Sku, Title, Price, StockQuantity)
+    WHERE NuvemshopProductId IS NOT NULL;
 END
 GO

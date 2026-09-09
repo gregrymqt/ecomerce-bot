@@ -20,8 +20,8 @@
 - `Fila:` **`queue:ecommerce`**
 
 ## 🗄️ 3. Tabelas Mapeadas no Banco de Dados (DbUp)
-- **Total de Tabelas Detectadas:** 23
-- **Tabelas Core:** Tenants, Users, TenantAiCredentials, Products, Plans, Subscriptions, Orders, TrafficAttributions, EnterpriseLeads, LLMUsageLogs, OrderItems, EmailLogs...
+- **Total de Tabelas Detectadas:** 21
+- **Tabelas Core:** Tenants, Roles, Users, TenantAiCredentials, TenantSsoMappings, Products, Plans, Orders, OrderItems, TenantBillingProfiles, TrafficAttributions, SaasTrafficVisits...
 
 ## ⚡ 4. Controllers e Rotas da API Core
 - **AdminAiCapacityController** (`/api/v1/admin/ai-capacity`): 3 endpoints mapeados.

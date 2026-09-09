@@ -1,7 +1,8 @@
 -- ==============================================================================
--- Script 013: Integrações de Lojas Multi-Tenant (Shopify, Nuvemshop, WooCommerce)
+-- Script 011: Integrações de Lojas Multi-Tenant (Shopify, Nuvemshop, WooCommerce)
 -- E-commerce Bot SaaS
--- Padrão: Idempotente com IF NOT EXISTS, UNIQUEIDENTIFIER (NEWSEQUENTIALID())
+-- Padrão: Idempotente com IF NOT EXISTS, UNIQUEIDENTIFIER (NEWSEQUENTIALID()),
+--         DATETIMEOFFSET (SYSDATETIMEOFFSET()), Criptografia AES-256 GCM BYOK e FKs ON DELETE CASCADE
 -- ==============================================================================
 
 -- 1. Tabela: StoreIntegrations (Gestão de Conexões e Credenciais Criptografadas AES-256 GCM)
@@ -45,24 +46,5 @@ BEGIN
     CREATE NONCLUSTERED INDEX IX_StoreIntegrations_Tenant_Status
     ON dbo.StoreIntegrations (TenantId, Status)
     INCLUDE (Platform, StoreDomain, HealthCheckStatus, HealthCheckLatencyMs, LastHealthCheckAt);
-END
-GO
-
--- 4. Extensão da Tabela Products: Identificadores Nativos da Shopify para Sincronização Bi-direcional
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = N'ShopifyProductId' AND Object_ID = Object_ID(N'dbo.Products'))
-BEGIN
-    ALTER TABLE dbo.Products ADD ShopifyProductId NVARCHAR(100) NULL;
-END
-GO
-
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = N'ShopifyVariantId' AND Object_ID = Object_ID(N'dbo.Products'))
-BEGIN
-    ALTER TABLE dbo.Products ADD ShopifyVariantId NVARCHAR(100) NULL;
-END
-GO
-
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = N'ShopifyInventoryItemId' AND Object_ID = Object_ID(N'dbo.Products'))
-BEGIN
-    ALTER TABLE dbo.Products ADD ShopifyInventoryItemId NVARCHAR(100) NULL;
 END
 GO
