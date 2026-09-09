@@ -106,6 +106,22 @@ export interface RechargeRequest {
   payer_email: string;
   package_id?: string;
   amount?: number;
+  payer?: {
+    email?: string;
+    identification?: {
+      type: 'CPF' | 'CNPJ';
+      number: string;
+    };
+    address?: {
+      zip_code?: string;
+      street_name?: string;
+      street_number?: string;
+      neighborhood?: string;
+      city?: string;
+      federal_unit?: string;
+      complement?: string;
+    };
+  };
 }
 
 export interface CardPaymentPayer {

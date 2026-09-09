@@ -20,7 +20,7 @@
 - `Fila:` **`queue:ecommerce`**
 
 ## 🗄️ 3. Tabelas Mapeadas no Banco de Dados (DbUp)
-- **Total de Tabelas Detectadas:** 22
+- **Total de Tabelas Detectadas:** 23
 - **Tabelas Core:** Tenants, Users, TenantAiCredentials, Products, Plans, Subscriptions, Orders, TrafficAttributions, EnterpriseLeads, LLMUsageLogs, OrderItems, EmailLogs...
 
 ## ⚡ 4. Controllers e Rotas da API Core

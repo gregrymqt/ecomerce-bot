@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { walletService } from '../services/wallet.service';
+import { useBillingProfile } from './useBillingProfile';
 import { useAuth } from '@/features/auth';
 import type { CreditCardPaymentFormData as CreditCardFormData } from '../components/payment/CreditCardPaymentForm';
 import type {
@@ -16,6 +17,10 @@ import type {
   PixPaymentResponse,
   CheckoutTarget,
 } from '../types';
+import type {
+  TenantBillingProfile,
+  UpsertTenantBillingProfilePayload,
+} from '../types/billing.type';
 import { getErrorMessage } from '@/utils/errors';
 
 export interface UseUnifiedPaymentOptions {
@@ -38,6 +43,25 @@ export function useUnifiedPayment({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('PENDING');
 
+  // Integração com Perfil de Faturamento
+  const {
+    profile: billingProfile,
+    hasProfile: hasBillingProfile,
+    loading: billingLoading,
+    saving: billingSaving,
+    cepLoading,
+    saveProfile,
+    lookupCep,
+  } = useBillingProfile();
+
+  const [userEditingOverride, setUserEditingOverride] = useState<boolean | null>(null);
+
+  const isEditingBilling = userEditingOverride ?? (!billingLoading && !hasBillingProfile);
+
+  const setIsEditingBilling = useCallback((editing: boolean) => {
+    setUserEditingOverride(editing);
+  }, []);
+
   // Estado PIX
   const [pixData, setPixData] = useState<PixPaymentResponse | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number>(1800);
@@ -51,6 +75,7 @@ export function useUnifiedPayment({
     setSuccessMessage(null);
     setPaymentStatus('PENDING');
     setLoading(false);
+    setUserEditingOverride(null);
     if (pollingRef.current) {
       clearInterval(pollingRef.current);
       pollingRef.current = null;
@@ -101,8 +126,9 @@ export function useUnifiedPayment({
   }, [pixData?.qr_code_copy_paste]);
 
   // Geração de Cobrança PIX
-  const handleGeneratePix = useCallback(async () => {
+  const handleGeneratePix = useCallback(async (customProfile?: TenantBillingProfile) => {
     if (!target) return;
+    const activeProf = customProfile || billingProfile;
     setLoading(true);
     setError(null);
 
@@ -116,7 +142,23 @@ export function useUnifiedPayment({
           package_id: target.id,
           amount: target.amountBrl,
           payment_method: 'pix',
-          payer_email: user?.email || 'cliente@loja.com.br',
+          payer_email: user?.email || activeProf?.email || 'cliente@loja.com.br',
+          payer: activeProf ? {
+            email: user?.email || activeProf.email || 'cliente@loja.com.br',
+            identification: {
+              type: activeProf.document_type,
+              number: activeProf.document_number,
+            },
+            address: {
+              zip_code: activeProf.zip_code,
+              street_name: activeProf.street_name,
+              street_number: activeProf.street_number,
+              neighborhood: activeProf.neighborhood,
+              city: activeProf.city,
+              federal_unit: activeProf.federal_unit,
+              complement: activeProf.complement || undefined,
+            },
+          } : undefined,
         });
         setPixData({
           payment_id: resp.payment_id,
@@ -131,12 +173,31 @@ export function useUnifiedPayment({
     } finally {
       setLoading(false);
     }
-  }, [target, user]);
+  }, [target, user, billingProfile]);
 
-  // Dispara geração de PIX ao abrir modal em aba PIX
+  const handleSaveBilling = useCallback(
+    async (payload: UpsertTenantBillingProfilePayload) => {
+      const saved = await saveProfile(payload);
+      setIsEditingBilling(false);
+      if (paymentMethod === 'pix' && !pixData) {
+        void handleGeneratePix(saved);
+      }
+    },
+    [saveProfile, setIsEditingBilling, paymentMethod, pixData, handleGeneratePix]
+  );
+
+  // Dispara geração de PIX ao abrir modal em aba PIX se já tiver perfil salvo
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
-    if (isOpen && target && paymentMethod === 'pix' && !pixData && !loading) {
+    if (
+      isOpen &&
+      target &&
+      paymentMethod === 'pix' &&
+      !pixData &&
+      !loading &&
+      hasBillingProfile &&
+      !isEditingBilling
+    ) {
       timer = setTimeout(() => {
         void handleGeneratePix();
       }, 0);
@@ -144,7 +205,7 @@ export function useUnifiedPayment({
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [isOpen, target, paymentMethod, pixData, loading, handleGeneratePix]);
+  }, [isOpen, target, paymentMethod, pixData, loading, hasBillingProfile, isEditingBilling, handleGeneratePix]);
 
   // Polling de verificação de aprovação
   useEffect(() => {
@@ -156,7 +217,7 @@ export function useUnifiedPayment({
         const statusResp = await walletService.syncPaymentStatus(paymentId);
         if (statusResp.is_approved || statusResp.status === 'APPROVED') {
           setPaymentStatus('APPROVED');
-          setSuccessMessage('🎉 Pagamento aprovado com sucesso! Seus créditos/plano foram ativados.');
+          setSuccessMessage('🎉 Pagamento aprovado com sucesso! Seus créditos foram ativados.');
           if (pollingRef.current) {
             clearInterval(pollingRef.current);
             pollingRef.current = null;
@@ -189,6 +250,8 @@ export function useUnifiedPayment({
 
       const expMonth = cardData.formData.expirationMonth;
       const expYear = cardData.formData.expirationYear;
+      const docNum = cardData.formData.docNumber || billingProfile?.document_number || '00000000000';
+      const docType = (billingProfile?.document_type as 'CPF' | 'CNPJ') || (docNum.length > 11 ? 'CNPJ' : 'CPF');
 
       try {
         if (target.type === 'plan') {
@@ -200,7 +263,7 @@ export function useUnifiedPayment({
             expiration_year: expYear ? (expYear.length === 2 ? `20${expYear}` : expYear) : '2028',
             security_code: cardData.formData.securityCode,
             installments: cardData.formData.installments || 1,
-            doc_number: cardData.formData.docNumber || '00000000000',
+            doc_number: docNum,
             card_token: cardData.cardToken,
             payment_method_id: cardData.paymentMethodId,
           });
@@ -221,10 +284,10 @@ export function useUnifiedPayment({
             payment_method_id: cardData.paymentMethodId,
             installments: cardData.formData.installments || 1,
             payer: {
-              email: user?.email || 'cliente@loja.com.br',
+              email: user?.email || billingProfile?.email || 'cliente@loja.com.br',
               identification: {
-                type: 'CPF',
-                number: cardData.formData.docNumber || '00000000000',
+                type: docType,
+                number: docNum,
               },
             },
           });
@@ -243,13 +306,13 @@ export function useUnifiedPayment({
         setLoading(false);
       }
     },
-    [target, user, onSuccessPayment]
+    [target, user, billingProfile, onSuccessPayment]
   );
 
   return {
     paymentMethod,
     setPaymentMethod,
-    loading,
+    loading: loading || billingLoading,
     error,
     successMessage,
     paymentStatus,
@@ -260,6 +323,16 @@ export function useUnifiedPayment({
     handleGeneratePix,
     handleProcessCreditCard,
     handleModalClose,
+    // Faturamento e Identificação
+    billingProfile,
+    hasBillingProfile,
+    isEditingBilling,
+    setIsEditingBilling,
+    billingLoading,
+    billingSaving,
+    cepLoading,
+    handleSaveBilling,
+    handleLookupCep: lookupCep,
   };
 }
 

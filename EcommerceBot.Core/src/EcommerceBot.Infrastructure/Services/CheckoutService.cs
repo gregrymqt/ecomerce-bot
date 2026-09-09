@@ -20,6 +20,7 @@ public sealed class CheckoutService : ICheckoutService
     private readonly ITenantRepository _tenantRepository;
     private readonly IMercadoPagoGateway _mercadoPagoGateway;
     private readonly IUserRepository _userRepository;
+    private readonly ITenantBillingProfileRepository _tenantBillingProfileRepository;
     private readonly ILogger<CheckoutService> _logger;
 
     public CheckoutService(
@@ -28,6 +29,7 @@ public sealed class CheckoutService : ICheckoutService
         ITenantRepository tenantRepository,
         IMercadoPagoGateway mercadoPagoGateway,
         IUserRepository userRepository,
+        ITenantBillingProfileRepository tenantBillingProfileRepository,
         ILogger<CheckoutService> logger)
     {
         _orderRepository = orderRepository;
@@ -35,6 +37,7 @@ public sealed class CheckoutService : ICheckoutService
         _tenantRepository = tenantRepository;
         _mercadoPagoGateway = mercadoPagoGateway;
         _userRepository = userRepository;
+        _tenantBillingProfileRepository = tenantBillingProfileRepository;
         _logger = logger;
     }
 
@@ -69,10 +72,39 @@ public sealed class CheckoutService : ICheckoutService
             "Iniciando checkout de {ExternalReference} para o Tenant {TenantId} no valor de {TotalAmount}",
             externalRef, tenantId, totalAmount);
 
-        // 1. Resolve usuário e endereço para compliance/antifraude
+        // 1. Resolve usuário e perfil fiscal/endereço de faturamento do Tenant
         var payerEmail = request.Payer?.Email;
         var user = await GetUserByEmailAsync(payerEmail, cancellationToken);
-        var payerRequest = BuildMercadoPagoPayer(user, request.Payer);
+        var billingProfile = await _tenantBillingProfileRepository.GetByTenantIdAsync(tenantId, cancellationToken);
+
+        // Se a requisição trouxe dados de documento/endereço, efetua upsert no perfil de faturamento do Tenant
+        if (request.Payer?.Identification is { Number.Length: >= 11 } &&
+            request.Payer?.Address is { ZipCode.Length: >= 8, StreetName.Length: > 0 })
+        {
+            var cleanDoc = CleanDocumentSpan(request.Payer.Identification.Number.AsSpan());
+            var docType = request.Payer.Identification.Type ?? (cleanDoc.Length == 14 ? "CNPJ" : "CPF");
+            var cleanZip = CleanDocumentSpan(request.Payer.Address.ZipCode.AsSpan());
+            var fullName = $"{request.Payer.FirstName} {request.Payer.LastName}".Trim();
+            if (string.IsNullOrWhiteSpace(fullName)) fullName = user?.FullName ?? "Lojista";
+
+            billingProfile = await _tenantBillingProfileRepository.UpsertAsync(new TenantBillingProfile
+            {
+                TenantId = tenantId,
+                LegalName = fullName,
+                DocumentType = docType,
+                DocumentNumber = cleanDoc,
+                Email = request.Payer.Email ?? user?.Email,
+                ZipCode = cleanZip,
+                StreetName = request.Payer.Address.StreetName ?? string.Empty,
+                StreetNumber = request.Payer.Address.StreetNumber ?? "S/N",
+                Complement = request.Payer.Address.Complement,
+                Neighborhood = request.Payer.Address.Neighborhood ?? string.Empty,
+                City = request.Payer.Address.City ?? string.Empty,
+                FederalUnit = request.Payer.Address.FederalUnit ?? "SP"
+            }, cancellationToken);
+        }
+
+        var payerRequest = BuildMercadoPagoPayer(user, request.Payer, billingProfile);
 
         // 2. Resolve plano para liberação futura de créditos
         var firstItemCode = request.Items.FirstOrDefault()?.ExternalCode;
@@ -87,16 +119,24 @@ public sealed class CheckoutService : ICheckoutService
         var isPix = string.Equals(paymentMethodId, "pix", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(firstPaymentRequest?.PaymentMethod?.Type, "bank_transfer", StringComparison.OrdinalIgnoreCase);
 
-        // 3. Monta entidade de domínio com Target-Typed new
+        // 3. Monta entidade de domínio com Target-Typed new e snapshot fiscal/endereço
         Order order = new()
         {
             TenantId = tenantId,
             PlanId = plan?.Id,
             UserId = user?.Id,
             ExternalReference = externalRef,
-            PayerEmail = payerEmail ?? user?.Email,
-            PayerDocumentType = request.Payer?.Identification?.Type ?? "CPF",
-            PayerDocumentNumber = request.Payer?.Identification?.Number,
+            PayerName = $"{payerRequest.FirstName} {payerRequest.LastName}".Trim(),
+            PayerEmail = payerRequest.Email,
+            PayerDocumentType = payerRequest.Identification?.Type ?? "CPF",
+            PayerDocumentNumber = payerRequest.Identification?.Number,
+            PayerZipCode = payerRequest.Address?.ZipCode,
+            PayerStreetName = payerRequest.Address?.StreetName,
+            PayerStreetNumber = payerRequest.Address?.StreetNumber,
+            PayerComplement = payerRequest.Address?.Complement,
+            PayerNeighborhood = payerRequest.Address?.Neighborhood,
+            PayerCity = payerRequest.Address?.City,
+            PayerFederalUnit = payerRequest.Address?.FederalUnit,
             PaymentMethod = paymentMethodId,
             TotalAmount = totalAmount,
             Status = "pending",
@@ -232,33 +272,46 @@ public sealed class CheckoutService : ICheckoutService
         return await _userRepository.GetByEmailAsync(email, ct);
     }
 
-    private static MercadoPagoPayerRequest BuildMercadoPagoPayer(User? user, MercadoPagoPayerRequest? existingPayer)
+    private static MercadoPagoPayerRequest BuildMercadoPagoPayer(
+        User? user, 
+        MercadoPagoPayerRequest? existingPayer,
+        TenantBillingProfile? billingProfile)
     {
-        var (firstName, lastName) = ExtractNames(user?.FullName ?? existingPayer?.FirstName);
+        var (firstName, lastName) = ExtractNames(existingPayer?.FirstName ?? billingProfile?.LegalName ?? user?.FullName);
         if (!string.IsNullOrWhiteSpace(existingPayer?.LastName))
         {
             lastName = existingPayer.LastName;
         }
 
-        var docType = existingPayer?.Identification?.Type ?? "CPF";
-        var cleanDoc = CleanDocumentSpan((existingPayer?.Identification?.Number ?? string.Empty).AsSpan());
+        var docType = existingPayer?.Identification?.Type ?? billingProfile?.DocumentType ?? "CPF";
+        var rawDoc = existingPayer?.Identification?.Number ?? billingProfile?.DocumentNumber ?? string.Empty;
+        var cleanDoc = CleanDocumentSpan(rawDoc.AsSpan());
+
+        var zipCode = existingPayer?.Address?.ZipCode ?? billingProfile?.ZipCode ?? "01001-000";
+        var streetName = existingPayer?.Address?.StreetName ?? billingProfile?.StreetName ?? "Avenida Paulista";
+        var streetNumber = existingPayer?.Address?.StreetNumber ?? billingProfile?.StreetNumber ?? "1000";
+        var neighborhood = existingPayer?.Address?.Neighborhood ?? billingProfile?.Neighborhood ?? "Bela Vista";
+        var city = existingPayer?.Address?.City ?? billingProfile?.City ?? "São Paulo";
+        var federalUnit = existingPayer?.Address?.FederalUnit ?? billingProfile?.FederalUnit ?? "SP";
+        var complement = existingPayer?.Address?.Complement ?? billingProfile?.Complement;
 
         return new MercadoPagoPayerRequest
         {
-            Email = existingPayer?.Email ?? user?.Email ?? "financeiro@ecommercebot.local",
+            Email = existingPayer?.Email ?? billingProfile?.Email ?? user?.Email ?? "financeiro@ecommercebot.local",
             FirstName = firstName,
             LastName = lastName,
             Identification = !string.IsNullOrWhiteSpace(cleanDoc)
                 ? new MercadoPagoIdentificationRequest { Type = docType, Number = cleanDoc }
                 : null,
-            Address = existingPayer?.Address ?? new MercadoPagoAddressRequest
+            Address = new MercadoPagoAddressRequest
             {
-                ZipCode = "01001-000",
-                StreetName = "Avenida Paulista",
-                StreetNumber = "1000",
-                Neighborhood = "Bela Vista",
-                City = "São Paulo",
-                FederalUnit = "SP"
+                ZipCode = zipCode,
+                StreetName = streetName,
+                StreetNumber = streetNumber,
+                Neighborhood = neighborhood,
+                City = city,
+                FederalUnit = federalUnit,
+                Complement = complement
             }
         };
     }

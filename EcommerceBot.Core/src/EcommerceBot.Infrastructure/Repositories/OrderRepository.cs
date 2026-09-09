@@ -34,12 +34,14 @@ public sealed class OrderRepository : IOrderRepository
         const string sqlOrder = @"
             INSERT INTO dbo.Orders 
             (Id, TenantId, UserId, PlanId, ExternalReference, TotalAmount, TotalPaidAmount, Currency, Status, PaymentMethod, 
-             MpPaymentId, PixQrCode, PixQrCodeBase64, PixExpirationDate, PayerEmail, PayerDocumentType, 
-             PayerDocumentNumber, TicketUrl, CreatedAt, UpdatedAt)
+             MpPaymentId, PixQrCode, PixQrCodeBase64, PixExpirationDate, PayerName, PayerEmail, PayerDocumentType, 
+             PayerDocumentNumber, PayerZipCode, PayerStreetName, PayerStreetNumber, PayerComplement, 
+             PayerNeighborhood, PayerCity, PayerFederalUnit, TicketUrl, CreatedAt, UpdatedAt)
             VALUES 
             (@Id, @TenantId, @UserId, @PlanId, @ExternalReference, @TotalAmount, @TotalPaidAmount, @Currency, @Status, @PaymentMethod, 
-             @MpPaymentId, @PixQrCode, @PixQrCodeBase64, @PixExpirationDate, @PayerEmail, @PayerDocumentType, 
-             @PayerDocumentNumber, @TicketUrl, @CreatedAt, @UpdatedAt);";
+             @MpPaymentId, @PixQrCode, @PixQrCodeBase64, @PixExpirationDate, @PayerName, @PayerEmail, @PayerDocumentType, 
+             @PayerDocumentNumber, @PayerZipCode, @PayerStreetName, @PayerStreetNumber, @PayerComplement, 
+             @PayerNeighborhood, @PayerCity, @PayerFederalUnit, @TicketUrl, @CreatedAt, @UpdatedAt);";
 
         var cmdOrder = new CommandDefinition(sqlOrder, order, cancellationToken: cancellationToken);
         await connection.ExecuteAsync(cmdOrder);

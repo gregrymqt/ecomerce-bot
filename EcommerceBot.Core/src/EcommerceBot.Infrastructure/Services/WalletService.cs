@@ -18,6 +18,7 @@ public sealed class WalletService : IWalletService
     private readonly IPlanRepository _planRepository;
     private readonly IOrderRepository _orderRepository;
     private readonly IMercadoPagoGateway _mercadoPagoGateway;
+    private readonly ITenantBillingProfileRepository _tenantBillingProfileRepository;
     private readonly ILogger<WalletService> _logger;
 
     public WalletService(
@@ -25,12 +26,14 @@ public sealed class WalletService : IWalletService
         IPlanRepository planRepository,
         IOrderRepository orderRepository,
         IMercadoPagoGateway mercadoPagoGateway,
+        ITenantBillingProfileRepository tenantBillingProfileRepository,
         ILogger<WalletService> logger)
     {
         _tenantRepository = tenantRepository;
         _planRepository = planRepository;
         _orderRepository = orderRepository;
         _mercadoPagoGateway = mercadoPagoGateway;
+        _tenantBillingProfileRepository = tenantBillingProfileRepository;
         _logger = logger;
     }
 
@@ -98,6 +101,28 @@ public sealed class WalletService : IWalletService
         var isPix = request.PaymentMethod.ToLower() == "pix";
         var externalRef = $"rec_{tenantId.ToString()[..8]}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
 
+        var billingProfile = await _tenantBillingProfileRepository.GetByTenantIdAsync(tenantId);
+
+        // Se a requisição de recarga trouxe novos dados de documento, atualiza o perfil do tenant
+        if (!string.IsNullOrWhiteSpace(request.Payer?.Identification?.Number) && request.Payer.Identification.Number.Length >= 11)
+        {
+            var rawDoc = request.Payer.Identification.Number.Replace(".", "").Replace("-", "").Replace("/", "").Trim();
+            var docType = request.Payer.Identification.Type ?? (rawDoc.Length == 14 ? "CNPJ" : "CPF");
+
+            if (billingProfile != null)
+            {
+                billingProfile.DocumentNumber = rawDoc;
+                billingProfile.DocumentType = docType;
+                billingProfile = await _tenantBillingProfileRepository.UpsertAsync(billingProfile);
+            }
+        }
+
+        var payerDocNumber = request.Payer?.Identification?.Number ?? billingProfile?.DocumentNumber;
+        var payerDocType = request.Payer?.Identification?.Type ?? billingProfile?.DocumentType ?? "CPF";
+        var cleanDocNumber = !string.IsNullOrEmpty(payerDocNumber)
+            ? payerDocNumber.Replace(".", "").Replace("-", "").Replace("/", "").Trim()
+            : null;
+
         var order = new Order
         {
             Id = Guid.NewGuid(),
@@ -107,9 +132,17 @@ public sealed class WalletService : IWalletService
             TotalAmount = amount,
             Status = "pending",
             PaymentMethod = request.PaymentMethod.ToLower(),
-            PayerEmail = request.PayerEmail ?? request.Payer?.Email ?? "cliente@ecommercebot.local",
-            PayerDocumentNumber = request.Payer?.Identification?.Number,
-            PayerDocumentType = request.Payer?.Identification?.Type ?? "CPF",
+            PayerName = billingProfile?.LegalName,
+            PayerEmail = request.PayerEmail ?? request.Payer?.Email ?? billingProfile?.Email ?? "cliente@ecommercebot.local",
+            PayerDocumentNumber = cleanDocNumber,
+            PayerDocumentType = payerDocType,
+            PayerZipCode = billingProfile?.ZipCode,
+            PayerStreetName = billingProfile?.StreetName,
+            PayerStreetNumber = billingProfile?.StreetNumber,
+            PayerComplement = billingProfile?.Complement,
+            PayerNeighborhood = billingProfile?.Neighborhood,
+            PayerCity = billingProfile?.City,
+            PayerFederalUnit = billingProfile?.FederalUnit,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
             Items = new List<OrderItem>
@@ -134,10 +167,21 @@ public sealed class WalletService : IWalletService
             Payer = new MercadoPagoPayerRequest
             {
                 Email = order.PayerEmail,
+                FirstName = billingProfile?.LegalName,
                 Identification = !string.IsNullOrEmpty(order.PayerDocumentNumber) ? new MercadoPagoIdentificationRequest
                 {
                     Type = order.PayerDocumentType ?? "CPF",
-                    Number = order.PayerDocumentNumber.Replace(".", "").Replace("-", "")
+                    Number = order.PayerDocumentNumber
+                } : null,
+                Address = !string.IsNullOrEmpty(billingProfile?.ZipCode) ? new MercadoPagoAddressRequest
+                {
+                    ZipCode = billingProfile.ZipCode,
+                    StreetName = billingProfile.StreetName,
+                    StreetNumber = billingProfile.StreetNumber,
+                    Neighborhood = billingProfile.Neighborhood,
+                    City = billingProfile.City,
+                    FederalUnit = billingProfile.FederalUnit,
+                    Complement = billingProfile.Complement
                 } : null
             },
             Transactions = new MercadoPagoTransactionsRequest

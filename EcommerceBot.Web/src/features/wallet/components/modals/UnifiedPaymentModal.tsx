@@ -14,12 +14,15 @@ import {
   CheckCircle2,
   AlertCircle,
   Sparkles,
+  Building2,
+  Loader2,
 } from 'lucide-react';
 
 import { Modal } from '@/components/ui/overlay/Modal';
 import { Button } from '@/components/ui/Button';
 import { PixPaymentTab } from '../tabs/PixPaymentTab';
 import { CreditCardPaymentTab } from '../tabs/CreditCardPaymentTab';
+import { BillingProfileSummary, BillingAddressForm } from '../payment';
 import { useUnifiedPayment } from '../../hooks/useUnifiedPayment';
 import type { UnifiedPaymentModalProps } from '../../types';
 
@@ -43,6 +46,15 @@ export const UnifiedPaymentModal: React.FC<UnifiedPaymentModalProps> = ({
     handleGeneratePix,
     handleProcessCreditCard,
     handleModalClose,
+    billingProfile,
+    hasBillingProfile,
+    isEditingBilling,
+    setIsEditingBilling,
+    billingLoading,
+    billingSaving,
+    cepLoading,
+    handleSaveBilling,
+    handleLookupCep,
   } = useUnifiedPayment({
     isOpen,
     target,
@@ -116,56 +128,110 @@ export const UnifiedPaymentModal: React.FC<UnifiedPaymentModalProps> = ({
           </div>
         </div>
 
-        {/* Seletor de Forma de Pagamento */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => setPaymentMethod('pix')}
-            className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all min-h-[44px] cursor-pointer ${
-              paymentMethod === 'pix'
-                ? 'bg-emerald-500/10 border-emerald-500/60 text-emerald-300 shadow-md shadow-emerald-500/10'
-                : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
-            }`}
-          >
-            <QrCode className="w-4 h-4 text-emerald-400" />
-            <span>PIX (Instantâneo)</span>
-          </button>
+        {/* Seção de Dados Fiscais / Faturamento */}
+        {billingLoading ? (
+          <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-center gap-2 text-xs text-slate-400 min-h-[56px]">
+            <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+            <span>Carregando dados fiscais...</span>
+          </div>
+        ) : isEditingBilling ? (
+          <div className="p-4 rounded-xl bg-slate-900 border border-indigo-500/30 space-y-3 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <span className="text-sm font-bold text-white flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-indigo-400" />
+                  Identificação Fiscal & Endereço
+                </span>
+                <p className="text-xs text-slate-400">
+                  Necessário para emissão e validação do pagamento no Mercado Pago.
+                </p>
+              </div>
+              {hasBillingProfile && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingBilling(false)}
+                  className="text-xs text-slate-400 hover:text-slate-200 underline cursor-pointer p-1 min-h-[44px] inline-flex items-center"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
 
-          <button
-            type="button"
-            onClick={() => setPaymentMethod('credit_card')}
-            className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all min-h-[44px] cursor-pointer ${
-              paymentMethod === 'credit_card'
-                ? 'bg-indigo-500/10 border-indigo-500/60 text-indigo-300 shadow-md shadow-indigo-500/10'
-                : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
-            }`}
-          >
-            <CreditCard className="w-4 h-4 text-indigo-400" />
-            <span>Cartão de Crédito</span>
-          </button>
-        </div>
+            <BillingAddressForm
+              key={billingProfile?.id || (hasBillingProfile ? 'edit' : 'new')}
+              initialProfile={billingProfile}
+              loading={billingSaving}
+              onSave={handleSaveBilling}
+              onCancel={hasBillingProfile ? () => setIsEditingBilling(false) : undefined}
+              onLookupCep={handleLookupCep}
+              cepLoading={cepLoading}
+              submitButtonText="Salvar e Prosseguir"
+            />
+          </div>
+        ) : (
+          billingProfile && (
+            <BillingProfileSummary
+              profile={billingProfile}
+              onEdit={() => setIsEditingBilling(true)}
+            />
+          )
+        )}
 
-        {/* Conteúdo Dinâmico da Forma de Pagamento */}
-        <div className="pt-2">
-          {paymentMethod === 'pix' ? (
-            <PixPaymentTab
-              pixData={pixData}
-              formattedTimeLeft={formattedTimeLeft}
-              isCopied={isCopied}
-              paymentStatus={paymentStatus}
-              loading={loading}
-              onCopyPix={handleCopyPix}
-              onRefreshPix={handleGeneratePix}
-            />
-          ) : (
-            <CreditCardPaymentTab
-              amountBrl={target.amountBrl}
-              loading={loading}
-              submitButtonText={`Pagar R$ ${target.amountBrl.toFixed(2)}`}
-              onSubmit={handleProcessCreditCard}
-            />
-          )}
-        </div>
+        {/* Formas de Pagamento (exibidas somente se não estiver editando faturamento) */}
+        {!isEditingBilling && (
+          <>
+            {/* Seletor de Forma de Pagamento */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('pix')}
+                className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all min-h-[44px] cursor-pointer ${
+                  paymentMethod === 'pix'
+                    ? 'bg-emerald-500/10 border-emerald-500/60 text-emerald-300 shadow-md shadow-emerald-500/10'
+                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <QrCode className="w-4 h-4 text-emerald-400" />
+                <span>PIX (Instantâneo)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('credit_card')}
+                className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all min-h-[44px] cursor-pointer ${
+                  paymentMethod === 'credit_card'
+                    ? 'bg-indigo-500/10 border-indigo-500/60 text-indigo-300 shadow-md shadow-indigo-500/10'
+                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <CreditCard className="w-4 h-4 text-indigo-400" />
+                <span>Cartão de Crédito</span>
+              </button>
+            </div>
+
+            {/* Conteúdo Dinâmico da Forma de Pagamento */}
+            <div className="pt-2">
+              {paymentMethod === 'pix' ? (
+                <PixPaymentTab
+                  pixData={pixData}
+                  formattedTimeLeft={formattedTimeLeft}
+                  isCopied={isCopied}
+                  paymentStatus={paymentStatus}
+                  loading={loading}
+                  onCopyPix={handleCopyPix}
+                  onRefreshPix={handleGeneratePix}
+                />
+              ) : (
+                <CreditCardPaymentTab
+                  amountBrl={target.amountBrl}
+                  loading={loading}
+                  submitButtonText={`Pagar R$ ${target.amountBrl.toFixed(2)}`}
+                  onSubmit={handleProcessCreditCard}
+                />
+              )}
+            </div>
+          </>
+        )}
       </div>
     </Modal>
   );

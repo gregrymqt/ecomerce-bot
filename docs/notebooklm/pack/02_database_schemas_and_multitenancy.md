@@ -78,21 +78,6 @@ Este módulo detalha o modelo de persistência relacional do **SQL Server 2022**
   - `CreatedAt`: `DATETIMEOFFSET` (NOT NULL)
   - `UpdatedAt`: `DATETIMEOFFSET` (NOT NULL)
 
-### 🗄️ Tabela `dbo.Subscriptions` (Script: `003_Financial_Plans_And_Subscriptions.sql`)
-  - `Id`: `UNIQUEIDENTIFIER` (NOT NULL)
-  - `TenantId`: `UNIQUEIDENTIFIER` (NOT NULL)
-  - `PlanId`: `UNIQUEIDENTIFIER` (NOT NULL)
-  - `MpPreapprovalId`: `NVARCHAR(100)` (NULL)
-  - `MpPayerId`: `NVARCHAR(100)` (NULL)
-  - `Status`: `NVARCHAR(50)` (NOT NULL)
-  - `CurrentPeriodStart`: `DATETIMEOFFSET` (NULL)
-  - `CurrentPeriodEnd`: `DATETIMEOFFSET` (NULL)
-  - `CancelledAt`: `DATETIMEOFFSET` (NULL)
-  - `CreatedAt`: `DATETIMEOFFSET` (NOT NULL)
-  - `UpdatedAt`: `DATETIMEOFFSET` (NOT NULL)
-  - `REFERENCES`: `dbo` (NULL)
-  - *...e mais 1 colunas.*
-
 ### 🗄️ Tabela `dbo.Orders` (Script: `003_Financial_Plans_And_Subscriptions.sql`)
   - `Id`: `UNIQUEIDENTIFIER` (NOT NULL)
   - `TenantId`: `UNIQUEIDENTIFIER` (NOT NULL)
@@ -253,20 +238,20 @@ Este módulo detalha o modelo de persistência relacional do **SQL Server 2022**
   - `REFERENCES`: `dbo` (NULL)
   - `Type`: `IN` (NULL)
 
-### 🗄️ Tabela `dbo.UserAddresses` (Script: `022_UserAddresses.sql`)
+### 🗄️ Tabela `dbo.TenantBillingProfiles` (Script: `024_Create_Tenant_Billing_Profiles.sql`)
   - `Id`: `UNIQUEIDENTIFIER` (NOT NULL)
   - `TenantId`: `UNIQUEIDENTIFIER` (NOT NULL)
-  - `UserId`: `UNIQUEIDENTIFIER` (NOT NULL)
-  - `ZipCode`: `NVARCHAR(10)` (NOT NULL)
-  - `Street`: `NVARCHAR(150)` (NOT NULL)
-  - `Number`: `NVARCHAR(20)` (NOT NULL)
-  - `Complement`: `NVARCHAR(50)` (NULL)
-  - `Neighborhood`: `NVARCHAR(100)` (NOT NULL)
-  - `City`: `NVARCHAR(100)` (NOT NULL)
-  - `State`: `NVARCHAR(2)` (NOT NULL)
-  - `IsDefault`: `BIT` (NOT NULL)
-  - `CreatedAt`: `DATETIMEOFFSET` (NOT NULL)
-  - *...e mais 2 colunas.*
+  - `LegalName`: `NVARCHAR(255)` (NOT NULL)
+  - `TradeName`: `NVARCHAR(255)` (NULL)
+  - `DocumentType`: `NVARCHAR(10)` (NOT NULL)
+  - `DocumentNumber`: `NVARCHAR(30)` (NOT NULL)
+  - `Email`: `NVARCHAR(255)` (NULL)
+  - `Phone`: `NVARCHAR(50)` (NULL)
+  - `ZipCode`: `NVARCHAR(20)` (NOT NULL)
+  - `StreetName`: `NVARCHAR(255)` (NOT NULL)
+  - `StreetNumber`: `NVARCHAR(50)` (NOT NULL)
+  - `Complement`: `NVARCHAR(150)` (NULL)
+  - *...e mais 6 colunas.*
 
 
 ---

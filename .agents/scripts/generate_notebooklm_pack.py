@@ -46,10 +46,10 @@ def load_graph_stats():
         return {"nodes": 0, "edges": 0}
 
 def parse_sql_tables():
-    """Lê os scripts SQL do DbUp para documentar as tabelas do sistema."""
-    tables = []
+    """Lê os scripts SQL do DbUp para documentar as tabelas ativas do sistema."""
+    active_tables = {}
     if not MIGRATIONS_DIR.exists():
-        return tables
+        return []
 
     sql_files = sorted(list(MIGRATIONS_DIR.glob("*.sql")))
     for sql_file in sql_files:
@@ -57,12 +57,12 @@ def parse_sql_tables():
             content = sql_file.read_text(encoding="utf-8")
         except UnicodeDecodeError:
             content = sql_file.read_text(encoding="latin-1", errors="replace")
-        # Regex para capturar CREATE TABLE dbo.NomeDaTabela
-        matches = re.finditer(r"CREATE\s+TABLE\s+(?:dbo\.)?\[?([a-zA-Z0-9_]+)\]?\s*\((.*?)\);", content, re.DOTALL | re.IGNORECASE)
-        for match in matches:
+
+        # 1. Capturar CREATE TABLE dbo.NomeDaTabela
+        create_matches = re.finditer(r"CREATE\s+TABLE\s+(?:dbo\.)?\[?([a-zA-Z0-9_]+)\]?\s*\((.*?)\);", content, re.DOTALL | re.IGNORECASE)
+        for match in create_matches:
             tname = match.group(1)
             tbody = match.group(2)
-            # Extrair colunas principais
             cols = []
             for line in tbody.split("\n"):
                 line = line.strip()
@@ -74,12 +74,19 @@ def parse_sql_tables():
                     col_type = col_match.group(2)
                     nullable = col_match.group(3) or "NULL"
                     cols.append((col_name, col_type, nullable))
-            tables.append({
+            active_tables[tname.lower()] = {
                 "file": sql_file.name,
                 "table": tname,
                 "columns": cols
-            })
-    return tables
+            }
+
+        # 2. Capturar DROP TABLE dbo.NomeDaTabela e expurgar do schema ativo
+        drop_matches = re.finditer(r"DROP\s+TABLE\s+(?:dbo\.)?\[?([a-zA-Z0-9_]+)\]?", content, re.IGNORECASE)
+        for drop_match in drop_matches:
+            dropped_name = drop_match.group(1).lower()
+            active_tables.pop(dropped_name, None)
+
+    return list(active_tables.values())
 
 def generate_pack_01():
     return """# 🌐 Módulo 1: Hub de APIs Externas, Gateways & Provedores

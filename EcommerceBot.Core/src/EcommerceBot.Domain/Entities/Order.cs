@@ -29,9 +29,17 @@ public sealed class Order
     public string? CardBrand { get; set; }
     public int Installments { get; set; } = 1;
     
+    public string? PayerName { get; set; }
     public string? PayerEmail { get; set; }
     public string? PayerDocumentType { get; set; }
     public string? PayerDocumentNumber { get; set; }
+    public string? PayerZipCode { get; set; }
+    public string? PayerStreetName { get; set; }
+    public string? PayerStreetNumber { get; set; }
+    public string? PayerComplement { get; set; }
+    public string? PayerNeighborhood { get; set; }
+    public string? PayerCity { get; set; }
+    public string? PayerFederalUnit { get; set; }
     public string? TicketUrl { get; set; }
     
     public DateTimeOffset? PaidAt { get; set; }

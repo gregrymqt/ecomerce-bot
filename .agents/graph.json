@@ -2,8 +2,8 @@
   "metadata": {
     "version": "2.0",
     "generator": "generate_knowledge_graph.py",
-    "total_nodes": 167,
-    "total_edges": 169
+    "total_nodes": 172,
+    "total_edges": 176
   },
   "nodes": [
     {
@@ -154,6 +154,13 @@
       "metadata": {}
     },
     {
+      "id": "table:TenantBillingProfiles",
+      "label": "TenantBillingProfiles",
+      "type": "DatabaseTable",
+      "file": "Database.Migrations/Scripts/024_Create_Tenant_Billing_Profiles.sql",
+      "metadata": {}
+    },
+    {
       "id": "code:AiCapacityRepository",
       "label": "AiCapacityRepository",
       "type": "CoreServiceOrRepo",
@@ -242,6 +249,13 @@
       "label": "TenantAiCredentialRepository",
       "type": "CoreServiceOrRepo",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/TenantAiCredentialRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:TenantBillingProfileRepository",
+      "label": "TenantBillingProfileRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/TenantBillingProfileRepository.cs",
       "metadata": {}
     },
     {
@@ -420,6 +434,13 @@
       "metadata": {}
     },
     {
+      "id": "code:TenantBillingProfileService",
+      "label": "TenantBillingProfileService",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/TenantBillingProfileService.cs",
+      "metadata": {}
+    },
+    {
       "id": "code:TenantService",
       "label": "TenantService",
       "type": "CoreServiceOrRepo",
@@ -522,6 +543,13 @@
       "label": "ITenantAiCredentialRepository",
       "type": "CoreServiceOrRepo",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/ITenantAiCredentialRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:ITenantBillingProfileRepository",
+      "label": "ITenantBillingProfileRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/ITenantBillingProfileRepository.cs",
       "metadata": {}
     },
     {
@@ -711,6 +739,13 @@
       "label": "ISystemService",
       "type": "CoreServiceOrRepo",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/ISystemService.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:ITenantBillingProfileService",
+      "label": "ITenantBillingProfileService",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/ITenantBillingProfileService.cs",
       "metadata": {}
     },
     {
@@ -1587,6 +1622,16 @@
       "relationship": "queries"
     },
     {
+      "source": "code:TenantBillingProfileRepository",
+      "target": "code:RedisService",
+      "relationship": "invokes"
+    },
+    {
+      "source": "code:TenantBillingProfileRepository",
+      "target": "table:TenantBillingProfiles",
+      "relationship": "queries"
+    },
+    {
       "source": "code:TenantConfigRepository",
       "target": "code:RedisService",
       "relationship": "invokes"
@@ -1684,6 +1729,11 @@
     {
       "source": "code:CheckoutService",
       "target": "code:UserRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "code:CheckoutService",
+      "target": "code:TenantBillingProfileRepository",
       "relationship": "invokes"
     },
     {
@@ -1847,6 +1897,11 @@
       "relationship": "queries"
     },
     {
+      "source": "code:TenantBillingProfileService",
+      "target": "code:TenantBillingProfileRepository",
+      "relationship": "invokes"
+    },
+    {
       "source": "code:TenantService",
       "target": "code:TenantRepository",
       "relationship": "invokes"
@@ -1879,6 +1934,11 @@
     {
       "source": "code:WalletService",
       "target": "code:OrderRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "code:WalletService",
+      "target": "code:TenantBillingProfileRepository",
       "relationship": "invokes"
     },
     {
@@ -1934,6 +1994,11 @@
     {
       "source": "code:ITenantAiCredentialRepository",
       "target": "code:TenantAiCredentialRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "code:ITenantBillingProfileRepository",
+      "target": "code:TenantBillingProfileRepository",
       "relationship": "invokes"
     },
     {
@@ -2064,6 +2129,11 @@
     {
       "source": "code:ISystemService",
       "target": "code:SystemService",
+      "relationship": "invokes"
+    },
+    {
+      "source": "code:ITenantBillingProfileService",
+      "target": "code:TenantBillingProfileService",
       "relationship": "invokes"
     },
     {
