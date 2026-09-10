@@ -2,8 +2,8 @@
   "metadata": {
     "version": "2.0",
     "generator": "generate_knowledge_graph.py",
-    "total_nodes": 171,
-    "total_edges": 176
+    "total_nodes": 177,
+    "total_edges": 184
   },
   "nodes": [
     {
@@ -154,10 +154,24 @@
       "metadata": {}
     },
     {
+      "id": "table:AuditLogs",
+      "label": "AuditLogs",
+      "type": "DatabaseTable",
+      "file": "Database.Migrations/Scripts/015_Audit_Logs_And_Compliance.sql",
+      "metadata": {}
+    },
+    {
       "id": "code:AiCapacityRepository",
       "label": "AiCapacityRepository",
       "type": "CoreServiceOrRepo",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/AiCapacityRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:AuditRepository",
+      "label": "AuditRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/AuditRepository.cs",
       "metadata": {}
     },
     {
@@ -298,6 +312,13 @@
       "label": "AiCapacityService",
       "type": "CoreServiceOrRepo",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/AiCapacityService.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:AuditService",
+      "label": "AuditService",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/AuditService.cs",
       "metadata": {}
     },
     {
@@ -469,6 +490,13 @@
       "metadata": {}
     },
     {
+      "id": "code:IAuditRepository",
+      "label": "IAuditRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/IAuditRepository.cs",
+      "metadata": {}
+    },
+    {
       "id": "code:IEmailRepository",
       "label": "IEmailRepository",
       "type": "CoreServiceOrRepo",
@@ -592,6 +620,13 @@
       "label": "IAiCapacityService",
       "type": "CoreServiceOrRepo",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IAiCapacityService.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:IAuditService",
+      "label": "IAuditService",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IAuditService.cs",
       "metadata": {}
     },
     {
@@ -877,6 +912,19 @@
           "GET api/v1/[controller]/status/{paymentId}",
           "POST api/v1/[controller]/orders",
           "GET api/v1/[controller]/orders/{id:guid}"
+        ]
+      }
+    },
+    {
+      "id": "controller:ComplianceController",
+      "label": "ComplianceController",
+      "type": "ApiController",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Api/Controllers/ComplianceController.cs",
+      "metadata": {
+        "base_route": "api/v1/compliance",
+        "endpoints": [
+          "GET api/v1/compliance/audit-logs",
+          "POST api/v1/compliance/forget-me"
         ]
       }
     },
@@ -1515,6 +1563,11 @@
       "relationship": "queries"
     },
     {
+      "source": "code:AuditRepository",
+      "target": "table:AuditLogs",
+      "relationship": "queries"
+    },
+    {
       "source": "code:EmailRepository",
       "target": "table:EmailLogs",
       "relationship": "queries"
@@ -1673,6 +1726,26 @@
       "source": "code:AiCapacityService",
       "target": "code:AiCapacityRepository",
       "relationship": "invokes"
+    },
+    {
+      "source": "code:AuditService",
+      "target": "code:AuditRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "code:AuditService",
+      "target": "code:RedisService",
+      "relationship": "invokes"
+    },
+    {
+      "source": "code:AuditService",
+      "target": "table:Users",
+      "relationship": "queries"
+    },
+    {
+      "source": "code:AuditService",
+      "target": "table:Tenants",
+      "relationship": "queries"
     },
     {
       "source": "code:AuthService",
@@ -1940,6 +2013,11 @@
       "relationship": "invokes"
     },
     {
+      "source": "code:IAuditRepository",
+      "target": "code:AuditRepository",
+      "relationship": "invokes"
+    },
+    {
       "source": "code:IEmailRepository",
       "target": "code:EmailRepository",
       "relationship": "invokes"
@@ -2022,6 +2100,11 @@
     {
       "source": "code:IAiCapacityService",
       "target": "code:AiCapacityService",
+      "relationship": "invokes"
+    },
+    {
+      "source": "code:IAuditService",
+      "target": "code:AuditService",
       "relationship": "invokes"
     },
     {
@@ -2197,6 +2280,11 @@
     {
       "source": "controller:CheckoutController",
       "target": "code:CheckoutService",
+      "relationship": "invokes"
+    },
+    {
+      "source": "controller:ComplianceController",
+      "target": "code:AuditService",
       "relationship": "invokes"
     },
     {

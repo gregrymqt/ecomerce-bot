@@ -6,6 +6,9 @@ using EcommerceBot.Infrastructure.Configurations;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Hardening de Kestrel (remoção de cabeçalho Server contra fingerprinting)
+builder.ConfigureKestrelSecurity();
+
 // Configuração modular de observabilidade (Serilog: Console rico, app-.log e errors-.json)
 builder.ConfigureSerilog();
 
@@ -36,6 +39,9 @@ if (app.Environment.IsDevelopment())
 
 // Forwarded Headers para suporte a Proxies Reversos, Ngrok e SSL Termination
 app.UseForwardedHeadersConfiguration();
+
+// Cabeçalhos de Segurança HTTP (HSTS, CSP, Anti-Clickjacking, Anti-MIME sniffing)
+app.UseSecurityHeaders();
 
 app.UseHttpsRedirection();
 

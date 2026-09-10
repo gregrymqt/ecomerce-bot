@@ -7,4 +7,5 @@ namespace EcommerceBot.Domain.Interfaces;
 public interface IDbConnectionFactory
 {
     Task<IDbConnection> CreateConnectionAsync(CancellationToken cancellationToken = default);
+    Task<IDbConnection> CreateConnectionAsync(System.Guid? tenantId, CancellationToken cancellationToken = default);
 }

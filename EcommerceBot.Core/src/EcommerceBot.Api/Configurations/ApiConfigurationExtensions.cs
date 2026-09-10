@@ -31,6 +31,7 @@ public static class ApiConfigurationExtensions
         // Suporte a RFC 7807 (ProblemDetails)
         services.AddProblemDetails();
 
+        services.AddHttpContextAccessor();
         services.AddScoped<ITenantContext, TenantContext>();
         services.AddControllersWithViews();
         services.AddOpenApi();

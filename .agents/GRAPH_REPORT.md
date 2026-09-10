@@ -20,7 +20,7 @@
 - `Fila:` **`queue:ecommerce`**
 
 ## 🗄️ 3. Tabelas Mapeadas no Banco de Dados (DbUp)
-- **Total de Tabelas Detectadas:** 21
+- **Total de Tabelas Detectadas:** 22
 - **Tabelas Core:** Tenants, Roles, Users, TenantAiCredentials, TenantSsoMappings, Products, Plans, Orders, OrderItems, TenantBillingProfiles, TrafficAttributions, SaasTrafficVisits...
 
 ## ⚡ 4. Controllers e Rotas da API Core
@@ -31,10 +31,10 @@
 - **AnalyticsController** (`/api/v1/[controller]`): 2 endpoints mapeados.
 - **AuthController** (`/api/v1/[controller]`): 10 endpoints mapeados.
 - **CheckoutController** (`/api/v1/[controller]`): 3 endpoints mapeados.
+- **ComplianceController** (`/api/v1/compliance`): 2 endpoints mapeados.
 - **EmailWebhookController** (`/api/v1/emails/webhooks`): 1 endpoints mapeados.
 - **IntegrationsController** (`/api/v1/integrations`): 4 endpoints mapeados.
-- **MercadoPagoWebhookController** (`/api/v1/webhooks/mercadopago`): 1 endpoints mapeados.
-- *... e mais 13 controllers catalogados no graph.json.*
+- *... e mais 14 controllers catalogados no graph.json.*
 
 ## 💳 5. Topologia do Ledger de Créditos, Quotas e Consumidores
 - **Entidade Canônica:** `dbo.CreditTransactions` (auditável, append-only, rastreabilidade por `TenantId`).

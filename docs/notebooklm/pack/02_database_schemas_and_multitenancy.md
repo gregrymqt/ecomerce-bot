@@ -286,6 +286,20 @@ Este módulo detalha o modelo de persistência relacional do **SQL Server 2022**
   - `REFERENCES`: `dbo` (NULL)
   - `Type`: `IN` (NULL)
 
+### 🗄️ Tabela `dbo.AuditLogs` (Script: `015_Audit_Logs_And_Compliance.sql`)
+  - `Id`: `UNIQUEIDENTIFIER` (NOT NULL)
+  - `TenantId`: `UNIQUEIDENTIFIER` (NOT NULL)
+  - `UserId`: `UNIQUEIDENTIFIER` (NULL)
+  - `Action`: `NVARCHAR(100)` (NOT NULL)
+  - `EntityName`: `NVARCHAR(100)` (NOT NULL)
+  - `EntityId`: `NVARCHAR(100)` (NULL)
+  - `OldValuesJson`: `NVARCHAR(MAX)` (NULL)
+  - `NewValuesJson`: `NVARCHAR(MAX)` (NULL)
+  - `IpAddress`: `NVARCHAR(50)` (NULL)
+  - `UserAgent`: `NVARCHAR(500)` (NULL)
+  - `CreatedAt`: `DATETIMEOFFSET` (NOT NULL)
+  - `REFERENCES`: `dbo` (NULL)
+
 
 ---
 
