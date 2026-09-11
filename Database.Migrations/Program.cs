@@ -38,10 +38,26 @@ public class Program
 
         if (string.IsNullOrWhiteSpace(connectionString))
         {
-            connectionString = "Server=localhost,1433;Database=EcommerceBotDb;User Id=sa;Password=YourStrong@Passw0rdDev;TrustServerCertificate=True;Encrypt=False;";
+            connectionString = "Server=127.0.0.1,1433;Database=EcommerceBotDb;User Id=sa;Password=YourStrong@Passw0rdDev;TrustServerCertificate=True;Encrypt=True;";
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine($"⚠️ Nenhuma connection string informada. Utilizando padrão local de desenvolvimento: {connectionString}");
             Console.ResetColor();
+        }
+        else
+        {
+            // Sanitização para ambientes Windows + Docker Desktop:
+            // 'localhost' em Windows resolve para IPv6 (::1) prioritariamente. O proxy do WSL2/Docker
+            // pode derrubar a conexão durante o handshake de pré-logon TDS TLS. Normalizar para 127.0.0.1
+            // e garantir Encrypt=True / TrustServerCertificate=True elimina o erro de aperto de mão.
+            if (connectionString.Contains("localhost", StringComparison.OrdinalIgnoreCase))
+            {
+                connectionString = connectionString.Replace("localhost", "127.0.0.1", StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (connectionString.Contains("Encrypt=False", StringComparison.OrdinalIgnoreCase))
+            {
+                connectionString = connectionString.Replace("Encrypt=False", "Encrypt=True", StringComparison.OrdinalIgnoreCase);
+            }
         }
 
         try

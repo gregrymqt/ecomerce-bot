@@ -46,52 +46,47 @@ CREATE SECURITY POLICY Security.TenantSecurityPolicy
     ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.TenantBillingProfiles AFTER INSERT,
     ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.TenantBillingProfiles AFTER UPDATE,
 
-    -- 4. Eventos de Consumo e Tarifação (Metering)
-    ADD FILTER PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.MeteringEvents,
-    ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.MeteringEvents AFTER INSERT,
-    ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.MeteringEvents AFTER UPDATE,
-
-    -- 5. Atribuições de Tráfego
+    -- 4. Atribuições de Tráfego
     ADD FILTER PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.TrafficAttributions,
     ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.TrafficAttributions AFTER INSERT,
     ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.TrafficAttributions AFTER UPDATE,
 
-    -- 6. Logs de Consumo de LLM
+    -- 5. Logs de Consumo de LLM
     ADD FILTER PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.LLMUsageLogs,
     ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.LLMUsageLogs AFTER INSERT,
     ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.LLMUsageLogs AFTER UPDATE,
 
-    -- 7. Logs de E-mails Transacionais
+    -- 6. Logs de E-mails Transacionais
     ADD FILTER PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.EmailLogs,
     ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.EmailLogs AFTER INSERT,
     ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.EmailLogs AFTER UPDATE,
 
-    -- 8. Configurações de Tenant
+    -- 7. Configurações de Tenant
     ADD FILTER PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.TenantConfigs,
     ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.TenantConfigs AFTER INSERT,
     ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.TenantConfigs AFTER UPDATE,
 
-    -- 9. Atividades de Robôs
+    -- 8. Atividades de Robôs
     ADD FILTER PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.RobotActivities,
     ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.RobotActivities AFTER INSERT,
     ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.RobotActivities AFTER UPDATE,
 
-    -- 10. Integrações E-commerce (Shopify / Nuvemshop)
+    -- 9. Integrações E-commerce (Shopify / Nuvemshop)
     ADD FILTER PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.StoreIntegrations,
     ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.StoreIntegrations AFTER INSERT,
     ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.StoreIntegrations AFTER UPDATE,
 
-    -- 11. Extrato de Créditos (Ledger)
-    ADD FILTER PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.CreditLedger,
-    ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.CreditLedger AFTER INSERT,
-    ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.CreditLedger AFTER UPDATE,
+    -- 10. Extrato e Transações de Crédito (CreditTransactions)
+    ADD FILTER PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.CreditTransactions,
+    ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.CreditTransactions AFTER INSERT,
+    ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.CreditTransactions AFTER UPDATE,
 
-    -- 12. Créditos BYOK de Provedores de IA
-    ADD FILTER PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.AiProviderCredits,
-    ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.AiProviderCredits AFTER INSERT,
-    ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.AiProviderCredits AFTER UPDATE,
+    -- 11. Credenciais BYOK do Tenant (TenantAiCredentials)
+    ADD FILTER PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.TenantAiCredentials,
+    ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.TenantAiCredentials AFTER INSERT,
+    ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.TenantAiCredentials AFTER UPDATE,
 
-    -- 13. Mapeamentos SSO de Tenants
+    -- 12. Mapeamentos SSO de Tenants
     ADD FILTER PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.TenantSsoMappings,
     ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.TenantSsoMappings AFTER INSERT,
     ADD BLOCK PREDICATE Security.fn_TenantAccessPredicate(TenantId) ON dbo.TenantSsoMappings AFTER UPDATE

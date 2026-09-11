@@ -29,6 +29,28 @@ public static class DatabaseConfigurationHelper
         }
     }
 
+    private const string AlterIsolationSql = """
+        DECLARE @sql NVARCHAR(MAX) = N'
+            ALTER DATABASE ' + QUOTENAME(@db) + N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+            ALTER DATABASE ' + QUOTENAME(@db) + N' SET READ_COMMITTED_SNAPSHOT ON;
+            ALTER DATABASE ' + QUOTENAME(@db) + N' SET ALLOW_SNAPSHOT_ISOLATION ON;
+            ALTER DATABASE ' + QUOTENAME(@db) + N' SET MULTI_USER;';
+        EXEC sp_executesql @sql;
+        """;
+
+    private const string AlterQueryStoreSql = """
+        DECLARE @sql NVARCHAR(MAX) = N'
+            ALTER DATABASE ' + QUOTENAME(@db) + N' SET QUERY_STORE = ON (
+                OPERATION_MODE = READ_WRITE,
+                CLEANUP_POLICY = (STALE_QUERY_THRESHOLD_DAYS = 30),
+                DATA_FLUSH_INTERVAL_SECONDS = 900,
+                MAX_STORAGE_SIZE_MB = 1024,
+                QUERY_CAPTURE_MODE = AUTO,
+                SIZE_BASED_CLEANUP_MODE = AUTO
+            );';
+        EXEC sp_executesql @sql;
+        """;
+
     private static void EnsureRcsiAndSnapshotIsolation(SqlConnectionStringBuilder originalBuilder, string targetDatabase)
     {
         bool rcsiEnabled = false;
@@ -77,14 +99,9 @@ public static class DatabaseConfigurationHelper
             using var masterConn = new SqlConnection(masterBuilder.ConnectionString);
             masterConn.Open();
 
-            var alterSql = $"""
-                ALTER DATABASE [{targetDatabase}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-                ALTER DATABASE [{targetDatabase}] SET READ_COMMITTED_SNAPSHOT ON;
-                ALTER DATABASE [{targetDatabase}] SET ALLOW_SNAPSHOT_ISOLATION ON;
-                ALTER DATABASE [{targetDatabase}] SET MULTI_USER;
-                """;
-
-            using var alterCmd = new SqlCommand(alterSql, masterConn);
+            // nosemgrep: csharp.lang.security.sqli.csharp-sqli.csharp-sqli
+            using var alterCmd = new SqlCommand(AlterIsolationSql, masterConn);
+            alterCmd.Parameters.AddWithValue("@db", targetDatabase);
             alterCmd.CommandTimeout = 30;
             alterCmd.ExecuteNonQuery();
 
@@ -98,14 +115,9 @@ public static class DatabaseConfigurationHelper
             using var fallbackConn = new SqlConnection(originalBuilder.ConnectionString);
             fallbackConn.Open();
 
-            var fallbackSql = $"""
-                ALTER DATABASE [{targetDatabase}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-                ALTER DATABASE [{targetDatabase}] SET READ_COMMITTED_SNAPSHOT ON;
-                ALTER DATABASE [{targetDatabase}] SET ALLOW_SNAPSHOT_ISOLATION ON;
-                ALTER DATABASE [{targetDatabase}] SET MULTI_USER;
-                """;
-
-            using var fallbackCmd = new SqlCommand(fallbackSql, fallbackConn);
+            // nosemgrep: csharp.lang.security.sqli.csharp-sqli.csharp-sqli
+            using var fallbackCmd = new SqlCommand(AlterIsolationSql, fallbackConn);
+            fallbackCmd.Parameters.AddWithValue("@db", targetDatabase);
             fallbackCmd.CommandTimeout = 30;
             fallbackCmd.ExecuteNonQuery();
 
@@ -154,18 +166,9 @@ public static class DatabaseConfigurationHelper
         Console.WriteLine("   • Observabilidade: Ativando Query Store (Auto-Capture & 30 dias retenção)...");
         Console.ResetColor();
 
-        var alterQueryStoreSql = $"""
-                ALTER DATABASE [{targetDatabase}] SET QUERY_STORE = ON (
-                    OPERATION_MODE = READ_WRITE,
-                    CLEANUP_POLICY = (STALE_QUERY_THRESHOLD_DAYS = 30),
-                    DATA_FLUSH_INTERVAL_SECONDS = 900,
-                    MAX_STORAGE_SIZE_MB = 1024,
-                    QUERY_CAPTURE_MODE = AUTO,
-                    SIZE_BASED_CLEANUP_MODE = AUTO
-                );
-                """;
-
-        using var alterCmd = new SqlCommand(alterQueryStoreSql, connection);
+        // nosemgrep: csharp.lang.security.sqli.csharp-sqli.csharp-sqli
+        using var alterCmd = new SqlCommand(AlterQueryStoreSql, connection);
+        alterCmd.Parameters.AddWithValue("@db", targetDatabase);
         alterCmd.CommandTimeout = 30;
         alterCmd.ExecuteNonQuery();
 

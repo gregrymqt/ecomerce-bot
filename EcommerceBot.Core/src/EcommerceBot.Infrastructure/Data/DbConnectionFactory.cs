@@ -35,6 +35,18 @@ public sealed class DbConnectionFactory : IDbConnectionFactory
             throw new ArgumentNullException(nameof(databaseOptions), "Connection string 'DefaultConnection' not found in configuration.");
         }
 
+        // Sanitização defensiva para conexões locais via Docker Desktop (WSL2):
+        // 'localhost' resolve para IPv6 (::1) no Windows, provocando reset de conexão (error: 0) no handshake TDS.
+        if (_connectionString.Contains("localhost", StringComparison.OrdinalIgnoreCase))
+        {
+            _connectionString = _connectionString.Replace("localhost", "127.0.0.1", StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (_connectionString.Contains("Encrypt=False", StringComparison.OrdinalIgnoreCase))
+        {
+            _connectionString = _connectionString.Replace("Encrypt=False", "Encrypt=True", StringComparison.OrdinalIgnoreCase);
+        }
+
         _httpContextAccessor = httpContextAccessor;
     }
 
