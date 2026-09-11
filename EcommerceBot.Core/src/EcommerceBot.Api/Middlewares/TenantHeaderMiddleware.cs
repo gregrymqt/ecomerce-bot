@@ -58,15 +58,47 @@ public class TenantHeaderMiddleware
             return;
         }
 
-        if (!context.Request.Headers.TryGetValue("X-Tenant-ID", out var tenantIdHeader))
+        // Tratamento especial estritamente para a rota SSE /api/v1/demo/stream:
+        // O EventSource do navegador não suporta envio de headers customizados como X-Tenant-ID.
+        // Permitimos a leitura via query string ('tenant_id' ou 'tenantId') com validação anti-spoofing estrita.
+        var isDemoStream = path.StartsWith("/api/v1/demo/stream", StringComparison.OrdinalIgnoreCase);
+        string? rawTenantId = null;
+
+        if (isDemoStream)
         {
-            await WriteProblemResponseAsync(context, StatusCodes.Status400BadRequest, "Missing Tenant Header", "O header X-Tenant-ID é obrigatório.");
-            return;
+            if (context.Request.Headers.TryGetValue("X-Tenant-ID", out var headerVal))
+            {
+                rawTenantId = headerVal.ToString();
+            }
+            else if (context.Request.Query.TryGetValue("tenant_id", out var queryVal) ||
+                     context.Request.Query.TryGetValue("tenantId", out queryVal))
+            {
+                rawTenantId = queryVal.ToString();
+            }
+            else if (context.User.Identity?.IsAuthenticated == true)
+            {
+                rawTenantId = context.User.FindFirst("tenantId")?.Value;
+            }
+
+            if (string.IsNullOrWhiteSpace(rawTenantId))
+            {
+                await WriteProblemResponseAsync(context, StatusCodes.Status400BadRequest, "Missing Tenant Identifier", "O parâmetro tenant_id na query string ou o header X-Tenant-ID é obrigatório para abrir stream SSE.");
+                return;
+            }
+        }
+        else
+        {
+            if (!context.Request.Headers.TryGetValue("X-Tenant-ID", out var tenantIdHeader))
+            {
+                await WriteProblemResponseAsync(context, StatusCodes.Status400BadRequest, "Missing Tenant Header", "O header X-Tenant-ID é obrigatório.");
+                return;
+            }
+            rawTenantId = tenantIdHeader.ToString();
         }
 
-        if (!Guid.TryParse(tenantIdHeader, out var tenantId))
+        if (!Guid.TryParse(rawTenantId, out var tenantId))
         {
-            await WriteProblemResponseAsync(context, StatusCodes.Status400BadRequest, "Invalid Tenant Header", "O X-Tenant-ID fornecido não é um GUID válido.");
+            await WriteProblemResponseAsync(context, StatusCodes.Status400BadRequest, "Invalid Tenant Identifier", "O TenantId fornecido não é um GUID válido.");
             return;
         }
 

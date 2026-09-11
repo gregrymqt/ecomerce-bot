@@ -30,6 +30,8 @@ export interface ScrapedProductResult {
   price: string;
   imageUrl: string;
   rawJson: Record<string, unknown>;
+  isFallback?: boolean;
+  errorMessage?: string;
 }
 
 export type ConnectionStatus =
@@ -38,6 +40,7 @@ export type ConnectionStatus =
   | 'connected'
   | 'simulating'
   | 'completed'
+  | 'fallback'
   | 'error';
 
 export interface SampleUrlItem {
@@ -47,6 +50,11 @@ export interface SampleUrlItem {
 }
 
 export interface DemoStreamPayload {
+  type?: string;
+  status?: string;
+  sku?: string;
+  isFallback?: boolean;
+  errorMessage?: string;
   log?: DemoLogEvent;
   progress?: number;
   result?: ScrapedProductResult;
@@ -57,5 +65,6 @@ export interface StreamCallbacks {
   onLog?: (log: DemoLogEvent) => void;
   onProgress?: (progress: number) => void;
   onResult?: (result: ScrapedProductResult) => void;
+  onPayload?: (payload: DemoStreamPayload) => void;
   onError?: (error: Event) => void;
 }

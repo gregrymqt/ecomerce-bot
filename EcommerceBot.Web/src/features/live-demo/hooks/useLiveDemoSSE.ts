@@ -9,6 +9,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import type {
   ConnectionStatus,
   DemoLogEvent,
+  DemoStreamPayload,
   ScrapedProductResult,
 } from '../types';
 import { liveDemoService } from '../services/liveDemoService';
@@ -32,7 +33,7 @@ export function useLiveDemoSSE(): UseLiveDemoSSEReturn {
   const [targetUrl, setTargetUrl] = useState<string>('');
 
   const connectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const simulationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const cleanup = useCallback(() => {
     liveDemoService.disconnectStream();
@@ -41,91 +42,63 @@ export function useLiveDemoSSE(): UseLiveDemoSSEReturn {
       clearTimeout(connectionTimeoutRef.current);
       connectionTimeoutRef.current = null;
     }
-    if (simulationIntervalRef.current) {
-      clearInterval(simulationIntervalRef.current);
-      simulationIntervalRef.current = null;
+    if (progressTimerRef.current) {
+      clearInterval(progressTimerRef.current);
+      progressTimerRef.current = null;
     }
   }, []);
 
-  // Simulação progressiva de extração caso o backend SSE esteja em modo desconectado
-  const runSimulatedFallback = useCallback((url: string) => {
-    setStatus('simulating');
-    let step = 0;
-    const steps: { progress: number; log: DemoLogEvent }[] = [
+  const addLog = useCallback((level: DemoLogEvent['level'], message: string) => {
+    setLogs((prev) => [
+      ...prev,
       {
-        progress: 25,
-        log: {
-          id: `sim-log-1-${Date.now()}`,
-          timestamp: new Date().toLocaleTimeString('pt-BR', { hour12: false }),
-          level: 'SCRAPER',
-          message: `Iniciando Scrapling headless browser para ${new URL(url).hostname}...`,
-        },
+        id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: new Date().toLocaleTimeString('pt-BR', { hour12: false }),
+        level,
+        message,
       },
-      {
-        progress: 50,
-        log: {
-          id: `sim-log-2-${Date.now()}`,
-          timestamp: new Date().toLocaleTimeString('pt-BR', { hour12: false }),
-          level: 'INFO',
-          message: 'Extraindo schema JSON-LD, tags OpenGraph e galeria de imagens.',
-        },
-      },
-      {
-        progress: 75,
-        log: {
-          id: `sim-log-3-${Date.now()}`,
-          timestamp: new Date().toLocaleTimeString('pt-BR', { hour12: false }),
-          level: 'AI_PROCESS',
-          message: 'Enviando contexto para OpenRouter LLM (DeepSeek V3 / Groq Llama 3)...',
-        },
-      },
-      {
-        progress: 90,
-        log: {
-          id: `sim-log-4-${Date.now()}`,
-          timestamp: new Date().toLocaleTimeString('pt-BR', { hour12: false }),
-          level: 'AI_PROCESS',
-          message: 'Gerando título magnético, SEO score e bullet points de alta conversão.',
-        },
-      },
-      {
-        progress: 100,
-        log: {
-          id: `sim-log-5-${Date.now()}`,
-          timestamp: new Date().toLocaleTimeString('pt-BR', { hour12: false }),
-          level: 'SUCCESS',
-          message: 'Catálogo enriquecido com sucesso! Resultado pronto para publicação.',
-        },
-      },
-    ];
-
-    simulationIntervalRef.current = setInterval(() => {
-      if (step < steps.length) {
-        const currentStep = steps[step];
-        setProgress(currentStep.progress);
-        setLogs((prev) => [...prev, currentStep.log]);
-        step += 1;
-      } else {
-        if (simulationIntervalRef.current) {
-          clearInterval(simulationIntervalRef.current);
-          simulationIntervalRef.current = null;
-        }
-        setResult(MOCK_DEMO_RESULT);
-        setStatus('completed');
-      }
-    }, 700);
+    ]);
   }, []);
 
-  const handleConnectionError = useCallback((url: string) => {
-    cleanup();
-    // Executa fallback simulado para garantir a experiência da demo
-    runSimulatedFallback(url);
-  }, [cleanup, runSimulatedFallback]);
+  const activateFallback = useCallback(
+    (errorMessage: string) => {
+      cleanup();
+      setProgress(100);
+      setStatus('fallback');
+      addLog('ERROR', `Falha na extração em tempo real: ${errorMessage}`);
+      addLog('INFO', 'Ativando modo de demonstração com dados de amostra para pré-visualização.');
+
+      setResult({
+        ...MOCK_DEMO_RESULT,
+        isFallback: true,
+        errorMessage,
+      });
+    },
+    [cleanup, addLog]
+  );
+
+  const handleSuccessResult = useCallback(
+    (productResult: ScrapedProductResult) => {
+      cleanup();
+      setProgress(100);
+      setStatus('completed');
+      addLog('SUCCESS', 'Catálogo enriquecido com sucesso! Resultado pronto para publicação.');
+      setResult({
+        ...productResult,
+        isFallback: false,
+      });
+    },
+    [cleanup, addLog]
+  );
 
   const startExtraction = useCallback(
     (url: string) => {
       cleanup();
       setTargetUrl(url);
+      setResult(null);
+      setStatus('connecting');
+      setProgress(15);
+
       setLogs([
         {
           id: `log-init-${Date.now()}`,
@@ -134,25 +107,33 @@ export function useLiveDemoSSE(): UseLiveDemoSSEReturn {
           message: 'Iniciando extração e conectando ao stream SSE em /api/v1/demo/stream...',
         },
       ]);
-      setResult(null);
-      setStatus('connecting');
-      setProgress(10);
 
       // 1. Notifica o backend via POST /api/v1/scraper/extract
-      liveDemoService.requestDemoIngestion([url]).catch(() => {
-        // Erros capturados no próprio fluxo
+      liveDemoService.requestDemoIngestion([url]).catch((err) => {
+        addLog('ERROR', `Erro ao despachar tarefa: ${err instanceof Error ? err.message : 'Falha na requisição'}`);
       });
 
       // 2. Conecta ao stream SSE
-      try {
-        let hasReceivedEvents = false;
+      let hasReceivedEvents = false;
 
+      // Telemetria intermediária: evita terminal congelado enquanto o worker processa o job
+      let stepCount = 0;
+      progressTimerRef.current = setInterval(() => {
+        stepCount += 1;
+        if (stepCount === 1) {
+          setProgress(40);
+          addLog('SCRAPER', 'Orquestrando Scrapling / Coletando metadados e JSON-LD da loja...');
+        } else if (stepCount === 2) {
+          setProgress(70);
+          addLog('AI_PROCESS', 'Enviando contexto para modelo LLM / Gerando título magnético e SEO...');
+        } else if (stepCount === 3) {
+          setProgress(85);
+        }
+      }, 2000);
+
+      try {
         liveDemoService.connectStream(url, {
           onOpen: () => {
-            if (connectionTimeoutRef.current) {
-              clearTimeout(connectionTimeoutRef.current);
-              connectionTimeoutRef.current = null;
-            }
             setStatus('connected');
           },
           onLog: (log) => {
@@ -165,28 +146,38 @@ export function useLiveDemoSSE(): UseLiveDemoSSEReturn {
           },
           onResult: (res) => {
             hasReceivedEvents = true;
-            setResult(res);
-            setStatus('completed');
-            cleanup();
+            if (res.isFallback) {
+              activateFallback(res.errorMessage || 'Falha na extração de produto');
+            } else {
+              handleSuccessResult(res);
+            }
+          },
+          onPayload: (payload: DemoStreamPayload) => {
+            hasReceivedEvents = true;
+            if (payload.status === 'FAILED' || payload.isFallback) {
+              activateFallback(payload.errorMessage || 'Falha de rede ou DNS no e-commerce de origem.');
+            } else if (payload.status === 'PROCESSED' && payload.result) {
+              handleSuccessResult(payload.result);
+            }
           },
           onError: () => {
             if (!hasReceivedEvents) {
-              handleConnectionError(url);
+              activateFallback('Não foi possível conectar ao servidor de eventos em tempo real (SSE).');
             }
           },
         });
 
-        // Timeout de 4s para transicionar para simulação caso o backend SSE não envie eventos
+        // Timeout resiliente de 15 segundos para resposta do Worker RabbitMQ
         connectionTimeoutRef.current = setTimeout(() => {
           if (!hasReceivedEvents) {
-            handleConnectionError(url);
+            activateFallback('Tempo limite de processamento na fila RabbitMQ excedido.');
           }
-        }, 4000);
-      } catch {
-        handleConnectionError(url);
+        }, 15000);
+      } catch (err) {
+        activateFallback(err instanceof Error ? err.message : 'Falha inesperada ao iniciar conexão SSE.');
       }
     },
-    [cleanup, handleConnectionError]
+    [cleanup, addLog, activateFallback, handleSuccessResult]
   );
 
   const resetDemo = useCallback(() => {

@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 from typing import Optional, Dict, Any, List
 from .scrapling_client import ScraplingEngineService
 from .json_ld_parser import JsonLdParserService
@@ -19,7 +19,89 @@ class ScraperAndLLMParser:
         self.json_ld_parser = JsonLdParserService()
         self.markdown_parser = MarkdownParserService()
 
+    async def _fetch_and_parse_shopify_json(self, url: str) -> Optional[Dict[str, Any]]:
+        """
+        Atalho assíncrono ultra-rápido para URLs .json nativas da Shopify sem sobrecarga de navegador headless.
+        """
+        try:
+            import httpx
+            import re
+            from app.core.shared.security import validate_url_safety
+
+            validate_url_safety(url)
+
+            async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+                resp = await client.get(
+                    url,
+                    headers={
+                        "Accept": "application/json, text/plain, */*",
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                        "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+                    }
+                )
+                if resp.status_code != 200:
+                    logger.warning(f"Endpoint JSON retornou status {resp.status_code} para {url}")
+                    return None
+
+                data = resp.json()
+                product = data.get("product") if isinstance(data, dict) else None
+                if not product or not isinstance(product, dict):
+                    return None
+
+                title = product.get("title") or "Produto Shopify"
+                raw_html_body = product.get("body_html") or ""
+                clean_desc = re.sub(r"<[^>]+>", " ", raw_html_body)
+                clean_desc = re.sub(r"\s+", " ", clean_desc).strip()
+                description = clean_desc or f"Produto Shopify extraído com sucesso de {url}."
+
+                variants = product.get("variants", [])
+                price = 0.0
+                sku = None
+                if variants and isinstance(variants, list) and isinstance(variants[0], dict):
+                    price_val = variants[0].get("price")
+                    try:
+                        price = float(price_val) if price_val is not None else 0.0
+                    except (ValueError, TypeError):
+                        price = 0.0
+                    sku = str(variants[0].get("sku") or variants[0].get("id") or "")
+
+                brand = product.get("vendor") or "Loja Shopify"
+                category = product.get("product_type") or "Geral"
+
+                images = []
+                raw_images = product.get("images", [])
+                if isinstance(raw_images, list):
+                    for img in raw_images:
+                        if isinstance(img, dict) and img.get("src"):
+                            images.append(img["src"])
+                        elif isinstance(img, str):
+                            images.append(img)
+
+                logger.info(f"Extração JSON nativa Shopify bem-sucedida para {url}: {title}")
+                return {
+                    "title": title,
+                    "description": description,
+                    "price": price,
+                    "sku": sku,
+                    "brand": brand,
+                    "category": category,
+                    "images": images,
+                    "source_url": url,
+                    "model_used": "shopify/native-json-api",
+                    "status": "PROCESSED"
+                }
+        except Exception as err:
+            logger.warning(f"Falha ao processar URL como JSON nativo ({url}): {err}")
+            return None
+
     async def parse_and_enrich(self, url: str, prompt_context: Optional[str] = None) -> Dict[str, Any]:
+        # 0. Atalho inteligente: Se a URL terminar em .json, processa diretamente via httpx
+        if url.strip().lower().endswith(".json"):
+            logger.info(f"Detectada URL terminada em .json ({url}). Acionando atalho assíncrono httpx...")
+            shopify_result = await self._fetch_and_parse_shopify_json(url)
+            if shopify_result:
+                return shopify_result
+
         logger.info(f"🕷️ [Scrapling Pipeline] Coletando página: {url}")
         page = await self.engine.fetch_page(url)
 

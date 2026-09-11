@@ -49,6 +49,9 @@ export class LiveDemoService {
       endpoint,
       onOpen: callbacks.onOpen,
       onMessage: (data: DemoStreamPayload) => {
+        if (callbacks.onPayload) {
+          callbacks.onPayload(data);
+        }
         if (data.log && callbacks.onLog) {
           callbacks.onLog(data.log);
         }

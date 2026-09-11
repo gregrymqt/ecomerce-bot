@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { Eye, Code, Sparkles, CheckCircle2, Copy, Check, Tag, Award } from 'lucide-react';
+import { Eye, Code, Sparkles, CheckCircle2, Copy, Check, Tag, Award, AlertTriangle } from 'lucide-react';
 import { Card, Badge, Button } from '@/components/ui';
 import type { ScrapedProductResult } from '../types';
 import { useResultPreviewCard } from '../hooks/useResultPreviewCard';
@@ -82,6 +82,27 @@ export const ResultPreviewCard: React.FC<ResultPreviewCardProps> = ({
         </div>
       </div>
 
+      {/* Banner de Aviso de Fallback Transparente */}
+      {result.isFallback && (
+        <div
+          role="alert"
+          aria-live="polite"
+          className="px-4 sm:px-6 py-3.5 bg-amber-950/40 border-b border-amber-500/40 text-amber-200 flex items-start gap-3 animate-fade-in"
+        >
+          <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="space-y-0.5 text-xs sm:text-sm">
+            <p className="font-bold text-amber-300">
+              Modo de Demonstração / Fallback Ativo
+            </p>
+            <p className="text-amber-200/90 leading-relaxed">
+              A extração em tempo real da URL informada falhou
+              {result.errorMessage ? ` (${result.errorMessage})` : ''}.
+              Exibindo catálogo de demonstração simulado para pré-visualização.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Conteúdo Aba Preview Visual */}
       {activeTab === 'visual' && (
         <div
@@ -98,9 +119,15 @@ export const ResultPreviewCard: React.FC<ResultPreviewCardProps> = ({
               className="w-full h-64 object-cover object-center group-hover:scale-105 transition-transform duration-500"
             />
             <div className="absolute top-3 left-3">
-              <Badge variant="purple" dot icon={<Sparkles className="w-3.5 h-3.5 text-yellow-300" />}>
-                AI ENHANCED
-              </Badge>
+              {result.isFallback ? (
+                <Badge variant="warning" dot icon={<AlertTriangle className="w-3.5 h-3.5 text-amber-300" />}>
+                  MODO DEMO / FALLBACK
+                </Badge>
+              ) : (
+                <Badge variant="purple" dot icon={<Sparkles className="w-3.5 h-3.5 text-yellow-300" />}>
+                  AI ENHANCED
+                </Badge>
+              )}
             </div>
             <div className="absolute bottom-3 right-3">
               <Badge variant="success">

@@ -1,9 +1,10 @@
 {
   "metadata": {
-    "version": "2.0",
+    "version": "3.0",
     "generator": "generate_knowledge_graph.py",
-    "total_nodes": 177,
-    "total_edges": 184
+    "scope": "End-to-End Monorepo (Frontend, Core API, EDA, Worker, Database, Infra)",
+    "total_nodes": 325,
+    "total_edges": 343
   },
   "nodes": [
     {
@@ -98,6 +99,27 @@
       "metadata": {}
     },
     {
+      "id": "view:vw_Monitor_MissingIndexes",
+      "label": "vw_Monitor_MissingIndexes",
+      "type": "DatabaseView",
+      "file": "Database.Migrations/Scripts/005_Diagnostic_DMV_Views.sql",
+      "metadata": {}
+    },
+    {
+      "id": "view:vw_Monitor_TopQueries",
+      "label": "vw_Monitor_TopQueries",
+      "type": "DatabaseView",
+      "file": "Database.Migrations/Scripts/005_Diagnostic_DMV_Views.sql",
+      "metadata": {}
+    },
+    {
+      "id": "view:vw_Monitor_TableSizes",
+      "label": "vw_Monitor_TableSizes",
+      "type": "DatabaseView",
+      "file": "Database.Migrations/Scripts/005_Diagnostic_DMV_Views.sql",
+      "metadata": {}
+    },
+    {
       "id": "table:EnterpriseLeads",
       "label": "EnterpriseLeads",
       "type": "DatabaseTable",
@@ -154,6 +176,20 @@
       "metadata": {}
     },
     {
+      "id": "security_fn:fn_TenantAccessPredicate",
+      "label": "fn_TenantAccessPredicate",
+      "type": "SecurityFunction",
+      "file": "Database.Migrations/Scripts/014_Row_Level_Security_Policies.sql",
+      "metadata": {}
+    },
+    {
+      "id": "security_policy:TenantSecurityPolicy",
+      "label": "TenantSecurityPolicy",
+      "type": "SecurityPolicy",
+      "file": "Database.Migrations/Scripts/014_Row_Level_Security_Policies.sql",
+      "metadata": {}
+    },
+    {
       "id": "table:AuditLogs",
       "label": "AuditLogs",
       "type": "DatabaseTable",
@@ -161,66 +197,247 @@
       "metadata": {}
     },
     {
-      "id": "code:AiCapacityRepository",
-      "label": "AiCapacityRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/AiCapacityRepository.cs",
+      "id": "view:vw_Monitor_Deadlocks",
+      "label": "vw_Monitor_Deadlocks",
+      "type": "DatabaseView",
+      "file": "Database.Migrations/Scripts/016_Diagnostic_Deadlocks_And_WaitStats_Views.sql",
       "metadata": {}
     },
     {
-      "id": "code:AuditRepository",
-      "label": "AuditRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/AuditRepository.cs",
+      "id": "view:vw_Monitor_WaitStats",
+      "label": "vw_Monitor_WaitStats",
+      "type": "DatabaseView",
+      "file": "Database.Migrations/Scripts/016_Diagnostic_Deadlocks_And_WaitStats_Views.sql",
       "metadata": {}
     },
     {
-      "id": "code:EmailRepository",
-      "label": "EmailRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/EmailRepository.cs",
+      "id": "view:vw_Monitor_VersionStore",
+      "label": "vw_Monitor_VersionStore",
+      "type": "DatabaseView",
+      "file": "Database.Migrations/Scripts/016_Diagnostic_Deadlocks_And_WaitStats_Views.sql",
       "metadata": {}
     },
     {
-      "id": "code:EnterpriseLeadRepository",
-      "label": "EnterpriseLeadRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/EnterpriseLeadRepository.cs",
+      "id": "view:vw_Monitor_ActiveSnapshotTransactions",
+      "label": "vw_Monitor_ActiveSnapshotTransactions",
+      "type": "DatabaseView",
+      "file": "Database.Migrations/Scripts/016_Diagnostic_Deadlocks_And_WaitStats_Views.sql",
       "metadata": {}
     },
     {
-      "id": "code:MeteringRepository",
-      "label": "MeteringRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/MeteringRepository.cs",
+      "id": "exchange:ecommerce_dlx",
+      "label": "ecommerce_dlx",
+      "type": "DeadLetterExchange",
+      "file": "EcommerceBot.Worker/app/core/config/rabbitmq.py",
+      "metadata": {
+        "type": "direct"
+      }
+    },
+    {
+      "id": "queue:dlq_ecommerce",
+      "label": "dlq_ecommerce",
+      "type": "DeadLetterQueue",
+      "file": "EcommerceBot.Worker/app/core/config/rabbitmq.py",
+      "metadata": {
+        "ttl": "7 days"
+      }
+    },
+    {
+      "id": "queue:demo_ecommerce",
+      "label": "demo_ecommerce",
+      "type": "MessageQueue",
+      "file": "EcommerceBot.Worker/app/core/config/rabbitmq.py",
+      "metadata": {
+        "description": "Scraping demo com prioridade e DLX ativa"
+      }
+    },
+    {
+      "id": "queue:ecommerce",
+      "label": "ecommerce",
+      "type": "MessageQueue",
+      "file": "EcommerceBot.Worker/app/core/config/rabbitmq.py",
+      "metadata": {
+        "description": "Fila principal de extração de catálogo de lojistas"
+      }
+    },
+    {
+      "id": "queue:ecommerce_processed_queue",
+      "label": "ecommerce_processed_queue",
+      "type": "MessageQueue",
+      "file": "EcommerceBot.Worker/app/core/config/rabbitmq.py",
+      "metadata": {
+        "description": "Retorno assíncrono de produtos processados para Dapper/SSE"
+      }
+    },
+    {
+      "id": "queue:analytics_ml_queue",
+      "label": "analytics_ml_queue",
+      "type": "MessageQueue",
+      "file": "EcommerceBot.Worker/app/core/config/rabbitmq.py",
+      "metadata": {
+        "description": "Entrada de análise RFM, Churn e LTV no Worker"
+      }
+    },
+    {
+      "id": "queue:analytics_processed_queue",
+      "label": "analytics_processed_queue",
+      "type": "MessageQueue",
+      "file": "EcommerceBot.Worker/app/core/config/rabbitmq.py",
+      "metadata": {
+        "description": "Retorno de scores de machine learning para a Core API"
+      }
+    },
+    {
+      "id": "queue:llm_usage_queue",
+      "label": "llm_usage_queue",
+      "type": "MessageQueue",
+      "file": "EcommerceBot.Worker/app/core/config/rabbitmq.py",
+      "metadata": {
+        "description": "Auditoria assíncrona de consumo de tokens e custos de IA"
+      }
+    },
+    {
+      "id": "queue:payments_process_queue",
+      "label": "payments_process_queue",
+      "type": "MessageQueue",
+      "file": "EcommerceBot.Worker/app/core/config/rabbitmq.py",
+      "metadata": {
+        "description": "Conciliação e liberação de créditos de recarga Mercado Pago"
+      }
+    },
+    {
+      "id": "queue:email_notifications",
+      "label": "email_notifications",
+      "type": "MessageQueue",
+      "file": "EcommerceBot.Worker/app/core/config/rabbitmq.py",
+      "metadata": {
+        "description": "Fila de envio transacional de e-mails via Resend"
+      }
+    },
+    {
+      "id": "queue:shopify_bulk_sync",
+      "label": "shopify_bulk_sync",
+      "type": "MessageQueue",
+      "file": "EcommerceBot.Worker/app/core/config/rabbitmq.py",
+      "metadata": {
+        "description": "Sincronização em lote de catálogo Shopify GraphQL"
+      }
+    },
+    {
+      "id": "queue:nuvemshop_bulk_sync",
+      "label": "nuvemshop_bulk_sync",
+      "type": "MessageQueue",
+      "file": "EcommerceBot.Worker/app/core/config/rabbitmq.py",
+      "metadata": {
+        "description": "Sincronização em lote de catálogo Nuvemshop REST"
+      }
+    },
+    {
+      "id": "infrastructure:Redis",
+      "label": "Redis 7 Server",
+      "type": "InfrastructureComponent",
+      "file": "",
+      "metadata": {
+        "roles": [
+          "Cache",
+          "Idempotency",
+          "SSE_PubSub"
+        ]
+      }
+    },
+    {
+      "id": "channel:events:tenant",
+      "label": "events:tenant:{tenantId}",
+      "type": "RedisPubSubChannel",
+      "file": "",
+      "metadata": {
+        "purpose": "Streaming SSE em tempo real"
+      }
+    },
+    {
+      "id": "gateway:GatewayExtensions",
+      "label": "GatewayExtensions",
+      "type": "ExternalGateway",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Configurations/GatewayExtensions.cs",
       "metadata": {}
     },
     {
-      "id": "code:OrderRepository",
-      "label": "OrderRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/OrderRepository.cs",
+      "id": "gateway:EcommerceGatewayFactory",
+      "label": "EcommerceGatewayFactory",
+      "type": "ExternalGateway",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Gateways/EcommerceGatewayFactory.cs",
       "metadata": {}
+    },
+    {
+      "id": "gateway:MercadoPagoGateway",
+      "label": "MercadoPagoGateway",
+      "type": "ExternalGateway",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Gateways/MercadoPagoGateway.cs",
+      "metadata": {}
+    },
+    {
+      "id": "external_api:MercadoPagoAPI",
+      "label": "MercadoPagoAPI",
+      "type": "ExternalApi",
+      "file": "",
+      "metadata": {}
+    },
+    {
+      "id": "gateway:NuvemshopGateway",
+      "label": "NuvemshopGateway",
+      "type": "ExternalGateway",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Gateways/NuvemshopGateway.cs",
+      "metadata": {}
+    },
+    {
+      "id": "external_api:NuvemshopV1",
+      "label": "NuvemshopV1",
+      "type": "ExternalApi",
+      "file": "",
+      "metadata": {}
+    },
+    {
+      "id": "gateway:ResendGateway",
+      "label": "ResendGateway",
+      "type": "ExternalGateway",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Gateways/ResendGateway.cs",
+      "metadata": {}
+    },
+    {
+      "id": "external_api:ResendAPI",
+      "label": "ResendAPI",
+      "type": "ExternalApi",
+      "file": "",
+      "metadata": {}
+    },
+    {
+      "id": "gateway:ShopifyGateway",
+      "label": "ShopifyGateway",
+      "type": "ExternalGateway",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Gateways/ShopifyGateway.cs",
+      "metadata": {}
+    },
+    {
+      "id": "external_api:ShopifyGraphQL",
+      "label": "ShopifyGraphQL",
+      "type": "ExternalApi",
+      "file": "",
+      "metadata": {}
+    },
+    {
+      "id": "consumer:AnalyticsProcessedConsumer",
+      "label": "AnalyticsProcessedConsumer",
+      "type": "MassTransitConsumer",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Messaging/AnalyticsProcessedConsumer.cs",
+      "metadata": {
+        "message": "MlAnalysisResultMessage"
+      }
     },
     {
       "id": "code:RedisService",
       "label": "RedisService",
       "type": "CoreServiceOrRepo",
-      "file": "",
-      "metadata": {}
-    },
-    {
-      "id": "code:PlanRepository",
-      "label": "PlanRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/PlanRepository.cs",
-      "metadata": {}
-    },
-    {
-      "id": "code:ProductRepository",
-      "label": "ProductRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/ProductRepository.cs",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/RedisService.cs",
       "metadata": {}
     },
     {
@@ -231,45 +448,58 @@
       "metadata": {}
     },
     {
-      "id": "code:RoleRepository",
-      "label": "RoleRepository",
+      "id": "consumer:EmailNotificationConsumer",
+      "label": "EmailNotificationConsumer",
+      "type": "MassTransitConsumer",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Messaging/EmailNotificationConsumer.cs",
+      "metadata": {
+        "message": "EmailEventPayload"
+      }
+    },
+    {
+      "id": "code:ResendGateway",
+      "label": "ResendGateway",
       "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/RoleRepository.cs",
+      "file": "",
       "metadata": {}
     },
     {
-      "id": "code:SaasAnalyticsRepository",
-      "label": "SaasAnalyticsRepository",
+      "id": "code:EmailRepository",
+      "label": "EmailRepository",
       "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/SaasAnalyticsRepository.cs",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/EmailRepository.cs",
       "metadata": {}
     },
     {
-      "id": "code:StoreIntegrationRepository",
-      "label": "StoreIntegrationRepository",
+      "id": "consumer:LlmUsageConsumer",
+      "label": "LlmUsageConsumer",
+      "type": "MassTransitConsumer",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Messaging/LlmUsageConsumer.cs",
+      "metadata": {
+        "message": "LlmUsageEvent"
+      }
+    },
+    {
+      "id": "code:MeteringRepository",
+      "label": "MeteringRepository",
       "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/StoreIntegrationRepository.cs",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/MeteringRepository.cs",
       "metadata": {}
     },
     {
-      "id": "code:TenantAiCredentialRepository",
-      "label": "TenantAiCredentialRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/TenantAiCredentialRepository.cs",
-      "metadata": {}
+      "id": "consumer:NuvemshopBulkSyncConsumer",
+      "label": "NuvemshopBulkSyncConsumer",
+      "type": "MassTransitConsumer",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Messaging/NuvemshopBulkSyncConsumer.cs",
+      "metadata": {
+        "message": "NuvemshopBulkSyncMessage"
+      }
     },
     {
-      "id": "code:TenantBillingProfileRepository",
-      "label": "TenantBillingProfileRepository",
+      "id": "code:ProductRepository",
+      "label": "ProductRepository",
       "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/TenantBillingProfileRepository.cs",
-      "metadata": {}
-    },
-    {
-      "id": "code:TenantConfigRepository",
-      "label": "TenantConfigRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/TenantConfigRepository.cs",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/ProductRepository.cs",
       "metadata": {}
     },
     {
@@ -280,534 +510,666 @@
       "metadata": {}
     },
     {
+      "id": "code:StoreIntegrationRepository",
+      "label": "StoreIntegrationRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/StoreIntegrationRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "consumer:PaymentProcessingConsumer",
+      "label": "PaymentProcessingConsumer",
+      "type": "MassTransitConsumer",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Messaging/PaymentProcessingConsumer.cs",
+      "metadata": {
+        "message": "PaymentReceivedEvent"
+      }
+    },
+    {
+      "id": "code:OrderRepository",
+      "label": "OrderRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/OrderRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:PlanRepository",
+      "label": "PlanRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/PlanRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:MercadoPagoGateway",
+      "label": "MercadoPagoGateway",
+      "type": "CoreServiceOrRepo",
+      "file": "",
+      "metadata": {}
+    },
+    {
+      "id": "consumer:ProcessedProductConsumer",
+      "label": "ProcessedProductConsumer",
+      "type": "MassTransitConsumer",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Messaging/ProcessedProductConsumer.cs",
+      "metadata": {
+        "message": "ProductProcessedEvent"
+      }
+    },
+    {
+      "id": "consumer:ShopifyBulkSyncConsumer",
+      "label": "ShopifyBulkSyncConsumer",
+      "type": "MassTransitConsumer",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Messaging/ShopifyBulkSyncConsumer.cs",
+      "metadata": {
+        "message": "ShopifyBulkSyncMessage"
+      }
+    },
+    {
+      "id": "code:AiCapacityRepository",
+      "label": "AiCapacityRepository",
+      "type": "CoreRepository",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/AiCapacityRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:AuditRepository",
+      "label": "AuditRepository",
+      "type": "CoreRepository",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/AuditRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:EnterpriseLeadRepository",
+      "label": "EnterpriseLeadRepository",
+      "type": "CoreRepository",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/EnterpriseLeadRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:RoleRepository",
+      "label": "RoleRepository",
+      "type": "CoreRepository",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/RoleRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:SaasAnalyticsRepository",
+      "label": "SaasAnalyticsRepository",
+      "type": "CoreRepository",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/SaasAnalyticsRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:TenantAiCredentialRepository",
+      "label": "TenantAiCredentialRepository",
+      "type": "CoreRepository",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/TenantAiCredentialRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:TenantBillingProfileRepository",
+      "label": "TenantBillingProfileRepository",
+      "type": "CoreRepository",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/TenantBillingProfileRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:TenantConfigRepository",
+      "label": "TenantConfigRepository",
+      "type": "CoreRepository",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/TenantConfigRepository.cs",
+      "metadata": {}
+    },
+    {
       "id": "code:TenantSsoMappingRepository",
       "label": "TenantSsoMappingRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/TenantSsoMappingRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:TrafficAttributionRepository",
       "label": "TrafficAttributionRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/TrafficAttributionRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:UserRepository",
       "label": "UserRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/UserRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:AesGcmCryptoService",
       "label": "AesGcmCryptoService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/AesGcmCryptoService.cs",
       "metadata": {}
     },
     {
       "id": "code:AiCapacityService",
       "label": "AiCapacityService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/AiCapacityService.cs",
       "metadata": {}
     },
     {
       "id": "code:AuditService",
       "label": "AuditService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/AuditService.cs",
       "metadata": {}
     },
     {
       "id": "code:AuthService",
       "label": "AuthService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/AuthService.cs",
       "metadata": {}
     },
     {
       "id": "code:CatalogService",
       "label": "CatalogService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/CatalogService.cs",
       "metadata": {}
     },
     {
       "id": "code:CheckoutService",
       "label": "CheckoutService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/CheckoutService.cs",
       "metadata": {}
     },
     {
       "id": "code:DiscordAlertService",
       "label": "DiscordAlertService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/DiscordAlertService.cs",
       "metadata": {}
     },
     {
       "id": "code:EmailWebhookService",
       "label": "EmailWebhookService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/EmailWebhookService.cs",
       "metadata": {}
     },
     {
       "id": "code:EnterpriseLeadService",
       "label": "EnterpriseLeadService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/EnterpriseLeadService.cs",
       "metadata": {}
     },
     {
       "id": "code:GoogleAuthService",
       "label": "GoogleAuthService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/GoogleAuthService.cs",
       "metadata": {}
     },
     {
       "id": "code:MachineLearningService",
       "label": "MachineLearningService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/MachineLearningService.cs",
       "metadata": {}
     },
     {
       "id": "code:MercadoPagoWebhookService",
       "label": "MercadoPagoWebhookService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/MercadoPagoWebhookService.cs",
       "metadata": {}
     },
     {
       "id": "code:MeteringService",
       "label": "MeteringService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/MeteringService.cs",
       "metadata": {}
     },
     {
       "id": "code:NuvemshopIntegrationService",
       "label": "NuvemshopIntegrationService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/NuvemshopIntegrationService.cs",
       "metadata": {}
     },
     {
       "id": "code:PlanService",
       "label": "PlanService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/PlanService.cs",
       "metadata": {}
     },
     {
       "id": "code:SaasGrowthService",
       "label": "SaasGrowthService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/SaasGrowthService.cs",
       "metadata": {}
     },
     {
       "id": "code:ScraperService",
       "label": "ScraperService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/ScraperService.cs",
       "metadata": {}
     },
     {
       "id": "code:SettingsService",
       "label": "SettingsService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/SettingsService.cs",
       "metadata": {}
     },
     {
       "id": "code:ShopifyIntegrationService",
       "label": "ShopifyIntegrationService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/ShopifyIntegrationService.cs",
       "metadata": {}
     },
     {
       "id": "code:StoreIntegrationService",
       "label": "StoreIntegrationService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/StoreIntegrationService.cs",
       "metadata": {}
     },
     {
       "id": "code:SystemService",
       "label": "SystemService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/SystemService.cs",
+      "metadata": {}
+    },
+    {
+      "id": "table:LlmUsageLogs",
+      "label": "LlmUsageLogs",
+      "type": "DatabaseTable",
+      "file": "",
       "metadata": {}
     },
     {
       "id": "code:TenantBillingProfileService",
       "label": "TenantBillingProfileService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/TenantBillingProfileService.cs",
       "metadata": {}
     },
     {
       "id": "code:TenantService",
       "label": "TenantService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/TenantService.cs",
       "metadata": {}
     },
     {
       "id": "code:TenantSsoService",
       "label": "TenantSsoService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/TenantSsoService.cs",
       "metadata": {}
     },
     {
       "id": "code:TrafficAnalyticsService",
       "label": "TrafficAnalyticsService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/TrafficAnalyticsService.cs",
       "metadata": {}
     },
     {
       "id": "code:WalletService",
       "label": "WalletService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/WalletService.cs",
       "metadata": {}
     },
     {
       "id": "code:IAiCapacityRepository",
       "label": "IAiCapacityRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/IAiCapacityRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:IAuditRepository",
       "label": "IAuditRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/IAuditRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:IEmailRepository",
       "label": "IEmailRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/IEmailRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:IEnterpriseLeadRepository",
       "label": "IEnterpriseLeadRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/IEnterpriseLeadRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:IMeteringRepository",
       "label": "IMeteringRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/IMeteringRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:IOrderRepository",
       "label": "IOrderRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/IOrderRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:IPlanRepository",
       "label": "IPlanRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/IPlanRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:IProductRepository",
       "label": "IProductRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/IProductRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:IRobotActivityRepository",
       "label": "IRobotActivityRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/IRobotActivityRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:IRoleRepository",
       "label": "IRoleRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/IRoleRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:IStoreIntegrationRepository",
       "label": "IStoreIntegrationRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/IStoreIntegrationRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:ITenantAiCredentialRepository",
       "label": "ITenantAiCredentialRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/ITenantAiCredentialRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:ITenantBillingProfileRepository",
       "label": "ITenantBillingProfileRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/ITenantBillingProfileRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:ITenantConfigRepository",
       "label": "ITenantConfigRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/ITenantConfigRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:ITenantRepository",
       "label": "ITenantRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/ITenantRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:ITenantSsoMappingRepository",
       "label": "ITenantSsoMappingRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/ITenantSsoMappingRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:IUserRepository",
       "label": "IUserRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/IUserRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:ApplicationServiceExtensions",
       "label": "ApplicationServiceExtensions",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Configurations/ApplicationServiceExtensions.cs",
       "metadata": {}
     },
     {
       "id": "code:IAesGcmCryptoService",
       "label": "IAesGcmCryptoService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IAesGcmCryptoService.cs",
       "metadata": {}
     },
     {
       "id": "code:IAiCapacityService",
       "label": "IAiCapacityService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IAiCapacityService.cs",
       "metadata": {}
     },
     {
       "id": "code:IAuditService",
       "label": "IAuditService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IAuditService.cs",
       "metadata": {}
     },
     {
       "id": "code:IAuthService",
       "label": "IAuthService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IAuthService.cs",
       "metadata": {}
     },
     {
       "id": "code:ICatalogService",
       "label": "ICatalogService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/ICatalogService.cs",
       "metadata": {}
     },
     {
       "id": "code:ICheckoutService",
       "label": "ICheckoutService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/ICheckoutService.cs",
       "metadata": {}
     },
     {
       "id": "code:IDiscordAlertService",
       "label": "IDiscordAlertService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IDiscordAlertService.cs",
+      "metadata": {}
+    },
+    {
+      "id": "gateway:IEcommerceGateway",
+      "label": "IEcommerceGateway",
+      "type": "ExternalGateway",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IEcommerceGateway.cs",
       "metadata": {}
     },
     {
       "id": "code:IEmailWebhookService",
       "label": "IEmailWebhookService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IEmailWebhookService.cs",
       "metadata": {}
     },
     {
       "id": "code:IEnterpriseLeadService",
       "label": "IEnterpriseLeadService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IEnterpriseLeadService.cs",
       "metadata": {}
     },
     {
       "id": "code:IGoogleAuthService",
       "label": "IGoogleAuthService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IGoogleAuthService.cs",
       "metadata": {}
     },
     {
       "id": "code:IMachineLearningService",
       "label": "IMachineLearningService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IMachineLearningService.cs",
+      "metadata": {}
+    },
+    {
+      "id": "gateway:IMercadoPagoGateway",
+      "label": "IMercadoPagoGateway",
+      "type": "ExternalGateway",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IMercadoPagoGateway.cs",
       "metadata": {}
     },
     {
       "id": "code:IMercadoPagoWebhookService",
       "label": "IMercadoPagoWebhookService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IMercadoPagoWebhookService.cs",
       "metadata": {}
     },
     {
       "id": "code:IMeteringService",
       "label": "IMeteringService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IMeteringService.cs",
       "metadata": {}
     },
     {
       "id": "code:INuvemshopIntegrationService",
       "label": "INuvemshopIntegrationService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/INuvemshopIntegrationService.cs",
       "metadata": {}
     },
     {
       "id": "code:IPlanService",
       "label": "IPlanService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IPlanService.cs",
       "metadata": {}
     },
     {
       "id": "code:IRedisService",
       "label": "IRedisService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IRedisService.cs",
       "metadata": {}
     },
     {
       "id": "code:ISaasAnalyticsRepository",
       "label": "ISaasAnalyticsRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/ISaasAnalyticsRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:ISaasGrowthService",
       "label": "ISaasGrowthService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/ISaasGrowthService.cs",
       "metadata": {}
     },
     {
       "id": "code:IScraperService",
       "label": "IScraperService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IScraperService.cs",
       "metadata": {}
     },
     {
       "id": "code:ISettingsService",
       "label": "ISettingsService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/ISettingsService.cs",
       "metadata": {}
     },
     {
       "id": "code:IShopifyIntegrationService",
       "label": "IShopifyIntegrationService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IShopifyIntegrationService.cs",
       "metadata": {}
     },
     {
       "id": "code:IStoreIntegrationService",
       "label": "IStoreIntegrationService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IStoreIntegrationService.cs",
       "metadata": {}
     },
     {
       "id": "code:ISystemService",
       "label": "ISystemService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/ISystemService.cs",
       "metadata": {}
     },
     {
       "id": "code:ITenantBillingProfileService",
       "label": "ITenantBillingProfileService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/ITenantBillingProfileService.cs",
       "metadata": {}
     },
     {
       "id": "code:ITenantService",
       "label": "ITenantService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/ITenantService.cs",
       "metadata": {}
     },
     {
       "id": "code:ITenantSsoService",
       "label": "ITenantSsoService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/ITenantSsoService.cs",
       "metadata": {}
     },
     {
       "id": "code:ITrafficAnalyticsService",
       "label": "ITrafficAnalyticsService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/ITrafficAnalyticsService.cs",
       "metadata": {}
     },
     {
       "id": "code:ITrafficAttributionRepository",
       "label": "ITrafficAttributionRepository",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/ITrafficAttributionRepository.cs",
       "metadata": {}
     },
     {
       "id": "code:IWalletService",
       "label": "IWalletService",
-      "type": "CoreServiceOrRepo",
+      "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/IWalletService.cs",
       "metadata": {}
     },
@@ -898,6 +1260,19 @@
           "GET api/v1/[controller]/google/login",
           "POST api/v1/[controller]/google/callback",
           "POST api/v1/[controller]/sso-enterprise/lead"
+        ]
+      }
+    },
+    {
+      "id": "controller:BillingProfileController",
+      "label": "BillingProfileController",
+      "type": "ApiController",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Api/Controllers/BillingProfileController.cs",
+      "metadata": {
+        "base_route": "api/v1/billing/profile",
+        "endpoints": [
+          "GET api/v1/billing/profile",
+          "PUT api/v1/billing/profile"
         ]
       }
     },
@@ -1165,74 +1540,329 @@
       }
     },
     {
-      "id": "queue:consume_ml_queue",
-      "label": "consume_ml_queue",
-      "type": "MessageQueue",
-      "file": "",
+      "id": "middleware:SecurityHeadersMiddleware",
+      "label": "SecurityHeadersMiddleware",
+      "type": "ApiMiddleware",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Api/Middlewares/SecurityHeadersMiddleware.cs",
       "metadata": {}
     },
     {
-      "id": "worker:__init__",
-      "label": "__init__",
+      "id": "middleware:TenantHeaderMiddleware",
+      "label": "TenantHeaderMiddleware",
+      "type": "ApiMiddleware",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Api/Middlewares/TenantHeaderMiddleware.cs",
+      "metadata": {}
+    },
+    {
+      "id": "service:WorkerFastAPI",
+      "label": "EcommerceBot.Worker FastAPI",
+      "type": "FastAPIService",
+      "file": "EcommerceBot.Worker/app/main.py",
+      "metadata": {
+        "endpoints": [
+          "GET /health",
+          "GET /health/live",
+          "GET /health/ready"
+        ]
+      }
+    },
+    {
+      "id": "worker:ScraperWorker",
+      "label": "ScraperWorker",
       "type": "PythonWorkerModule",
-      "file": "EcommerceBot.Worker/app/ml/__init__.py",
+      "file": "EcommerceBot.Worker/app/scraper/worker.py",
       "metadata": {}
     },
     {
-      "id": "queue:analytics_ml_queue",
-      "label": "analytics_ml_queue",
-      "type": "MessageQueue",
+      "id": "scraper_component:parser",
+      "label": "parser.py",
+      "type": "ScraperComponent",
+      "file": "EcommerceBot.Worker/app/scraper/parser.py",
+      "metadata": {}
+    },
+    {
+      "id": "scraper_component:scrapling_client",
+      "label": "scrapling_client.py",
+      "type": "ScraperComponent",
+      "file": "EcommerceBot.Worker/app/scraper/scrapling_client.py",
+      "metadata": {}
+    },
+    {
+      "id": "scraper_component:json_ld_parser",
+      "label": "json_ld_parser.py",
+      "type": "ScraperComponent",
+      "file": "EcommerceBot.Worker/app/scraper/json_ld_parser.py",
+      "metadata": {}
+    },
+    {
+      "id": "scraper_component:markdown_parser",
+      "label": "markdown_parser.py",
+      "type": "ScraperComponent",
+      "file": "EcommerceBot.Worker/app/scraper/markdown_parser.py",
+      "metadata": {}
+    },
+    {
+      "id": "ai:LLMEngineRouter",
+      "label": "LLMEngineRouter",
+      "type": "AIRouter",
+      "file": "EcommerceBot.Worker/app/ai/router.py",
+      "metadata": {
+        "features": [
+          "PII Masking",
+          "Anti-Prompt Injection",
+          "OWASP LLM Guard"
+        ]
+      }
+    },
+    {
+      "id": "external_api:OpenRouterLLM",
+      "label": "OpenRouter AI API",
+      "type": "ExternalApi",
       "file": "",
       "metadata": {}
     },
     {
-      "id": "worker:rabbitmq",
-      "label": "rabbitmq",
+      "id": "worker:MLWorker",
+      "label": "MLWorker",
       "type": "PythonWorkerModule",
-      "file": "EcommerceBot.Worker/app/core/config/rabbitmq.py",
+      "file": "EcommerceBot.Worker/app/ml/ml_worker.py",
       "metadata": {}
     },
     {
-      "id": "queue:ecommerce_processed_queue",
-      "label": "ecommerce_processed_queue",
-      "type": "MessageQueue",
+      "id": "ml_model:RFMSegmentation",
+      "label": "RFMSegmentation",
+      "type": "MachineLearningModel",
       "file": "",
       "metadata": {}
     },
     {
-      "id": "queue:analytics_processed_queue",
-      "label": "analytics_processed_queue",
-      "type": "MessageQueue",
+      "id": "ml_model:ChurnPredictor",
+      "label": "ChurnPredictor",
+      "type": "MachineLearningModel",
       "file": "",
       "metadata": {}
     },
     {
-      "id": "queue:llm_usage_queue",
-      "label": "llm_usage_queue",
-      "type": "MessageQueue",
+      "id": "ml_model:LTVForecaster",
+      "label": "LTVForecaster",
+      "type": "MachineLearningModel",
       "file": "",
       "metadata": {}
     },
     {
-      "id": "queue:queue:ecommerce",
-      "label": "queue:ecommerce",
-      "type": "MessageQueue",
+      "id": "ml_model:TokenCapacityForecaster",
+      "label": "TokenCapacityForecaster",
+      "type": "MachineLearningModel",
       "file": "",
       "metadata": {}
     },
     {
-      "id": "queue:email_notifications",
-      "label": "email_notifications",
-      "type": "MessageQueue",
+      "id": "ml_pipeline:SparkBatchPipeline",
+      "label": "SparkBatchPipeline",
+      "type": "SparkBatchPipeline",
+      "file": "EcommerceBot.Worker/app/ml/spark/batch_pipeline.py",
+      "metadata": {}
+    },
+    {
+      "id": "artifact:rfm_pipeline.joblib",
+      "label": "rfm_pipeline.joblib",
+      "type": "MLArtifact",
       "file": "",
       "metadata": {}
     },
     {
-      "id": "queue:nuvemshop_bulk_sync",
-      "label": "nuvemshop_bulk_sync",
-      "type": "MessageQueue",
-      "file": "",
+      "id": "template:discord_alert.md",
+      "label": "discord_alert.md",
+      "type": "Jinja2Template",
+      "file": "EcommerceBot.Worker/app/templates/discord_alert.md",
       "metadata": {}
+    },
+    {
+      "id": "template:ml_analytics_summary.html",
+      "label": "ml_analytics_summary.html",
+      "type": "Jinja2Template",
+      "file": "EcommerceBot.Worker/app/templates/ml_analytics_summary.html",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_page:RootRoleRedirect",
+      "label": "RootRoleRedirect",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "*",
+        "guard": "PublicOrProtected"
+      }
+    },
+    {
+      "id": "frontend_page:AuthPage",
+      "label": "AuthPage",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "/auth",
+        "guard": "PublicOrProtected"
+      }
+    },
+    {
+      "id": "frontend_page:ResetPasswordPage",
+      "label": "ResetPasswordPage",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "/auth/reset-password",
+        "guard": "PublicOrProtected"
+      }
+    },
+    {
+      "id": "frontend_page:GoogleCallbackPage",
+      "label": "GoogleCallbackPage",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "/auth/google/callback",
+        "guard": "PublicOrProtected"
+      }
+    },
+    {
+      "id": "frontend_page:CheckoutRedirect",
+      "label": "CheckoutRedirect",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "/checkout",
+        "guard": "PublicOrProtected"
+      }
+    },
+    {
+      "id": "frontend_page:AdminEnterpriseLeadsPage",
+      "label": "AdminEnterpriseLeadsPage",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "/admin/leads",
+        "guard": "AdminRouteGuard"
+      }
+    },
+    {
+      "id": "frontend_page:AdminAiCapacityPage",
+      "label": "AdminAiCapacityPage",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "/admin/ai-capacity",
+        "guard": "AdminRouteGuard"
+      }
+    },
+    {
+      "id": "frontend_page:AdminGrowthPage",
+      "label": "AdminGrowthPage",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "/admin/growth",
+        "guard": "AdminRouteGuard"
+      }
+    },
+    {
+      "id": "frontend_page:AdminPlansPage",
+      "label": "AdminPlansPage",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "/admin/plans",
+        "guard": "AdminRouteGuard"
+      }
+    },
+    {
+      "id": "frontend_page:Navigate",
+      "label": "Navigate",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "/plans",
+        "guard": "PublicOrProtected"
+      }
+    },
+    {
+      "id": "frontend_page:DashboardPage",
+      "label": "DashboardPage",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "/dashboard",
+        "guard": "MerchantRouteGuard"
+      }
+    },
+    {
+      "id": "frontend_page:IntegrationsPage",
+      "label": "IntegrationsPage",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "/integrations",
+        "guard": "MerchantRouteGuard"
+      }
+    },
+    {
+      "id": "frontend_page:TrafficAnalyticsPage",
+      "label": "TrafficAnalyticsPage",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "/analytics/traffic",
+        "guard": "MerchantRouteGuard"
+      }
+    },
+    {
+      "id": "frontend_page:MeteringDashboardPage",
+      "label": "MeteringDashboardPage",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "/metering",
+        "guard": "MerchantRouteGuard"
+      }
+    },
+    {
+      "id": "frontend_page:CatalogPage",
+      "label": "CatalogPage",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "/catalog",
+        "guard": "PublicOrProtected"
+      }
+    },
+    {
+      "id": "frontend_page:WalletPage",
+      "label": "WalletPage",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "/wallet",
+        "guard": "PublicOrProtected"
+      }
+    },
+    {
+      "id": "frontend_page:SettingsPage",
+      "label": "SettingsPage",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "/settings",
+        "guard": "PublicOrProtected"
+      }
+    },
+    {
+      "id": "frontend_page:LiveDemoPage",
+      "label": "LiveDemoPage",
+      "type": "FrontendPage",
+      "file": "EcommerceBot.Web/src/routes/AppRoutes.tsx",
+      "metadata": {
+        "path": "/scraper",
+        "guard": "PublicOrProtected"
+      }
     },
     {
       "id": "frontend_feature:admin",
@@ -1433,31 +2063,472 @@
       }
     },
     {
-      "id": "infrastructure:SqlServer",
-      "label": "SQL Server 2022",
-      "type": "InfrastructureComponent",
-      "file": "",
+      "id": "frontend_hook:useUtmTracker",
+      "label": "useUtmTracker",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/hooks/useUtmTracker.ts",
       "metadata": {}
     },
     {
-      "id": "infrastructure:Redis",
-      "label": "Redis 7 Cache",
-      "type": "InfrastructureComponent",
-      "file": "",
+      "id": "frontend_hook:useRoleLayout.test",
+      "label": "useRoleLayout.test",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/layouts/hooks/useRoleLayout.test.ts",
       "metadata": {}
     },
     {
-      "id": "infrastructure:RabbitMQ",
-      "label": "RabbitMQ 3.13 Broker",
-      "type": "InfrastructureComponent",
-      "file": "",
+      "id": "frontend_hook:useRoleLayout",
+      "label": "useRoleLayout",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/layouts/hooks/useRoleLayout.ts",
       "metadata": {}
     },
     {
-      "id": "infrastructure:Serilog",
-      "label": "Serilog Rolling JSON Logs",
-      "type": "InfrastructureComponent",
-      "file": "",
+      "id": "frontend_hook:useBillingProfile",
+      "label": "useBillingProfile",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/wallet/hooks/useBillingProfile.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useCreditCardForm",
+      "label": "useCreditCardForm",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/wallet/hooks/useCreditCardForm.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useCreditCardRecharge",
+      "label": "useCreditCardRecharge",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/wallet/hooks/useCreditCardRecharge.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useCreditPackages",
+      "label": "useCreditPackages",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/wallet/hooks/useCreditPackages.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:usePixRecharge",
+      "label": "usePixRecharge",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/wallet/hooks/usePixRecharge.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useRealtimeWalletBalance",
+      "label": "useRealtimeWalletBalance",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/wallet/hooks/useRealtimeWalletBalance.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useRechargeModal",
+      "label": "useRechargeModal",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/wallet/hooks/useRechargeModal.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useUnifiedPayment",
+      "label": "useUnifiedPayment",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/wallet/hooks/useUnifiedPayment.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useWallet",
+      "label": "useWallet",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/wallet/hooks/useWallet.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:billing.service",
+      "label": "billing.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/wallet/services/billing.service.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:wallet.service",
+      "label": "wallet.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/wallet/services/wallet.service.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useSettings",
+      "label": "useSettings",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/settings/hooks/useSettings.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useTenantSso",
+      "label": "useTenantSso",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/settings/hooks/useTenantSso.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:settings.service",
+      "label": "settings.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/settings/services/settings.service.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:tenantSso.service",
+      "label": "tenantSso.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/settings/services/tenantSso.service.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:settings.service.test",
+      "label": "settings.service.test",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/settings/__tests__/settings.service.test.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useScraper",
+      "label": "useScraper",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/scraper/hooks/useScraper.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useScraperBatch",
+      "label": "useScraperBatch",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/scraper/hooks/useScraperBatch.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useScraperStream",
+      "label": "useScraperStream",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/scraper/hooks/useScraperStream.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:scraper.service",
+      "label": "scraper.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/scraper/services/scraper.service.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:scrapper.service",
+      "label": "scrapper.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/scraper/services/scrapper.service.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useAdminPlans",
+      "label": "useAdminPlans",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/plans/hooks/useAdminPlans.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:plans.service",
+      "label": "plans.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/plans/services/plans.service.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useMetering",
+      "label": "useMetering",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/metering/hooks/useMetering.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:metering.service",
+      "label": "metering.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/metering/services/metering.service.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useMetering.test",
+      "label": "useMetering.test",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/metering/__tests__/useMetering.test.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useDemoHeroInput",
+      "label": "useDemoHeroInput",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/live-demo/hooks/useDemoHeroInput.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useLiveDemoSSE",
+      "label": "useLiveDemoSSE",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/live-demo/hooks/useLiveDemoSSE.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useLiveSseTerminal",
+      "label": "useLiveSseTerminal",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/live-demo/hooks/useLiveSseTerminal.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useResultPreviewCard",
+      "label": "useResultPreviewCard",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/live-demo/hooks/useResultPreviewCard.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:liveDemoService",
+      "label": "liveDemoService",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/live-demo/services/liveDemoService.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useIntegrations",
+      "label": "useIntegrations",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/integrations/hooks/useIntegrations.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useNuvemshopIntegration",
+      "label": "useNuvemshopIntegration",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/integrations/hooks/useNuvemshopIntegration.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useShopifyIntegration",
+      "label": "useShopifyIntegration",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/integrations/hooks/useShopifyIntegration.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:integration.service",
+      "label": "integration.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/integrations/services/integration.service.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useHome",
+      "label": "useHome",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/home/hooks/useHome.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:home.service",
+      "label": "home.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/home/services/home.service.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useDashboard",
+      "label": "useDashboard",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/dashboard/hooks/useDashboard.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:dashboard.service",
+      "label": "dashboard.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/dashboard/services/dashboard.service.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useBulkPlatformSync",
+      "label": "useBulkPlatformSync",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/catalog/hooks/useBulkPlatformSync.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useCatalogPage",
+      "label": "useCatalogPage",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/catalog/hooks/useCatalogPage.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useEditCopyDrawer",
+      "label": "useEditCopyDrawer",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/catalog/hooks/useEditCopyDrawer.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useProducts",
+      "label": "useProducts",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/catalog/hooks/useProducts.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useProductSync",
+      "label": "useProductSync",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/catalog/hooks/useProductSync.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:product.service",
+      "label": "product.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/catalog/services/product.service.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useAuth",
+      "label": "useAuth",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/auth/hooks/useAuth.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useAuthForm",
+      "label": "useAuthForm",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/auth/hooks/useAuthForm.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useAuthSession",
+      "label": "useAuthSession",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/auth/hooks/useAuthSession.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useEnterpriseLead",
+      "label": "useEnterpriseLead",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/auth/hooks/useEnterpriseLead.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useFeatureGate",
+      "label": "useFeatureGate",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/auth/hooks/useFeatureGate.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useForgotPassword",
+      "label": "useForgotPassword",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/auth/hooks/useForgotPassword.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useResetPassword",
+      "label": "useResetPassword",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/auth/hooks/useResetPassword.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:authService",
+      "label": "authService",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/auth/services/authService.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useMlAnalytics",
+      "label": "useMlAnalytics",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/analytics/hooks/useMlAnalytics.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useTrafficAnalytics",
+      "label": "useTrafficAnalytics",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/analytics/hooks/useTrafficAnalytics.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:mlAnalytics.service",
+      "label": "mlAnalytics.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/analytics/services/mlAnalytics.service.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:trafficAnalytics.service",
+      "label": "trafficAnalytics.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/analytics/services/trafficAnalytics.service.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useAdminGrowth",
+      "label": "useAdminGrowth",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/admin/hooks/useAdminGrowth.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useAdminLeads",
+      "label": "useAdminLeads",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/admin/hooks/useAdminLeads.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useAiCapacity",
+      "label": "useAiCapacity",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/admin/hooks/useAiCapacity.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_hook:useEnterpriseProvision",
+      "label": "useEnterpriseProvision",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/admin/hooks/useEnterpriseProvision.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:adminGrowth.service",
+      "label": "adminGrowth.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/admin/services/adminGrowth.service.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:adminLeads.service",
+      "label": "adminLeads.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/admin/services/adminLeads.service.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:aiCapacity.service",
+      "label": "aiCapacity.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/admin/services/aiCapacity.service.ts",
       "metadata": {}
     },
     {
@@ -1467,59 +2538,74 @@
       "file": "EcommerceBot.Core/src/EcommerceBot.Diagnostics.Mcp",
       "metadata": {
         "transport": "stdio",
-        "protocol": "JSON-RPC 2.0",
-        "capabilities": [
-          "tools",
-          "resources"
-        ]
+        "protocol": "JSON-RPC 2.0"
       }
     },
     {
-      "id": "ml_model:ChurnPredictor",
-      "label": "ChurnPredictor",
-      "type": "MachineLearningModel",
-      "file": "EcommerceBot.Worker/app/ml/churn_predictor.py",
+      "id": "mcp_tool:check_sql_health",
+      "label": "check_sql_health",
+      "type": "McpDiagnosticTool",
+      "file": "",
+      "metadata": {
+        "className": "CheckSqlHealthTool"
+      }
+    },
+    {
+      "id": "mcp_tool:check_redis_metrics",
+      "label": "check_redis_metrics",
+      "type": "McpDiagnosticTool",
+      "file": "",
+      "metadata": {
+        "className": "CheckRedisMetricsTool"
+      }
+    },
+    {
+      "id": "mcp_tool:inspect_rabbitmq_queues",
+      "label": "inspect_rabbitmq_queues",
+      "type": "McpDiagnosticTool",
+      "file": "",
+      "metadata": {
+        "className": "InspectRabbitMqQueuesTool"
+      }
+    },
+    {
+      "id": "mcp_tool:get_recent_application_errors",
+      "label": "get_recent_application_errors",
+      "type": "McpDiagnosticTool",
+      "file": "",
+      "metadata": {
+        "className": "GetRecentApplicationErrorsTool"
+      }
+    },
+    {
+      "id": "mcp_tool:inspect_ml_artifacts",
+      "label": "inspect_ml_artifacts",
+      "type": "McpDiagnosticTool",
+      "file": "",
+      "metadata": {
+        "className": "InspectMlArtifactsTool"
+      }
+    },
+    {
+      "id": "mcp_tool:check_spark_pipeline_status",
+      "label": "check_spark_pipeline_status",
+      "type": "McpDiagnosticTool",
+      "file": "",
+      "metadata": {
+        "className": "CheckSparkPipelineStatusTool"
+      }
+    },
+    {
+      "id": "infrastructure:SqlServer",
+      "label": "SQL Server 2022",
+      "type": "InfrastructureComponent",
+      "file": "",
       "metadata": {}
     },
     {
-      "id": "ml_model:LTVForecaster",
-      "label": "LTVForecaster",
-      "type": "MachineLearningModel",
-      "file": "EcommerceBot.Worker/app/ml/ltv_forecaster.py",
-      "metadata": {}
-    },
-    {
-      "id": "ml_model:AnalyticsMLEngine",
-      "label": "AnalyticsMLEngine",
-      "type": "MachineLearningModel",
-      "file": "EcommerceBot.Worker/app/ml/ml_worker.py",
-      "metadata": {}
-    },
-    {
-      "id": "ml_model:RFMSegmentation",
-      "label": "RFMSegmentation",
-      "type": "MachineLearningModel",
-      "file": "EcommerceBot.Worker/app/ml/rfm_segmentation.py",
-      "metadata": {}
-    },
-    {
-      "id": "ml_model:TokenCapacityForecaster",
-      "label": "TokenCapacityForecaster",
-      "type": "MachineLearningModel",
-      "file": "EcommerceBot.Worker/app/ml/token_capacity_forecaster.py",
-      "metadata": {}
-    },
-    {
-      "id": "ml_model:SparkBatchPipeline",
-      "label": "SparkBatchPipeline",
-      "type": "SparkBatchPipeline",
-      "file": "EcommerceBot.Worker/app/ml/spark/batch_pipeline.py",
-      "metadata": {}
-    },
-    {
-      "id": "artifact:rfm_pipeline.joblib",
-      "label": "rfm_pipeline.joblib",
-      "type": "MLArtifact",
+      "id": "infrastructure:Serilog",
+      "label": "Serilog Rolling Logs",
+      "type": "InfrastructureComponent",
       "file": "",
       "metadata": {}
     },
@@ -1549,9 +2635,469 @@
       "metadata": {
         "uri": "resource://runbooks/sql-server-diagnostics"
       }
+    },
+    {
+      "id": "container:mssql",
+      "label": "prod-mssql",
+      "type": "DockerContainer",
+      "file": "infra/prod/docker-compose.prod.yml",
+      "metadata": {}
+    },
+    {
+      "id": "container:redis",
+      "label": "prod-redis",
+      "type": "DockerContainer",
+      "file": "infra/prod/docker-compose.prod.yml",
+      "metadata": {}
+    },
+    {
+      "id": "container:rabbitmq",
+      "label": "prod-rabbitmq",
+      "type": "DockerContainer",
+      "file": "infra/prod/docker-compose.prod.yml",
+      "metadata": {}
+    },
+    {
+      "id": "container:api",
+      "label": "prod-api",
+      "type": "DockerContainer",
+      "file": "infra/prod/docker-compose.prod.yml",
+      "metadata": {}
+    },
+    {
+      "id": "container:worker",
+      "label": "prod-worker",
+      "type": "DockerContainer",
+      "file": "infra/prod/docker-compose.prod.yml",
+      "metadata": {}
+    },
+    {
+      "id": "container:web",
+      "label": "prod-web",
+      "type": "DockerContainer",
+      "file": "infra/prod/docker-compose.prod.yml",
+      "metadata": {}
+    },
+    {
+      "id": "container:nginx",
+      "label": "prod-nginx",
+      "type": "DockerContainer",
+      "file": "infra/prod/docker-compose.prod.yml",
+      "metadata": {}
+    },
+    {
+      "id": "sre_script:backup_sqlserver_r2",
+      "label": "backup_sqlserver_r2.sh",
+      "type": "SreAutomationScript",
+      "file": "infra/prod/scripts/backup_sqlserver_r2.sh",
+      "metadata": {
+        "purpose": "Backup diário full para Cloudflare R2 com DBCC prévio"
+      }
+    },
+    {
+      "id": "sre_script:backup_sqlserver_log_r2",
+      "label": "backup_sqlserver_log_r2.sh",
+      "type": "SreAutomationScript",
+      "file": "infra/prod/scripts/backup_sqlserver_log_r2.sh",
+      "metadata": {
+        "purpose": "Backup de transaction log a cada 15 min (RPO < 15 min)"
+      }
+    },
+    {
+      "id": "sre_script:provision_vps_host",
+      "label": "provision_vps_host.sh",
+      "type": "SreAutomationScript",
+      "file": "infra/prod/scripts/provision_vps_host.sh",
+      "metadata": {
+        "purpose": "Provisionamento de host Ubuntu, kernel sysctl e UFW"
+      }
+    },
+    {
+      "id": "sre_script:setup_sqlserver_maintenance",
+      "label": "setup_sqlserver_maintenance.sh",
+      "type": "SreAutomationScript",
+      "file": "infra/prod/scripts/setup_sqlserver_maintenance.sh",
+      "metadata": {
+        "purpose": "Índices e estatísticas via Ola Hallengren"
+      }
     }
   ],
   "edges": [
+    {
+      "source": "table:Users",
+      "target": "table:Tenants",
+      "relationship": "references"
+    },
+    {
+      "source": "table:Users",
+      "target": "table:Roles",
+      "relationship": "references"
+    },
+    {
+      "source": "table:TenantAiCredentials",
+      "target": "table:Tenants",
+      "relationship": "references"
+    },
+    {
+      "source": "table:TenantSsoMappings",
+      "target": "table:Tenants",
+      "relationship": "references"
+    },
+    {
+      "source": "table:TenantSsoMappings",
+      "target": "table:Roles",
+      "relationship": "references"
+    },
+    {
+      "source": "table:Products",
+      "target": "table:Tenants",
+      "relationship": "references"
+    },
+    {
+      "source": "table:Orders",
+      "target": "table:Tenants",
+      "relationship": "references"
+    },
+    {
+      "source": "table:Orders",
+      "target": "table:Users",
+      "relationship": "references"
+    },
+    {
+      "source": "table:Orders",
+      "target": "table:Plans",
+      "relationship": "references"
+    },
+    {
+      "source": "table:OrderItems",
+      "target": "table:Orders",
+      "relationship": "references"
+    },
+    {
+      "source": "table:TenantBillingProfiles",
+      "target": "table:Tenants",
+      "relationship": "references"
+    },
+    {
+      "source": "table:TrafficAttributions",
+      "target": "table:Tenants",
+      "relationship": "references"
+    },
+    {
+      "source": "table:TrafficAttributions",
+      "target": "table:Orders",
+      "relationship": "references"
+    },
+    {
+      "source": "table:LLMUsageLogs",
+      "target": "table:Tenants",
+      "relationship": "references"
+    },
+    {
+      "source": "table:TenantConfigs",
+      "target": "table:Tenants",
+      "relationship": "references"
+    },
+    {
+      "source": "table:RobotActivities",
+      "target": "table:Tenants",
+      "relationship": "references"
+    },
+    {
+      "source": "table:StoreIntegrations",
+      "target": "table:Tenants",
+      "relationship": "references"
+    },
+    {
+      "source": "table:CreditTransactions",
+      "target": "table:Tenants",
+      "relationship": "references"
+    },
+    {
+      "source": "table:CreditTransactions",
+      "target": "table:Orders",
+      "relationship": "references"
+    },
+    {
+      "source": "security_policy:TenantSecurityPolicy",
+      "target": "table:Products",
+      "relationship": "protects"
+    },
+    {
+      "source": "security_policy:TenantSecurityPolicy",
+      "target": "table:Orders",
+      "relationship": "protects"
+    },
+    {
+      "source": "security_policy:TenantSecurityPolicy",
+      "target": "table:TenantBillingProfiles",
+      "relationship": "protects"
+    },
+    {
+      "source": "security_policy:TenantSecurityPolicy",
+      "target": "table:TrafficAttributions",
+      "relationship": "protects"
+    },
+    {
+      "source": "security_policy:TenantSecurityPolicy",
+      "target": "table:LLMUsageLogs",
+      "relationship": "protects"
+    },
+    {
+      "source": "security_policy:TenantSecurityPolicy",
+      "target": "table:EmailLogs",
+      "relationship": "protects"
+    },
+    {
+      "source": "security_policy:TenantSecurityPolicy",
+      "target": "table:TenantConfigs",
+      "relationship": "protects"
+    },
+    {
+      "source": "security_policy:TenantSecurityPolicy",
+      "target": "table:RobotActivities",
+      "relationship": "protects"
+    },
+    {
+      "source": "security_policy:TenantSecurityPolicy",
+      "target": "table:StoreIntegrations",
+      "relationship": "protects"
+    },
+    {
+      "source": "security_policy:TenantSecurityPolicy",
+      "target": "table:CreditTransactions",
+      "relationship": "protects"
+    },
+    {
+      "source": "security_policy:TenantSecurityPolicy",
+      "target": "table:TenantAiCredentials",
+      "relationship": "protects"
+    },
+    {
+      "source": "security_policy:TenantSecurityPolicy",
+      "target": "table:TenantSsoMappings",
+      "relationship": "protects"
+    },
+    {
+      "source": "table:AuditLogs",
+      "target": "table:Tenants",
+      "relationship": "references"
+    },
+    {
+      "source": "exchange:ecommerce_dlx",
+      "target": "queue:dlq_ecommerce",
+      "relationship": "routes_dead_letter"
+    },
+    {
+      "source": "queue:demo_ecommerce",
+      "target": "exchange:ecommerce_dlx",
+      "relationship": "routes_dead_letter"
+    },
+    {
+      "source": "queue:ecommerce",
+      "target": "exchange:ecommerce_dlx",
+      "relationship": "routes_dead_letter"
+    },
+    {
+      "source": "queue:analytics_ml_queue",
+      "target": "exchange:ecommerce_dlx",
+      "relationship": "routes_dead_letter"
+    },
+    {
+      "source": "infrastructure:Redis",
+      "target": "channel:events:tenant",
+      "relationship": "hosts_channel"
+    },
+    {
+      "source": "gateway:MercadoPagoGateway",
+      "target": "external_api:MercadoPagoAPI",
+      "relationship": "integrates_with"
+    },
+    {
+      "source": "gateway:NuvemshopGateway",
+      "target": "external_api:NuvemshopV1",
+      "relationship": "integrates_with"
+    },
+    {
+      "source": "gateway:ResendGateway",
+      "target": "external_api:ResendAPI",
+      "relationship": "integrates_with"
+    },
+    {
+      "source": "gateway:ShopifyGateway",
+      "target": "external_api:ShopifyGraphQL",
+      "relationship": "integrates_with"
+    },
+    {
+      "source": "consumer:AnalyticsProcessedConsumer",
+      "target": "queue:analytics_processed_queue",
+      "relationship": "consumes_from"
+    },
+    {
+      "source": "consumer:AnalyticsProcessedConsumer",
+      "target": "code:RedisService",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:AnalyticsProcessedConsumer",
+      "target": "code:RobotActivityRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:EmailNotificationConsumer",
+      "target": "queue:email_notifications",
+      "relationship": "consumes_from"
+    },
+    {
+      "source": "consumer:EmailNotificationConsumer",
+      "target": "code:ResendGateway",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:EmailNotificationConsumer",
+      "target": "code:EmailRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:LlmUsageConsumer",
+      "target": "queue:llm_usage_queue",
+      "relationship": "consumes_from"
+    },
+    {
+      "source": "consumer:LlmUsageConsumer",
+      "target": "code:MeteringRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:NuvemshopBulkSyncConsumer",
+      "target": "queue:nuvemshop_bulk_sync",
+      "relationship": "consumes_from"
+    },
+    {
+      "source": "consumer:NuvemshopBulkSyncConsumer",
+      "target": "code:ProductRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:NuvemshopBulkSyncConsumer",
+      "target": "code:TenantRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:NuvemshopBulkSyncConsumer",
+      "target": "code:StoreIntegrationRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:NuvemshopBulkSyncConsumer",
+      "target": "code:RobotActivityRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:NuvemshopBulkSyncConsumer",
+      "target": "code:RedisService",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:PaymentProcessingConsumer",
+      "target": "queue:payments_process_queue",
+      "relationship": "consumes_from"
+    },
+    {
+      "source": "consumer:PaymentProcessingConsumer",
+      "target": "queue:email_notifications",
+      "relationship": "publishes_to"
+    },
+    {
+      "source": "consumer:PaymentProcessingConsumer",
+      "target": "code:OrderRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:PaymentProcessingConsumer",
+      "target": "code:TenantRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:PaymentProcessingConsumer",
+      "target": "code:PlanRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:PaymentProcessingConsumer",
+      "target": "code:MercadoPagoGateway",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:PaymentProcessingConsumer",
+      "target": "code:RedisService",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:PaymentProcessingConsumer",
+      "target": "code:RobotActivityRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:ProcessedProductConsumer",
+      "target": "queue:ecommerce_processed_queue",
+      "relationship": "consumes_from"
+    },
+    {
+      "source": "consumer:ProcessedProductConsumer",
+      "target": "channel:events:tenant",
+      "relationship": "publishes_to"
+    },
+    {
+      "source": "consumer:ProcessedProductConsumer",
+      "target": "code:ProductRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:ProcessedProductConsumer",
+      "target": "code:TenantRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:ProcessedProductConsumer",
+      "target": "code:RedisService",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:ShopifyBulkSyncConsumer",
+      "target": "queue:shopify_bulk_sync",
+      "relationship": "consumes_from"
+    },
+    {
+      "source": "consumer:ShopifyBulkSyncConsumer",
+      "target": "code:ProductRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:ShopifyBulkSyncConsumer",
+      "target": "code:TenantRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:ShopifyBulkSyncConsumer",
+      "target": "code:StoreIntegrationRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:ShopifyBulkSyncConsumer",
+      "target": "code:RobotActivityRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:ShopifyBulkSyncConsumer",
+      "target": "code:RedisService",
+      "relationship": "invokes"
+    },
+    {
+      "source": "code:AiCapacityRepository",
+      "target": "table:AiProviderCredits",
+      "relationship": "writes_to"
+    },
     {
       "source": "code:AiCapacityRepository",
       "target": "table:AiProviderCredits",
@@ -1565,7 +3111,17 @@
     {
       "source": "code:AuditRepository",
       "target": "table:AuditLogs",
+      "relationship": "writes_to"
+    },
+    {
+      "source": "code:AuditRepository",
+      "target": "table:AuditLogs",
       "relationship": "queries"
+    },
+    {
+      "source": "code:EmailRepository",
+      "target": "table:EmailLogs",
+      "relationship": "writes_to"
     },
     {
       "source": "code:EmailRepository",
@@ -1578,9 +3134,24 @@
       "relationship": "queries"
     },
     {
+      "source": "code:EnterpriseLeadRepository",
+      "target": "table:EnterpriseLeads",
+      "relationship": "writes_to"
+    },
+    {
       "source": "code:MeteringRepository",
       "target": "table:Tenants",
       "relationship": "queries"
+    },
+    {
+      "source": "code:MeteringRepository",
+      "target": "table:LLMUsageLogs",
+      "relationship": "writes_to"
+    },
+    {
+      "source": "code:MeteringRepository",
+      "target": "table:Tenants",
+      "relationship": "writes_to"
     },
     {
       "source": "code:MeteringRepository",
@@ -1591,6 +3162,16 @@
       "source": "code:OrderRepository",
       "target": "code:RedisService",
       "relationship": "invokes"
+    },
+    {
+      "source": "code:OrderRepository",
+      "target": "table:Orders",
+      "relationship": "writes_to"
+    },
+    {
+      "source": "code:OrderRepository",
+      "target": "table:OrderItems",
+      "relationship": "writes_to"
     },
     {
       "source": "code:OrderRepository",
@@ -1613,6 +3194,11 @@
       "relationship": "queries"
     },
     {
+      "source": "code:PlanRepository",
+      "target": "table:Plans",
+      "relationship": "writes_to"
+    },
+    {
       "source": "code:ProductRepository",
       "target": "code:RedisService",
       "relationship": "invokes"
@@ -1623,6 +3209,16 @@
       "relationship": "queries"
     },
     {
+      "source": "code:ProductRepository",
+      "target": "table:Products",
+      "relationship": "writes_to"
+    },
+    {
+      "source": "code:RobotActivityRepository",
+      "target": "table:RobotActivities",
+      "relationship": "writes_to"
+    },
+    {
       "source": "code:RobotActivityRepository",
       "target": "table:RobotActivities",
       "relationship": "queries"
@@ -1631,6 +3227,11 @@
       "source": "code:RoleRepository",
       "target": "table:Roles",
       "relationship": "queries"
+    },
+    {
+      "source": "code:SaasAnalyticsRepository",
+      "target": "table:SaasTrafficVisits",
+      "relationship": "writes_to"
     },
     {
       "source": "code:SaasAnalyticsRepository",
@@ -1658,9 +3259,19 @@
       "relationship": "queries"
     },
     {
+      "source": "code:SaasAnalyticsRepository",
+      "target": "table:SaasAdSpends",
+      "relationship": "writes_to"
+    },
+    {
       "source": "code:StoreIntegrationRepository",
       "target": "table:StoreIntegrations",
       "relationship": "queries"
+    },
+    {
+      "source": "code:StoreIntegrationRepository",
+      "target": "table:StoreIntegrations",
+      "relationship": "writes_to"
     },
     {
       "source": "code:TenantAiCredentialRepository",
@@ -1688,6 +3299,11 @@
       "relationship": "queries"
     },
     {
+      "source": "code:TenantConfigRepository",
+      "target": "table:TenantConfigs",
+      "relationship": "writes_to"
+    },
+    {
       "source": "code:TenantRepository",
       "target": "code:RedisService",
       "relationship": "invokes"
@@ -1696,6 +3312,16 @@
       "source": "code:TenantRepository",
       "target": "table:Tenants",
       "relationship": "queries"
+    },
+    {
+      "source": "code:TenantRepository",
+      "target": "table:Tenants",
+      "relationship": "writes_to"
+    },
+    {
+      "source": "code:TenantRepository",
+      "target": "table:CreditTransactions",
+      "relationship": "writes_to"
     },
     {
       "source": "code:TenantRepository",
@@ -1708,14 +3334,39 @@
       "relationship": "queries"
     },
     {
+      "source": "code:TenantSsoMappingRepository",
+      "target": "table:Roles",
+      "relationship": "queries"
+    },
+    {
+      "source": "code:TenantSsoMappingRepository",
+      "target": "table:TenantSsoMappings",
+      "relationship": "writes_to"
+    },
+    {
       "source": "code:TrafficAttributionRepository",
       "target": "table:TrafficAttributions",
+      "relationship": "writes_to"
+    },
+    {
+      "source": "code:TrafficAttributionRepository",
+      "target": "table:TrafficAttributions",
+      "relationship": "queries"
+    },
+    {
+      "source": "code:TrafficAttributionRepository",
+      "target": "table:Orders",
       "relationship": "queries"
     },
     {
       "source": "code:UserRepository",
       "target": "table:Users",
       "relationship": "queries"
+    },
+    {
+      "source": "code:UserRepository",
+      "target": "table:Users",
+      "relationship": "writes_to"
     },
     {
       "source": "code:UserRepository",
@@ -1740,12 +3391,17 @@
     {
       "source": "code:AuditService",
       "target": "table:Users",
-      "relationship": "queries"
+      "relationship": "writes_to"
     },
     {
       "source": "code:AuditService",
       "target": "table:Tenants",
-      "relationship": "queries"
+      "relationship": "writes_to"
+    },
+    {
+      "source": "code:AuthService",
+      "target": "queue:email_notifications",
+      "relationship": "publishes_to"
     },
     {
       "source": "code:AuthService",
@@ -1790,6 +3446,11 @@
     {
       "source": "code:CheckoutService",
       "target": "code:TenantRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "code:CheckoutService",
+      "target": "code:MercadoPagoGateway",
       "relationship": "invokes"
     },
     {
@@ -1839,6 +3500,11 @@
     },
     {
       "source": "code:MachineLearningService",
+      "target": "queue:analytics_ml_queue",
+      "relationship": "publishes_to"
+    },
+    {
+      "source": "code:MachineLearningService",
       "target": "code:RobotActivityRepository",
       "relationship": "invokes"
     },
@@ -1864,6 +3530,11 @@
     },
     {
       "source": "code:MercadoPagoWebhookService",
+      "target": "queue:payments_process_queue",
+      "relationship": "publishes_to"
+    },
+    {
+      "source": "code:MercadoPagoWebhookService",
       "target": "code:RedisService",
       "relationship": "invokes"
     },
@@ -1871,6 +3542,11 @@
       "source": "code:MeteringService",
       "target": "code:MeteringRepository",
       "relationship": "invokes"
+    },
+    {
+      "source": "code:NuvemshopIntegrationService",
+      "target": "queue:nuvemshop_bulk_sync",
+      "relationship": "publishes_to"
     },
     {
       "source": "code:NuvemshopIntegrationService",
@@ -1904,6 +3580,16 @@
     },
     {
       "source": "code:ScraperService",
+      "target": "queue:ecommerce",
+      "relationship": "publishes_to"
+    },
+    {
+      "source": "code:ScraperService",
+      "target": "queue:demo_ecommerce",
+      "relationship": "publishes_to"
+    },
+    {
+      "source": "code:ScraperService",
       "target": "code:TenantRepository",
       "relationship": "invokes"
     },
@@ -1916,6 +3602,11 @@
       "source": "code:SettingsService",
       "target": "code:RedisService",
       "relationship": "invokes"
+    },
+    {
+      "source": "code:ShopifyIntegrationService",
+      "target": "queue:shopify_bulk_sync",
+      "relationship": "publishes_to"
     },
     {
       "source": "code:ShopifyIntegrationService",
@@ -2000,6 +3691,11 @@
     {
       "source": "code:WalletService",
       "target": "code:OrderRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "code:WalletService",
+      "target": "code:MercadoPagoGateway",
       "relationship": "invokes"
     },
     {
@@ -2278,6 +3974,11 @@
       "relationship": "invokes"
     },
     {
+      "source": "controller:BillingProfileController",
+      "target": "code:TenantBillingProfileService",
+      "relationship": "invokes"
+    },
+    {
       "source": "controller:CheckoutController",
       "target": "code:CheckoutService",
       "relationship": "invokes"
@@ -2398,57 +4099,97 @@
       "relationship": "invokes"
     },
     {
-      "source": "worker:__init__",
-      "target": "queue:consume_ml_queue",
-      "relationship": "interacts_with"
+      "source": "worker:ScraperWorker",
+      "target": "queue:ecommerce",
+      "relationship": "consumes_from"
     },
     {
-      "source": "worker:rabbitmq",
-      "target": "queue:analytics_ml_queue",
-      "relationship": "interacts_with"
+      "source": "worker:ScraperWorker",
+      "target": "queue:demo_ecommerce",
+      "relationship": "consumes_from"
     },
     {
-      "source": "worker:rabbitmq",
+      "source": "worker:ScraperWorker",
       "target": "queue:ecommerce_processed_queue",
-      "relationship": "interacts_with"
+      "relationship": "publishes_to"
     },
     {
-      "source": "worker:rabbitmq",
-      "target": "queue:analytics_processed_queue",
-      "relationship": "interacts_with"
-    },
-    {
-      "source": "worker:rabbitmq",
+      "source": "worker:ScraperWorker",
       "target": "queue:llm_usage_queue",
-      "relationship": "interacts_with"
+      "relationship": "publishes_to"
     },
     {
-      "source": "worker:ml_worker",
-      "target": "ml_model:ChurnPredictor",
-      "relationship": "executes"
+      "source": "worker:ScraperWorker",
+      "target": "exchange:ecommerce_dlx",
+      "relationship": "routes_dead_letter"
     },
     {
-      "source": "worker:ml_worker",
-      "target": "ml_model:LTVForecaster",
-      "relationship": "executes"
+      "source": "worker:ScraperWorker",
+      "target": "scraper_component:parser",
+      "relationship": "uses"
     },
     {
-      "source": "worker:ml_worker",
-      "target": "ml_model:AnalyticsMLEngine",
-      "relationship": "executes"
+      "source": "worker:ScraperWorker",
+      "target": "scraper_component:scrapling_client",
+      "relationship": "uses"
     },
     {
-      "source": "worker:ml_worker",
+      "source": "worker:ScraperWorker",
+      "target": "scraper_component:json_ld_parser",
+      "relationship": "uses"
+    },
+    {
+      "source": "worker:ScraperWorker",
+      "target": "scraper_component:markdown_parser",
+      "relationship": "uses"
+    },
+    {
+      "source": "ai:LLMEngineRouter",
+      "target": "external_api:OpenRouterLLM",
+      "relationship": "integrates_with"
+    },
+    {
+      "source": "scraper_component:parser",
+      "target": "ai:LLMEngineRouter",
+      "relationship": "invokes"
+    },
+    {
+      "source": "worker:MLWorker",
+      "target": "queue:analytics_ml_queue",
+      "relationship": "consumes_from"
+    },
+    {
+      "source": "worker:MLWorker",
+      "target": "queue:analytics_processed_queue",
+      "relationship": "publishes_to"
+    },
+    {
+      "source": "worker:MLWorker",
+      "target": "exchange:ecommerce_dlx",
+      "relationship": "routes_dead_letter"
+    },
+    {
+      "source": "worker:MLWorker",
       "target": "ml_model:RFMSegmentation",
       "relationship": "executes"
     },
     {
-      "source": "worker:ml_worker",
+      "source": "worker:MLWorker",
+      "target": "ml_model:ChurnPredictor",
+      "relationship": "executes"
+    },
+    {
+      "source": "worker:MLWorker",
+      "target": "ml_model:LTVForecaster",
+      "relationship": "executes"
+    },
+    {
+      "source": "worker:MLWorker",
       "target": "ml_model:TokenCapacityForecaster",
       "relationship": "executes"
     },
     {
-      "source": "ml_model:SparkBatchPipeline",
+      "source": "ml_pipeline:SparkBatchPipeline",
       "target": "artifact:rfm_pipeline.joblib",
       "relationship": "exports"
     },
@@ -2456,6 +4197,211 @@
       "source": "artifact:rfm_pipeline.joblib",
       "target": "ml_model:RFMSegmentation",
       "relationship": "calibrates"
+    },
+    {
+      "source": "frontend_hook:useRealtimeWalletBalance",
+      "target": "controller:StreamController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:billing.service",
+      "target": "controller:BillingProfileController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:wallet.service",
+      "target": "controller:WalletController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:wallet.service",
+      "target": "controller:CheckoutController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:wallet.service",
+      "target": "controller:PlansController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:settings.service",
+      "target": "controller:SettingsController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:tenantSso.service",
+      "target": "controller:TenantSsoController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_hook:useScraperStream",
+      "target": "controller:StreamController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:scraper.service",
+      "target": "controller:ScraperController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:plans.service",
+      "target": "controller:PlansController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:metering.service",
+      "target": "controller:MeteringController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_hook:useDemoHeroInput",
+      "target": "controller:DemoController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_hook:useDemoHeroInput",
+      "target": "channel:events:tenant",
+      "relationship": "subscribes_sse"
+    },
+    {
+      "source": "frontend_hook:useLiveDemoSSE",
+      "target": "controller:DemoController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_hook:useLiveDemoSSE",
+      "target": "channel:events:tenant",
+      "relationship": "subscribes_sse"
+    },
+    {
+      "source": "frontend_service:liveDemoService",
+      "target": "controller:ScraperController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:liveDemoService",
+      "target": "controller:StreamController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:liveDemoService",
+      "target": "controller:DemoController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:liveDemoService",
+      "target": "channel:events:tenant",
+      "relationship": "subscribes_sse"
+    },
+    {
+      "source": "frontend_service:integration.service",
+      "target": "controller:NuvemshopIntegrationController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:integration.service",
+      "target": "controller:ShopifyIntegrationController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:integration.service",
+      "target": "controller:IntegrationsController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:dashboard.service",
+      "target": "controller:SystemController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:dashboard.service",
+      "target": "controller:ScraperController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:product.service",
+      "target": "controller:ShopifyIntegrationController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:product.service",
+      "target": "controller:ProductsController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:product.service",
+      "target": "controller:NuvemshopIntegrationController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:authService",
+      "target": "controller:AuthController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:mlAnalytics.service",
+      "target": "controller:AnalyticsController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "service:EcommerceBot.Diagnostics.Mcp",
+      "target": "mcp_tool:check_sql_health",
+      "relationship": "registers_tool"
+    },
+    {
+      "source": "mcp_tool:check_sql_health",
+      "target": "infrastructure:SqlServer",
+      "relationship": "inspects_dmvs"
+    },
+    {
+      "source": "service:EcommerceBot.Diagnostics.Mcp",
+      "target": "mcp_tool:check_redis_metrics",
+      "relationship": "registers_tool"
+    },
+    {
+      "source": "mcp_tool:check_redis_metrics",
+      "target": "infrastructure:Redis",
+      "relationship": "inspects_metrics"
+    },
+    {
+      "source": "service:EcommerceBot.Diagnostics.Mcp",
+      "target": "mcp_tool:inspect_rabbitmq_queues",
+      "relationship": "registers_tool"
+    },
+    {
+      "source": "mcp_tool:inspect_rabbitmq_queues",
+      "target": "exchange:ecommerce_dlx",
+      "relationship": "inspects_queues"
+    },
+    {
+      "source": "service:EcommerceBot.Diagnostics.Mcp",
+      "target": "mcp_tool:get_recent_application_errors",
+      "relationship": "registers_tool"
+    },
+    {
+      "source": "mcp_tool:get_recent_application_errors",
+      "target": "infrastructure:Serilog",
+      "relationship": "inspects_logs"
+    },
+    {
+      "source": "service:EcommerceBot.Diagnostics.Mcp",
+      "target": "mcp_tool:inspect_ml_artifacts",
+      "relationship": "registers_tool"
+    },
+    {
+      "source": "mcp_tool:inspect_ml_artifacts",
+      "target": "artifact:rfm_pipeline.joblib",
+      "relationship": "inspects_artifacts"
+    },
+    {
+      "source": "service:EcommerceBot.Diagnostics.Mcp",
+      "target": "mcp_tool:check_spark_pipeline_status",
+      "relationship": "registers_tool"
+    },
+    {
+      "source": "mcp_tool:check_spark_pipeline_status",
+      "target": "ml_pipeline:SparkBatchPipeline",
+      "relationship": "inspects_pipeline"
     },
     {
       "source": "service:EcommerceBot.Diagnostics.Mcp",
@@ -2471,6 +4417,26 @@
       "source": "service:EcommerceBot.Diagnostics.Mcp",
       "target": "runbook:sql-server-diagnostics",
       "relationship": "exposes_resource"
+    },
+    {
+      "source": "sre_script:backup_sqlserver_r2",
+      "target": "container:mssql",
+      "relationship": "operates_on"
+    },
+    {
+      "source": "sre_script:backup_sqlserver_log_r2",
+      "target": "container:mssql",
+      "relationship": "operates_on"
+    },
+    {
+      "source": "sre_script:provision_vps_host",
+      "target": "container:mssql",
+      "relationship": "operates_on"
+    },
+    {
+      "source": "sre_script:setup_sqlserver_maintenance",
+      "target": "container:mssql",
+      "relationship": "operates_on"
     }
   ]
 }

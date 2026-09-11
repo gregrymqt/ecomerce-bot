@@ -8,14 +8,15 @@ from app.core.shared.security import validate_url_safety
 from app.core.config.redis_db import redis_cache
 from app.core.config.rabbitmq import (
     QUEUE_ECOMMERCE,
+    QUEUE_DEMO_ECOMMERCE,
     QUEUE_ECOMMERCE_PROCESSED,
     QUEUE_LLM_USAGE,
-    ECOMMERCE_QUEUE_ARGS
+    ECOMMERCE_QUEUE_ARGS,
+    DEMO_ECOMMERCE_QUEUE_ARGS,
 )
 
 logger = get_logger("worker.scraper")
 
-QUEUE_INPUT = QUEUE_ECOMMERCE
 QUEUE_OUTPUT = QUEUE_ECOMMERCE_PROCESSED
 
 async def _process_single_message(message: aio_pika.IncomingMessage, channel: aio_pika.Channel, parser: ScraperAndLLMParser):
@@ -56,7 +57,7 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
             validate_url_safety(url)
         except ValueError as ssrf_err:
             logger.warning(
-                f"Bloqueio de segurança Anti-SSRF para URL {url}: {ssrf_err}",
+                f"Bloqueio de segurança Anti-SSRF/Rede para URL {url}: {ssrf_err}",
                 extra={"tenant_id": str(tenant_id), "sku": str(sku), "reason": str(ssrf_err)}
             )
             failed_event = {
@@ -65,7 +66,8 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
                 "title": "",
                 "description": "",
                 "status": "FAILED",
-                "errorMessage": f"Bloqueado pela política Anti-SSRF: {ssrf_err}",
+                "isFallback": True,
+                "errorMessage": f"Bloqueio de rede / Anti-SSRF: {ssrf_err}",
                 "aiMetadataJson": "{}"
             }
             try:
@@ -90,6 +92,7 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
                 "title": result.get("title", ""),
                 "description": result.get("description", ""),
                 "status": "PROCESSED",
+                "isFallback": False,
                 "errorMessage": "",
                 "aiMetadataJson": json.dumps({
                     "model_used": result.get("model_used", "scrapling/adaptive-dom"),
@@ -134,6 +137,7 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
                 "title": "",
                 "description": "",
                 "status": "FAILED",
+                "isFallback": True,
                 "errorMessage": str(ex),
                 "aiMetadataJson": "{}"
             }
@@ -155,6 +159,7 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
 async def start_scraper_worker():
     """
     Worker resiliente com reconexão automática ao RabbitMQ e DLQs configuradas.
+    Escuta concorrentemente as filas QUEUE_ECOMMERCE e QUEUE_DEMO_ECOMMERCE.
     """
     logger.info(f"Inicializando ScraperWorker conectado a {settings.RABBITMQ_URL}...")
     parser = ScraperAndLLMParser()
@@ -166,15 +171,23 @@ async def start_scraper_worker():
                 channel = await connection.channel()
                 await channel.set_qos(prefetch_count=5)
 
-                # Declaração das filas com os mesmos argumentos canônicos da topologia
-                queue = await channel.declare_queue(QUEUE_INPUT, durable=True, arguments=ECOMMERCE_QUEUE_ARGS)
+                # Declaração das filas de entrada com argumentos canônicos
+                queue_prod = await channel.declare_queue(QUEUE_ECOMMERCE, durable=True, arguments=ECOMMERCE_QUEUE_ARGS)
+                queue_demo = await channel.declare_queue(QUEUE_DEMO_ECOMMERCE, durable=True, arguments=DEMO_ECOMMERCE_QUEUE_ARGS)
                 await channel.declare_queue(QUEUE_OUTPUT, durable=True)
                 await channel.declare_queue(QUEUE_LLM_USAGE, durable=True)
 
-                logger.info(f"ScraperWorker pronto e escutando na fila '{QUEUE_INPUT}'...")
+                logger.info(f"ScraperWorker pronto e escutando nas filas '{QUEUE_ECOMMERCE}' e '{QUEUE_DEMO_ECOMMERCE}'...")
 
-                async for message in queue:
-                    await _process_single_message(message, channel, parser)
+                async def consume_queue(q: aio_pika.Queue, name: str):
+                    logger.info(f"Escuta iniciada na fila: {name}")
+                    async for msg in q:
+                        await _process_single_message(msg, channel, parser)
+
+                await asyncio.gather(
+                    consume_queue(queue_prod, QUEUE_ECOMMERCE),
+                    consume_queue(queue_demo, QUEUE_DEMO_ECOMMERCE)
+                )
 
         except asyncio.CancelledError:
             logger.info("ScraperWorker cancelado graciosamente.")
