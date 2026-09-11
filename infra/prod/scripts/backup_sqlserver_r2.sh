@@ -83,6 +83,18 @@ echo -e "${CYAN}================================================================
 echo -e "${CYAN}  📦 [${TIMESTAMP}] Iniciando Backup Nativo do SQL Server 2022        ${NC}"
 echo -e "${CYAN}======================================================================${NC}"
 
+# 0. Verificação Prévia de Integridade Física (Proteção contra propagação de corrupção para o R2)
+echo -e "${YELLOW}🩺 [0/3] Executando verificação prévia de integridade física no banco '${MSSQL_DB}'...${NC}"
+CHECK_SQL="IF OBJECT_ID('master.dbo.DatabaseIntegrityCheck') IS NOT NULL EXEC master.dbo.DatabaseIntegrityCheck @Databases = '${MSSQL_DB}', @CheckCommands = 'CHECKDB', @PhysicalOnly = 'Y', @LogToTable = 'Y'; ELSE DBCC CHECKDB ([${MSSQL_DB}]) WITH NO_INFOMSGS, PHYSICAL_ONLY;"
+
+if ! docker exec "${MSSQL_CONTAINER}" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${MSSQL_SA_PASSWORD}" -C -Q "${CHECK_SQL}"; then
+    echo -e "${RED}❌ ERRO FATAL: Falha na verificação de integridade do banco '${MSSQL_DB}'. Abortando backup para proteger réplicas no R2.${NC}"
+    send_discord_alert "CORRUPÇÃO DETECTADA" "❌ A checagem de integridade física (DBCC CHECKDB) falhou no banco '${MSSQL_DB}'. O backup foi ABORTADO para evitar propagação de corrupção para o Cloudflare R2." 15158332
+    rm -rf "${HOST_TEMP_DIR}"
+    exit 1
+fi
+echo -e "${GREEN}✅ Integridade do banco '${MSSQL_DB}' verificada com sucesso!${NC}\n"
+
 # 1. Execução do Backup Nativo com Compressão e Checksum no SQL Server
 for DB in "${DATABASES[@]}"; do
     BAK_FILENAME="${DB}_${TIMESTAMP}.bak"

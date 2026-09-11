@@ -74,10 +74,29 @@ if [ -z "${CONTAINER_BAK}" ]; then
     exit 1
 fi
 
+# 2. Localizar ou Baixar arquivo .trn opcional (Cadeia de logs)
+TRN_FILE="$2"
+CONTAINER_TRN=""
+
+if [ -n "${TRN_FILE}" ]; then
+    echo -e "${YELLOW}🔍 Arquivo de log transacional (.trn) informado: ${TRN_FILE}${NC}"
+    if [ -f "${TRN_FILE}" ]; then
+        docker cp "${TRN_FILE}" "${MSSQL_CONTAINER}:${CONTAINER_RESTORE_DIR}/restore_test.trn"
+        CONTAINER_TRN="${CONTAINER_RESTORE_DIR}/restore_test.trn"
+    else
+        CONTAINER_TRN="${CONTAINER_RESTORE_DIR}/${TRN_FILE}"
+    fi
+fi
+
 echo -e "\n${YELLOW}📦 [1/3] Inspecionando estrutura interna do arquivo .bak...${NC}"
 docker exec "${MSSQL_CONTAINER}" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${MSSQL_SA_PASSWORD}" -C -Q "RESTORE FILELISTONLY FROM DISK = N'${CONTAINER_BAK}';"
 
-echo -e "\n${YELLOW}🔄 [2/3] Restaurando banco de testes '${TEST_DB}' com WITH REPLACE...${NC}"
+RESTORE_STATE="RECOVERY"
+if [ -n "${CONTAINER_TRN}" ]; then
+    RESTORE_STATE="NORECOVERY"
+fi
+
+echo -e "\n${YELLOW}🔄 [2/3] Restaurando banco de testes '${TEST_DB}' (State: ${RESTORE_STATE})...${NC}"
 docker exec "${MSSQL_CONTAINER}" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${MSSQL_SA_PASSWORD}" -C <<EOF
 IF EXISTS (SELECT name FROM sys.databases WHERE name = '${TEST_DB}')
 BEGIN
@@ -88,11 +107,21 @@ GO
 
 RESTORE DATABASE [${TEST_DB}] 
 FROM DISK = N'${CONTAINER_BAK}'
-WITH REPLACE,
+WITH REPLACE, ${RESTORE_STATE},
      MOVE 'EcommerceBotDb' TO '/var/opt/mssql/data/${TEST_DB}.mdf',
      MOVE 'EcommerceBotDb_log' TO '/var/opt/mssql/data/${TEST_DB}_log.ldf';
 GO
 EOF
+
+if [ -n "${CONTAINER_TRN}" ]; then
+    echo -e "${YELLOW}>> Aplicando arquivo de Transaction Log (.trn) com RECOVERY...${NC}"
+    docker exec "${MSSQL_CONTAINER}" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${MSSQL_SA_PASSWORD}" -C <<EOF
+RESTORE LOG [${TEST_DB}] 
+FROM DISK = N'${CONTAINER_TRN}' 
+WITH RECOVERY;
+GO
+EOF
+fi
 
 echo -e "\n${YELLOW}🩺 [3/3] Validando integridade e contagem de tabelas do banco restaurado...${NC}"
 docker exec "${MSSQL_CONTAINER}" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${MSSQL_SA_PASSWORD}" -C <<EOF

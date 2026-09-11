@@ -147,3 +147,63 @@ BEGIN
     PRINT '----------------------------------------------------------------------';
 END
 GO
+
+-- 4. Procedure: DatabaseIntegrityCheck (Verificação de Integridade Física e Lógica - DBCC CHECKDB)
+CREATE OR ALTER PROCEDURE dbo.DatabaseIntegrityCheck
+    @Databases nvarchar(max) = 'USER_DATABASES',
+    @CheckCommands nvarchar(max) = 'CHECKDB',
+    @PhysicalOnly nvarchar(max) = 'N',
+    @NoIndex nvarchar(max) = 'N',
+    @LogToTable nvarchar(max) = 'Y',
+    @Execute nvarchar(max) = 'Y'
+AS
+BEGIN
+    SET NOCOUNT ON;
+    PRINT '----------------------------------------------------------------------';
+    PRINT 'Iniciando DatabaseIntegrityCheck';
+    PRINT 'Timestamp: ' + CONVERT(nvarchar(30), SYSDATETIMEOFFSET(), 126);
+    PRINT '----------------------------------------------------------------------';
+
+    DECLARE @CurrentDb sysname;
+    DECLARE @Sql nvarchar(max);
+    DECLARE @Options nvarchar(max) = N'WITH NO_INFOMSGS';
+
+    IF @PhysicalOnly = 'Y'
+        SET @Options = @Options + N', PHYSICAL_ONLY';
+
+    IF @NoIndex = 'Y'
+        SET @Options = @Options + N', NOINDEX';
+
+    DECLARE db_cursor CURSOR LOCAL FAST_FORWARD FOR
+        SELECT name FROM sys.databases 
+        WHERE state_desc = 'ONLINE' 
+          AND database_id > 4 -- Apenas USER_DATABASES
+          AND is_read_only = 0;
+
+    OPEN db_cursor;
+    FETCH NEXT FROM db_cursor INTO @CurrentDb;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        PRINT '>> Executando DBCC CHECKDB em: ' + @CurrentDb;
+        SET @Sql = N'DBCC CHECKDB ([' + @CurrentDb + N']) ' + @Options + N';';
+
+        EXEC dbo.CommandExecute 
+            @Command = @Sql, 
+            @CommandType = 'DBCC CHECKDB', 
+            @DatabaseName = @CurrentDb, 
+            @LogToTable = @LogToTable, 
+            @Execute = @Execute;
+
+        FETCH NEXT FROM db_cursor INTO @CurrentDb;
+    END
+
+    CLOSE db_cursor;
+    DEALLOCATE db_cursor;
+
+    PRINT '----------------------------------------------------------------------';
+    PRINT 'DatabaseIntegrityCheck concluído com sucesso.';
+    PRINT '----------------------------------------------------------------------';
+END
+GO
+

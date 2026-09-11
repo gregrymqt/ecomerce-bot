@@ -48,10 +48,22 @@ public class Program
         {
             // 3. Ensure target database exists
             Console.WriteLine("🔍 Verificando/Criando banco de dados de destino...");
-            EnsureDatabase.For.SqlDatabase(connectionString);
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("✅ Banco de dados pronto.");
-            Console.ResetColor();
+            try
+            {
+                EnsureDatabase.For.SqlDatabase(connectionString);
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("✅ Banco de dados pronto.");
+                Console.ResetColor();
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"ℹ️ EnsureDatabase: {ex.Message} (Prosseguindo caso o banco já tenha sido provisionado por usuário de deploy).");
+                Console.ResetColor();
+            }
+
+            // 3.1 Configure Concurrency & Query Store (RCSI + Observability)
+            DatabaseConfigurationHelper.ConfigureDatabaseOptions(connectionString);
 
             // 4. Configure DbUp Upgrade Engine
             Console.WriteLine("📦 Descobrindo scripts versionados embutidos no assembly...");

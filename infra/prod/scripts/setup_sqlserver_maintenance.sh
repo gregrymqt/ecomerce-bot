@@ -61,7 +61,7 @@ done
 echo -e "${GREEN}✅ SQL Server online e pronto para receber comandos!${NC}"
 
 # 2. Configurar Limite de Memória (max server memory = 2560 MB)
-echo -e "\n${YELLOW}⚙️ [1/3] Configurando max server memory para 2560 MB...${NC}"
+echo -e "\n${YELLOW}⚙️ [1/4] Configurando max server memory para 2560 MB...${NC}"
 docker exec -i "${MSSQL_CONTAINER}" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${MSSQL_SA_PASSWORD}" -C <<EOF
 EXEC sp_configure 'show advanced options', 1;
 RECONFIGURE;
@@ -73,14 +73,29 @@ GO
 EOF
 echo -e "${GREEN}✅ Limite de memória configurado com sucesso!${NC}"
 
-# 3. Instalar Stored Procedures Ola Hallengren (MaintenanceSolution.sql)
-echo -e "\n${YELLOW}📦 [2/3] Instalando Stored Procedures do Ola Hallengren (master)...${NC}"
+# 3. Otimizar tempdb Multi-Arquivo (Eliminação de PFS/GAM Contention)
+echo -e "\n${YELLOW}⚡ [2/4] Configurando tempdb Multi-Arquivo (4 vCPUs) e Diretórios Padrão...${NC}"
+docker exec -i "${MSSQL_CONTAINER}" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${MSSQL_SA_PASSWORD}" -C < "${SCRIPT_DIR}/setup_tempdb_linux.sql"
+echo -e "${GREEN}✅ tempdb e diretórios de instância configurados!${NC}"
+
+# 4. Instalar Stored Procedures Ola Hallengren (MaintenanceSolution.sql)
+echo -e "\n${YELLOW}📦 [3/4] Instalando Stored Procedures do Ola Hallengren (master)...${NC}"
 docker exec -i "${MSSQL_CONTAINER}" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${MSSQL_SA_PASSWORD}" -C < "${SCRIPT_DIR}/MaintenanceSolution.sql"
 echo -e "${GREEN}✅ MaintenanceSolution.sql instalado com sucesso!${NC}"
 
-# 4. Criar Jobs no SQL Server Agent
-echo -e "\n${YELLOW}⏰ [3/3] Criando e Agendando Jobs no SQL Server Agent...${NC}"
+# 5. Criar Jobs no SQL Server Agent
+echo -e "\n${YELLOW}⏰ [4/4] Criando e Agendando Jobs no SQL Server Agent...${NC}"
 docker exec -i "${MSSQL_CONTAINER}" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${MSSQL_SA_PASSWORD}" -C <<EOF
+-- Garantir Recovery Model FULL para o banco de produção (imprescindível para RPO < 15 min e Log Truncation)
+USE master;
+GO
+IF EXISTS (SELECT 1 FROM sys.databases WHERE name = N'EcommerceBotDb' AND recovery_model_desc <> 'FULL')
+BEGIN
+    PRINT '>> Ajustando modelo de recuperacao de EcommerceBotDb para FULL...';
+    ALTER DATABASE [EcommerceBotDb] SET RECOVERY FULL;
+END
+GO
+
 USE msdb;
 GO
 
@@ -91,6 +106,14 @@ GO
 
 IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'EcommerceBot_Daily_UpdateStats')
     EXEC msdb.dbo.sp_delete_job @job_name = N'EcommerceBot_Daily_UpdateStats';
+GO
+
+IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'EcommerceBot_Weekly_IntegrityCheck')
+    EXEC msdb.dbo.sp_delete_job @job_name = N'EcommerceBot_Weekly_IntegrityCheck';
+GO
+
+IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'EcommerceBot_15Min_TransactionLogBackup')
+    EXEC msdb.dbo.sp_delete_job @job_name = N'EcommerceBot_15Min_TransactionLogBackup';
 GO
 
 -- Job 1: IndexOptimize Semanal (Domingos às 02:00 UTC)
@@ -142,6 +165,59 @@ EXEC msdb.dbo.sp_add_jobschedule
     @active_start_time = 040000;
 
 EXEC msdb.dbo.sp_add_jobserver @job_id = @jobId2, @server_name = N'(LOCAL)';
+GO
+
+-- Job 3: Verificação de Integridade Semanal (Sábados às 01:00 UTC - DBCC CHECKDB)
+DECLARE @jobId3 BINARY(16);
+EXEC msdb.dbo.sp_add_job 
+    @job_name = N'EcommerceBot_Weekly_IntegrityCheck', 
+    @enabled = 1, 
+    @description = N'Verificacao semanal completa de integridade fisica e logica do banco',
+    @job_id = @jobId3 OUTPUT;
+
+EXEC msdb.dbo.sp_add_jobstep 
+    @job_id = @jobId3, 
+    @step_name = N'Exec_DatabaseIntegrityCheck', 
+    @subsystem = N'TSQL', 
+    @command = N'EXEC master.dbo.DatabaseIntegrityCheck @Databases = ''USER_DATABASES'', @CheckCommands = ''CHECKDB'', @PhysicalOnly = ''N'', @LogToTable = ''Y'';', 
+    @database_name = N'master';
+
+EXEC msdb.dbo.sp_add_jobschedule 
+    @job_id = @jobId3, 
+    @name = N'Weekly_Saturday_0100', 
+    @freq_type = 8, -- Weekly
+    @freq_interval = 64, -- Saturday
+    @freq_recurrence_factor = 1, 
+    @active_start_time = 010000;
+
+EXEC msdb.dbo.sp_add_jobserver @job_id = @jobId3, @server_name = N'(LOCAL)';
+GO
+
+-- Job 4: Backup de Transaction Log a cada 15 Minutos (Truncamento de .ldf e RPO < 15 min)
+DECLARE @jobId4 BINARY(16);
+EXEC msdb.dbo.sp_add_job 
+    @job_name = N'EcommerceBot_15Min_TransactionLogBackup', 
+    @enabled = 1, 
+    @description = N'Backup transacional continuo a cada 15 minutos para truncamento de log e RPO minimo',
+    @job_id = @jobId4 OUTPUT;
+
+EXEC msdb.dbo.sp_add_jobstep 
+    @job_id = @jobId4, 
+    @step_name = N'Exec_BackupLog', 
+    @subsystem = N'TSQL', 
+    @command = N'DECLARE @BackupFile NVARCHAR(500) = N''/var/opt/mssql/backup/EcommerceBotDb_LOG_'' + FORMAT(GETUTCDATE(), ''yyyyMMdd_HHmmss'') + N''.trn''; BACKUP LOG [EcommerceBotDb] TO DISK = @BackupFile WITH COMPRESSION, CHECKSUM, NOINIT;', 
+    @database_name = N'master';
+
+EXEC msdb.dbo.sp_add_jobschedule 
+    @job_id = @jobId4, 
+    @name = N'Recurring_15Minutes', 
+    @freq_type = 4, -- Daily
+    @freq_interval = 1, 
+    @freq_subday_type = 4, -- Minutes
+    @freq_subday_interval = 15, 
+    @active_start_time = 000000;
+
+EXEC msdb.dbo.sp_add_jobserver @job_id = @jobId4, @server_name = N'(LOCAL)';
 GO
 
 PRINT '>> Validando status dos Jobs cadastrados:';

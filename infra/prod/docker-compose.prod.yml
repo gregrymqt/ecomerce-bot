@@ -13,6 +13,11 @@ services:
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-prod_mssql_password_secure}
       MSSQL_PID: ${MSSQL_PID:-Developer}
       MSSQL_AGENT_ENABLED: "true"
+      MSSQL_MEMORY_LIMIT_MB: "2560"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     ports:
       - "127.0.0.1:1433:1433" # Acesso seguro restrito ao localhost (Túnel SSH / DBeaver / Azure Data Studio)
     deploy:
@@ -22,6 +27,8 @@ services:
           memory: 3072M
     volumes:
       - mssql-prod-data:/var/opt/mssql/data
+      - mssql-prod-log:/var/opt/mssql/log
+      - mssql-prod-tempdb:/var/opt/mssql/tempdb
       - mssql-prod-backup:/var/opt/mssql/backup
     networks:
       - internal-net
@@ -92,8 +99,8 @@ services:
       - path: ../../.env
         required: false
     environment:
-      - MSSQL_CONNECTION_STRING=${MSSQL_CONNECTION_STRING:-${ConnectionStrings__DefaultConnection:-Server=mssql,1433;Database=EcommerceBotDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:-prod_mssql_password_secure};TrustServerCertificate=True;Encrypt=False;}}
-      - ConnectionStrings__DefaultConnection=${ConnectionStrings__DefaultConnection:-${MSSQL_CONNECTION_STRING:-Server=mssql,1433;Database=EcommerceBotDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:-prod_mssql_password_secure};TrustServerCertificate=True;Encrypt=False;}}
+      - MSSQL_CONNECTION_STRING=${MSSQL_DEPLOYER_CONNECTION_STRING:-Server=mssql,1433;Database=EcommerceBotDb;User Id=usr_ecommerce_deployer;Password=${MSSQL_DEPLOYER_PASSWORD:-Deployer@Secure_Passw0rd_Prod2026!};TrustServerCertificate=True;Encrypt=False;}
+      - ConnectionStrings__DefaultConnection=${MSSQL_DEPLOYER_CONNECTION_STRING:-Server=mssql,1433;Database=EcommerceBotDb;User Id=usr_ecommerce_deployer;Password=${MSSQL_DEPLOYER_PASSWORD:-Deployer@Secure_Passw0rd_Prod2026!};TrustServerCertificate=True;Encrypt=False;}
     depends_on:
       mssql:
         condition: service_healthy
@@ -120,8 +127,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=${ConnectionStrings__DefaultConnection:-${MSSQL_CONNECTION_STRING:-Server=mssql,1433;Database=EcommerceBotDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:-prod_mssql_password_secure};TrustServerCertificate=True;Encrypt=False;}}
-      - MSSQL_CONNECTION_STRING=${MSSQL_CONNECTION_STRING:-${ConnectionStrings__DefaultConnection:-Server=mssql,1433;Database=EcommerceBotDb;User Id=sa;Password=${MSSQL_SA_PASSWORD:-prod_mssql_password_secure};TrustServerCertificate=True;Encrypt=False;}}
+      - ConnectionStrings__DefaultConnection=${ConnectionStrings__DefaultConnection:-${MSSQL_CONNECTION_STRING:-Server=mssql,1433;Database=EcommerceBotDb;User Id=usr_ecommerce_api;Password=${MSSQL_API_PASSWORD:-Api@Secure_Passw0rd_Prod2026!};TrustServerCertificate=True;Encrypt=False;}}
+      - MSSQL_CONNECTION_STRING=${MSSQL_CONNECTION_STRING:-${ConnectionStrings__DefaultConnection:-Server=mssql,1433;Database=EcommerceBotDb;User Id=usr_ecommerce_api;Password=${MSSQL_API_PASSWORD:-Api@Secure_Passw0rd_Prod2026!};TrustServerCertificate=True;Encrypt=False;}}
       - ConnectionStrings__Redis=${ConnectionStrings__Redis:-${Redis__ConnectionString:-redis:6379,password=${REDIS_PASSWORD:-prod_redis_password_secure},abortConnect=false}}
       - Redis__ConnectionString=${Redis__ConnectionString:-${ConnectionStrings__Redis:-redis:6379,password=${REDIS_PASSWORD:-prod_redis_password_secure},abortConnect=false}}
       - Redis__Password=${REDIS_PASSWORD:-prod_redis_password_secure}
@@ -282,6 +289,8 @@ networks:
 
 volumes:
   mssql-prod-data:
+  mssql-prod-log:
+  mssql-prod-tempdb:
   mssql-prod-backup:
   redis-prod-data:
   rabbitmq-prod-data:

@@ -124,12 +124,16 @@ O **E-commerce Bot** é uma plataforma SaaS monorepo dividida em 4 pilares:
 
 ## 🗄️ 4. Padrão Canônico SQL Server 2022 & DbUp
 
-- **Chaves Primárias:** `UNIQUEIDENTIFIER NOT NULL DEFAULT NEWSEQUENTIALID()`.
+- **Concorrência Anti-Locking (RCSI):** Todo banco de aplicação DEVE operar sob `READ_COMMITTED_SNAPSHOT ON` e `ALLOW_SNAPSHOT_ISOLATION ON`. Leituras nunca bloqueiam escritas.
+- **Chaves Primárias & Agrupamento Físico:** `UNIQUEIDENTIFIER NOT NULL DEFAULT NEWSEQUENTIALID()`. Tabelas operacionais (`Products`, `Orders`, `StoreIntegrations`) DEVEM priorizar índices clustered compostos `(TenantId, ...)` para agrupamento físico de dados do mesmo cliente e eliminação de page splits.
 - **Coluna de Tenant:** `TenantId UNIQUEIDENTIFIER NOT NULL` com FK para `dbo.Tenants(Id) ON DELETE CASCADE`.
 - **Datas e Timestamps:** `DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()`.
 - **Campos Criptografados (BYOK):** `VARBINARY(MAX)` para chaves AES-256 GCM, acompanhadas de `InitializationVector VARBINARY(16)` e `AuthTag VARBINARY(16)`.
 - **Índices de Cobertura:** Uso obrigatório de cláusula `INCLUDE` para eliminar Key Lookups em consultas de alta frequência.
 - **Hashes em Seeds / Migrações:** Hashes de senha temporários (seeds de Super Admin) DEVEM ser validados e gerados exclusivamente com BCrypt Work Factor 12 (`$2a$12$...`).
+- **Segregação Estrita de Credenciais:** Proibido o uso de `sa` em runtime. `usr_ecommerce_deployer` conecta exclusivamente para executar DbUp (`db_owner` no banco de aplicação); `usr_ecommerce_api` conecta exclusivamente para operações DML da API (`db_datareader`, `db_datawriter`, `GRANT EXECUTE`).
+- **Governança de Backups & Log Truncation:** Modelo de recuperação estritamente `FULL`. Backup de Transaction Log executado a cada 15 minutos (RPO < 15 min e truncamento contínuo do `.ldf`). Backups diários completos exigem validação prévia de integridade via `DBCC CHECKDB` antes da sincronização no Cloudflare R2.
+- **Storage & tempdb no Docker:** 4 volumes dedicados (`data`, `log`, `tempdb`, `backup`). O `tempdb` deve operar com múltiplos arquivos de dados uniformes para eliminar contenção PFS/GAM.
 
 ---
 

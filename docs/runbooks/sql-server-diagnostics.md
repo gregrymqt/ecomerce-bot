@@ -85,7 +85,46 @@ GROUP BY dbid, loginame, status;
 
 ---
 
+## 💀 4. Identificação de Deadlocks Recentes (Extended Events)
+
+O SQL Server captura deadlocks automaticamente no evento `system_health`. Para inspecionar o grafo de deadlocks sem instalar profiler externo:
+
+```sql
+SELECT TOP 10 
+    DeadlockTime, 
+    DeadlockGraph 
+FROM dbo.vw_Monitor_Deadlocks WITH (NOLOCK)
+ORDER BY DeadlockTime DESC;
+```
+
+---
+
+## ⏳ 5. Gargalos Globais e Tipos de Espera (Wait Stats)
+
+Para entender se a lentidão decorre de contenção de CPU, I/O de disco ou rede:
+
+```sql
+SELECT * FROM dbo.vw_Monitor_WaitStats WITH (NOLOCK);
+```
+
+- **`PAGEIOLATCH_*` elevado:** Gargalo de I/O em disco (necessidade de separar volumes ou otimizar índices).
+- **`SOS_SCHEDULER_YIELD` ou `CXPACKET`:** Gargalo de CPU ou paralelismo agressivo.
+- **`LCK_M_*`:** Contenção de locks e concorrência.
+
+---
+
+## 📦 6. Monitoramento de Version Store no tempdb (RCSI)
+
+Com o RCSI ativo, versões de linhas ficam no Version Store. Para inspecionar consumo:
+
+```sql
+SELECT * FROM dbo.vw_Monitor_VersionStore;
+SELECT * FROM dbo.vw_Monitor_ActiveSnapshotTransactions;
+```
+
+---
+
 ## 🛠️ Procedimento de Remediação Segura
-1. **Identificou Deadlock?** Colete o XML de Deadlock Graph gerado no Extended Events (`system_health`).
-2. **Falta de Índice?** Crie um novo script versionado de migração em `Database.Migrations/Scripts/` (ex: `012_add_index_orders_tenant_created.sql`).
+1. **Identificou Deadlock?** Consulte `dbo.vw_Monitor_Deadlocks` e analise as duas queries envolvidas no XML.
+2. **Falta de Índice?** Crie um novo script versionado de migração em `Database.Migrations/Scripts/` (ex: `017_add_index_orders_tenant_created.sql`).
 3. **Nunca aplique DDL diretamente no banco de produção sem passar pelo DbUp.**
