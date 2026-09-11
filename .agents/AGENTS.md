@@ -54,6 +54,7 @@ NUNCA carregue todas as skills simultaneamente. Inspecione e ative estritamente 
 | **Backend Transacional / C#** | `.agents/skills/c#-best-pratices/SKILL.md` | **MANDATÓRIO:** Sempre que for criar, modificar ou refatorar qualquer arquivo do backend transacional (`EcommerceBot.Core`), incluindo controllers, application, domain, infrastructure e middlewares. |
 | **Backend Worker / Python** | `.agents/skills/python-best-pratices/SKILL.md` | **MANDATÓRIO:** Sempre que for criar, modificar ou refatorar qualquer arquivo do backend worker (`EcommerceBot.Worker`), incluindo workers assíncronos, rotas FastAPI, scraping, inferência ML, mensageria RabbitMQ e Jinja2 templates. |
 | **Integrações / Nuvemshop** | `.agents/skills/nuvemshop-expert/SKILL.md` | Ao implementar ou refatorar conexões Nuvemshop (OAuth 2.0, BYOK AES-256, REST V1, Webhooks Thin e Bulk Sync RabbitMQ). |
+| **Infraestrutura / SRE VPS** | `.agents/skills/vps-infrastructure-sre/SKILL.md` | Ao provisionar ou ajustar o host Linux Ubuntu, kernel sysctl, swapfile, firewall UFW, Docker daemon ou limites de memória/CPU da VPS de 6 GB / 3 vCPUs. |
 
 ### 🧭 Navegação via Grafo (Zero Busca Cega)
 

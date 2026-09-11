@@ -60,21 +60,24 @@ done
 
 echo -e "${GREEN}✅ SQL Server online e pronto para receber comandos!${NC}"
 
-# 2. Configurar Limite de Memória (max server memory = 2560 MB)
-echo -e "\n${YELLOW}⚙️ [1/4] Configurando max server memory para 2560 MB...${NC}"
+# 2. Configurar Limite de Memória e Paralelismo para 3 vCPUs
+echo -e "\n${YELLOW}⚙️ [1/4] Configurando max server memory (2200 MB), MAXDOP (2) e Cost Threshold (50)...${NC}"
 docker exec -i "${MSSQL_CONTAINER}" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${MSSQL_SA_PASSWORD}" -C <<EOF
 EXEC sp_configure 'show advanced options', 1;
 RECONFIGURE;
-EXEC sp_configure 'max server memory (MB)', 2560;
+EXEC sp_configure 'max server memory (MB)', 2200;
+EXEC sp_configure 'max degree of parallelism', 2;
+EXEC sp_configure 'cost threshold for parallelism', 50;
 RECONFIGURE;
 GO
-SELECT name, value_in_use FROM sys.configurations WHERE name = 'max server memory (MB)';
+SELECT name, value_in_use FROM sys.configurations 
+WHERE name IN ('max server memory (MB)', 'max degree of parallelism', 'cost threshold for parallelism');
 GO
 EOF
-echo -e "${GREEN}✅ Limite de memória configurado com sucesso!${NC}"
+echo -e "${GREEN}✅ Limite de memória e paralelismo calibrados para 3 vCPUs!${NC}"
 
-# 3. Otimizar tempdb Multi-Arquivo (Eliminação de PFS/GAM Contention)
-echo -e "\n${YELLOW}⚡ [2/4] Configurando tempdb Multi-Arquivo (4 vCPUs) e Diretórios Padrão...${NC}"
+# 3. Otimizar tempdb Multi-Arquivo (3 vCPUs / Eliminação de PFS/GAM Contention)
+echo -e "\n${YELLOW}⚡ [2/4] Configurando tempdb Multi-Arquivo (3 vCPUs) e Diretórios Padrão...${NC}"
 docker exec -i "${MSSQL_CONTAINER}" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${MSSQL_SA_PASSWORD}" -C < "${SCRIPT_DIR}/setup_tempdb_linux.sql"
 echo -e "${GREEN}✅ tempdb e diretórios de instância configurados!${NC}"
 

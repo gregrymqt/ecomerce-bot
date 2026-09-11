@@ -25,7 +25,7 @@ ALTER DATABASE tempdb MODIFY FILE (
 );
 GO
 
--- 2. Adicionar arquivos de dados secundários para paralelismo uniforme (4 vCPUs)
+-- 2. Adicionar arquivos de dados secundários para paralelismo uniforme (3 vCPUs)
 -- Idempotente: Verifica se os arquivos adicionais já existem antes de criar
 IF NOT EXISTS (SELECT 1 FROM sys.master_files WHERE database_id = 2 AND name = 'tempdev2')
 BEGIN
@@ -51,15 +51,10 @@ BEGIN
 END
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.master_files WHERE database_id = 2 AND name = 'tempdev4')
+-- Limpeza caso tempdev4 tenha sido criado anteriormente em testes
+IF EXISTS (SELECT 1 FROM sys.master_files WHERE database_id = 2 AND name = 'tempdev4')
 BEGIN
-    ALTER DATABASE tempdb ADD FILE (
-        NAME = 'tempdev4', 
-        FILENAME = '/var/opt/mssql/tempdb/tempdb_4.ndf', 
-        SIZE = 256MB, 
-        FILEGROWTH = 64MB,
-        MAXSIZE = 2048MB
-    );
+    ALTER DATABASE tempdb REMOVE FILE tempdev4;
 END
 GO
 

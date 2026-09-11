@@ -13,7 +13,7 @@ services:
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-prod_mssql_password_secure}
       MSSQL_PID: ${MSSQL_PID:-Developer}
       MSSQL_AGENT_ENABLED: "true"
-      MSSQL_MEMORY_LIMIT_MB: "2560"
+      MSSQL_MEMORY_LIMIT_MB: "2200"
     ulimits:
       nofile:
         soft: 65536
@@ -23,8 +23,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 3072M
+          cpus: '2.0'
+          memory: 2800M
+        reservations:
+          memory: 1536M
     volumes:
       - mssql-prod-data:/var/opt/mssql/data
       - mssql-prod-log:/var/opt/mssql/log
@@ -44,12 +46,12 @@ services:
     image: redis:7-alpine
     container_name: prod-redis-bot
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-prod_redis_password_secure}
+    command: redis-server --maxmemory 192mb --maxmemory-policy allkeys-lru --appendonly yes --requirepass ${REDIS_PASSWORD:-prod_redis_password_secure}
     deploy:
       resources:
         limits:
           cpus: '0.5'
-          memory: 512M
+          memory: 256M
     volumes:
       - redis-prod-data:/data
     networks:
@@ -74,7 +76,7 @@ services:
       resources:
         limits:
           cpus: '0.5'
-          memory: 512M
+          memory: 384M
     volumes:
       - rabbitmq-prod-data:/var/lib/rabbitmq
     networks:
@@ -163,7 +165,7 @@ services:
       resources:
         limits:
           cpus: '1.5'
-          memory: 1536M
+          memory: 768M
     depends_on:
       mssql:
         condition: service_healthy
@@ -214,8 +216,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.5'
-          memory: 2048M
+          cpus: '1.0'
+          memory: 512M
     volumes:
       - worker-prod-artifacts:/app/app/ml/models/artifacts
     depends_on:
@@ -239,7 +241,7 @@ services:
       resources:
         limits:
           cpus: '0.5'
-          memory: 256M
+          memory: 128M
     networks:
       - internal-net
 
@@ -257,7 +259,7 @@ services:
       resources:
         limits:
           cpus: '0.5'
-          memory: 256M
+          memory: 128M
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - certbot-etc:/etc/letsencrypt
@@ -277,6 +279,11 @@ services:
     image: certbot/certbot
     container_name: prod-certbot-bot
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 64M
     volumes:
       - certbot-etc:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
