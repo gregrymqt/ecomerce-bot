@@ -3,6 +3,8 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using EcommerceBot.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -10,6 +12,7 @@ using Microsoft.Extensions.Logging;
 namespace EcommerceBot.Api.Controllers;
 
 [Route("api/v1/demo/stream")]
+[EnableCors("DefaultCorsPolicy")]
 public class StreamController : BaseApiController
 {
     private readonly ITenantContext _tenantContext;
@@ -50,6 +53,9 @@ public class StreamController : BaseApiController
         Response.Headers.Append("Content-Type", "text/event-stream");
         Response.Headers.Append("Cache-Control", "no-cache");
         Response.Headers.Append("Connection", "keep-alive");
+        Response.Headers.Append("X-Accel-Buffering", "no");
+
+        _logger.LogInformation("Cliente SSE conectado com sucesso para Tenant {TenantId}", tenantId);
 
         var channel = $"events:tenant:{tenantId}";
 
@@ -75,6 +81,7 @@ public class StreamController : BaseApiController
                 try
                 {
                     var msg = await channelBuffer.Reader.ReadAsync(cts.Token);
+                    _logger.LogInformation("Despachando mensagem SSE para Tenant {TenantId}: {Message}", tenantId, msg);
                     await Response.WriteAsync($"data: {msg}\n\n", cancellationToken);
                     await Response.Body.FlushAsync(cancellationToken);
                 }

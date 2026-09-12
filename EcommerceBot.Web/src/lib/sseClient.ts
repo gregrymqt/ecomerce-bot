@@ -1,5 +1,4 @@
-// src/lib/sseClient.ts
-import { getTenantId } from '@/utils/storage';
+import { getTenantId, getAuthToken } from '@/utils/storage';
 import { env } from '@/config/env';
 
 export interface SSEClientOptions<T> {
@@ -8,13 +7,13 @@ export interface SSEClientOptions<T> {
   /** Callback para cada mensagem recebida do servidor */
   onMessage: (data: T) => void;
   /** Callback de erro ou desconexão */
-  onError?: (error: Event) => void;
+  onError?: (error: unknown) => void;
   /** Callback para quando a conexão abrir com sucesso */
   onOpen?: () => void;
 }
 
 export class SSEClient<T = unknown> {
-  private eventSource: EventSource | null = null;
+  private abortController: AbortController | null = null;
   private baseUrl: string;
 
   constructor() {
@@ -22,44 +21,104 @@ export class SSEClient<T = unknown> {
   }
 
   /**
-   * Abre a conexão SSE com o backend incluindo o tenant ativo na query URL.
+   * Abre a conexão SSE resiliente via Fetch + ReadableStream, permitindo cabeçalhos customizados
+   * (ngrok-skip-browser-warning, X-Tenant-ID, Authorization) imunes a bloqueios de túnel e CORS.
    */
   public connect({ endpoint, onMessage, onError, onOpen }: SSEClientOptions<T>): void {
     this.close();
 
+    this.abortController = new AbortController();
+    const { signal } = this.abortController;
+
     const tenantId = getTenantId();
-    const separator = endpoint.includes('?') ? '&' : '?';
-    const tenantParam = tenantId ? `${separator}tenant_id=${encodeURIComponent(tenantId)}` : '';
-    
-    const url = `${this.baseUrl}${endpoint}${tenantParam}`;
+    const authToken = getAuthToken();
+    const hasQuery = endpoint.includes('?');
+    const queryParams: string[] = [];
 
-    // { withCredentials: true } envia os cookies HttpOnly na conexão SSE
-    this.eventSource = new EventSource(url, { withCredentials: true });
+    if (tenantId) {
+      queryParams.push(`tenant_id=${encodeURIComponent(tenantId)}`);
+    }
+    queryParams.push('ngrok-skip-browser-warning=true');
 
-    if (onOpen) {
-      this.eventSource.onopen = () => onOpen();
+    const connector = hasQuery ? '&' : '?';
+    const url = `${this.baseUrl}${endpoint}${connector}${queryParams.join('&')}`;
+
+    console.info(`[SSEClient] Iniciando conexão SSE via Fetch Stream em: ${url}`);
+
+    const headers: Record<string, string> = {
+      Accept: 'text/event-stream',
+      'ngrok-skip-browser-warning': 'true',
+    };
+
+    if (tenantId) {
+      headers['X-Tenant-ID'] = tenantId;
+    }
+    if (authToken) {
+      headers.Authorization = `Bearer ${authToken}`;
     }
 
-    this.eventSource.onmessage = (event: MessageEvent) => {
+    (async () => {
       try {
-        const parsedData: T = JSON.parse(event.data);
-        onMessage(parsedData);
-      } catch {
-        onMessage(event.data as T);
-      }
-    };
+        const response = await fetch(url, {
+          method: 'GET',
+          headers,
+          credentials: 'include',
+          signal,
+        });
 
-    this.eventSource.onerror = (error: Event) => {
-      if (onError) {
-        onError(error);
+        if (!response.ok || !response.body) {
+          throw new Error(`Falha na resposta HTTP do stream SSE: Status ${response.status}`);
+        }
+
+        console.info('[SSEClient] Conexão SSE estabelecida com sucesso (HTTP 200 text/event-stream).');
+        if (onOpen) {
+          onOpen();
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+
+          for (const rawLine of lines) {
+            const line = rawLine.trim();
+            if (line.startsWith('data: ')) {
+              const dataStr = line.slice(6).trim();
+              if (dataStr) {
+                try {
+                  const parsedData: T = JSON.parse(dataStr);
+                  console.debug('[SSEClient] Mensagem SSE recebida:', parsedData);
+                  onMessage(parsedData);
+                } catch {
+                  onMessage(dataStr as T);
+                }
+              }
+            }
+          }
+        }
+      } catch (err: unknown) {
+        if (signal.aborted) {
+          return;
+        }
+        console.warn('[SSEClient] Erro na conexão SSE:', err);
+        if (onError) {
+          onError(err);
+        }
       }
-    };
+    })();
   }
 
   public close(): void {
-    if (this.eventSource) {
-      this.eventSource.close();
-      this.eventSource = null;
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
     }
   }
 }

@@ -66,5 +66,5 @@ export interface StreamCallbacks {
   onProgress?: (progress: number) => void;
   onResult?: (result: ScrapedProductResult) => void;
   onPayload?: (payload: DemoStreamPayload) => void;
-  onError?: (error: Event) => void;
+  onError?: (error?: unknown) => void;
 }

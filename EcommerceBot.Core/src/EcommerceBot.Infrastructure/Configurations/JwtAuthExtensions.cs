@@ -57,6 +57,10 @@ public static class JwtAuthExtensions
                 OnMessageReceived = context =>
                 {
                     var token = context.Request.Cookies["access_token"];
+                    if (string.IsNullOrEmpty(token) && context.Request.Query.TryGetValue("access_token", out var queryToken))
+                    {
+                        token = queryToken.ToString();
+                    }
                     if (!string.IsNullOrEmpty(token))
                     {
                         context.Token = token;

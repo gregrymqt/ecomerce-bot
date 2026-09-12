@@ -135,6 +135,7 @@ export function useLiveDemoSSE(): UseLiveDemoSSEReturn {
         liveDemoService.connectStream(url, {
           onOpen: () => {
             setStatus('connected');
+            addLog('LISTEN', 'Conexão SSE em tempo real estabelecida com sucesso.');
           },
           onLog: (log) => {
             hasReceivedEvents = true;
@@ -157,11 +158,13 @@ export function useLiveDemoSSE(): UseLiveDemoSSEReturn {
             if (payload.status === 'FAILED' || payload.isFallback) {
               activateFallback(payload.errorMessage || 'Falha de rede ou DNS no e-commerce de origem.');
             } else if (payload.status === 'PROCESSED' && payload.result) {
+              addLog('SUCCESS', 'Evento de produto processado recebido via SSE.');
               handleSuccessResult(payload.result);
             }
           },
           onError: () => {
             if (!hasReceivedEvents) {
+              addLog('ERROR', 'Falha ao estabelecer conexão com o stream SSE.');
               activateFallback('Não foi possível conectar ao servidor de eventos em tempo real (SSE).');
             }
           },
