@@ -23,6 +23,7 @@ export interface UseLiveDemoSSEReturn {
   targetUrl: string;
   startExtraction: (url: string) => void;
   resetDemo: () => void;
+  clearLogs: () => void;
 }
 
 export function useLiveDemoSSE(): UseLiveDemoSSEReturn {
@@ -48,16 +49,63 @@ export function useLiveDemoSSE(): UseLiveDemoSSEReturn {
     }
   }, []);
 
-  const addLog = useCallback((level: DemoLogEvent['level'], message: string) => {
-    setLogs((prev) => [
-      ...prev,
-      {
-        id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        timestamp: new Date().toLocaleTimeString('pt-BR', { hour12: false }),
-        level,
-        message,
-      },
-    ]);
+  const addLog = useCallback((level: DemoLogEvent['level'], message: string, id?: string) => {
+    setLogs((prev) => {
+      const last = prev[prev.length - 1];
+      if (last && last.message === message && last.level === level) {
+        const currentCount = last.count ?? 1;
+        return [
+          ...prev.slice(0, -1),
+          {
+            ...last,
+            count: currentCount + 1,
+            timestamp: new Date().toLocaleTimeString('pt-BR', { hour12: false }),
+          },
+        ];
+      }
+
+      if (id && prev.some((l) => l.id === id)) {
+        return prev;
+      }
+
+      return [
+        ...prev,
+        {
+          id: id || `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          timestamp: new Date().toLocaleTimeString('pt-BR', { hour12: false }),
+          level,
+          message,
+          count: 1,
+        },
+      ];
+    });
+  }, []);
+
+  const appendLogEvent = useCallback((incomingLog: DemoLogEvent) => {
+    setLogs((prev) => {
+      if (incomingLog.id && prev.some((l) => l.id === incomingLog.id)) {
+        return prev;
+      }
+      const last = prev[prev.length - 1];
+      if (last && last.message === incomingLog.message && last.level === incomingLog.level) {
+        const currentCount = last.count ?? 1;
+        return [
+          ...prev.slice(0, -1),
+          {
+            ...last,
+            count: currentCount + 1,
+            timestamp: incomingLog.timestamp || last.timestamp,
+          },
+        ];
+      }
+      return [
+        ...prev,
+        {
+          ...incomingLog,
+          count: incomingLog.count ?? 1,
+        },
+      ];
+    });
   }, []);
 
   const activateFallback = useCallback(
@@ -82,13 +130,12 @@ export function useLiveDemoSSE(): UseLiveDemoSSEReturn {
       cleanup();
       setProgress(100);
       setStatus('completed');
-      addLog('SUCCESS', 'Catálogo enriquecido com sucesso! Resultado pronto para publicação.');
       setResult({
         ...productResult,
         isFallback: false,
       });
     },
-    [cleanup, addLog]
+    [cleanup]
   );
 
   const startExtraction = useCallback(
@@ -137,28 +184,20 @@ export function useLiveDemoSSE(): UseLiveDemoSSEReturn {
             setStatus('connected');
             addLog('LISTEN', 'Conexão SSE em tempo real estabelecida com sucesso.');
           },
-          onLog: (log) => {
-            hasReceivedEvents = true;
-            setLogs((prev) => [...prev, log]);
-          },
-          onProgress: (prog) => {
-            hasReceivedEvents = true;
-            setProgress(prog);
-          },
-          onResult: (res) => {
-            hasReceivedEvents = true;
-            if (res.isFallback) {
-              activateFallback(res.errorMessage || 'Falha na extração de produto');
-            } else {
-              handleSuccessResult(res);
-            }
-          },
           onPayload: (payload: DemoStreamPayload) => {
             hasReceivedEvents = true;
+            if (payload.log) {
+              appendLogEvent(payload.log);
+            }
+            if (typeof payload.progress === 'number') {
+              setProgress(payload.progress);
+            }
+            if (payload.type === 'credits_refunded') {
+              addLog('INFO', 'Estorno automático de 1 crédito processado no Ledger.');
+            }
             if (payload.status === 'FAILED' || payload.isFallback) {
               activateFallback(payload.errorMessage || 'Falha de rede ou DNS no e-commerce de origem.');
             } else if (payload.status === 'PROCESSED' && payload.result) {
-              addLog('SUCCESS', 'Evento de produto processado recebido via SSE.');
               handleSuccessResult(payload.result);
             }
           },
@@ -180,7 +219,7 @@ export function useLiveDemoSSE(): UseLiveDemoSSEReturn {
         activateFallback(err instanceof Error ? err.message : 'Falha inesperada ao iniciar conexão SSE.');
       }
     },
-    [cleanup, addLog, activateFallback, handleSuccessResult]
+    [cleanup, addLog, appendLogEvent, activateFallback, handleSuccessResult]
   );
 
   const resetDemo = useCallback(() => {
@@ -191,6 +230,10 @@ export function useLiveDemoSSE(): UseLiveDemoSSEReturn {
     setResult(null);
     setTargetUrl('');
   }, [cleanup]);
+
+  const clearLogs = useCallback(() => {
+    setLogs([]);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -206,6 +249,7 @@ export function useLiveDemoSSE(): UseLiveDemoSSEReturn {
     targetUrl,
     startExtraction,
     resetDemo,
+    clearLogs,
   };
 }
 

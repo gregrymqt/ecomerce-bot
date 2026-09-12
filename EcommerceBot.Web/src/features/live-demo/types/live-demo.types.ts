@@ -18,6 +18,7 @@ export interface DemoLogEvent {
   timestamp: string;
   level: LogLevel;
   message: string;
+  count?: number;
 }
 
 export interface ScrapedProductResult {

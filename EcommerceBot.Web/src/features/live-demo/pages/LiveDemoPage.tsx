@@ -24,7 +24,7 @@ import { SEO } from '@/components/common/SEO';
 
 export const LiveDemoPage: React.FC = () => {
   const navigate = useNavigate();
-  const { status, logs, progress, result, targetUrl, startExtraction, resetDemo } =
+  const { status, logs, progress, result, targetUrl, startExtraction, resetDemo, clearLogs } =
     useLiveDemoSSE();
 
   const isWorking = status === 'connecting' || status === 'simulating' || status === 'connected';
@@ -96,6 +96,7 @@ export const LiveDemoPage: React.FC = () => {
               status={status}
               logs={logs}
               progress={progress}
+              onClearLogs={clearLogs}
             />
           </div>
 

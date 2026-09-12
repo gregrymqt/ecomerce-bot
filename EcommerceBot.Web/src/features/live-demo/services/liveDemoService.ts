@@ -51,6 +51,7 @@ export class LiveDemoService {
       onMessage: (data: DemoStreamPayload) => {
         if (callbacks.onPayload) {
           callbacks.onPayload(data);
+          return;
         }
         if (data.log && callbacks.onLog) {
           callbacks.onLog(data.log);
