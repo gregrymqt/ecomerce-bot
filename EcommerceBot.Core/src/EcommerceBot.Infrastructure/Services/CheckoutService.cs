@@ -164,8 +164,11 @@ public sealed class CheckoutService : ICheckoutService
         var mpResponse = await _mercadoPagoGateway.CreateOrderAsync(mpRequest, cancellationToken: cancellationToken);
         var firstPayment = mpResponse.Transactions?.Payments?.FirstOrDefault();
 
-        // 5. Atualiza o pedido com a resposta do gateway
-        order.MpPaymentId = firstPayment?.Id ?? mpResponse.Id;
+        // 5. Atualiza o pedido com a resposta do gateway (prioriza ID numérico de pagamento)
+        var numericPaymentId = firstPayment?.Reference?.Id?.ToString();
+        order.MpPaymentId = !string.IsNullOrEmpty(numericPaymentId)
+            ? numericPaymentId
+            : (firstPayment?.Id ?? mpResponse.Id);
         order.PixQrCode = firstPayment?.PaymentMethod?.QrCode;
         order.PixQrCodeBase64 = firstPayment?.PaymentMethod?.QrCodeBase64;
         order.TicketUrl = firstPayment?.PaymentMethod?.TicketUrl;
@@ -217,13 +220,30 @@ public sealed class CheckoutService : ICheckoutService
             }
         }
 
+        // Tenta também por ExternalReference caso o identificador informado seja a referência
+        if (order is null)
+        {
+            var candidateOrder = await _orderRepository.GetOrderByExternalReferenceGlobalAsync(paymentOrOrderId, cancellationToken);
+            if (candidateOrder is not null && candidateOrder.TenantId == tenantId)
+            {
+                order = candidateOrder;
+            }
+        }
+
         // Pattern matching lógico: evita reconsultar gateways se já finalizado
         if (order is { Status: "approved" or "rejected" })
         {
             return BuildOrderResponseFromOrder(order);
         }
 
-        // 1. Consulta Order no Mercado Pago
+        // Se o identificador passado for alfanumérico no formato PAY...,
+        // a API do Mercado Pago recusa com 400 Bad Request. Retorna projeção local imediatamente.
+        if (paymentOrOrderId.StartsWith("PAY", StringComparison.OrdinalIgnoreCase))
+        {
+            return order is not null ? BuildOrderResponseFromOrder(order) : null;
+        }
+
+        // 1. Consulta Order no Mercado Pago (se for compatível)
         var mpOrder = await _mercadoPagoGateway.GetOrderByIdAsync(paymentOrOrderId, cancellationToken);
         if (mpOrder is not null)
         {
@@ -236,18 +256,21 @@ public sealed class CheckoutService : ICheckoutService
             return mpOrder;
         }
 
-        // 2. Fallback para payments/{id}
-        var mpPayment = await _mercadoPagoGateway.GetPaymentByIdAsync(paymentOrOrderId, cancellationToken);
-        if (mpPayment is not null)
+        // 2. Fallback para payments/{id} (apenas para IDs numéricos)
+        if (long.TryParse(paymentOrOrderId, out _))
         {
-            var isApproved = mpPayment.Status is "approved";
-            if (isApproved && order is { Status: not "approved" })
+            var mpPayment = await _mercadoPagoGateway.GetPaymentByIdAsync(paymentOrOrderId, cancellationToken);
+            if (mpPayment is not null)
             {
-                var paidAmount = mpPayment.TransactionAmount ?? order.TotalAmount;
-                await MarkOrderApprovedAndCreditAsync(order, tenantId, paidAmount, cancellationToken);
-            }
+                var isApproved = mpPayment.Status is "approved";
+                if (isApproved && order is { Status: not "approved" })
+                {
+                    var paidAmount = mpPayment.TransactionAmount ?? order.TotalAmount;
+                    await MarkOrderApprovedAndCreditAsync(order, tenantId, paidAmount, cancellationToken);
+                }
 
-            return ConvertPaymentToOrderResponse(mpPayment, order);
+                return ConvertPaymentToOrderResponse(mpPayment, order);
+            }
         }
 
         return order is not null ? BuildOrderResponseFromOrder(order) : null;

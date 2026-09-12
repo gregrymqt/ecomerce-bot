@@ -68,6 +68,7 @@ export function useUnifiedPayment({
   const [isCopied, setIsCopied] = useState<boolean>(false);
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoPixAttemptedRef = useRef<boolean>(false);
 
   const handleModalClose = useCallback(() => {
     setPixData(null);
@@ -76,6 +77,7 @@ export function useUnifiedPayment({
     setPaymentStatus('PENDING');
     setLoading(false);
     setUserEditingOverride(null);
+    autoPixAttemptedRef.current = false;
     if (pollingRef.current) {
       clearInterval(pollingRef.current);
       pollingRef.current = null;
@@ -83,15 +85,18 @@ export function useUnifiedPayment({
     onClose();
   }, [onClose]);
 
-  // Limpa polling ao desmontar ou trocar target
+  // Limpa polling ao desmontar ou trocar target/fechar
   useEffect(() => {
+    if (!isOpen) {
+      autoPixAttemptedRef.current = false;
+    }
     return () => {
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
         pollingRef.current = null;
       }
     };
-  }, [target]);
+  }, [target, isOpen]);
 
   // Timer do PIX (30 minutos)
   useEffect(() => {
@@ -177,35 +182,33 @@ export function useUnifiedPayment({
 
   const handleSaveBilling = useCallback(
     async (payload: UpsertTenantBillingProfilePayload) => {
-      const saved = await saveProfile(payload);
-      setIsEditingBilling(false);
-      if (paymentMethod === 'pix' && !pixData) {
-        void handleGeneratePix(saved);
+      try {
+        setError(null);
+        const saved = await saveProfile(payload);
+        setIsEditingBilling(false);
+        if (paymentMethod === 'pix' && !pixData) {
+          autoPixAttemptedRef.current = true;
+          void handleGeneratePix(saved);
+        }
+      } catch (err: unknown) {
+        setError(getErrorMessage(err, 'Erro ao salvar dados de faturamento.'));
       }
     },
     [saveProfile, setIsEditingBilling, paymentMethod, pixData, handleGeneratePix]
   );
 
-  // Dispara geração de PIX ao abrir modal em aba PIX se já tiver perfil salvo
+  // Dispara geração de PIX ao abrir modal em aba PIX se já tiver perfil salvo (uma única vez)
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
-    if (
-      isOpen &&
-      target &&
-      paymentMethod === 'pix' &&
-      !pixData &&
-      !loading &&
-      hasBillingProfile &&
-      !isEditingBilling
-    ) {
-      timer = setTimeout(() => {
-        void handleGeneratePix();
-      }, 0);
+    const canAuto = isOpen && target && paymentMethod === 'pix' && !pixData && !loading && !error && hasBillingProfile && !isEditingBilling && !autoPixAttemptedRef.current;
+    if (canAuto) {
+      autoPixAttemptedRef.current = true;
+      timer = setTimeout(() => void handleGeneratePix(), 0);
     }
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [isOpen, target, paymentMethod, pixData, loading, hasBillingProfile, isEditingBilling, handleGeneratePix]);
+  }, [isOpen, target, paymentMethod, pixData, loading, error, hasBillingProfile, isEditingBilling, handleGeneratePix]);
 
   // Polling de verificação de aprovação
   useEffect(() => {

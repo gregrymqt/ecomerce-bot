@@ -4295,7 +4295,7 @@
     },
     {
       "source": "frontend_service:integration.service",
-      "target": "controller:IntegrationsController",
+      "target": "controller:ShopifyIntegrationController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4305,17 +4305,17 @@
     },
     {
       "source": "frontend_service:integration.service",
-      "target": "controller:ShopifyIntegrationController",
-      "relationship": "calls_endpoint"
-    },
-    {
-      "source": "frontend_service:dashboard.service",
-      "target": "controller:SystemController",
+      "target": "controller:IntegrationsController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:dashboard.service",
       "target": "controller:ScraperController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:dashboard.service",
+      "target": "controller:SystemController",
       "relationship": "calls_endpoint"
     },
     {

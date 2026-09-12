@@ -18,6 +18,7 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<MercadoPagoGateway> _logger;
+    private readonly MercadoPagoOptions _options;
     private readonly string _accessToken;
     private const string BaseUrl = "https://api.mercadopago.com";
 
@@ -31,7 +32,8 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
     {
         _httpClient = httpClient;
         _logger = logger;
-        _accessToken = mercadoPagoOptions.Value.AccessToken ?? string.Empty;
+        _options = mercadoPagoOptions.Value;
+        _accessToken = _options.AccessToken ?? string.Empty;
 
         _httpClient.BaseAddress = new Uri(BaseUrl);
         _httpClient.DefaultRequestHeaders.Accept.Clear();
@@ -43,7 +45,32 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
         try
         {
             var key = string.IsNullOrWhiteSpace(idempotencyKey) ? Guid.NewGuid().ToString() : idempotencyKey;
-            var jsonPayload = JsonSerializer.Serialize(request, JsonOptions);
+
+            // Interceptação de e-mail de sandbox para atender à regra do Mercado Pago (invalid_email_for_sandbox)
+            var isSandbox = _options.IsSandbox || _accessToken.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase);
+            var requestToSend = request;
+
+            if (isSandbox && request.Payer != null)
+            {
+                var currentEmail = request.Payer.Email?.Trim() ?? string.Empty;
+                if (!currentEmail.EndsWith("@testuser.com", StringComparison.OrdinalIgnoreCase))
+                {
+                    var sandboxEmail = !string.IsNullOrWhiteSpace(_options.SandboxPayerEmail)
+                        ? _options.SandboxPayerEmail.Trim()
+                        : "test_user_123456@testuser.com";
+
+                    _logger.LogInformation(
+                        "Mercado Pago Sandbox ativo. Interceptando e-mail do pagador para a API externa: de '{OriginalEmail}' para '{SandboxEmail}'. O banco de dados preserva o e-mail real.",
+                        currentEmail, sandboxEmail);
+
+                    requestToSend = request with
+                    {
+                        Payer = request.Payer with { Email = sandboxEmail }
+                    };
+                }
+            }
+
+            var jsonPayload = JsonSerializer.Serialize(requestToSend, JsonOptions);
 
             using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/v1/orders")
             {
@@ -89,6 +116,12 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
     {
         if (string.IsNullOrWhiteSpace(orderId)) return null;
 
+        // IDs que iniciam com PAY são transações de pagamento interno, não identificadores de Order
+        if (orderId.StartsWith("PAY", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
         try
         {
             using var httpRequest = new HttpRequestMessage(HttpMethod.Get, $"/v1/orders/{orderId}");
@@ -112,9 +145,9 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
             }
 
             var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
-            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            if (response.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.BadRequest)
             {
-                _logger.LogWarning("Order {OrderId} not found in Mercado Pago API.", orderId);
+                _logger.LogWarning("Order {OrderId} não encontrada ou formato inválido na API do Mercado Pago (Status: {StatusCode}).", orderId, response.StatusCode);
                 return null;
             }
 
@@ -132,6 +165,12 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
     public async Task<MercadoPagoPaymentResponse?> GetPaymentByIdAsync(string paymentId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(paymentId)) return null;
+
+        // A rota /v1/payments/{id} do Mercado Pago aceita estritamente IDs numéricos
+        if (paymentId.StartsWith("PAY", StringComparison.OrdinalIgnoreCase) || !long.TryParse(paymentId, out _))
+        {
+            return null;
+        }
 
         try
         {
@@ -155,9 +194,9 @@ public sealed class MercadoPagoGateway : IMercadoPagoGateway
             }
 
             var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
-            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            if (response.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.BadRequest)
             {
-                _logger.LogWarning("Payment {PaymentId} not found in Mercado Pago API.", paymentId);
+                _logger.LogWarning("Payment {PaymentId} não encontrado ou inválido na API do Mercado Pago (Status: {StatusCode}).", paymentId, response.StatusCode);
                 return null;
             }
 

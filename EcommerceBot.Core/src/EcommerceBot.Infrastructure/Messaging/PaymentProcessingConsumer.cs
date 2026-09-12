@@ -96,6 +96,53 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                 }
             }
 
+            // Fallback resiliente: extrai dados do RawPayload do webhook se a consulta à API externa retornar nulo
+            // (ex: simulações no painel do Mercado Pago com IDs fictícios como "123456" ou falhas transitórias de rede)
+            if (string.IsNullOrEmpty(externalRef) && !string.IsNullOrWhiteSpace(msg.RawPayload))
+            {
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(msg.RawPayload);
+                    var root = doc.RootElement;
+                    var dataEl = root.TryGetProperty("data", out var d) ? d : root;
+
+                    if (dataEl.TryGetProperty("external_reference", out var extRefEl))
+                    {
+                        externalRef = extRefEl.GetString();
+                    }
+
+                    if (dataEl.TryGetProperty("status", out var stEl))
+                    {
+                        status = stEl.GetString();
+                    }
+
+                    if (dataEl.TryGetProperty("status_detail", out var stDetEl))
+                    {
+                        statusDetail = stDetEl.GetString();
+                    }
+
+                    if (dataEl.TryGetProperty("total_paid_amount", out var paidEl))
+                    {
+                        if (paidEl.ValueKind == System.Text.Json.JsonValueKind.Number && paidEl.TryGetDecimal(out var dVal))
+                        {
+                            paidAmount = dVal;
+                        }
+                        else if (decimal.TryParse(paidEl.GetString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsedVal))
+                        {
+                            paidAmount = parsedVal;
+                        }
+                    }
+
+                    _logger.LogInformation(
+                        "Mercado Pago Webhook Fallback do RawPayload aplicado para ResourceId: {ResourceId}. Ref: {Ref}, Status: {Status}, Detail: {Detail}",
+                        resourceId, externalRef, status, statusDetail);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Falha ao extrair dados de fallback do RawPayload para {ResourceId}", resourceId);
+                }
+            }
+
             _logger.LogInformation("Mercado Pago Reconciliation - Ref: {Ref}, Status: {Status}, Detail: {Detail}, Amount: {Amount}",
                 externalRef, status, statusDetail, paidAmount);
 
@@ -174,34 +221,40 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                         balance_credits = newBalance
                     });
                     await _redisService.PublishAsync($"events:tenant:{tenantId}", ssePayload);
-                }
 
-                // 5. Envia email transacional de confirmação para o pagador real
-                var targetEmail = !string.IsNullOrEmpty(payerEmail) ? payerEmail : "financeiro@ecommercebot.local";
-                await _publishEndpoint.Publish(new EmailEventPayload
-                {
-                    TenantId = tenantId,
-                    Event = "payment.approved",
-                    RecipientEmail = targetEmail,
-                    RecipientName = "Cliente",
-                    IdempotencyKey = $"email:payment:{resourceId}",
-                    Data = new Dictionary<string, object>
+                    // 5. Envia email transacional de confirmação para o pagador real
+                    var targetEmail = !string.IsNullOrEmpty(payerEmail) ? payerEmail : "financeiro@ecommercebot.local";
+                    await _publishEndpoint.Publish(new EmailEventPayload
                     {
-                        { "resourceId", resourceId },
-                        { "orderId", order?.Id.ToString() ?? string.Empty },
-                        { "amount", paidAmount },
-                        { "status", "approved" },
-                        { "packageName", packageName },
-                        { "creditsAdded", creditsToAdd },
-                        { "balanceCredits", newBalance },
-                        { "paymentMethod", order?.PaymentMethod?.ToUpper() ?? "PIX" }
-                    }
-                }, ctx =>
-                {
-                    ctx.SetRoutingKey("email_notifications");
-                }, ct);
+                        TenantId = tenantId,
+                        Event = "payment.approved",
+                        RecipientEmail = targetEmail,
+                        RecipientName = "Cliente",
+                        IdempotencyKey = $"email:payment:{resourceId}",
+                        Data = new Dictionary<string, object>
+                        {
+                            { "resourceId", resourceId },
+                            { "orderId", order.Id.ToString() },
+                            { "amount", paidAmount },
+                            { "status", "approved" },
+                            { "packageName", packageName },
+                            { "creditsAdded", creditsToAdd },
+                            { "balanceCredits", newBalance },
+                            { "paymentMethod", order.PaymentMethod?.ToUpper() ?? "PIX" }
+                        }
+                    }, ctx =>
+                    {
+                        ctx.SetRoutingKey("email_notifications");
+                    }, ct);
 
-                _logger.LogInformation("Payment {ResourceId} approved and credited successfully for tenant {TenantId}", resourceId, tenantId);
+                    _logger.LogInformation("Payment {ResourceId} approved and credited successfully for tenant {TenantId}", resourceId, tenantId);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Webhook conciliado como aprovado ({Status}/{Detail}), porém nenhum pedido correspondente foi localizado no banco de dados para ExternalReference: '{Ref}' ou ResourceId: '{ResourceId}'.",
+                        status, statusDetail, externalRef, resourceId);
+                }
             }
             else if (status == "failed" || status == "rejected" || status == "canceled")
             {

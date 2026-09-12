@@ -10,4 +10,6 @@ public sealed class MercadoPagoOptions
     public string AccessToken { get; set; } = string.Empty;
     public string WebhookSecret { get; set; } = string.Empty;
     public string? PublicKey { get; set; }
+    public bool IsSandbox { get; set; }
+    public string? SandboxPayerEmail { get; set; }
 }

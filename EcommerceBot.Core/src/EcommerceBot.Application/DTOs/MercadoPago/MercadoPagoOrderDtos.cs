@@ -149,7 +149,7 @@ public sealed record MercadoPagoAddressRequest
     [JsonPropertyName("city")]
     public string? City { get; init; }
 
-    [JsonPropertyName("federal_unit")]
+    [JsonIgnore]
     public string? FederalUnit { get; init; }
 
     [JsonPropertyName("complement")]
@@ -291,8 +291,17 @@ public sealed record MercadoPagoOrderPaymentResponse
     [JsonPropertyName("date_of_expiration")]
     public string? DateOfExpiration { get; init; }
 
+    [JsonPropertyName("reference")]
+    public MercadoPagoPaymentReferenceResponse? Reference { get; init; }
+
     [JsonPropertyName("payment_method")]
     public MercadoPagoOrderPaymentMethodResponse? PaymentMethod { get; init; }
+}
+
+public sealed record MercadoPagoPaymentReferenceResponse
+{
+    [JsonPropertyName("id")]
+    public object? Id { get; init; }
 }
 
 public sealed record MercadoPagoOrderPaymentMethodResponse

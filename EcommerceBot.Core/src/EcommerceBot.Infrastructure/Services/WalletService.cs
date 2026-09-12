@@ -219,7 +219,10 @@ public sealed class WalletService : IWalletService
         var mpResponse = await _mercadoPagoGateway.CreateOrderAsync(mpRequest, cancellationToken: cancellationToken);
 
         var firstPayment = mpResponse.Transactions?.Payments?.FirstOrDefault();
-        order.MpPaymentId = firstPayment?.Id ?? mpResponse.Id;
+        var numericPaymentId = firstPayment?.Reference?.Id?.ToString();
+        order.MpPaymentId = !string.IsNullOrEmpty(numericPaymentId)
+            ? numericPaymentId
+            : (firstPayment?.Id ?? mpResponse.Id);
         order.PixQrCode = firstPayment?.PaymentMethod?.QrCode;
         order.PixQrCodeBase64 = firstPayment?.PaymentMethod?.QrCodeBase64;
         order.TicketUrl = firstPayment?.PaymentMethod?.TicketUrl;

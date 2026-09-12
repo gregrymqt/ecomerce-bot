@@ -56,7 +56,7 @@ public sealed class TenantBillingProfileRepository : ITenantBillingProfileReposi
         ArgumentNullException.ThrowIfNull(profile);
         if (profile.TenantId == Guid.Empty) throw new ArgumentException("TenantId é obrigatório.", nameof(profile));
 
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
 
         const string sql = @"
             MERGE dbo.TenantBillingProfiles WITH (HOLDLOCK) AS target
@@ -80,7 +80,7 @@ public sealed class TenantBillingProfileRepository : ITenantBillingProfileReposi
                     UpdatedAt = SYSDATETIMEOFFSET()
             WHEN NOT MATCHED THEN
                 INSERT (Id, TenantId, LegalName, TradeName, DocumentType, DocumentNumber, Email, Phone, ZipCode, StreetName, StreetNumber, Complement, Neighborhood, City, FederalUnit, CreatedAt, UpdatedAt)
-                VALUES (NEWSEQUENTIALID(), @TenantId, @LegalName, @TradeName, @DocumentType, @DocumentNumber, @Email, @Phone, @ZipCode, @StreetName, @StreetNumber, @Complement, @Neighborhood, @City, @FederalUnit, SYSDATETIMEOFFSET(), SYSDATETIMEOFFSET())
+                VALUES (@Id, @TenantId, @LegalName, @TradeName, @DocumentType, @DocumentNumber, @Email, @Phone, @ZipCode, @StreetName, @StreetNumber, @Complement, @Neighborhood, @City, @FederalUnit, SYSDATETIMEOFFSET(), SYSDATETIMEOFFSET())
             OUTPUT inserted.Id, inserted.TenantId, inserted.LegalName, inserted.TradeName, inserted.DocumentType, 
                    inserted.DocumentNumber, inserted.Email, inserted.Phone, inserted.ZipCode, inserted.StreetName, 
                    inserted.StreetNumber, inserted.Complement, inserted.Neighborhood, inserted.City, inserted.FederalUnit, 
@@ -88,7 +88,8 @@ public sealed class TenantBillingProfileRepository : ITenantBillingProfileReposi
 
         var parameters = new
         {
-            TenantId = profile.TenantId,
+            Id = profile.Id == Guid.Empty ? Guid.NewGuid() : profile.Id,
+            profile.TenantId,
             LegalName = profile.LegalName.Trim(),
             TradeName = string.IsNullOrWhiteSpace(profile.TradeName) ? null : profile.TradeName.Trim(),
             DocumentType = profile.DocumentType.Trim().ToUpperInvariant(),

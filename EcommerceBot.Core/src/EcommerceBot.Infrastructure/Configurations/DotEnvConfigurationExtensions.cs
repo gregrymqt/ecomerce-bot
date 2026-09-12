@@ -23,6 +23,8 @@ public static class DotEnvConfigurationExtensions
         { "MERCADOPAGO_ACCESS_TOKEN", "MercadoPago:AccessToken" },
         { "MERCADOPAGO_WEBHOOK_SECRET", "MercadoPago:WebhookSecret" },
         { "MERCADOPAGO_PUBLIC_KEY", "MercadoPago:PublicKey" },
+        { "MERCADOPAGO_IS_SANDBOX", "MercadoPago:IsSandbox" },
+        { "MERCADOPAGO_SANDBOX_PAYER_EMAIL", "MercadoPago:SandboxPayerEmail" },
         { "RESEND_API_KEY", "Resend:ApiKey" },
         { "RESEND_WEBHOOK_SECRET", "Resend:WebhookSecret" },
         { "RESEND_DELIVERY_MODE", "Resend:DeliveryMode" },
