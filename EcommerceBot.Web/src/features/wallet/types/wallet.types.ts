@@ -32,6 +32,8 @@ export interface CreditTransaction {
   amount: number;
   balance_after?: number;
   type: TransactionType;
+  category?: 'RECHARGE' | 'USAGE';
+  is_positive?: boolean;
   description: string | null;
   reference_id?: string | null;
   external_payment_id: string | null;

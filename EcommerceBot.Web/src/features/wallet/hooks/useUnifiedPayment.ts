@@ -52,7 +52,7 @@ export function useUnifiedPayment({
     cepLoading,
     saveProfile,
     lookupCep,
-  } = useBillingProfile();
+  } = useBillingProfile(isOpen);
 
   const [userEditingOverride, setUserEditingOverride] = useState<boolean | null>(null);
 

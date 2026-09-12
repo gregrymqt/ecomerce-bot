@@ -14,9 +14,9 @@ import type {
 } from '../types/billing.type';
 import { getErrorMessage } from '@/utils/errors';
 
-export function useBillingProfile() {
+export function useBillingProfile(enabled: boolean = true) {
   const [profile, setProfile] = useState<TenantBillingProfile | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(enabled);
   const [saving, setSaving] = useState<boolean>(false);
   const [cepLoading, setCepLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +46,11 @@ export function useBillingProfile() {
   }, []);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
     let isMounted = true;
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -69,7 +74,7 @@ export function useBillingProfile() {
       isMounted = false;
       controller.abort();
     };
-  }, []);
+  }, [enabled]);
 
   const saveProfile = useCallback(
     async (payload: UpsertTenantBillingProfilePayload): Promise<TenantBillingProfile> => {

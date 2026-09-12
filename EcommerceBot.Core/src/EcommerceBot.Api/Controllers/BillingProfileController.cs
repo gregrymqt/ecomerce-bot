@@ -44,7 +44,11 @@ public sealed class BillingProfileController : BaseApiController
         var profile = await _billingProfileService.GetProfileAsync(tenantId, cancellationToken);
         if (profile is null)
         {
-            return NotFoundProblem("Perfil de faturamento não encontrado para este Tenant.");
+            return Ok(new TenantBillingProfileResponse
+            {
+                TenantId = tenantId,
+                DocumentNumber = string.Empty
+            });
         }
 
         return Ok(profile);

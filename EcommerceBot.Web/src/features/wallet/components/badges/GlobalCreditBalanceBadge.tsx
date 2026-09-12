@@ -80,13 +80,15 @@ export const GlobalCreditBalanceBadge: React.FC<GlobalCreditBalanceBadgeProps> =
         </button>
       </div>
 
-      {/* Modal de Pagamento Unificado para Recarga Rápida */}
-      <UnifiedPaymentModal
-        isOpen={isModalOpen}
-        target={DEFAULT_RECHARGE_TARGET}
-        onClose={() => setIsModalOpen(false)}
-        onSuccessPayment={handleSuccessPayment}
-      />
+      {/* Modal de Pagamento Unificado para Recarga Rápida montado sob demanda */}
+      {isModalOpen && (
+        <UnifiedPaymentModal
+          isOpen={isModalOpen}
+          target={DEFAULT_RECHARGE_TARGET}
+          onClose={() => setIsModalOpen(false)}
+          onSuccessPayment={handleSuccessPayment}
+        />
+      )}
     </>
   );
 };

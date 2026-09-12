@@ -284,7 +284,18 @@ public sealed class TenantRepository : ITenantRepository
 
         if (!string.IsNullOrEmpty(type) && !type.Equals("ALL", StringComparison.OrdinalIgnoreCase))
         {
-            sql += " AND Type = @Type";
+            if (type.Equals("RECHARGE", StringComparison.OrdinalIgnoreCase))
+            {
+                sql += " AND (Amount > 0 OR Type IN ('RECHARGE', 'WELCOME_BONUS', 'REFUND'))";
+            }
+            else if (type.Equals("USAGE", StringComparison.OrdinalIgnoreCase))
+            {
+                sql += " AND (Amount < 0 OR Type IN ('PRODUCT_ENRICHMENT', 'ML_ANALYSIS', 'CHARGEBACK_REVERSAL'))";
+            }
+            else
+            {
+                sql += " AND Type = @Type";
+            }
         }
 
         sql += """
@@ -311,7 +322,18 @@ public sealed class TenantRepository : ITenantRepository
 
         if (!string.IsNullOrEmpty(type) && !type.Equals("ALL", StringComparison.OrdinalIgnoreCase))
         {
-            sql += " AND Type = @Type";
+            if (type.Equals("RECHARGE", StringComparison.OrdinalIgnoreCase))
+            {
+                sql += " AND (Amount > 0 OR Type IN ('RECHARGE', 'WELCOME_BONUS', 'REFUND'))";
+            }
+            else if (type.Equals("USAGE", StringComparison.OrdinalIgnoreCase))
+            {
+                sql += " AND (Amount < 0 OR Type IN ('PRODUCT_ENRICHMENT', 'ML_ANALYSIS', 'CHARGEBACK_REVERSAL'))";
+            }
+            else
+            {
+                sql += " AND Type = @Type";
+            }
         }
 
         var cmd = new CommandDefinition(sql, new { TenantId = tenantId, Type = type }, cancellationToken: cancellationToken);

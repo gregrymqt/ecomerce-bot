@@ -120,7 +120,9 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
         header: 'Descrição / Referência',
         align: 'left',
         render: (tx) => {
-          const isPositive = tx.amount > 0 || tx.type === 'RECHARGE' || tx.type === 'WELCOME_BONUS' || tx.type === 'REFUND';
+          const isPositive = typeof tx.is_positive === 'boolean'
+            ? tx.is_positive
+            : (tx.amount > 0 || tx.type === 'RECHARGE' || tx.type === 'WELCOME_BONUS' || tx.type === 'REFUND');
           const defaultDesc = tx.type === 'WELCOME_BONUS'
             ? 'Bônus de Boas-vindas (Onboarding)'
             : isPositive
@@ -144,7 +146,9 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
         header: 'Valor & Saldo Resultante',
         align: 'right',
         render: (tx) => {
-          const isPositive = tx.amount > 0 || tx.type === 'RECHARGE' || tx.type === 'WELCOME_BONUS' || tx.type === 'REFUND';
+          const isPositive = typeof tx.is_positive === 'boolean'
+            ? tx.is_positive
+            : (tx.amount > 0 || tx.type === 'RECHARGE' || tx.type === 'WELCOME_BONUS' || tx.type === 'REFUND');
           const formattedAmount = isPositive
             ? `+${Math.abs(tx.amount).toLocaleString('pt-BR')} CRD`
             : `-${Math.abs(tx.amount).toLocaleString('pt-BR')} CRD`;

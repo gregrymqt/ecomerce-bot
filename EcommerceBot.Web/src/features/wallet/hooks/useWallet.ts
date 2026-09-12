@@ -5,7 +5,7 @@
  * Controla consulta de saldo, extrato de transações de créditos, filtros e estados de carregamento.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { walletService } from '../services/wallet.service';
 import type {
   CreditTransaction,
@@ -14,6 +14,12 @@ import type {
   UseWalletReturn,
 } from '../types';
 import { getErrorMessage } from '@/utils/errors';
+
+interface StatementCacheItem {
+  transactions: CreditTransaction[];
+  totalCount: number;
+  balanceCredits?: number;
+}
 
 export function useWallet(initialPage = 1, limit = 10): UseWalletReturn {
   const [balance, setBalance] = useState<number | null>(null);
@@ -26,6 +32,9 @@ export function useWallet(initialPage = 1, limit = 10): UseWalletReturn {
   const [page, setPage] = useState<number>(initialPage);
   const [typeFilter, setTypeFilter] = useState<TransactionType | 'ALL'>('ALL');
 
+  // Cache em memória para abas e páginas já visitadas
+  const statementCacheRef = useRef<Map<string, StatementCacheItem>>(new Map());
+
   const handlePageChange: React.Dispatch<React.SetStateAction<number>> = useCallback((action) => {
     setLoadingStatement(true);
     setPage(action);
@@ -33,8 +42,13 @@ export function useWallet(initialPage = 1, limit = 10): UseWalletReturn {
 
   const handleTypeFilterChange: React.Dispatch<React.SetStateAction<TransactionType | 'ALL'>> = useCallback(
     (action) => {
-      setLoadingStatement(true);
-      setTypeFilter(action);
+      setTypeFilter((prev) => {
+        const next = typeof action === 'function' ? action(prev) : action;
+        if (next !== prev) {
+          setPage(1);
+        }
+        return next;
+      });
     },
     []
   );
@@ -63,20 +77,46 @@ export function useWallet(initialPage = 1, limit = 10): UseWalletReturn {
    */
   const fetchStatement = useCallback(
     async (overrideFilters?: StatementFilters, isManualAction = false) => {
+      const activeType = overrideFilters?.type !== undefined ? overrideFilters.type : (typeFilter === 'ALL' ? undefined : typeFilter);
+      const activePage = overrideFilters?.page ?? page;
+      const activeLimit = overrideFilters?.limit ?? limit;
+      const cacheKey = `${activeType ?? 'ALL'}_${activePage}_${activeLimit}`;
+
       if (isManualAction) {
+        statementCacheRef.current.delete(cacheKey);
         setLoadingStatement(true);
         setError(null);
+      } else {
+        const cached = statementCacheRef.current.get(cacheKey);
+        if (cached) {
+          setTransactions(cached.transactions);
+          setTotalCount(cached.totalCount);
+          if (typeof cached.balanceCredits === 'number') {
+            setBalance(cached.balanceCredits);
+          }
+          setLoadingStatement(false);
+          return;
+        }
       }
+
       try {
         const filters: StatementFilters = {
-          page,
-          limit,
-          type: typeFilter === 'ALL' ? undefined : typeFilter,
-          ...overrideFilters,
+          page: activePage,
+          limit: activeLimit,
+          type: activeType,
         };
         const data = await walletService.getWalletStatement(filters);
-        setTransactions(data.transactions || []);
-        setTotalCount(data.total_count || 0);
+        const fetchedTx = data.transactions || [];
+        const fetchedTotal = data.total_count || 0;
+
+        statementCacheRef.current.set(cacheKey, {
+          transactions: fetchedTx,
+          totalCount: fetchedTotal,
+          balanceCredits: typeof data.balance_credits === 'number' ? data.balance_credits : undefined,
+        });
+
+        setTransactions(fetchedTx);
+        setTotalCount(fetchedTotal);
 
         if (typeof data.balance_credits === 'number') {
           setBalance(data.balance_credits);
@@ -92,9 +132,10 @@ export function useWallet(initialPage = 1, limit = 10): UseWalletReturn {
   );
 
   /**
-   * Recarrega tanto o saldo quanto o extrato de movimentações.
+   * Recarrega tanto o saldo quanto o extrato de movimentações invalidando o cache.
    */
   const refetchWallet = useCallback(async (): Promise<[void, void]> => {
+    statementCacheRef.current.clear();
     return Promise.all([fetchBalance(true), fetchStatement(undefined, true)]);
   }, [fetchBalance, fetchStatement]);
 
@@ -123,8 +164,22 @@ export function useWallet(initialPage = 1, limit = 10): UseWalletReturn {
     };
   }, []);
 
-  // Efeito reativo para buscar o extrato quando a página ou o filtro mudar
+  // Efeito reativo para buscar o extrato quando a página ou o filtro mudar (com suporte a cache)
   useEffect(() => {
+    const cacheKey = `${typeFilter}_${page}_${limit}`;
+    const cached = statementCacheRef.current.get(cacheKey);
+
+    if (cached) {
+      setTransactions(cached.transactions);
+      setTotalCount(cached.totalCount);
+      if (typeof cached.balanceCredits === 'number') {
+        setBalance(cached.balanceCredits);
+      }
+      setLoadingStatement(false);
+      return;
+    }
+
+    setLoadingStatement(true);
     const controller = new AbortController();
 
     const filters: StatementFilters = {
@@ -136,8 +191,17 @@ export function useWallet(initialPage = 1, limit = 10): UseWalletReturn {
     walletService
       .getWalletStatement(filters, controller.signal)
       .then((data) => {
-        setTransactions(data.transactions || []);
-        setTotalCount(data.total_count || 0);
+        const fetchedTx = data.transactions || [];
+        const fetchedTotal = data.total_count || 0;
+
+        statementCacheRef.current.set(cacheKey, {
+          transactions: fetchedTx,
+          totalCount: fetchedTotal,
+          balanceCredits: typeof data.balance_credits === 'number' ? data.balance_credits : undefined,
+        });
+
+        setTransactions(fetchedTx);
+        setTotalCount(fetchedTotal);
 
         if (typeof data.balance_credits === 'number') {
           setBalance(data.balance_credits);

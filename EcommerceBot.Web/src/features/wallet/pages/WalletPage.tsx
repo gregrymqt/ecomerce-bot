@@ -257,16 +257,18 @@ export const WalletPage: React.FC = () => {
         />
       </div>
 
-      {/* Modal Unificado de Pagamento Transparente Mercado Pago */}
-      <UnifiedPaymentModal
-        key={isUnifiedModalOpen ? 'open' : 'closed'}
-        isOpen={isUnifiedModalOpen}
-        target={effectiveCheckoutTarget}
-        onClose={handleCloseModal}
-        onSuccessPayment={() => {
-          handleRefetchAll();
-        }}
-      />
+      {/* Modal Unificado de Pagamento Transparente Mercado Pago montado sob demanda */}
+      {isUnifiedModalOpen && (
+        <UnifiedPaymentModal
+          key={effectiveCheckoutTarget?.id ?? 'open'}
+          isOpen={isUnifiedModalOpen}
+          target={effectiveCheckoutTarget}
+          onClose={handleCloseModal}
+          onSuccessPayment={() => {
+            handleRefetchAll();
+          }}
+        />
+      )}
     </div>
   );
 };

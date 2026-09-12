@@ -39,6 +39,12 @@ public sealed record CreditTransactionDto
     [JsonPropertyName("type")]
     public string Type { get; init; } = "RECHARGE"; // 'WELCOME_BONUS' | 'RECHARGE' | 'PRODUCT_ENRICHMENT' | 'REFUND'
 
+    [JsonPropertyName("category")]
+    public string Category => (Amount > 0 || Type == "RECHARGE" || Type == "WELCOME_BONUS" || Type == "REFUND") ? "RECHARGE" : "USAGE";
+
+    [JsonPropertyName("is_positive")]
+    public bool IsPositive => Amount > 0 || Type == "RECHARGE" || Type == "WELCOME_BONUS" || Type == "REFUND";
+
     [JsonPropertyName("description")]
     public string? Description { get; init; }
 

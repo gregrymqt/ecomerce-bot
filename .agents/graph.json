@@ -4210,17 +4210,17 @@
     },
     {
       "source": "frontend_service:wallet.service",
+      "target": "controller:CheckoutController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:wallet.service",
       "target": "controller:WalletController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:wallet.service",
       "target": "controller:PlansController",
-      "relationship": "calls_endpoint"
-    },
-    {
-      "source": "frontend_service:wallet.service",
-      "target": "controller:CheckoutController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4275,12 +4275,12 @@
     },
     {
       "source": "frontend_service:liveDemoService",
-      "target": "controller:ScraperController",
+      "target": "controller:StreamController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:liveDemoService",
-      "target": "controller:StreamController",
+      "target": "controller:ScraperController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4295,12 +4295,12 @@
     },
     {
       "source": "frontend_service:integration.service",
-      "target": "controller:NuvemshopIntegrationController",
+      "target": "controller:IntegrationsController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:integration.service",
-      "target": "controller:IntegrationsController",
+      "target": "controller:NuvemshopIntegrationController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4320,12 +4320,12 @@
     },
     {
       "source": "frontend_service:product.service",
-      "target": "controller:ShopifyIntegrationController",
+      "target": "controller:ProductsController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:product.service",
-      "target": "controller:ProductsController",
+      "target": "controller:ShopifyIntegrationController",
       "relationship": "calls_endpoint"
     },
     {
