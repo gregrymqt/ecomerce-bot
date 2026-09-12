@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import aio_pika
 from pydantic import ValidationError
@@ -68,12 +69,14 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
         prompt_ctx = req.prompt_context
         is_byok = req.is_byok
 
-        # 1. Verificação de Idempotência no Redis (TTL 24h)
-        idempotency_key = f"worker:idempotency:scraper:{tenant_id}:{sku}"
+        # 1. Verificação de Idempotência no Redis (TTL 24h) baseada no hash SHA-256 da URL canônica
+        canonical_url = str(url).strip().lower()
+        url_hash = hashlib.sha256(canonical_url.encode("utf-8")).hexdigest()
+        idempotency_key = f"worker:idempotency:scraper:{tenant_id}:{url_hash}"
         if await redis_cache.is_already_processed(idempotency_key):
             logger.info(
-                "Mensagem já processada anteriormente (idempotência ativa). Ignorando reexecução redundante.",
-                extra={"tenant_id": str(tenant_id), "sku": str(sku)}
+                "Mensagem já processada anteriormente para esta URL (idempotência ativa). Ignorando reexecução redundante.",
+                extra={"tenant_id": str(tenant_id), "sku": str(sku), "url_hash": url_hash}
             )
             return
 

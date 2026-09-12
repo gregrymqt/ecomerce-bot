@@ -1,9 +1,25 @@
 from typing import Optional, Any
+import asyncio
 import httpx
+from app.core.config.settings import settings
 from app.core.shared.logger import get_logger
 from app.core.shared.security import validate_url_safety
 
 logger = get_logger("worker.scrapling")
+
+# Semáforo assíncrono para limitar browsers concorrentes e proteger contra OOM na VPS (6GB RAM)
+_browser_semaphore: Optional[asyncio.Semaphore] = None
+
+def get_browser_semaphore(max_concurrency: Optional[int] = None) -> asyncio.Semaphore:
+    """
+    Retorna o semáforo compartilhado de browsers assíncronos.
+    Garante que não sejam instanciados mais processos de browser do que a memória da VPS suporta.
+    """
+    global _browser_semaphore
+    if _browser_semaphore is None:
+        limit = max_concurrency or getattr(settings, "MAX_CONCURRENT_BROWSERS", 2)
+        _browser_semaphore = asyncio.Semaphore(limit)
+    return _browser_semaphore
 
 # Tenta importar Scrapling de forma resiliente com fallbacks
 try:
@@ -78,12 +94,24 @@ class ScraplingEngineService:
     async def fetch_tier2_browser(self, url: str, timeout: int = 30) -> Any:
         """
         Tier 2: Stealth Browser para contornar Cloudflare Turnstile e renderizar SPAs JS.
+        Protegido por semáforo de concorrência para evitar OOM (Out Of Memory) na VPS.
         """
         validate_url_safety(url)
 
         if SCRAPLING_AVAILABLE and StealthFetcher is not None:
-            logger.info(f"Acionando Stealth Browser para: {url}")
+            semaphore = get_browser_semaphore()
+            logger.info(f"Aguardando vaga no semáforo de browsers Tier 2 para: {url}...")
             try:
+                await asyncio.wait_for(semaphore.acquire(), timeout=float(timeout))
+            except (asyncio.TimeoutError, TimeoutError):
+                logger.warning(
+                    f"Timeout ao aguardar semáforo de browser Tier 2 ({timeout}s). "
+                    f"Capacidade máxima de concorrência atingida. Tentando fallback Tier 1 para {url}."
+                )
+                return await self.fetch_tier1_http(url, timeout=timeout)
+
+            try:
+                logger.info(f"Semáforo de browser adquirido. Acionando Stealth Browser para: {url}")
                 stealth = StealthFetcher()
                 response = await stealth.async_get(
                     url,
@@ -95,6 +123,9 @@ class ScraplingEngineService:
                 return response
             except Exception as e:
                 logger.warning(f"Falha no StealthFetcher Tier 2: {e}. Tentando fallback Tier 1.")
+            finally:
+                semaphore.release()
+                logger.debug(f"Semáforo de browser liberado para: {url}")
 
         return await self.fetch_tier1_http(url, timeout=timeout)
 

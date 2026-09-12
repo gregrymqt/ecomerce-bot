@@ -49,20 +49,22 @@ Garantir que requisições com URLs apontando para a rede interna, loopback, met
 ### 🎯 Objetivo
 Validar a estratégia de evasão em cascata (Tier 1 -> Tier 2) contra lojas protegidas por Cloudflare Turnstile, Akamai, DataDome e fingerprinted TLS (JA3/JA4).
 
-### 🔍 Funcionamento da Cascata
+### 🔍 Funcionamento da Cascata & Governança de RAM
 1. **Tier 1 (Scrapling HTTP Stealth):** Impersonation TLS `chrome124` ultra-rápida (50-100ms) com cabeçalhos realistas de navegador.
-2. **Tier 2 (Stealth Browser):** Caso o Tier 1 receba desafio WAF (Turnstile / JS Challenge / 403), aciona `StealthFetcher` headless com resolução automática de Turnstile e humanização de cursor.
-3. **Tier 3 (Fallback Seguro):** Caso o site bloqueie ambos, encerra com erro estruturado sem crash do processo Python.
+2. **Tier 2 (Stealth Browser com Semáforo de RAM):** Caso o Tier 1 receba desafio WAF (Turnstile / JS Challenge / 403), aciona `StealthFetcher` headless. **Mecanismo de Proteção OOM:** O acesso ao Tier 2 é obrigatoriamente controlado por um semáforo assíncrono (`asyncio.Semaphore(max_concurrent_browsers=2)`) para evitar o esgotamento de memória e o acionamento do Linux OOM Killer na VPS de 6 GB / 3 vCPUs. Requisições excedentes aguardam na fila assíncrona com timeout estrito de 30s.
+3. **Tier 3 (Fallback Seguro):** Caso o site bloqueie ambos ou o semáforo atinja timeout, encerra com fallback gracioso sem crash do processo Python.
 
 ### 📋 Checklist de Aceite
 - [ ] Requisições normais de e-commerce (ex: Shopify, WooCommerce, Nuvemshop) resolvem em Tier 1 sem overhead de browser.
 - [ ] URLs com Cloudflare Turnstile ativo realizam fallback para Tier 2 e tentam evasão.
+- [ ] O semáforo assíncrono limita instâncias paralelas de browser Tier 2 ao teto seguro configurado (`MAX_CONCURRENT_BROWSERS`), enfileirando excedentes sem travar o worker.
+- [ ] Em caso de saturação ou timeout do semáforo, aciona fallback gracioso sem derrubar o processo por falta de memória.
 - [ ] O worker nunca entra em loop infinito de retries (timeout máximo de 30s respeitado).
 - [ ] Bloqueios totais geram notificação de falha controlada e estorno de crédito no Ledger.
 
 ### 💻 Como Testar via Terminal
 ```bash
-& "EcommerceBot.Worker\.venv\Scripts\python.exe" -m pytest EcommerceBot.Worker\tests\test_scraper_resilience.py -k "test_anti_bot_cascade" -v
+& "EcommerceBot.Worker\.venv\Scripts\python.exe" -m pytest EcommerceBot.Worker\tests\test_scraper_resilience.py -k "test_tier2_browser_semaphore" -v
 ```
 ```
 
@@ -174,14 +176,16 @@ Garantir continuidade do serviço e ausência de mensagens presas nas filas Rabb
 ### 🎯 Objetivo
 Prevenir reprocessamentos desnecessários, custos duplicados de tokens de IA e poluição de eventos causados por reenvios de mensagens no RabbitMQ (duplicação de entrega / redelivery).
 
-### 🔍 Mecanismo de Idempotência
-- Chave no Redis: `worker:idempotency:scraper:{tenant_id}:{sku}`
-- Verificação: Se a chave já existir, a mensagem é descartada silenciosamente.
-- Registro: Após processamento bem-sucedido, registra a chave com TTL de 86400s (24 horas).
+### 🔍 Mecanismo de Idempotência (URL vs. SKU)
+- **Chave no Redis:** `worker:idempotency:scraper:{tenant_id}:{sha256(canonical_url)}`
+- **Motivação Arquitetural:** No momento em que a mensagem é enfileirada no RabbitMQ, o SKU muitas vezes ainda não existe (ele é descoberto ou sintetizado apenas após o parse completo do HTML/JSON-LD). Utilizar o hash SHA-256 da URL canônica limpa garante proteção anti-replay antes mesmo da execução do job, impedindo que múltiplos cliques do usuário na UI ou retries concorrentes disparem requisições duplicadas para o mesmo link.
+- **Verificação:** Se a chave já existir no Redis, a mensagem é descartada silenciosamente.
+- **Registro:** Após processamento, registra a chave com TTL de 86400s (24 horas).
 
 ### 📋 Checklist de Aceite
+- [ ] A chave de idempotência no Redis utiliza `sha256(canonical_url)` em vez de SKU, garantindo bloqueio preventivo pré-parse.
 - [ ] Mensagem 1 processa normalmente e define a chave no Redis.
-- [ ] Mensagem 2 (idêntica, mesmo tenant e SKU) é detectada como já processada.
+- [ ] Mensagem 2 (mesma URL e mesmo tenant, mesmo com SKU provisório ou nulo) é detectada como já processada.
 - [ ] Nenhuma chamada a scraper, Scrapling ou LLM é repetida.
 - [ ] A mensagem redundante recebe `ack` imediato no RabbitMQ.
 
@@ -218,7 +222,13 @@ Assegurar que, em QUALQUER cenário de falha não recuperável de scraping (URL 
 - [ ] O card do produto na tela de demonstração exibe o status de erro amigável com opção de tentar novamente.
 
 ### 💻 Como Testar via Terminal
+1. **Validação do Contrato de Mensageria no Worker (Python):**
 ```bash
 & "EcommerceBot.Worker\.venv\Scripts\python.exe" -m pytest EcommerceBot.Worker\tests\test_scraper_resilience.py -k "test_ledger_refund_contract" -v
+```
+
+2. **Homologação da Transação no Ledger & Dapper na Core API (.NET):**
+```bash
+dotnet test EcommerceBot.Core\EcommerceBot.Core.sln --filter "FullyQualifiedName~LedgerRefund"
 ```
 ```

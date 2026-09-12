@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     # Limite de tamanho de payload HTTP (Padrão: 10MB)
     MAX_PAYLOAD_SIZE_BYTES: int = 10 * 1024 * 1024
 
+    # Limite de concorrência para instâncias de Stealth Browser Tier 2 (Proteção OOM em VPS de 6GB)
+    MAX_CONCURRENT_BROWSERS: int = Field(
+        default=2,
+        validation_alias=AliasChoices("MAX_CONCURRENT_BROWSERS", "Scraper__MaxConcurrentBrowsers")
+    )
+
     # Broker de Mensageria RabbitMQ
     RABBITMQ_URL: str = Field(
         default="amqp://guest:guest@localhost:5672/",  # nosemgrep

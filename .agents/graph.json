@@ -4215,12 +4215,12 @@
     },
     {
       "source": "frontend_service:wallet.service",
-      "target": "controller:CheckoutController",
+      "target": "controller:PlansController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:wallet.service",
-      "target": "controller:PlansController",
+      "target": "controller:CheckoutController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4310,12 +4310,12 @@
     },
     {
       "source": "frontend_service:dashboard.service",
-      "target": "controller:ScraperController",
+      "target": "controller:SystemController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:dashboard.service",
-      "target": "controller:SystemController",
+      "target": "controller:ScraperController",
       "relationship": "calls_endpoint"
     },
     {
