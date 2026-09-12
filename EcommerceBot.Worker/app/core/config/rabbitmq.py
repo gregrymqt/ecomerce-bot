@@ -99,25 +99,31 @@ async def configure_rabbitmq_topology(
         await dlq_ecommerce.bind(ecommerce_dlx, routing_key=DLX_ROUTING_KEY)
 
         # ------------------------------------------------------------------
-        # 2. FILAS DE ENTRADA DO WORKER (Consumidas pelo Python)
+        # 2. FILAS E EXCHANGES DE ENTRADA DO WORKER (Consumidas pelo Python)
         # ------------------------------------------------------------------
         demo_ecommerce = await channel.declare_queue(
             QUEUE_DEMO_ECOMMERCE,
             durable=True,
             arguments=DEMO_ECOMMERCE_QUEUE_ARGS
         )
+        demo_ex = await channel.declare_exchange(QUEUE_DEMO_ECOMMERCE, ExchangeType.FANOUT, durable=True)
+        await demo_ecommerce.bind(demo_ex)
 
         ecommerce = await channel.declare_queue(
             QUEUE_ECOMMERCE,
             durable=True,
             arguments=ECOMMERCE_QUEUE_ARGS
         )
+        prod_ex = await channel.declare_exchange(QUEUE_ECOMMERCE, ExchangeType.FANOUT, durable=True)
+        await ecommerce.bind(prod_ex)
 
         analytics_ml_queue = await channel.declare_queue(
             QUEUE_ANALYTICS_ML,
             durable=True,
             arguments=ANALYTICS_ML_QUEUE_ARGS
         )
+        analytics_ex = await channel.declare_exchange(QUEUE_ANALYTICS_ML, ExchangeType.FANOUT, durable=True)
+        await analytics_ml_queue.bind(analytics_ex)
 
         # ------------------------------------------------------------------
         # 3. FILAS DE SAÍDA DO WORKER (Consumidas pelo Core .NET)

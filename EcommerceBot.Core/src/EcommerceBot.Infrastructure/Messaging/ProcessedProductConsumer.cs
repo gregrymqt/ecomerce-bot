@@ -56,31 +56,31 @@ public sealed class ProcessedProductConsumer : IConsumer<ProductProcessedEvent>
             string category = "Geral";
             string imageUrl = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
 
-            try
+            if (!string.IsNullOrWhiteSpace(message.AiMetadataJson))
             {
-                if (!string.IsNullOrWhiteSpace(message.AiMetadataJson))
+                try
                 {
-                    using var doc = JsonDocument.Parse(message.AiMetadataJson);
-                    var root = doc.RootElement;
-                    if (root.TryGetProperty("price", out var pProp) && pProp.GetDouble() > 0)
+                    var metadata = JsonSerializer.Deserialize<ProductEnrichmentMetadata>(message.AiMetadataJson);
+                    if (metadata != null)
                     {
-                        priceStr = $"R$ {pProp.GetDouble():F2}";
-                    }
-                    if (root.TryGetProperty("category", out var cProp) && !string.IsNullOrWhiteSpace(cProp.GetString()))
-                    {
-                        category = cProp.GetString()!;
-                    }
-                    if (root.TryGetProperty("images", out var iProp) && iProp.ValueKind == JsonValueKind.Array && iProp.GetArrayLength() > 0)
-                    {
-                        var firstImg = iProp[0].GetString();
-                        if (!string.IsNullOrWhiteSpace(firstImg))
-                            imageUrl = firstImg;
+                        if (metadata.Price.HasValue && metadata.Price.Value > 0)
+                        {
+                            priceStr = $"R$ {metadata.Price.Value:F2}";
+                        }
+                        if (!string.IsNullOrWhiteSpace(metadata.Category))
+                        {
+                            category = metadata.Category;
+                        }
+                        if (metadata.Images.Count > 0 && !string.IsNullOrWhiteSpace(metadata.Images[0]))
+                        {
+                            imageUrl = metadata.Images[0];
+                        }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Falha ao deserializar AiMetadataJson para Tenant {TenantId}", message.TenantId);
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Falha ao deserializar ProductEnrichmentMetadata para Tenant {TenantId}", message.TenantId);
+                }
             }
 
             ssePayload = JsonSerializer.Serialize(new
@@ -102,14 +102,14 @@ public sealed class ProcessedProductConsumer : IConsumer<ProductProcessedEvent>
                     titleOriginal = message.Title,
                     titleMagnetic = message.Title,
                     tone = "Persuasivo & Tecnológico",
-                    category = category,
+                    category,
                     seoScore = 95,
                     bulletPoints = new[]
                     {
                         string.IsNullOrWhiteSpace(message.Description) ? "Produto processado com inteligência artificial." : message.Description
                     },
                     price = priceStr,
-                    imageUrl = imageUrl,
+                    imageUrl,
                     rawJson = new
                     {
                         sku = message.Sku,

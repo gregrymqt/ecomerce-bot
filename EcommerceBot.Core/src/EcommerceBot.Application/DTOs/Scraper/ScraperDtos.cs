@@ -7,6 +7,7 @@ public sealed record WebScraperRequest
     public string Url { get; init; } = string.Empty;
 }
 
+[Obsolete("Utilize ScrapingRequestMessage do namespace EcommerceBot.Application.DTOs.Messaging")]
 public sealed record ImportRequestMessage
 {
     public string ProductId { get; init; } = string.Empty;

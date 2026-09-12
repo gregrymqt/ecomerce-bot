@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using EcommerceBot.Application.DTOs.Messaging;
 using EcommerceBot.Application.DTOs.Scraper;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Application.Security;
@@ -54,15 +55,17 @@ public sealed class ScraperService : IScraperService
             ? "ecommerce"
             : "demo_ecommerce";
 
-        var message = new ImportRequestMessage
+        var message = new ScrapingRequestMessage
         {
-            ProductId = productId,
-            TenantId = tenantId.ToString(),
-            TargetUrl = url
+            TenantId = tenantId,
+            Sku = productId,
+            Url = url,
+            PromptContext = string.Empty,
+            IsByok = false
         };
 
-        // Enviar mensagem para a fila
-        var endpoint = await _sendEndpointProvider.GetSendEndpoint(new Uri($"queue:{routingKey}"));
+        // Enviar mensagem para a exchange correspondente (evita conflito de QueueDeclare com argumentos de DLX da fila)
+        var endpoint = await _sendEndpointProvider.GetSendEndpoint(new Uri($"exchange:{routingKey}"));
         await endpoint.Send(message, context =>
         {
             context.Headers.Set("x-tenant-id", tenantId.ToString());
