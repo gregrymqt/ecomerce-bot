@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@mercadopago/sdk-js": "^0.0.3",
     "@mercadopago/sdk-react": "^1.0.7",
     "@microsoft/clarity": "^1.0.2",
     "axios": "^1.18.1",

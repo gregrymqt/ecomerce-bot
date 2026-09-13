@@ -2,11 +2,13 @@
  * src/features/wallet/hooks/useCreditCardRecharge.ts
  *
  * Hook especializado para recarga de carteira via cartão de crédito.
- * Encapsula a formatação de dados do pagador, montagem do payload e chamada à API.
+ * Encapsula a tokenização segura PCI-DSS (via mercadoPagoService),
+ * a formatação de dados do pagador, montagem do payload e chamada ao walletService.
  */
 
 import { useState, useCallback } from 'react';
 import { walletService } from '../services/wallet.service';
+import { mercadoPagoService, detectPaymentMethodId } from '../services/mercadoPago.service';
 import { useAuth } from '@/features/auth';
 import type { CreditCardRechargePayload, CardPaymentPayer } from '../types';
 import type { CreditCardPaymentFormData as CreditCardFormData } from '../components/payment/CreditCardPaymentForm';
@@ -25,19 +27,15 @@ export function useCreditCardRecharge(options: UseCreditCardRechargeOptions = {}
   const [error, setError] = useState<string | null>(null);
 
   const handleCheckoutSubmit = useCallback(
-    async ({
-      formData,
-      cardToken,
-      paymentMethodId,
-    }: {
-      formData: CreditCardFormData;
-      cardToken: string;
-      paymentMethodId: string;
-    }) => {
+    async (formData: CreditCardFormData) => {
       setIsLoading(true);
       setError(null);
 
       try {
+        // 1. Tokenização oficial via SDK Core (token length >= 32)
+        const cardToken = await mercadoPagoService.tokenizeCard(formData);
+        const paymentMethodId = detectPaymentMethodId(formData.cardNumber);
+
         const cleanDoc = formData.docNumber.replace(/\D/g, '');
         const docType: 'CPF' | 'CNPJ' = cleanDoc.length > 11 ? 'CNPJ' : 'CPF';
 
@@ -53,8 +51,8 @@ export function useCreditCardRecharge(options: UseCreditCardRechargeOptions = {}
           package_id: options.packageId || 'default-package',
           amount: options.amountBrl || 80,
           payment_method: 'credit_card',
-          card_token: cardToken || '',
-          payment_method_id: paymentMethodId || 'visa',
+          card_token: cardToken,
+          payment_method_id: paymentMethodId,
           installments: Number(formData.installments) || 1,
           payer,
         };

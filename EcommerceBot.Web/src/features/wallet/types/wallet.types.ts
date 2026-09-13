@@ -7,6 +7,7 @@
  */
 
 import React from 'react';
+import type { Identification } from './mercadopago.types';
 
 export type TransactionType =
   | 'RECHARGE'
@@ -110,10 +111,7 @@ export interface RechargeRequest {
   amount?: number;
   payer?: {
     email?: string;
-    identification?: {
-      type: 'CPF' | 'CNPJ';
-      number: string;
-    };
+    identification?: Identification;
     address?: {
       zip_code?: string;
       street_name?: string;
@@ -128,10 +126,7 @@ export interface RechargeRequest {
 
 export interface CardPaymentPayer {
   email: string;
-  identification: {
-    type: 'CPF' | 'CNPJ';
-    number: string;
-  };
+  identification: Identification;
 }
 
 export interface CreditCardRechargePayload {

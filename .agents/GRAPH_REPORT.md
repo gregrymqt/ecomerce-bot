@@ -56,7 +56,7 @@
 ## 🎨 7. Frontend SPA (`EcommerceBot.Web`)
 - **Páginas & Rotas (28):** Auth, ResetPassword, LiveDemo, Catalog, Dashboard, Wallet, Integrations, Metering, TrafficAnalytics, AdminLeads, AdminAiCapacity, AdminGrowth, AdminPlans.
 - **Features (13):** admin, analytics, auth, catalog, dashboard, home, integrations, live-demo, metering, plans, scraper, settings, wallet.
-- **Serviços & Hooks HTTP (67):** Conectados deterministicamente aos Controllers do backend via `calls_endpoint`.
+- **Serviços & Hooks HTTP (69):** Conectados deterministicamente aos Controllers do backend via `calls_endpoint`.
 
 ## 🛠️ 8. Servidor MCP de Diagnóstico & Infraestrutura SRE
 - **Servidor MCP:** `EcommerceBot.Diagnostics.Mcp` (`stdio`, JSON-RPC 2.0).

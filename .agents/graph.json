@@ -3,7 +3,7 @@
     "version": "3.0",
     "generator": "generate_knowledge_graph.py",
     "scope": "End-to-End Monorepo (Frontend, Core API, EDA, Worker, Database, Infra)",
-    "total_nodes": 325,
+    "total_nodes": 327,
     "total_edges": 343
   },
   "nodes": [
@@ -2091,6 +2091,13 @@
       "metadata": {}
     },
     {
+      "id": "frontend_hook:useCreditCardCheckout",
+      "label": "useCreditCardCheckout",
+      "type": "FrontendHook",
+      "file": "EcommerceBot.Web/src/features/wallet/hooks/useCreditCardCheckout.ts",
+      "metadata": {}
+    },
+    {
       "id": "frontend_hook:useCreditCardForm",
       "label": "useCreditCardForm",
       "type": "FrontendHook",
@@ -2151,6 +2158,13 @@
       "label": "billing.service",
       "type": "FrontendService",
       "file": "EcommerceBot.Web/src/features/wallet/services/billing.service.ts",
+      "metadata": {}
+    },
+    {
+      "id": "frontend_service:mercadoPago.service",
+      "label": "mercadoPago.service",
+      "type": "FrontendService",
+      "file": "EcommerceBot.Web/src/features/wallet/services/mercadoPago.service.ts",
       "metadata": {}
     },
     {
@@ -4300,22 +4314,22 @@
     },
     {
       "source": "frontend_service:integration.service",
-      "target": "controller:IntegrationsController",
-      "relationship": "calls_endpoint"
-    },
-    {
-      "source": "frontend_service:integration.service",
       "target": "controller:ShopifyIntegrationController",
       "relationship": "calls_endpoint"
     },
     {
-      "source": "frontend_service:dashboard.service",
-      "target": "controller:ScraperController",
+      "source": "frontend_service:integration.service",
+      "target": "controller:IntegrationsController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:dashboard.service",
       "target": "controller:SystemController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:dashboard.service",
+      "target": "controller:ScraperController",
       "relationship": "calls_endpoint"
     },
     {

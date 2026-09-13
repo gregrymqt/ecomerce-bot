@@ -46,10 +46,8 @@ export function useBillingProfile(enabled: boolean = true) {
   }, []);
 
   useEffect(() => {
-    if (!enabled) {
-      setLoading(false);
-      return;
-    }
+    if (!enabled)  return;
+    
 
     let isMounted = true;
     const controller = new AbortController();
@@ -116,7 +114,7 @@ export function useBillingProfile(enabled: boolean = true) {
   return {
     profile,
     hasProfile: Boolean(profile && profile.document_number),
-    loading,
+    loading: enabled ? loading : false,
     saving,
     cepLoading,
     error,

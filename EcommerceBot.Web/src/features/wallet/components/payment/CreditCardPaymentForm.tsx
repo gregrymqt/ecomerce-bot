@@ -9,13 +9,15 @@
 import React, { useState } from 'react';
 import { CreditCard, Calendar, Lock, User, FileText, ShieldCheck, Loader2 } from 'lucide-react';
 import { cn } from '@/utils/cn';
-export interface CreditCardPaymentFormData {
+import type { CardTokenParams } from '@/features/wallet/types/mercadopago.types';
+
+export interface CreditCardPaymentFormData extends CardTokenParams {
   cardNumber: string;
   cardholderName: string;
-  expirationMonth: string;
-  expirationYear: string;
   securityCode: string;
   installments: number;
+  expirationMonth: string;
+  expirationYear: string;
   docNumber: string;
 }
 
@@ -103,15 +105,24 @@ export const CreditCardPaymentForm: React.FC<CreditCardPaymentFormProps> = ({
 
     const fullYear = `20${year}`;
 
-    await onSubmitForm({
-      cardNumber: cleanCardNumber,
-      cardholderName: cardholderName.trim(),
-      expirationMonth: month,
-      expirationYear: fullYear,
-      securityCode,
-      installments,
-      docNumber,
-    });
+    try {
+      const cleanDoc = docNumber.replace(/\D/g, '');
+      await onSubmitForm({
+        cardNumber: cleanCardNumber,
+        cardholderName: cardholderName.trim(),
+        cardExpirationMonth: month,
+        cardExpirationYear: fullYear,
+        expirationMonth: month,
+        expirationYear: fullYear,
+        securityCode,
+        identificationType: cleanDoc.length > 11 ? 'CNPJ' : 'CPF',
+        identificationNumber: cleanDoc,
+        docNumber,
+        installments,
+      });
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : 'Falha ao processar pagamento com cartão.');
+    }
   };
 
   return (
@@ -131,6 +142,7 @@ export const CreditCardPaymentForm: React.FC<CreditCardPaymentFormProps> = ({
           <input
             id="card-number"
             type="text"
+            autoComplete="cc-number"
             value={cardNumber}
             onChange={handleCardNumberChange}
             placeholder="0000 0000 0000 0000"
@@ -151,6 +163,7 @@ export const CreditCardPaymentForm: React.FC<CreditCardPaymentFormProps> = ({
           <input
             id="cardholder-name"
             type="text"
+            autoComplete="cc-name"
             value={cardholderName}
             onChange={(e) => setCardholderName(e.target.value.toUpperCase())}
             placeholder="NOME COMO ESTÁ NO CARTÃO"
@@ -171,6 +184,7 @@ export const CreditCardPaymentForm: React.FC<CreditCardPaymentFormProps> = ({
             <input
               id="card-expiry"
               type="text"
+              autoComplete="cc-exp"
               value={expiry}
               onChange={handleExpiryChange}
               placeholder="MM/AA"
@@ -190,6 +204,7 @@ export const CreditCardPaymentForm: React.FC<CreditCardPaymentFormProps> = ({
             <input
               id="card-cvv"
               type="password"
+              autoComplete="cc-csc"
               value={securityCode}
               onChange={(e) => setSecurityCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
               placeholder="123"

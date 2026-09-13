@@ -9,8 +9,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { walletService } from '../services/wallet.service';
 import { useBillingProfile } from './useBillingProfile';
+import { useCreditCardCheckout } from './useCreditCardCheckout';
 import { useAuth } from '@/features/auth';
-import type { CreditCardPaymentFormData as CreditCardFormData } from '../components/payment/CreditCardPaymentForm';
 import type {
   PaymentMethod,
   PaymentStatus,
@@ -240,82 +240,26 @@ export function useUnifiedPayment({
     };
   }, [pixData?.payment_id, paymentStatus, onSuccessPayment]);
 
-  // Submissão com Cartão de Crédito
-  const handleProcessCreditCard = useCallback(
-    async (cardData: {
-      formData: CreditCardFormData;
-      cardToken: string;
-      paymentMethodId: string;
-    }) => {
-      if (!target) return;
-      setLoading(true);
+  // Orquestração especializada de Cartão de Crédito
+  const { cardLoading, handleProcessCreditCard } = useCreditCardCheckout({
+    target,
+    userEmail: user?.email,
+    billingProfile,
+    onPaymentApproved: (msg) => {
+      setPaymentStatus('APPROVED');
+      setSuccessMessage(msg);
       setError(null);
-
-      const expMonth = cardData.formData.expirationMonth;
-      const expYear = cardData.formData.expirationYear;
-      const docNum = cardData.formData.docNumber || billingProfile?.document_number || '00000000000';
-      const docType = (billingProfile?.document_type as 'CPF' | 'CNPJ') || (docNum.length > 11 ? 'CNPJ' : 'CPF');
-
-      try {
-        if (target.type === 'plan') {
-          const resp = await walletService.processCreditCardPlanPayment({
-            plan_id: target.id,
-            card_number: cardData.formData.cardNumber,
-            cardholder_name: cardData.formData.cardholderName,
-            expiration_month: expMonth || '12',
-            expiration_year: expYear ? (expYear.length === 2 ? `20${expYear}` : expYear) : '2028',
-            security_code: cardData.formData.securityCode,
-            installments: cardData.formData.installments || 1,
-            doc_number: docNum,
-            card_token: cardData.cardToken,
-            payment_method_id: cardData.paymentMethodId,
-          });
-
-          if (resp.status === 'APPROVED') {
-            setPaymentStatus('APPROVED');
-            setSuccessMessage('🎉 Pagamento aprovado! Seu plano foi atualizado com sucesso.');
-            onSuccessPayment?.();
-          } else {
-            setError(resp.message || 'Transação não autorizada pela operadora.');
-          }
-        } else {
-          const resp = await walletService.processCreditCardRecharge({
-            package_id: target.id,
-            amount: target.amountBrl,
-            payment_method: 'credit_card',
-            card_token: cardData.cardToken,
-            payment_method_id: cardData.paymentMethodId,
-            installments: cardData.formData.installments || 1,
-            payer: {
-              email: user?.email || billingProfile?.email || 'cliente@loja.com.br',
-              identification: {
-                type: docType,
-                number: docNum,
-              },
-            },
-          });
-
-          if (resp.status === 'approved' || resp.status === 'APPROVED') {
-            setPaymentStatus('APPROVED');
-            setSuccessMessage('🎉 Recarga aprovada! Seus créditos foram adicionados à carteira.');
-            onSuccessPayment?.();
-          } else {
-            setError('Transação pendente ou recusada pela operadora de cartão.');
-          }
-        }
-      } catch (err: unknown) {
-        setError(getErrorMessage(err, 'Erro ao processar cartão de crédito.'));
-      } finally {
-        setLoading(false);
-      }
     },
-    [target, user, billingProfile, onSuccessPayment]
-  );
+    onPaymentDeclined: (msg) => {
+      setError(msg);
+    },
+    onSuccessPayment,
+  });
 
   return {
     paymentMethod,
     setPaymentMethod,
-    loading: loading || billingLoading,
+    loading: loading || billingLoading || cardLoading,
     error,
     successMessage,
     paymentStatus,

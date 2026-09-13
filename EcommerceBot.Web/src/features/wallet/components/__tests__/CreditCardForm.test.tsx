@@ -62,16 +62,13 @@ describe('CreditCardPaymentTab / CreditCardForm Component', () => {
     expect(mockOnSubmit).toHaveBeenCalledTimes(1);
     expect(mockOnSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
-        paymentMethodId: 'visa',
-        formData: expect.objectContaining({
-          cardNumber: '4111222233334444',
-          cardholderName: 'MARIA SILVA',
-          expirationMonth: '11',
-          expirationYear: '2028',
-          securityCode: '888',
-          installments: 1,
-          docNumber: '12345678901',
-        }),
+        cardNumber: '4111222233334444',
+        cardholderName: 'MARIA SILVA',
+        expirationMonth: '11',
+        expirationYear: '2028',
+        securityCode: '888',
+        installments: 1,
+        docNumber: '12345678901',
       })
     );
   });
