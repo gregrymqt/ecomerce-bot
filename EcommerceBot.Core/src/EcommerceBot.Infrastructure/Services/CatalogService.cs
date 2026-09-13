@@ -80,32 +80,48 @@ public sealed class CatalogService : ICatalogService
         ProductUpdateDto dto, 
         CancellationToken cancellationToken = default)
     {
-        var product = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
-        if (product == null) return null;
+        try
+        {
+            var product = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
+            if (product == null) return null;
 
-        if (dto.Title != null) product.Title = dto.Title;
-        if (dto.Description != null) product.Description = dto.Description;
-        if (dto.Price.HasValue) product.Price = dto.Price.Value;
-        if (dto.OriginalPrice.HasValue) product.OriginalPrice = dto.OriginalPrice.Value;
-        if (dto.StockQuantity.HasValue) product.StockQuantity = dto.StockQuantity.Value;
-        if (dto.Category != null) product.Category = dto.Category;
-        if (dto.Brand != null) product.Brand = dto.Brand;
-        if (dto.Status != null) product.Status = dto.Status;
-        if (dto.ImagesJson != null) product.ImagesJson = dto.ImagesJson;
+            if (dto.Title != null) product.Title = dto.Title;
+            if (dto.Description != null) product.Description = dto.Description;
+            if (dto.Price.HasValue) product.Price = dto.Price.Value;
+            if (dto.OriginalPrice.HasValue) product.OriginalPrice = dto.OriginalPrice.Value;
+            if (dto.StockQuantity.HasValue) product.StockQuantity = dto.StockQuantity.Value;
+            if (dto.Category != null) product.Category = dto.Category;
+            if (dto.Brand != null) product.Brand = dto.Brand;
+            if (dto.Status != null) product.Status = dto.Status;
+            if (dto.ImagesJson != null) product.ImagesJson = dto.ImagesJson;
 
-        await _productRepository.UpdateAsync(product, cancellationToken);
+            await _productRepository.UpdateAsync(product, cancellationToken);
 
-        var updated = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
-        return updated != null ? MapToResponse(updated) : null;
+            var updated = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
+            return updated != null ? MapToResponse(updated) : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao atualizar produto SKU {Sku} para o Tenant {TenantId}", sku, tenantId);
+            throw;
+        }
     }
 
     public async Task<bool> DeleteProductAsync(Guid tenantId, string sku, CancellationToken cancellationToken = default)
     {
-        var product = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
-        if (product == null) return false;
+        try
+        {
+            var product = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
+            if (product == null) return false;
 
-        await _productRepository.DeleteAsync(tenantId, sku, cancellationToken);
-        return true;
+            await _productRepository.DeleteAsync(tenantId, sku, cancellationToken);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao excluir produto SKU {Sku} para o Tenant {TenantId}", sku, tenantId);
+            throw;
+        }
     }
 
     public async Task<ScrapingResponseDto> RequestScrapingAsync(
@@ -149,22 +165,61 @@ public sealed class CatalogService : ICatalogService
 
         await _productRepository.AddAsync(product, cancellationToken);
 
-        await _publishEndpoint.Publish(new ScrapingRequestMessage
+        try
         {
-            TenantId = tenantId,
-            Sku = sku,
-            Url = request.Url,
-            PromptContext = request.CustomPrompt ?? string.Empty,
-            IsByok = hasByok
-        }, cancellationToken);
+            await _publishEndpoint.Publish(new ScrapingRequestMessage
+            {
+                TenantId = tenantId,
+                Sku = sku,
+                Url = request.Url,
+                PromptContext = request.CustomPrompt ?? string.Empty,
+                IsByok = hasByok
+            }, cancellationToken);
 
-        _logger.LogInformation("Scraping enqueued for SKU '{Sku}', Tenant '{TenantId}'", sku, tenantId);
+            _logger.LogInformation("Scraping enqueued for SKU '{Sku}', Tenant '{TenantId}'", sku, tenantId);
 
-        return new ScrapingResponseDto
+            return new ScrapingResponseDto
+            {
+                Message = "Scraping solicitado com sucesso.",
+                Sku = sku,
+                Status = "PROCESSING"
+            };
+        }
+        catch (Exception ex)
         {
-            Message = "Scraping solicitado com sucesso.",
-            Sku = sku,
-            Status = "PROCESSING"
-        };
+            _logger.LogError(ex, "Falha ao publicar mensagem de scraping para o SKU '{Sku}', Tenant '{TenantId}'. Realizando compensação...", sku, tenantId);
+
+            if (!hasByok)
+            {
+                try
+                {
+                    await _tenantRepository.AddCreditsAsync(
+                        tenantId,
+                        1,
+                        type: "REFUND_SCRAPE_FAIL",
+                        description: $"Reembolso automático: Falha no enfileiramento do SKU {sku}",
+                        referenceId: sku,
+                        cancellationToken: cancellationToken);
+
+                    _logger.LogInformation("Crédito estornado com sucesso para SKU '{Sku}', Tenant '{TenantId}'.", sku, tenantId);
+                }
+                catch (Exception refundEx)
+                {
+                    _logger.LogCritical(refundEx, "ERRO CRÍTICO: Falha ao estornar crédito para SKU '{Sku}', Tenant '{TenantId}'.", sku, tenantId);
+                }
+            }
+
+            try
+            {
+                product.Status = "FAILED";
+                await _productRepository.UpdateAsync(product, cancellationToken);
+            }
+            catch (Exception updateEx)
+            {
+                _logger.LogWarning(updateEx, "Aviso: Falha ao atualizar status do produto {Sku} para FAILED.", sku);
+            }
+
+            throw;
+        }
     }
 }

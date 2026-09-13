@@ -64,17 +64,41 @@ public sealed class ScraperService : IScraperService
             IsByok = false
         };
 
-        // Enviar mensagem para a exchange correspondente (evita conflito de QueueDeclare com argumentos de DLX da fila)
-        var endpoint = await _sendEndpointProvider.GetSendEndpoint(new Uri($"exchange:{routingKey}"));
-        await endpoint.Send(message, context =>
+        // Enviar mensagem para a exchange correspondente com proteção contra falha de mensageria
+        try
         {
-            context.Headers.Set("x-tenant-id", tenantId.ToString());
-            context.Headers.Set("x-user-plan", planClean);
-            context.MessageId = Guid.NewGuid();
-        });
+            var endpoint = await _sendEndpointProvider.GetSendEndpoint(new Uri($"exchange:{routingKey}"));
+            await endpoint.Send(message, context =>
+            {
+                context.Headers.Set("x-tenant-id", tenantId.ToString());
+                context.Headers.Set("x-user-plan", planClean);
+                context.MessageId = Guid.NewGuid();
+            });
 
-        _logger.LogInformation("Enqueued scraping task {ProductId} to queue {Queue} for Tenant {TenantId}", productId, routingKey, tenantId);
+            _logger.LogInformation("Enqueued scraping task {ProductId} to queue {Queue} for Tenant {TenantId}", productId, routingKey, tenantId);
+            return productId;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao despachar tarefa de extração {ProductId} para o RabbitMQ (Exchange: {Exchange}) do Tenant {TenantId}. Estornando crédito...", productId, routingKey, tenantId);
 
-        return productId;
+            try
+            {
+                await _tenantRepository.AddCreditsAsync(
+                    tenantId,
+                    1,
+                    type: "REFUND_SCRAPE_FAIL",
+                    description: $"Reembolso automático: Falha no enfileiramento da tarefa {productId}",
+                    referenceId: productId);
+
+                _logger.LogInformation("Crédito estornado com sucesso para o Tenant {TenantId}. Tarefa: {ProductId}", tenantId, productId);
+            }
+            catch (Exception refundEx)
+            {
+                _logger.LogCritical(refundEx, "ERRO CRÍTICO: Falha ao estornar crédito do Tenant {TenantId} após erro no RabbitMQ. Tarefa: {ProductId}", tenantId, productId);
+            }
+
+            throw;
+        }
     }
 }

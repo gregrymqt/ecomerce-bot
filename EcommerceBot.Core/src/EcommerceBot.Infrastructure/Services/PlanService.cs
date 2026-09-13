@@ -42,50 +42,82 @@ public sealed class PlanService : IPlanService
 
     public async Task<PlanResponse?> GetPlanByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var plan = await _planRepository.GetByIdAsync(id, cancellationToken);
-        return plan != null ? MapToResponse(plan) : null;
+        try
+        {
+            var plan = await _planRepository.GetByIdAsync(id, cancellationToken);
+            return plan != null ? MapToResponse(plan) : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter plano por ID {PlanId}", id);
+            throw;
+        }
     }
 
     public async Task<IEnumerable<PlanResponse>> GetAllPlansAsync(bool onlyActive = false, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Buscando catálogo de planos (onlyActive: {OnlyActive})", onlyActive);
-        var plans = await _planRepository.GetAllAsync(onlyActive, cancellationToken);
-        return plans.Select(MapToResponse).ToList();
+        try
+        {
+            _logger.LogInformation("Buscando catálogo de planos (onlyActive: {OnlyActive})", onlyActive);
+            var plans = await _planRepository.GetAllAsync(onlyActive, cancellationToken);
+            return plans.Select(MapToResponse).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao consultar catálogo de planos (onlyActive: {OnlyActive})", onlyActive);
+            throw;
+        }
     }
 
     public async Task<PlanResponse> CreatePlanAsync(CreatePlanRequest request, CancellationToken cancellationToken = default)
     {
-        var plan = new Plan
+        try
         {
-            Name = request.Name,
-            Description = request.Description,
-            Price = request.Price,
-            CreditsIncluded = request.CreditsIncluded,
-            Badge = request.Badge,
-            IsActive = request.IsActive
-        };
+            var plan = new Plan
+            {
+                Name = request.Name,
+                Description = request.Description,
+                Price = request.Price,
+                CreditsIncluded = request.CreditsIncluded,
+                Badge = request.Badge,
+                IsActive = request.IsActive
+            };
 
-        plan.Id = await _planRepository.CreateAsync(plan, cancellationToken);
+            plan.Id = await _planRepository.CreateAsync(plan, cancellationToken);
 
-        var created = await _planRepository.GetByIdAsync(plan.Id, cancellationToken);
-        return MapToResponse(created ?? plan);
+            var created = await _planRepository.GetByIdAsync(plan.Id, cancellationToken);
+            return MapToResponse(created ?? plan);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao criar plano '{PlanName}'", request.Name);
+            throw;
+        }
     }
 
     public async Task<PlanResponse?> UpdatePlanAsync(Guid id, UpdatePlanRequest request, CancellationToken cancellationToken = default)
     {
-        var plan = await _planRepository.GetByIdAsync(id, cancellationToken);
-        if (plan == null) return null;
+        try
+        {
+            var plan = await _planRepository.GetByIdAsync(id, cancellationToken);
+            if (plan == null) return null;
 
-        if (request.Name != null) plan.Name = request.Name;
-        if (request.Description != null) plan.Description = request.Description;
-        if (request.Price.HasValue) plan.Price = request.Price.Value;
-        if (request.CreditsIncluded.HasValue) plan.CreditsIncluded = request.CreditsIncluded.Value;
-        if (request.Badge != null) plan.Badge = request.Badge;
-        if (request.IsActive.HasValue) plan.IsActive = request.IsActive.Value;
+            if (request.Name != null) plan.Name = request.Name;
+            if (request.Description != null) plan.Description = request.Description;
+            if (request.Price.HasValue) plan.Price = request.Price.Value;
+            if (request.CreditsIncluded.HasValue) plan.CreditsIncluded = request.CreditsIncluded.Value;
+            if (request.Badge != null) plan.Badge = request.Badge;
+            if (request.IsActive.HasValue) plan.IsActive = request.IsActive.Value;
 
-        await _planRepository.UpdateAsync(plan, cancellationToken);
+            await _planRepository.UpdateAsync(plan, cancellationToken);
 
-        var updated = await _planRepository.GetByIdAsync(id, cancellationToken);
-        return updated != null ? MapToResponse(updated) : null;
+            var updated = await _planRepository.GetByIdAsync(id, cancellationToken);
+            return updated != null ? MapToResponse(updated) : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao atualizar plano {PlanId}", id);
+            throw;
+        }
     }
 }

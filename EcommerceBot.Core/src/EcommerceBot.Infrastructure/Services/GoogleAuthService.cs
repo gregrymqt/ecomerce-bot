@@ -13,6 +13,7 @@ using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
 using EcommerceBot.Infrastructure.Options;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -26,6 +27,7 @@ public sealed class GoogleAuthService : IGoogleAuthService
         private readonly JwtOptions _jwtOptions;
         private readonly SecurityOptions _securityOptions;
         private readonly HttpClient _httpClient;
+        private readonly ILogger<GoogleAuthService> _logger;
 
         public GoogleAuthService(
             IUserRepository userRepository,
@@ -33,7 +35,8 @@ public sealed class GoogleAuthService : IGoogleAuthService
             IOptions<GoogleAuthOptions> googleOptions,
             IOptions<JwtOptions> jwtOptions,
             IOptions<SecurityOptions> securityOptions,
-            HttpClient httpClient)
+            HttpClient httpClient,
+            ILogger<GoogleAuthService> logger)
         {
             _userRepository = userRepository;
             _tenantRepository = tenantRepository;
@@ -41,6 +44,7 @@ public sealed class GoogleAuthService : IGoogleAuthService
             _jwtOptions = jwtOptions.Value;
             _securityOptions = securityOptions.Value;
             _httpClient = httpClient;
+            _logger = logger;
         }
 
         private bool IsSuperAdminEmail(string? email)
@@ -86,106 +90,126 @@ public sealed class GoogleAuthService : IGoogleAuthService
             }
             else
             {
-                // Fluxo OAuth 2.0 Real do Google
-                var tokenRequestParams = new Dictionary<string, string>
+                try
                 {
-                    { "code", request.Code },
-                    { "client_id", _googleOptions.ClientId },
-                    { "client_secret", _googleOptions.ClientSecret },
-                    { "redirect_uri", _googleOptions.RedirectUri },
-                    { "grant_type", "authorization_code" }
-                };
+                    var tokenRequestParams = new Dictionary<string, string>
+                    {
+                        { "code", request.Code },
+                        { "client_id", _googleOptions.ClientId },
+                        { "client_secret", _googleOptions.ClientSecret },
+                        { "redirect_uri", _googleOptions.RedirectUri },
+                        { "grant_type", "authorization_code" }
+                    };
 
-                var tokenResponse = await _httpClient.PostAsync("https://oauth2.googleapis.com/token", new FormUrlEncodedContent(tokenRequestParams));
-                if (!tokenResponse.IsSuccessStatusCode)
+                    var tokenResponse = await _httpClient.PostAsync("https://oauth2.googleapis.com/token", new FormUrlEncodedContent(tokenRequestParams));
+                    if (!tokenResponse.IsSuccessStatusCode)
+                    {
+                        var errorBody = await tokenResponse.Content.ReadAsStringAsync();
+                        _logger.LogError("Falha ao trocar código com o Google OAuth. StatusCode: {StatusCode}, Body: {ErrorBody}", tokenResponse.StatusCode, errorBody);
+                        throw new InvalidOperationException($"Falha ao trocar código com o Google: {errorBody}");
+                    }
+
+                    var tokenJson = await tokenResponse.Content.ReadFromJsonAsync<JsonElement>();
+                    var googleAccessToken = tokenJson.GetProperty("access_token").GetString();
+
+                    // Busca dados do perfil do usuário no Google
+                    using var userInfoReq = new HttpRequestMessage(HttpMethod.Get, "https://www.googleapis.com/oauth2/v2/userinfo");
+                    userInfoReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", googleAccessToken);
+                    var userInfoRes = await _httpClient.SendAsync(userInfoReq);
+
+                    if (!userInfoRes.IsSuccessStatusCode)
+                    {
+                        var userInfoError = await userInfoRes.Content.ReadAsStringAsync();
+                        _logger.LogError("Falha ao recuperar perfil do usuário no Google. StatusCode: {StatusCode}, Body: {ErrorBody}", userInfoRes.StatusCode, userInfoError);
+                        throw new InvalidOperationException("Falha ao recuperar perfil do usuário no Google.");
+                    }
+
+                    var userInfoJson = await userInfoRes.Content.ReadFromJsonAsync<JsonElement>();
+                    email = userInfoJson.GetProperty("email").GetString()?.ToLowerInvariant() ?? throw new InvalidOperationException("E-mail não fornecido pelo Google.");
+                    name = userInfoJson.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? "Usuário Google" : "Usuário Google";
+                }
+                catch (Exception ex) when (ex is not InvalidOperationException)
                 {
-                    var errorBody = await tokenResponse.Content.ReadAsStringAsync();
-                    throw new Exception($"Falha ao trocar código com o Google: {errorBody}");
+                    _logger.LogError(ex, "Erro de rede/comunicação HTTP durante autenticação Google OAuth.");
+                    throw new InvalidOperationException("Erro de conexão ao comunicar com os servidores do Google OAuth.", ex);
+                }
+            }
+
+            // Localiza ou cria o usuário e tenant no banco de dados com logging estruturado
+            try
+            {
+                var isSuperAdmin = IsSuperAdminEmail(email);
+                var user = await _userRepository.GetByEmailAsync(email);
+                if (user == null)
+                {
+                    var tenantId = Guid.NewGuid();
+                    var tenantName = !string.IsNullOrWhiteSpace(request.TenantName) ? request.TenantName : $"Loja de {name}";
+                    var newTenant = new Tenant
+                    {
+                        Id = tenantId,
+                        Name = tenantName,
+                        PlanTier = "FREE",
+                        CreditsBalance = 20,
+                        IsActive = true,
+                        CreatedAt = DateTimeOffset.UtcNow,
+                        UpdatedAt = DateTimeOffset.UtcNow
+                    };
+                    await _tenantRepository.CreateAsync(newTenant);
+
+                    // Registra o bônus de boas-vindas no Ledger
+                    await _tenantRepository.RecordTransactionAsync(new CreditTransaction
+                    {
+                        Id = Guid.NewGuid(),
+                        TenantId = tenantId,
+                        Amount = 20,
+                        BalanceAfter = 20,
+                        Type = "WELCOME_BONUS",
+                        Description = "Bônus de boas-vindas (20 créditos de IA)",
+                        CreatedAt = DateTimeOffset.UtcNow
+                    });
+
+                    user = new User
+                    {
+                        Email = email,
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")), // Senha aleatória segura
+                        FullName = name,
+                        Role = isSuperAdmin ? "ADMIN" : "MEMBER",
+                        TenantId = tenantId
+                    };
+                    user = await _userRepository.CreateAsync(user);
+                    _logger.LogInformation("Novo usuário {Email} e Tenant {TenantId} provisionados via Google Auth.", email, tenantId);
+                }
+                else if (isSuperAdmin && !string.Equals(user.Role, "ADMIN", StringComparison.OrdinalIgnoreCase))
+                {
+                    user.Role = "ADMIN";
+                    await _userRepository.UpdateAsync(user);
+                    _logger.LogInformation("Usuário {Email} promovido para ADMIN via Google Auth.", email);
                 }
 
-                var tokenJson = await tokenResponse.Content.ReadFromJsonAsync<JsonElement>();
-                var googleAccessToken = tokenJson.GetProperty("access_token").GetString();
+                var tenant = await _tenantRepository.GetByIdAsync(user.TenantId);
+                var creditsBalance = tenant?.CreditsBalance ?? 20;
+                var hasActiveCredits = user.Role == "ADMIN" || creditsBalance > 0;
 
-                // Busca dados do perfil do usuário no Google
-                using var userInfoReq = new HttpRequestMessage(HttpMethod.Get, "https://www.googleapis.com/oauth2/v2/userinfo");
-                userInfoReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", googleAccessToken);
-                var userInfoRes = await _httpClient.SendAsync(userInfoReq);
+                var token = GenerateJwtToken(user, hasActiveCredits, creditsBalance);
 
-                if (!userInfoRes.IsSuccessStatusCode)
+                return new AuthTokenResponse
                 {
-                    throw new Exception("Falha ao recuperar perfil do usuário no Google.");
-                }
-
-                var userInfoJson = await userInfoRes.Content.ReadFromJsonAsync<JsonElement>();
-                email = userInfoJson.GetProperty("email").GetString()?.ToLowerInvariant() ?? throw new Exception("E-mail não fornecido pelo Google.");
-                name = userInfoJson.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? "Usuário Google" : "Usuário Google";
-            }
-
-            // Localiza ou cria o usuário e tenant no banco de dados
-            var isSuperAdmin = IsSuperAdminEmail(email);
-            var user = await _userRepository.GetByEmailAsync(email);
-            if (user == null)
-            {
-                var tenantId = Guid.NewGuid();
-                var tenantName = !string.IsNullOrWhiteSpace(request.TenantName) ? request.TenantName : $"Loja de {name}";
-                var newTenant = new Tenant
-                {
-                    Id = tenantId,
-                    Name = tenantName,
-                    PlanTier = "FREE",
-                    CreditsBalance = 20,
-                    IsActive = true,
-                    CreatedAt = DateTimeOffset.UtcNow,
-                    UpdatedAt = DateTimeOffset.UtcNow
+                    AccessToken = token,
+                    TokenType = "bearer",
+                    UserId = user.Id.ToString(),
+                    Email = user.Email,
+                    Name = user.FullName,
+                    Tenants = new List<string> { user.TenantId.ToString() },
+                    TenantId = user.TenantId.ToString(),
+                    CreditsBalance = creditsBalance,
+                    HasActiveCredits = hasActiveCredits
                 };
-                await _tenantRepository.CreateAsync(newTenant);
-
-                // Registra o bônus de boas-vindas no Ledger
-                await _tenantRepository.RecordTransactionAsync(new CreditTransaction
-                {
-                    Id = Guid.NewGuid(),
-                    TenantId = tenantId,
-                    Amount = 20,
-                    BalanceAfter = 20,
-                    Type = "WELCOME_BONUS",
-                    Description = "Bônus de boas-vindas (20 créditos de IA)",
-                    CreatedAt = DateTimeOffset.UtcNow
-                });
-
-                user = new User
-                {
-                    Email = email,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")), // Senha aleatória segura
-                    FullName = name,
-                    Role = isSuperAdmin ? "ADMIN" : "MEMBER",
-                    TenantId = tenantId
-                };
-                user = await _userRepository.CreateAsync(user);
             }
-            else if (isSuperAdmin && !string.Equals(user.Role, "ADMIN", StringComparison.OrdinalIgnoreCase))
+            catch (Exception ex)
             {
-                user.Role = "ADMIN";
-                await _userRepository.UpdateAsync(user);
+                _logger.LogError(ex, "Erro ao consultar ou persistir dados do usuário Google {Email}", email);
+                throw;
             }
-
-            var tenant = await _tenantRepository.GetByIdAsync(user.TenantId);
-            var creditsBalance = tenant?.CreditsBalance ?? 20;
-            var hasActiveCredits = user.Role == "ADMIN" || creditsBalance > 0;
-
-            var token = GenerateJwtToken(user, hasActiveCredits, creditsBalance);
-
-            return new AuthTokenResponse
-            {
-                AccessToken = token,
-                TokenType = "bearer",
-                UserId = user.Id.ToString(),
-                Email = user.Email,
-                Name = user.FullName,
-                Tenants = new List<string> { user.TenantId.ToString() },
-                TenantId = user.TenantId.ToString(),
-                CreditsBalance = creditsBalance,
-                HasActiveCredits = hasActiveCredits
-            };
         }
 
         private string GenerateJwtToken(User user, bool hasActiveCredits = false, int creditsBalance = 0)

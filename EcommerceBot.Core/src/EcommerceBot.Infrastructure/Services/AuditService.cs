@@ -114,7 +114,15 @@ public sealed class AuditService : IAuditService
             throw new InvalidOperationException("TenantId é obrigatório para consultar a trilha de auditoria.");
         }
 
-        return await _auditRepository.GetByTenantAsync(_tenantContext.TenantId, page, pageSize, cancellationToken);
+        try
+        {
+            return await _auditRepository.GetByTenantAsync(_tenantContext.TenantId, page, pageSize, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter trilha de auditoria para o Tenant {TenantId}", _tenantContext.TenantId);
+            throw;
+        }
     }
 
     public async Task ExecuteRightToBeForgottenAsync(Guid tenantId, CancellationToken cancellationToken = default)
@@ -126,56 +134,64 @@ public sealed class AuditService : IAuditService
 
         _logger.LogInformation("Iniciando processo de anonimização e Direito ao Esquecimento (LGPD Art. 18) para o Tenant {TenantId}.", tenantId);
 
-        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
-
-        // Anonimização de usuários do Tenant
-        const string anonymizeUsersSql = @"
-            UPDATE dbo.Users
-            SET FullName = 'Usuário Anonimizado (LGPD)',
-                Email = CONCAT('anonimizado-', Id, '@lgpd.removido.local'),
-                PasswordHash = 'REVOKED_LGPD',
-                IsActive = 0,
-                UpdatedAt = SYSDATETIMEOFFSET()
-            WHERE TenantId = @TenantId;";
-
-        var userCmd = new CommandDefinition(anonymizeUsersSql, new { TenantId = tenantId }, cancellationToken: cancellationToken);
-        await connection.ExecuteAsync(userCmd);
-
-        // Inativação do Tenant
-        const string inactivateTenantSql = @"
-            UPDATE dbo.Tenants
-            SET Name = 'Tenant Anonimizado (LGPD)',
-                IsActive = 0,
-                UpdatedAt = SYSDATETIMEOFFSET()
-            WHERE Id = @TenantId;";
-
-        var tenantCmd = new CommandDefinition(inactivateTenantSql, new { TenantId = tenantId }, cancellationToken: cancellationToken);
-        await connection.ExecuteAsync(tenantCmd);
-
-        // Expurgo de chaves de cache no Redis
         try
         {
-            await _redisService.RemoveAsync($"tenant:{tenantId}:profile");
-            await _redisService.RemoveAsync($"tenant:{tenantId}:configs");
-        }
-        catch (Exception redisEx)
-        {
-            _logger.LogWarning(redisEx, "Erro não-bloqueante ao limpar chaves do Redis no expurgo do Tenant {TenantId}.", tenantId);
-        }
+            using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
 
-        // Registro de Auditoria Final
-        var finalLog = new AuditLog
-        {
-            Id = Guid.NewGuid(),
-            TenantId = tenantId,
-            Action = "DATA_ERASURE_COMPLETED",
-            EntityName = "Tenant",
-            EntityId = tenantId.ToString(),
-            NewValuesJson = "{\"status\": \"ANONYMIZED\", \"reason\": \"LGPD_RIGHT_TO_BE_FORGOTTEN\"}",
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-        await _auditRepository.CreateAsync(finalLog, cancellationToken);
+            // Anonimização de usuários do Tenant
+            const string anonymizeUsersSql = @"
+                UPDATE dbo.Users
+                SET FullName = 'Usuário Anonimizado (LGPD)',
+                    Email = CONCAT('anonimizado-', Id, '@lgpd.removido.local'),
+                    PasswordHash = 'REVOKED_LGPD',
+                    IsActive = 0,
+                    UpdatedAt = SYSDATETIMEOFFSET()
+                WHERE TenantId = @TenantId;";
 
-        _logger.LogInformation("Processo de Direito ao Esquecimento concluído para o Tenant {TenantId}.", tenantId);
+            var userCmd = new CommandDefinition(anonymizeUsersSql, new { TenantId = tenantId }, cancellationToken: cancellationToken);
+            await connection.ExecuteAsync(userCmd);
+
+            // Inativação do Tenant
+            const string inactivateTenantSql = @"
+                UPDATE dbo.Tenants
+                SET Name = 'Tenant Anonimizado (LGPD)',
+                    IsActive = 0,
+                    UpdatedAt = SYSDATETIMEOFFSET()
+                WHERE Id = @TenantId;";
+
+            var tenantCmd = new CommandDefinition(inactivateTenantSql, new { TenantId = tenantId }, cancellationToken: cancellationToken);
+            await connection.ExecuteAsync(tenantCmd);
+
+            // Expurgo de chaves de cache no Redis
+            try
+            {
+                await _redisService.RemoveAsync($"tenant:{tenantId}:profile");
+                await _redisService.RemoveAsync($"tenant:{tenantId}:configs");
+            }
+            catch (Exception redisEx)
+            {
+                _logger.LogWarning(redisEx, "Erro não-bloqueante ao limpar chaves do Redis no expurgo do Tenant {TenantId}.", tenantId);
+            }
+
+            // Registro de Auditoria Final
+            var finalLog = new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                Action = "DATA_ERASURE_COMPLETED",
+                EntityName = "Tenant",
+                EntityId = tenantId.ToString(),
+                NewValuesJson = "{\"status\": \"ANONYMIZED\", \"reason\": \"LGPD_RIGHT_TO_BE_FORGOTTEN\"}",
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            await _auditRepository.CreateAsync(finalLog, cancellationToken);
+
+            _logger.LogInformation("Processo de Direito ao Esquecimento concluído para o Tenant {TenantId}.", tenantId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro no processo de anonimização e Direito ao Esquecimento para o Tenant {TenantId}", tenantId);
+            throw;
+        }
     }
 }

@@ -21,23 +21,31 @@ public sealed class TenantService : ITenantService
 
     public async Task<TenantProfileDto?> GetTenantProfileAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        var tenant = await _tenantRepository.GetByIdAsync(tenantId, cancellationToken);
-        if (tenant == null)
+        try
         {
-            _logger.LogWarning("Tenant '{TenantId}' not found.", tenantId);
-            return null;
-        }
+            var tenant = await _tenantRepository.GetByIdAsync(tenantId, cancellationToken);
+            if (tenant == null)
+            {
+                _logger.LogWarning("Tenant '{TenantId}' not found.", tenantId);
+                return null;
+            }
 
-        return new TenantProfileDto
+            return new TenantProfileDto
+            {
+                Id = tenant.Id,
+                Name = tenant.Name,
+                Slug = tenant.Slug,
+                PlanTier = tenant.PlanTier,
+                CreditsBalance = tenant.CreditsBalance,
+                IsActive = tenant.IsActive,
+                CreatedAt = tenant.CreatedAt,
+                UpdatedAt = tenant.UpdatedAt
+            };
+        }
+        catch (Exception ex)
         {
-            Id = tenant.Id,
-            Name = tenant.Name,
-            Slug = tenant.Slug,
-            PlanTier = tenant.PlanTier,
-            CreditsBalance = tenant.CreditsBalance,
-            IsActive = tenant.IsActive,
-            CreatedAt = tenant.CreatedAt,
-            UpdatedAt = tenant.UpdatedAt
-        };
+            _logger.LogError(ex, "Erro ao obter perfil do Tenant {TenantId}", tenantId);
+            throw;
+        }
     }
 }

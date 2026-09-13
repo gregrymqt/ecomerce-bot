@@ -4210,17 +4210,17 @@
     },
     {
       "source": "frontend_service:wallet.service",
-      "target": "controller:CheckoutController",
-      "relationship": "calls_endpoint"
-    },
-    {
-      "source": "frontend_service:wallet.service",
       "target": "controller:WalletController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:wallet.service",
       "target": "controller:PlansController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:wallet.service",
+      "target": "controller:CheckoutController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4295,17 +4295,17 @@
     },
     {
       "source": "frontend_service:integration.service",
-      "target": "controller:ShopifyIntegrationController",
-      "relationship": "calls_endpoint"
-    },
-    {
-      "source": "frontend_service:integration.service",
       "target": "controller:NuvemshopIntegrationController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:integration.service",
       "target": "controller:IntegrationsController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:integration.service",
+      "target": "controller:ShopifyIntegrationController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4325,12 +4325,12 @@
     },
     {
       "source": "frontend_service:product.service",
-      "target": "controller:ShopifyIntegrationController",
+      "target": "controller:NuvemshopIntegrationController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:product.service",
-      "target": "controller:NuvemshopIntegrationController",
+      "target": "controller:ShopifyIntegrationController",
       "relationship": "calls_endpoint"
     },
     {

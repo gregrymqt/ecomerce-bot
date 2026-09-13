@@ -69,13 +69,32 @@ public sealed class MachineLearningService : IMachineLearningService
             Transactions = transactions
         };
 
-        await _publishEndpoint.Publish(message, ctx =>
+        try
         {
-            ctx.SetRoutingKey("analytics_ml_queue");
-        }, cancellationToken);
+            await _publishEndpoint.Publish(message, ctx =>
+            {
+                ctx.SetRoutingKey("analytics_ml_queue");
+            }, cancellationToken);
 
-        _logger.LogInformation("Job de ML enfileirado com sucesso na fila 'analytics_ml_queue' com {Count} transações.", transactions.Count);
-        return true;
+            _logger.LogInformation("Job de ML enfileirado com sucesso na fila 'analytics_ml_queue' com {Count} transações.", transactions.Count);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao enfileirar job de Machine Learning ({JobType}) para Tenant {TenantId}. Revertendo lock de cooldown...", jobType, tenantId);
+
+            try
+            {
+                await _redisService.RemoveAsync($"cooldown:ml:{tenantId}", cancellationToken);
+                _logger.LogInformation("Lock de cooldown de ML liberado com sucesso para Tenant {TenantId}.", tenantId);
+            }
+            catch (Exception redisEx)
+            {
+                _logger.LogWarning(redisEx, "Aviso: Falha ao deletar lock de cooldown de ML no Redis para Tenant {TenantId}.", tenantId);
+            }
+
+            throw;
+        }
     }
 
     public async Task<MlInsightsResponse?> GetLatestInsightsAsync(Guid tenantId, CancellationToken cancellationToken = default)

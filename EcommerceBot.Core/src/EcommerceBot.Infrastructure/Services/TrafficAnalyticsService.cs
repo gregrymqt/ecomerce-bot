@@ -46,12 +46,28 @@ public sealed class TrafficAnalyticsService : ITrafficAnalyticsService
             CreatedAt = DateTimeOffset.UtcNow
         };
 
-        return await _attributionRepository.RecordTenantVisitAsync(attribution, cancellationToken);
+        try
+        {
+            return await _attributionRepository.RecordTenantVisitAsync(attribution, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Falha não-bloqueante ao registrar visita de tráfego para o Tenant {TenantId}", request.TenantId);
+            return Guid.Empty;
+        }
     }
 
     public async Task<TenantTrafficOverviewDto> GetTenantTrafficOverviewAsync(Guid tenantId, int days = 30, string? sourceFilter = null, CancellationToken cancellationToken = default)
     {
-        return await _attributionRepository.GetTenantTrafficOverviewAsync(tenantId, days, sourceFilter, cancellationToken);
+        try
+        {
+            return await _attributionRepository.GetTenantTrafficOverviewAsync(tenantId, days, sourceFilter, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter visão geral de tráfego para o Tenant {TenantId}", tenantId);
+            throw;
+        }
     }
 
     public async Task<VerifyTagResponseDto> VerifyStoreTagAsync(Guid tenantId, string storeUrl, CancellationToken cancellationToken = default)

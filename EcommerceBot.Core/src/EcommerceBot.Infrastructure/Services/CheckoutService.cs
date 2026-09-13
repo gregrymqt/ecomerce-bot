@@ -72,128 +72,141 @@ public sealed class CheckoutService : ICheckoutService
             "Iniciando checkout de {ExternalReference} para o Tenant {TenantId} no valor de {TotalAmount}",
             externalRef, tenantId, totalAmount);
 
-        // 1. Resolve usuário e perfil fiscal/endereço de faturamento do Tenant
-        var payerEmail = request.Payer?.Email;
-        var user = await GetUserByEmailAsync(payerEmail, cancellationToken);
-        var billingProfile = await _tenantBillingProfileRepository.GetByTenantIdAsync(tenantId, cancellationToken);
-
-        // Se a requisição trouxe dados de documento/endereço, efetua upsert no perfil de faturamento do Tenant
-        if (request.Payer?.Identification is { Number.Length: >= 11 } &&
-            request.Payer?.Address is { ZipCode.Length: >= 8, StreetName.Length: > 0 })
+        try
         {
-            var cleanDoc = CleanDocumentSpan(request.Payer.Identification.Number.AsSpan());
-            var docType = request.Payer.Identification.Type ?? (cleanDoc.Length == 14 ? "CNPJ" : "CPF");
-            var cleanZip = CleanDocumentSpan(request.Payer.Address.ZipCode.AsSpan());
-            var fullName = $"{request.Payer.FirstName} {request.Payer.LastName}".Trim();
-            if (string.IsNullOrWhiteSpace(fullName)) fullName = user?.FullName ?? "Lojista";
+            // 1. Resolve usuário e perfil fiscal/endereço de faturamento do Tenant
+            var payerEmail = request.Payer?.Email;
+            var user = await GetUserByEmailAsync(payerEmail, cancellationToken);
+            var billingProfile = await _tenantBillingProfileRepository.GetByTenantIdAsync(tenantId, cancellationToken);
 
-            billingProfile = await _tenantBillingProfileRepository.UpsertAsync(new TenantBillingProfile
+            // Se a requisição trouxe dados de documento/endereço, efetua upsert no perfil de faturamento do Tenant
+            if (request.Payer?.Identification is { Number.Length: >= 11 } &&
+                request.Payer?.Address is { ZipCode.Length: >= 8, StreetName.Length: > 0 })
+            {
+                var cleanDoc = CleanDocumentSpan(request.Payer.Identification.Number.AsSpan());
+                var docType = request.Payer.Identification.Type ?? (cleanDoc.Length == 14 ? "CNPJ" : "CPF");
+                var cleanZip = CleanDocumentSpan(request.Payer.Address.ZipCode.AsSpan());
+                var fullName = $"{request.Payer.FirstName} {request.Payer.LastName}".Trim();
+                if (string.IsNullOrWhiteSpace(fullName)) fullName = user?.FullName ?? "Lojista";
+
+                billingProfile = await _tenantBillingProfileRepository.UpsertAsync(new TenantBillingProfile
+                {
+                    TenantId = tenantId,
+                    LegalName = fullName,
+                    DocumentType = docType,
+                    DocumentNumber = cleanDoc,
+                    Email = request.Payer.Email ?? user?.Email,
+                    ZipCode = cleanZip,
+                    StreetName = request.Payer.Address.StreetName ?? string.Empty,
+                    StreetNumber = request.Payer.Address.StreetNumber ?? "S/N",
+                    Complement = request.Payer.Address.Complement,
+                    Neighborhood = request.Payer.Address.Neighborhood ?? string.Empty,
+                    City = request.Payer.Address.City ?? string.Empty,
+                    FederalUnit = request.Payer.Address.FederalUnit ?? "SP"
+                }, cancellationToken);
+            }
+
+            var payerRequest = BuildMercadoPagoPayer(user, request.Payer, billingProfile);
+
+            // 2. Resolve plano para liberação futura de créditos
+            var firstItemCode = request.Items.FirstOrDefault()?.ExternalCode;
+            var plan = !string.IsNullOrEmpty(firstItemCode)
+                ? await ResolvePlanAsync(firstItemCode, cancellationToken)
+                : null;
+
+            var firstPaymentRequest = request.Transactions?.Payments?.FirstOrDefault();
+            var paymentMethodId = firstPaymentRequest?.PaymentMethod?.Id ??
+                (string.Equals(firstPaymentRequest?.PaymentMethod?.Type, "bank_transfer", StringComparison.OrdinalIgnoreCase) ? "pix" : "credit_card");
+
+            var isPix = string.Equals(paymentMethodId, "pix", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(firstPaymentRequest?.PaymentMethod?.Type, "bank_transfer", StringComparison.OrdinalIgnoreCase);
+
+            // 3. Monta entidade de domínio com Target-Typed new e snapshot fiscal/endereço
+            Order order = new()
             {
                 TenantId = tenantId,
-                LegalName = fullName,
-                DocumentType = docType,
-                DocumentNumber = cleanDoc,
-                Email = request.Payer.Email ?? user?.Email,
-                ZipCode = cleanZip,
-                StreetName = request.Payer.Address.StreetName ?? string.Empty,
-                StreetNumber = request.Payer.Address.StreetNumber ?? "S/N",
-                Complement = request.Payer.Address.Complement,
-                Neighborhood = request.Payer.Address.Neighborhood ?? string.Empty,
-                City = request.Payer.Address.City ?? string.Empty,
-                FederalUnit = request.Payer.Address.FederalUnit ?? "SP"
-            }, cancellationToken);
-        }
-
-        var payerRequest = BuildMercadoPagoPayer(user, request.Payer, billingProfile);
-
-        // 2. Resolve plano para liberação futura de créditos
-        var firstItemCode = request.Items.FirstOrDefault()?.ExternalCode;
-        var plan = !string.IsNullOrEmpty(firstItemCode)
-            ? await ResolvePlanAsync(firstItemCode, cancellationToken)
-            : null;
-
-        var firstPaymentRequest = request.Transactions?.Payments?.FirstOrDefault();
-        var paymentMethodId = firstPaymentRequest?.PaymentMethod?.Id ??
-            (string.Equals(firstPaymentRequest?.PaymentMethod?.Type, "bank_transfer", StringComparison.OrdinalIgnoreCase) ? "pix" : "credit_card");
-
-        var isPix = string.Equals(paymentMethodId, "pix", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(firstPaymentRequest?.PaymentMethod?.Type, "bank_transfer", StringComparison.OrdinalIgnoreCase);
-
-        // 3. Monta entidade de domínio com Target-Typed new e snapshot fiscal/endereço
-        Order order = new()
-        {
-            TenantId = tenantId,
-            PlanId = plan?.Id,
-            UserId = user?.Id,
-            ExternalReference = externalRef,
-            PayerName = $"{payerRequest.FirstName} {payerRequest.LastName}".Trim(),
-            PayerEmail = payerRequest.Email,
-            PayerDocumentType = payerRequest.Identification?.Type ?? "CPF",
-            PayerDocumentNumber = payerRequest.Identification?.Number,
-            PayerZipCode = payerRequest.Address?.ZipCode,
-            PayerStreetName = payerRequest.Address?.StreetName,
-            PayerStreetNumber = payerRequest.Address?.StreetNumber,
-            PayerComplement = payerRequest.Address?.Complement,
-            PayerNeighborhood = payerRequest.Address?.Neighborhood,
-            PayerCity = payerRequest.Address?.City,
-            PayerFederalUnit = payerRequest.Address?.FederalUnit,
-            PaymentMethod = paymentMethodId,
-            TotalAmount = totalAmount,
-            Status = "pending",
-            Items = [.. request.Items.Select(static i =>
-            {
-                _ = decimal.TryParse(i.UnitPrice, NumberStyles.Any, CultureInfo.InvariantCulture, out var p);
-                return new OrderItem
+                PlanId = plan?.Id,
+                UserId = user?.Id,
+                ExternalReference = externalRef,
+                PayerName = $"{payerRequest.FirstName} {payerRequest.LastName}".Trim(),
+                PayerEmail = payerRequest.Email,
+                PayerDocumentType = payerRequest.Identification?.Type ?? "CPF",
+                PayerDocumentNumber = payerRequest.Identification?.Number,
+                PayerZipCode = payerRequest.Address?.ZipCode,
+                PayerStreetName = payerRequest.Address?.StreetName,
+                PayerStreetNumber = payerRequest.Address?.StreetNumber,
+                PayerComplement = payerRequest.Address?.Complement,
+                PayerNeighborhood = payerRequest.Address?.Neighborhood,
+                PayerCity = payerRequest.Address?.City,
+                PayerFederalUnit = payerRequest.Address?.FederalUnit,
+                PaymentMethod = paymentMethodId,
+                TotalAmount = totalAmount,
+                Status = "pending",
+                Items = [.. request.Items.Select(static i =>
                 {
-                    Title = i.Title,
-                    UnitPrice = p,
-                    Quantity = i.Quantity,
-                    ExternalCode = i.ExternalCode
-                };
-            })]
-        };
+                    _ = decimal.TryParse(i.UnitPrice, NumberStyles.Any, CultureInfo.InvariantCulture, out var p);
+                    return new OrderItem
+                    {
+                        Title = i.Title,
+                        UnitPrice = p,
+                        Quantity = i.Quantity,
+                        ExternalCode = i.ExternalCode
+                    };
+                })]
+            };
 
-        // 4. Monta DTO do Gateway unificado
-        var mpRequest = request with
-        {
-            ExternalReference = externalRef,
-            TotalAmount = formattedTotal,
-            Payer = payerRequest
-        };
+            // 4. Monta DTO do Gateway unificado
+            var mpRequest = request with
+            {
+                ExternalReference = externalRef,
+                TotalAmount = formattedTotal,
+                Payer = payerRequest
+            };
 
-        var mpResponse = await _mercadoPagoGateway.CreateOrderAsync(mpRequest, cancellationToken: cancellationToken);
-        var firstPayment = mpResponse.Transactions?.Payments?.FirstOrDefault();
+            var mpResponse = await _mercadoPagoGateway.CreateOrderAsync(mpRequest, cancellationToken: cancellationToken);
+            var firstPayment = mpResponse.Transactions?.Payments?.FirstOrDefault();
 
-        // 5. Atualiza o pedido com a resposta do gateway (prioriza ID numérico de pagamento)
-        var numericPaymentId = firstPayment?.Reference?.Id?.ToString();
-        order.MpPaymentId = !string.IsNullOrEmpty(numericPaymentId)
-            ? numericPaymentId
-            : (firstPayment?.Id ?? mpResponse.Id);
-        order.PixQrCode = firstPayment?.PaymentMethod?.QrCode;
-        order.PixQrCodeBase64 = firstPayment?.PaymentMethod?.QrCodeBase64;
-        order.TicketUrl = firstPayment?.PaymentMethod?.TicketUrl;
-        order.PixExpirationDate = isPix ? DateTimeOffset.UtcNow.AddMinutes(30) : null;
+            // 5. Atualiza o pedido com a resposta do gateway (prioriza ID numérico de pagamento)
+            var numericPaymentId = firstPayment?.Reference?.Id?.ToString();
+            order.MpPaymentId = !string.IsNullOrEmpty(numericPaymentId)
+                ? numericPaymentId
+                : (firstPayment?.Id ?? mpResponse.Id);
+            order.PixQrCode = firstPayment?.PaymentMethod?.QrCode;
+            order.PixQrCodeBase64 = firstPayment?.PaymentMethod?.QrCodeBase64;
+            order.TicketUrl = firstPayment?.PaymentMethod?.TicketUrl;
+            order.PixExpirationDate = isPix ? DateTimeOffset.UtcNow.AddMinutes(30) : null;
 
-        if (firstPayment?.Status is "approved" || mpResponse.Status is "processed" or "approved")
-        {
-            order.Status = "approved";
-            order.PaidAt = DateTimeOffset.UtcNow;
-            order.TotalPaidAmount = totalAmount;
+            if (firstPayment?.Status is "approved" || mpResponse.Status is "processed" or "approved")
+            {
+                order.Status = "approved";
+                order.PaidAt = DateTimeOffset.UtcNow;
+                order.TotalPaidAmount = totalAmount;
+            }
+
+            var savedOrder = await _orderRepository.CreateOrderAsync(order, cancellationToken);
+
+            // Se o pagamento for instantâneo (cartão aprovado na criação), libera os créditos
+            if (savedOrder is { Status: "approved", PlanId: not null })
+            {
+                await CreditTenantAsync(tenantId, savedOrder, plan, cancellationToken);
+            }
+
+            _logger.LogInformation(
+                "Pedido {OrderId} persistido com status {Status} para o Tenant {TenantId}",
+                savedOrder.Id, savedOrder.Status, tenantId);
+
+            return mpResponse;
         }
-
-        var savedOrder = await _orderRepository.CreateOrderAsync(order, cancellationToken);
-
-        // Se o pagamento for instantâneo (cartão aprovado na criação), libera os créditos
-        if (savedOrder is { Status: "approved", PlanId: not null })
+        catch (ArgumentException)
         {
-            await CreditTenantAsync(tenantId, savedOrder, plan, cancellationToken);
+            throw;
         }
-
-        _logger.LogInformation(
-            "Pedido {OrderId} persistido com status {Status} para o Tenant {TenantId}",
-            savedOrder.Id, savedOrder.Status, tenantId);
-
-        return mpResponse;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro no fluxo de checkout para o Tenant {TenantId}. Ref: {ExternalReference}, Montante: {TotalAmount}",
+                tenantId, externalRef, totalAmount);
+            throw;
+        }
     }
 
     public async Task<MercadoPagoOrderResponse?> GetOrderStatusAsync(
@@ -203,77 +216,95 @@ public sealed class CheckoutService : ICheckoutService
     {
         Order? order = null;
 
-        if (Guid.TryParse(paymentOrOrderId, out var orderGuid))
+        try
         {
-            order = await _orderRepository.GetOrderByIdAsync(orderGuid, tenantId, cancellationToken);
-        }
-
-        if (order is null)
-        {
-            order = await _orderRepository.GetOrderByMpPaymentIdAsync(paymentOrOrderId, cancellationToken);
-            if (order is not null && order.TenantId != tenantId)
+            if (Guid.TryParse(paymentOrOrderId, out var orderGuid))
             {
-                _logger.LogWarning(
-                    "Violação de Tenant: Pedido {PaymentOrOrderId} acessado pelo Tenant {TenantId}",
-                    paymentOrOrderId, tenantId);
-                order = null; // Isolamento Multi-Tenant
-            }
-        }
-
-        // Tenta também por ExternalReference caso o identificador informado seja a referência
-        if (order is null)
-        {
-            var candidateOrder = await _orderRepository.GetOrderByExternalReferenceGlobalAsync(paymentOrOrderId, cancellationToken);
-            if (candidateOrder is not null && candidateOrder.TenantId == tenantId)
-            {
-                order = candidateOrder;
-            }
-        }
-
-        // Pattern matching lógico: evita reconsultar gateways se já finalizado
-        if (order is { Status: "approved" or "rejected" })
-        {
-            return BuildOrderResponseFromOrder(order);
-        }
-
-        // Se o identificador passado for alfanumérico no formato PAY...,
-        // a API do Mercado Pago recusa com 400 Bad Request. Retorna projeção local imediatamente.
-        if (paymentOrOrderId.StartsWith("PAY", StringComparison.OrdinalIgnoreCase))
-        {
-            return order is not null ? BuildOrderResponseFromOrder(order) : null;
-        }
-
-        // 1. Consulta Order no Mercado Pago (se for compatível)
-        var mpOrder = await _mercadoPagoGateway.GetOrderByIdAsync(paymentOrOrderId, cancellationToken);
-        if (mpOrder is not null)
-        {
-            var isAccredited = mpOrder is { Status: "processed", StatusDetail: "accredited" };
-            if (isAccredited && order is { Status: not "approved" })
-            {
-                await MarkOrderApprovedAndCreditAsync(order, tenantId, order.TotalAmount, cancellationToken);
+                order = await _orderRepository.GetOrderByIdAsync(orderGuid, tenantId, cancellationToken);
             }
 
-            return mpOrder;
-        }
-
-        // 2. Fallback para payments/{id} (apenas para IDs numéricos)
-        if (long.TryParse(paymentOrOrderId, out _))
-        {
-            var mpPayment = await _mercadoPagoGateway.GetPaymentByIdAsync(paymentOrOrderId, cancellationToken);
-            if (mpPayment is not null)
+            if (order is null)
             {
-                var isApproved = mpPayment.Status is "approved";
-                if (isApproved && order is { Status: not "approved" })
+                order = await _orderRepository.GetOrderByMpPaymentIdAsync(paymentOrOrderId, cancellationToken);
+                if (order is not null && order.TenantId != tenantId)
                 {
-                    var paidAmount = mpPayment.TransactionAmount ?? order.TotalAmount;
-                    await MarkOrderApprovedAndCreditAsync(order, tenantId, paidAmount, cancellationToken);
+                    _logger.LogWarning(
+                        "Violação de Tenant: Pedido {PaymentOrOrderId} acessado pelo Tenant {TenantId}",
+                        paymentOrOrderId, tenantId);
+                    order = null; // Isolamento Multi-Tenant
+                }
+            }
+
+            // Tenta também por ExternalReference caso o identificador informado seja a referência
+            if (order is null)
+            {
+                var candidateOrder = await _orderRepository.GetOrderByExternalReferenceGlobalAsync(paymentOrOrderId, cancellationToken);
+                if (candidateOrder is not null && candidateOrder.TenantId == tenantId)
+                {
+                    order = candidateOrder;
+                }
+            }
+
+            // Pattern matching lógico: evita reconsultar gateways se já finalizado
+            if (order is { Status: "approved" or "rejected" })
+            {
+                return BuildOrderResponseFromOrder(order);
+            }
+
+            // Se o identificador passado for alfanumérico no formato PAY...,
+            // a API do Mercado Pago recusa com 400 Bad Request. Retorna projeção local imediatamente.
+            if (paymentOrOrderId.StartsWith("PAY", StringComparison.OrdinalIgnoreCase))
+            {
+                return order is not null ? BuildOrderResponseFromOrder(order) : null;
+            }
+
+            // Consulta remota no gateway Mercado Pago com resiliência local
+            try
+            {
+                // 1. Consulta Order no Mercado Pago (se for compatível)
+                var mpOrder = await _mercadoPagoGateway.GetOrderByIdAsync(paymentOrOrderId, cancellationToken);
+                if (mpOrder is not null)
+                {
+                    var isAccredited = mpOrder is { Status: "processed", StatusDetail: "accredited" };
+                    if (isAccredited && order is { Status: not "approved" })
+                    {
+                        await MarkOrderApprovedAndCreditAsync(order, tenantId, order.TotalAmount, cancellationToken);
+                    }
+
+                    return mpOrder;
                 }
 
-                return ConvertPaymentToOrderResponse(mpPayment, order);
-            }
-        }
+                // 2. Fallback para payments/{id} (apenas para IDs numéricos)
+                if (long.TryParse(paymentOrOrderId, out _))
+                {
+                    var mpPayment = await _mercadoPagoGateway.GetPaymentByIdAsync(paymentOrOrderId, cancellationToken);
+                    if (mpPayment is not null)
+                    {
+                        var isApproved = mpPayment.Status is "approved";
+                        if (isApproved && order is { Status: not "approved" })
+                        {
+                            var paidAmount = mpPayment.TransactionAmount ?? order.TotalAmount;
+                            await MarkOrderApprovedAndCreditAsync(order, tenantId, paidAmount, cancellationToken);
+                        }
 
-        return order is not null ? BuildOrderResponseFromOrder(order) : null;
+                        return ConvertPaymentToOrderResponse(mpPayment, order);
+                    }
+                }
+            }
+            catch (Exception gatewayEx)
+            {
+                _logger.LogWarning(gatewayEx,
+                    "Falha ao consultar status remoto no gateway Mercado Pago para {PaymentOrOrderId} no Tenant {TenantId}. Utilizando projeção local de fallback.",
+                    paymentOrOrderId, tenantId);
+            }
+
+            return order is not null ? BuildOrderResponseFromOrder(order) : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter status do pedido {PaymentOrOrderId} para o Tenant {TenantId}", paymentOrOrderId, tenantId);
+            return order is not null ? BuildOrderResponseFromOrder(order) : null;
+        }
     }
 
     public async Task<MercadoPagoOrderResponse?> GetOrderAsync(
@@ -281,10 +312,18 @@ public sealed class CheckoutService : ICheckoutService
         Guid tenantId,
         CancellationToken cancellationToken = default)
     {
-        var order = await _orderRepository.GetOrderByIdAsync(id, tenantId, cancellationToken);
-        if (order is null) return null;
+        try
+        {
+            var order = await _orderRepository.GetOrderByIdAsync(id, tenantId, cancellationToken);
+            if (order is null) return null;
 
-        return BuildOrderResponseFromOrder(order);
+            return BuildOrderResponseFromOrder(order);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter pedido {OrderId} para o Tenant {TenantId}", id, tenantId);
+            throw;
+        }
     }
 
     #region Métodos Privados Auxiliares

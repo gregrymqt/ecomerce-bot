@@ -143,87 +143,108 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
             code = code
         };
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint)
+        try
         {
-            Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
-        };
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            _logger.LogError("Failed to exchange OAuth code with Shopify. Status: {Status}, Error: {Error}", response.StatusCode, json);
-            throw new InvalidOperationException($"Falha ao obter token OAuth da Shopify: {response.StatusCode}");
-        }
-
-        using var doc = JsonDocument.Parse(json);
-        if (doc.RootElement.TryGetProperty("access_token", out var tokenProp))
-        {
-            var accessToken = tokenProp.GetString();
-            if (!string.IsNullOrEmpty(accessToken))
+            using var request = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint)
             {
-                await SaveCredentialsAsync(tenantId, new ShopifyCredentialsPayloadDto
-                {
-                    StoreDomain = cleanShop,
-                    AdminAccessToken = accessToken
-                }, cancellationToken);
-                _logger.LogInformation("Successfully saved Shopify OAuth token for Tenant {TenantId}", tenantId);
+                Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
+            };
+
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("Failed to exchange OAuth code with Shopify. Status: {Status}, Error: {Error}", response.StatusCode, json);
+                throw new InvalidOperationException($"Falha ao obter token OAuth da Shopify: {response.StatusCode}");
             }
+
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("access_token", out var tokenProp))
+            {
+                var accessToken = tokenProp.GetString();
+                if (!string.IsNullOrEmpty(accessToken))
+                {
+                    await SaveCredentialsAsync(tenantId, new ShopifyCredentialsPayloadDto
+                    {
+                        StoreDomain = cleanShop,
+                        AdminAccessToken = accessToken
+                    }, cancellationToken);
+                    _logger.LogInformation("Successfully saved Shopify OAuth token for Tenant {TenantId}", tenantId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao processar callback OAuth da Shopify para o domínio {Shop}, Tenant {TenantId}", cleanShop, tenantId);
+            throw;
         }
     }
 
     public async Task<ShopifyProductResponseDto> SyncProductAsync(Guid tenantId, ShopifySyncRequestDto request, CancellationToken cancellationToken = default)
     {
-        var product = await _productRepository.GetBySkuAsync(tenantId, request.Sku, cancellationToken);
-        if (product == null)
+        try
         {
-            product = new Product
+            var product = await _productRepository.GetBySkuAsync(tenantId, request.Sku, cancellationToken);
+            if (product == null)
             {
-                Id = Guid.NewGuid(),
-                TenantId = tenantId,
-                Sku = request.Sku,
-                Title = request.Title,
-                Description = request.Description,
-                Price = request.Price ?? 0,
-                Brand = request.Vendor,
-                Category = request.Tags,
-                ImagesJson = request.Images != null ? JsonSerializer.Serialize(request.Images) : null,
-                Status = "PROCESSING",
-                CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow
-            };
-            await _productRepository.AddAsync(product, cancellationToken);
-        }
-        else
-        {
-            product.Title = !string.IsNullOrEmpty(request.Title) ? request.Title : product.Title;
-            product.Description = request.Description ?? product.Description;
-            if (request.Price.HasValue) product.Price = request.Price.Value;
-            if (request.Images != null) product.ImagesJson = JsonSerializer.Serialize(request.Images);
-            await _productRepository.UpdateAsync(product, cancellationToken);
-        }
+                product = new Product
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    Sku = request.Sku,
+                    Title = request.Title,
+                    Description = request.Description,
+                    Price = request.Price ?? 0,
+                    Brand = request.Vendor,
+                    Category = request.Tags,
+                    ImagesJson = request.Images != null ? JsonSerializer.Serialize(request.Images) : null,
+                    Status = "PROCESSING",
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow
+                };
+                await _productRepository.AddAsync(product, cancellationToken);
+            }
+            else
+            {
+                product.Title = !string.IsNullOrEmpty(request.Title) ? request.Title : product.Title;
+                product.Description = request.Description ?? product.Description;
+                if (request.Price.HasValue) product.Price = request.Price.Value;
+                if (request.Images != null) product.ImagesJson = JsonSerializer.Serialize(request.Images);
+                await _productRepository.UpdateAsync(product, cancellationToken);
+            }
 
-        var gateway = _gatewayFactory.GetGateway("Shopify");
-        var success = await gateway.PushProductAsync(tenantId, product, cancellationToken);
+            var gateway = _gatewayFactory.GetGateway("Shopify");
+            var success = await gateway.PushProductAsync(tenantId, product, cancellationToken);
 
-        if (success)
-        {
-            var updated = await _productRepository.GetBySkuAsync(tenantId, request.Sku, cancellationToken);
+            if (success)
+            {
+                var updated = await _productRepository.GetBySkuAsync(tenantId, request.Sku, cancellationToken);
+                return new ShopifyProductResponseDto
+                {
+                    ShopifyId = updated?.ShopifyProductId,
+                    Status = "success",
+                    Message = "Produto sincronizado com sucesso na Shopify."
+                };
+            }
+
             return new ShopifyProductResponseDto
             {
-                ShopifyId = updated?.ShopifyProductId,
-                Status = "success",
-                Message = "Produto sincronizado com sucesso na Shopify."
+                Status = "error",
+                Message = "Falha ao publicar produto na Shopify. Verifique os logs e credenciais.",
+                Errors = new List<string> { "GraphQL mutation rejected or token invalid" }
             };
         }
-
-        return new ShopifyProductResponseDto
+        catch (Exception ex)
         {
-            Status = "error",
-            Message = "Falha ao publicar produto na Shopify. Verifique os logs e credenciais.",
-            Errors = new List<string> { "GraphQL mutation rejected or token invalid" }
-        };
+            _logger.LogError(ex, "Erro inesperado ao sincronizar produto SKU {Sku} com a Shopify para o Tenant {TenantId}", request.Sku, tenantId);
+            return new ShopifyProductResponseDto
+            {
+                Status = "error",
+                Message = $"Erro inesperado ao sincronizar com a Shopify: {ex.Message}",
+                Errors = new List<string> { ex.Message }
+            };
+        }
     }
 
     public async Task<ShopifyBulkSyncResponseDto> TriggerBulkSyncAsync(Guid tenantId, ShopifyBulkSyncRequestDto request, CancellationToken cancellationToken = default)
@@ -233,154 +254,206 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
 
         var jobId = Guid.NewGuid().ToString("N");
 
-        foreach (var sku in request.Skus)
+        try
         {
-            var msg = new ShopifyBulkSyncMessage
+            foreach (var sku in request.Skus)
+            {
+                var msg = new ShopifyBulkSyncMessage
+                {
+                    JobId = jobId,
+                    TenantId = tenantId,
+                    Sku = sku,
+                    ForceUpdate = true
+                };
+
+                await _publishEndpoint.Publish(msg, context =>
+                {
+                    context.SetRoutingKey("shopify_bulk_sync");
+                }, cancellationToken);
+            }
+
+            _logger.LogInformation("Enqueued {Count} products for Shopify bulk sync. JobId: {JobId}, Tenant: {TenantId}", request.Skus.Count, jobId, tenantId);
+
+            return new ShopifyBulkSyncResponseDto
             {
                 JobId = jobId,
-                TenantId = tenantId,
-                Sku = sku,
-                ForceUpdate = true
+                TotalEnqueued = request.Skus.Count,
+                Status = "queued",
+                Message = $"Sincronização de {request.Skus.Count} produtos enfileirada com sucesso."
             };
-
-            await _publishEndpoint.Publish(msg, context =>
-            {
-                context.SetRoutingKey("shopify_bulk_sync");
-            }, cancellationToken);
         }
-
-        _logger.LogInformation("Enqueued {Count} products for Shopify bulk sync. JobId: {JobId}, Tenant: {TenantId}", request.Skus.Count, jobId, tenantId);
-
-        return new ShopifyBulkSyncResponseDto
+        catch (Exception ex)
         {
-            JobId = jobId,
-            TotalEnqueued = request.Skus.Count,
-            Status = "queued",
-            Message = $"Sincronização de {request.Skus.Count} produtos enfileirada com sucesso."
-        };
+            _logger.LogError(ex, "Falha ao enfileirar produtos para sincronização em lote da Shopify. JobId: {JobId}, Tenant: {TenantId}", jobId, tenantId);
+            throw;
+        }
     }
 
     public async Task<ShopifyProductResponseDto> UpdateInventoryAsync(Guid tenantId, string sku, ShopifyInventoryUpdateDto input, CancellationToken cancellationToken = default)
     {
-        var gateway = _gatewayFactory.GetGateway("Shopify");
-        var success = await gateway.UpdateInventoryAsync(tenantId, sku, input.AvailableQuantity, input.InventoryItemId, cancellationToken);
-
-        return new ShopifyProductResponseDto
+        try
         {
-            Status = success ? "success" : "error",
-            Message = success ? "Estoque atualizado com sucesso na Shopify." : "Falha ao atualizar estoque na Shopify."
-        };
+            var gateway = _gatewayFactory.GetGateway("Shopify");
+            var success = await gateway.UpdateInventoryAsync(tenantId, sku, input.AvailableQuantity, input.InventoryItemId, cancellationToken);
+
+            return new ShopifyProductResponseDto
+            {
+                Status = success ? "success" : "error",
+                Message = success ? "Estoque atualizado com sucesso na Shopify." : "Falha ao atualizar estoque na Shopify."
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao atualizar estoque na Shopify para SKU {Sku}, Tenant {TenantId}", sku, tenantId);
+            return new ShopifyProductResponseDto
+            {
+                Status = "error",
+                Message = $"Erro ao atualizar estoque na Shopify: {ex.Message}"
+            };
+        }
     }
 
     public async Task<ShopifyProductResponseDto> UpdateStatusAsync(Guid tenantId, string sku, ShopifyStatusUpdateDto input, CancellationToken cancellationToken = default)
     {
-        var gateway = _gatewayFactory.GetGateway("Shopify");
-        var success = await gateway.UpdateProductStatusAsync(tenantId, sku, input.Status, cancellationToken);
-
-        return new ShopifyProductResponseDto
+        try
         {
-            Status = success ? "success" : "error",
-            Message = success ? $"Status alterado para '{input.Status}' na Shopify." : "Falha ao alterar status na Shopify."
-        };
+            var gateway = _gatewayFactory.GetGateway("Shopify");
+            var success = await gateway.UpdateProductStatusAsync(tenantId, sku, input.Status, cancellationToken);
+
+            return new ShopifyProductResponseDto
+            {
+                Status = success ? "success" : "error",
+                Message = success ? $"Status alterado para '{input.Status}' na Shopify." : "Falha ao alterar status na Shopify."
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao atualizar status na Shopify para SKU {Sku}, Tenant {TenantId}", sku, tenantId);
+            return new ShopifyProductResponseDto
+            {
+                Status = "error",
+                Message = $"Erro ao atualizar status na Shopify: {ex.Message}"
+            };
+        }
     }
 
     public async Task<ShopifyProductResponseDto> DeleteRemoteProductAsync(Guid tenantId, string sku, CancellationToken cancellationToken = default)
     {
-        var gateway = _gatewayFactory.GetGateway("Shopify");
-        var success = await gateway.DeleteProductAsync(tenantId, sku, cancellationToken);
-
-        return new ShopifyProductResponseDto
+        try
         {
-            Status = success ? "success" : "error",
-            Message = success ? "Produto removido com sucesso na Shopify." : "Falha ao remover produto na Shopify."
-        };
+            var gateway = _gatewayFactory.GetGateway("Shopify");
+            var success = await gateway.DeleteProductAsync(tenantId, sku, cancellationToken);
+
+            return new ShopifyProductResponseDto
+            {
+                Status = success ? "success" : "error",
+                Message = success ? "Produto removido com sucesso na Shopify." : "Falha ao remover produto na Shopify."
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao remover produto na Shopify para SKU {Sku}, Tenant {TenantId}", sku, tenantId);
+            return new ShopifyProductResponseDto
+            {
+                Status = "error",
+                Message = $"Erro ao remover produto na Shopify: {ex.Message}"
+            };
+        }
     }
 
     public async Task ProcessWebhookAsync(Guid tenantId, string topic, string shopDomain, JsonElement payload, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Processing Shopify webhook '{Topic}' for domain '{ShopDomain}', Tenant '{TenantId}'", topic, shopDomain, tenantId);
 
-        if (topic.Equals("products/create", StringComparison.OrdinalIgnoreCase) || 
-            topic.Equals("products/update", StringComparison.OrdinalIgnoreCase))
+        try
         {
-            var shopifyId = payload.TryGetProperty("id", out var idProp) ? idProp.GetRawText() : "";
-            var title = payload.TryGetProperty("title", out var titleProp) ? titleProp.GetString() ?? "" : "";
-            var bodyHtml = payload.TryGetProperty("body_html", out var descProp) ? descProp.GetString() : null;
-            var vendor = payload.TryGetProperty("vendor", out var vendorProp) ? vendorProp.GetString() : null;
-            var productType = payload.TryGetProperty("product_type", out var typeProp) ? typeProp.GetString() : null;
-
-            if (payload.TryGetProperty("variants", out var variants) && variants.ValueKind == JsonValueKind.Array)
+            if (topic.Equals("products/create", StringComparison.OrdinalIgnoreCase) || 
+                topic.Equals("products/update", StringComparison.OrdinalIgnoreCase))
             {
-                foreach (var variant in variants.EnumerateArray())
+                var shopifyId = payload.TryGetProperty("id", out var idProp) ? idProp.GetRawText() : "";
+                var title = payload.TryGetProperty("title", out var titleProp) ? titleProp.GetString() ?? "" : "";
+                var bodyHtml = payload.TryGetProperty("body_html", out var descProp) ? descProp.GetString() : null;
+                var vendor = payload.TryGetProperty("vendor", out var vendorProp) ? vendorProp.GetString() : null;
+                var productType = payload.TryGetProperty("product_type", out var typeProp) ? typeProp.GetString() : null;
+
+                if (payload.TryGetProperty("variants", out var variants) && variants.ValueKind == JsonValueKind.Array)
                 {
-                    var sku = variant.TryGetProperty("sku", out var skuProp) ? skuProp.GetString() : null;
-                    if (string.IsNullOrEmpty(sku))
+                    foreach (var variant in variants.EnumerateArray())
                     {
-                        sku = $"SHPFY-{shopifyId}";
-                    }
-
-                    var price = variant.TryGetProperty("price", out var pProp) && decimal.TryParse(pProp.GetString(), out var pVal) ? pVal : 0m;
-                    var stock = variant.TryGetProperty("inventory_quantity", out var qProp) ? qProp.GetInt32() : 0;
-                    var variantId = variant.TryGetProperty("id", out var vIdProp) ? vIdProp.GetRawText() : null;
-                    var invItemId = variant.TryGetProperty("inventory_item_id", out var invProp) ? invProp.GetRawText() : null;
-
-                    var product = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
-                    if (product != null)
-                    {
-                        product.Title = !string.IsNullOrEmpty(title) ? title : product.Title;
-                        product.Description = bodyHtml ?? product.Description;
-                        product.Price = price > 0 ? price : product.Price;
-                        product.StockQuantity = stock;
-                        product.ShopifyProductId = shopifyId;
-                        product.ShopifyVariantId = variantId;
-                        product.ShopifyInventoryItemId = invItemId;
-                        product.UpdatedAt = DateTimeOffset.UtcNow;
-                        await _productRepository.UpdateAsync(product, cancellationToken);
-                    }
-                    else
-                    {
-                        var newProd = new Product
+                        var sku = variant.TryGetProperty("sku", out var skuProp) ? skuProp.GetString() : null;
+                        if (string.IsNullOrEmpty(sku))
                         {
-                            Id = Guid.NewGuid(),
-                            TenantId = tenantId,
-                            Sku = sku,
-                            Title = title,
-                            Description = bodyHtml,
-                            Brand = vendor,
-                            Category = productType,
-                            Price = price,
-                            StockQuantity = stock,
-                            ShopifyProductId = shopifyId,
-                            ShopifyVariantId = variantId,
-                            ShopifyInventoryItemId = invItemId,
-                            Status = "PROCESSED",
-                            CreatedAt = DateTimeOffset.UtcNow,
-                            UpdatedAt = DateTimeOffset.UtcNow
-                        };
-                        await _productRepository.AddAsync(newProd, cancellationToken);
+                            sku = $"SHPFY-{shopifyId}";
+                        }
+
+                        var price = variant.TryGetProperty("price", out var pProp) && decimal.TryParse(pProp.GetString(), out var pVal) ? pVal : 0m;
+                        var stock = variant.TryGetProperty("inventory_quantity", out var qProp) ? qProp.GetInt32() : 0;
+                        var variantId = variant.TryGetProperty("id", out var vIdProp) ? vIdProp.GetRawText() : null;
+                        var invItemId = variant.TryGetProperty("inventory_item_id", out var invProp) ? invProp.GetRawText() : null;
+
+                        var product = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
+                        if (product != null)
+                        {
+                            product.Title = !string.IsNullOrEmpty(title) ? title : product.Title;
+                            product.Description = bodyHtml ?? product.Description;
+                            product.Price = price > 0 ? price : product.Price;
+                            product.StockQuantity = stock;
+                            product.ShopifyProductId = shopifyId;
+                            product.ShopifyVariantId = variantId;
+                            product.ShopifyInventoryItemId = invItemId;
+                            product.UpdatedAt = DateTimeOffset.UtcNow;
+                            await _productRepository.UpdateAsync(product, cancellationToken);
+                        }
+                        else
+                        {
+                            var newProd = new Product
+                            {
+                                Id = Guid.NewGuid(),
+                                TenantId = tenantId,
+                                Sku = sku,
+                                Title = title,
+                                Description = bodyHtml,
+                                Brand = vendor,
+                                Category = productType,
+                                Price = price,
+                                StockQuantity = stock,
+                                ShopifyProductId = shopifyId,
+                                ShopifyVariantId = variantId,
+                                ShopifyInventoryItemId = invItemId,
+                                Status = "PROCESSED",
+                                CreatedAt = DateTimeOffset.UtcNow,
+                                UpdatedAt = DateTimeOffset.UtcNow
+                            };
+                            await _productRepository.AddAsync(newProd, cancellationToken);
+                        }
                     }
                 }
             }
-        }
-        else if (topic.Equals("products/delete", StringComparison.OrdinalIgnoreCase))
-        {
-            var shopifyId = payload.TryGetProperty("id", out var idProp) ? idProp.GetRawText() : "";
-            _logger.LogInformation("Deleted product ID '{ShopifyId}' from Shopify webhook", shopifyId);
-        }
-        else if (topic.StartsWith("inventory_levels", StringComparison.OrdinalIgnoreCase))
-        {
-            var inventoryId = payload.TryGetProperty("inventory_item_id", out var idProp) ? idProp.GetRawText() : "";
-            var available = payload.TryGetProperty("available", out var avProp) ? avProp.GetInt32() : 0;
-            _logger.LogInformation("Shopify inventory update for item '{InventoryId}' -> {Available}", inventoryId, available);
-        }
-        else if (topic.StartsWith("app/uninstalled", StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogWarning("Shopify App uninstalled for domain '{ShopDomain}'. Marking integration as DISCONNECTED.", shopDomain);
-            var integration = await _storeIntegrationRepository.GetByDomainAsync("SHOPIFY", shopDomain, cancellationToken);
-            if (integration != null)
+            else if (topic.Equals("products/delete", StringComparison.OrdinalIgnoreCase))
             {
-                await _storeIntegrationRepository.UpdateHealthCheckAsync(integration.Id, "DISCONNECTED", 0, "App desinstalado na Shopify", cancellationToken);
+                var shopifyId = payload.TryGetProperty("id", out var idProp) ? idProp.GetRawText() : "";
+                _logger.LogInformation("Deleted product ID '{ShopifyId}' from Shopify webhook", shopifyId);
             }
+            else if (topic.StartsWith("inventory_levels", StringComparison.OrdinalIgnoreCase))
+            {
+                var inventoryId = payload.TryGetProperty("inventory_item_id", out var idProp) ? idProp.GetRawText() : "";
+                var available = payload.TryGetProperty("available", out var avProp) ? avProp.GetInt32() : 0;
+                _logger.LogInformation("Shopify inventory update for item '{InventoryId}' -> {Available}", inventoryId, available);
+            }
+            else if (topic.StartsWith("app/uninstalled", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Shopify App uninstalled for domain '{ShopDomain}'. Marking integration as DISCONNECTED.", shopDomain);
+                var integration = await _storeIntegrationRepository.GetByDomainAsync("SHOPIFY", shopDomain, cancellationToken);
+                if (integration != null)
+                {
+                    await _storeIntegrationRepository.UpdateHealthCheckAsync(integration.Id, "DISCONNECTED", 0, "App desinstalado na Shopify", cancellationToken);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao processar webhook Shopify '{Topic}' para o domínio '{ShopDomain}', Tenant '{TenantId}'", topic, shopDomain, tenantId);
+            throw;
         }
     }
 }

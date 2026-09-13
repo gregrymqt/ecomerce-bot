@@ -25,15 +25,16 @@ public sealed class SettingsService : ISettingsService
         _logger = logger;
     }
 
-    private static T DeserializeOrDefault<T>(string? json, T defaultObj)
+    private T DeserializeOrDefault<T>(string? json, T defaultObj)
     {
         if (string.IsNullOrWhiteSpace(json)) return defaultObj;
         try
         {
             return JsonSerializer.Deserialize<T>(json) ?? defaultObj;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Falha ao desserializar JSON de configurações para o tipo {Type}. Retornando valor padrão.", typeof(T).Name);
             return defaultObj;
         }
     }
@@ -41,32 +42,56 @@ public sealed class SettingsService : ISettingsService
     public async Task<TenantSettingsResponse> GetSettingsAsync(Guid tenantId)
     {
         var cacheKey = $"settings:{tenantId}";
-        var cached = await _redisService.GetAsync<TenantSettingsResponse>(cacheKey);
-        if (cached != null)
+        try
         {
-            _logger.LogInformation("Cache hit for settings of tenant '{TenantId}'", tenantId);
-            return cached;
+            var cached = await _redisService.GetAsync<TenantSettingsResponse>(cacheKey);
+            if (cached != null)
+            {
+                _logger.LogInformation("Cache hit for settings of tenant '{TenantId}'", tenantId);
+                return cached;
+            }
+        }
+        catch (Exception redisEx)
+        {
+            _logger.LogWarning(redisEx, "Aviso: Falha ao ler cache de configurações do Redis para Tenant {TenantId}. Consultando banco de dados...", tenantId);
         }
 
-        var config = await _repository.GetByTenantIdAsync(tenantId);
-
-        var response = new TenantSettingsResponse
+        try
         {
-            TenantId = tenantId.ToString(),
-            AiSettings = DeserializeOrDefault(config?.AiSettingsJson, new AiSettingsDto()),
-            PricingSettings = DeserializeOrDefault(config?.PricingSettingsJson, new PricingSettingsDto()),
-            StoreProfile = DeserializeOrDefault(config?.StoreProfileJson, new StoreProfileDto()),
-            UpdatedAt = config?.UpdatedAt
-        };
+            var config = await _repository.GetByTenantIdAsync(tenantId);
 
-        await _redisService.SetAsync(cacheKey, response, TimeSpan.FromHours(1));
+            var response = new TenantSettingsResponse
+            {
+                TenantId = tenantId.ToString(),
+                AiSettings = DeserializeOrDefault(config?.AiSettingsJson, new AiSettingsDto()),
+                PricingSettings = DeserializeOrDefault(config?.PricingSettingsJson, new PricingSettingsDto()),
+                StoreProfile = DeserializeOrDefault(config?.StoreProfileJson, new StoreProfileDto()),
+                UpdatedAt = config?.UpdatedAt
+            };
 
-        return response;
+            try
+            {
+                await _redisService.SetAsync(cacheKey, response, TimeSpan.FromHours(1));
+            }
+            catch (Exception redisSetEx)
+            {
+                _logger.LogWarning(redisSetEx, "Aviso: Falha ao gravar cache de configurações no Redis para Tenant {TenantId}.", tenantId);
+            }
+
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter configurações do Tenant {TenantId} do repositório.", tenantId);
+            throw;
+        }
     }
 
     public async Task<TenantSettingsResponse> UpdateSettingsAsync(Guid tenantId, TenantSettingsUpdate data)
     {
-        var config = await _repository.GetByTenantIdAsync(tenantId) ?? new TenantConfig { TenantId = tenantId };
+        try
+        {
+            var config = await _repository.GetByTenantIdAsync(tenantId) ?? new TenantConfig { TenantId = tenantId };
 
         var currentAi = DeserializeOrDefault(config.AiSettingsJson, new AiSettingsDto());
         var currentPricing = DeserializeOrDefault(config.PricingSettingsJson, new PricingSettingsDto());
@@ -102,16 +127,29 @@ public sealed class SettingsService : ISettingsService
             };
         }
 
-        config.AiSettingsJson = JsonSerializer.Serialize(currentAi);
-        config.PricingSettingsJson = JsonSerializer.Serialize(currentPricing);
-        config.StoreProfileJson = JsonSerializer.Serialize(currentProfile);
+            config.AiSettingsJson = JsonSerializer.Serialize(currentAi);
+            config.PricingSettingsJson = JsonSerializer.Serialize(currentPricing);
+            config.StoreProfileJson = JsonSerializer.Serialize(currentProfile);
 
-        await _repository.UpsertAsync(config);
+            await _repository.UpsertAsync(config);
 
-        var cacheKey = $"settings:{tenantId}";
-        await _redisService.RemoveAsync(cacheKey);
-        _logger.LogInformation("Redis cache for settings of tenant '{TenantId}' successfully invalidated.", tenantId);
+            var cacheKey = $"settings:{tenantId}";
+            try
+            {
+                await _redisService.RemoveAsync(cacheKey);
+                _logger.LogInformation("Redis cache for settings of tenant '{TenantId}' successfully invalidated.", tenantId);
+            }
+            catch (Exception redisEx)
+            {
+                _logger.LogWarning(redisEx, "Aviso: Falha ao invalidar cache no Redis para Tenant {TenantId}.", tenantId);
+            }
 
-        return await GetSettingsAsync(tenantId);
+            return await GetSettingsAsync(tenantId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao atualizar configurações do Tenant {TenantId}", tenantId);
+            throw;
+        }
     }
 }

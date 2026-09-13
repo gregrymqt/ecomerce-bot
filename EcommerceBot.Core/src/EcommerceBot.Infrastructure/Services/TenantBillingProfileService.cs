@@ -6,6 +6,7 @@ using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Application.Security;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Services;
 
@@ -15,18 +16,30 @@ namespace EcommerceBot.Infrastructure.Services;
 public sealed class TenantBillingProfileService : ITenantBillingProfileService
 {
     private readonly ITenantBillingProfileRepository _repository;
+    private readonly ILogger<TenantBillingProfileService> _logger;
 
-    public TenantBillingProfileService(ITenantBillingProfileRepository repository)
+    public TenantBillingProfileService(
+        ITenantBillingProfileRepository repository,
+        ILogger<TenantBillingProfileService> logger)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _logger = logger;
     }
 
     public async Task<TenantBillingProfileResponse?> GetProfileAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
         if (tenantId == Guid.Empty) return null;
 
-        var entity = await _repository.GetByTenantIdAsync(tenantId, cancellationToken);
-        return entity is null ? null : MapToResponse(entity);
+        try
+        {
+            var entity = await _repository.GetByTenantIdAsync(tenantId, cancellationToken);
+            return entity is null ? null : MapToResponse(entity);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Falha ao consultar perfil de faturamento para o Tenant {TenantId}", tenantId);
+            return null;
+        }
     }
 
     public async Task<TenantBillingProfileResponse> UpsertProfileAsync(
@@ -69,8 +82,17 @@ public sealed class TenantBillingProfileService : ITenantBillingProfileService
             FederalUnit = request.FederalUnit.Trim().ToUpperInvariant()
         };
 
-        var saved = await _repository.UpsertAsync(entity, cancellationToken);
-        return MapToResponse(saved);
+        try
+        {
+            var saved = await _repository.UpsertAsync(entity, cancellationToken);
+            _logger.LogInformation("Perfil de faturamento salvo com sucesso para o Tenant {TenantId}.", tenantId);
+            return MapToResponse(saved);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao realizar upsert do perfil de faturamento para o Tenant {TenantId}, Documento: {DocumentNumber}", tenantId, cleanDoc);
+            throw;
+        }
     }
 
     private static TenantBillingProfileResponse MapToResponse(TenantBillingProfile entity)

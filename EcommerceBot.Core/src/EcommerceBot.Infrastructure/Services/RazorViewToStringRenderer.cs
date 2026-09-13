@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using System.Linq;
 using EcommerceBot.Application.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewEngines;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Services;
 
@@ -22,50 +24,61 @@ public sealed class RazorViewToStringRenderer : IRazorTemplateRenderer
     private readonly IRazorViewEngine _viewEngine;
     private readonly ITempDataProvider _tempDataProvider;
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<RazorViewToStringRenderer> _logger;
 
     public RazorViewToStringRenderer(
         IRazorViewEngine viewEngine,
         ITempDataProvider tempDataProvider,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        ILogger<RazorViewToStringRenderer> logger)
     {
         _viewEngine = viewEngine;
         _tempDataProvider = tempDataProvider;
         _serviceProvider = serviceProvider;
+        _logger = logger;
     }
 
     public async Task<string> RenderViewToStringAsync<TModel>(string viewName, TModel model)
     {
-        var httpContext = new DefaultHttpContext { RequestServices = _serviceProvider };
-        var actionContext = new ActionContext(httpContext, new RouteData(), new ActionDescriptor());
-
-        using var output = new StringWriter();
-        var viewResult = FindView(actionContext, viewName);
-
-        if (viewResult.View == null)
+        try
         {
-            throw new ArgumentNullException($"{viewName} não pôde ser encontrado entre as views Razor configuradas.");
+            var httpContext = new DefaultHttpContext { RequestServices = _serviceProvider };
+            var actionContext = new ActionContext(httpContext, new RouteData(), new ActionDescriptor());
+
+            using var output = new StringWriter();
+            var viewResult = FindView(actionContext, viewName);
+
+            if (viewResult.View == null)
+            {
+                throw new InvalidOperationException($"A view '{viewName}' não pôde ser encontrada entre as views Razor configuradas.");
+            }
+
+            var viewDictionary = new ViewDataDictionary<TModel>(
+                new EmptyModelMetadataProvider(),
+                new ModelStateDictionary())
+            {
+                Model = model
+            };
+
+            var tempData = new TempDataDictionary(actionContext.HttpContext, _tempDataProvider);
+
+            var viewContext = new ViewContext(
+                actionContext,
+                viewResult.View,
+                viewDictionary,
+                tempData,
+                output,
+                new HtmlHelperOptions()
+            );
+
+            await viewResult.View.RenderAsync(viewContext);
+            return output.ToString();
         }
-
-        var viewDictionary = new ViewDataDictionary<TModel>(
-            new EmptyModelMetadataProvider(),
-            new ModelStateDictionary())
+        catch (Exception ex)
         {
-            Model = model
-        };
-
-        var tempData = new TempDataDictionary(actionContext.HttpContext, _tempDataProvider);
-
-        var viewContext = new ViewContext(
-            actionContext,
-            viewResult.View,
-            viewDictionary,
-            tempData,
-            output,
-            new HtmlHelperOptions()
-        );
-
-        await viewResult.View.RenderAsync(viewContext);
-        return output.ToString();
+            _logger.LogError(ex, "Erro ao localizar ou renderizar a view Razor '{ViewName}' com ViewModel '{ViewModelType}'", viewName, typeof(TModel).FullName);
+            throw;
+        }
     }
 
     private ViewEngineResult FindView(ActionContext actionContext, string viewName)

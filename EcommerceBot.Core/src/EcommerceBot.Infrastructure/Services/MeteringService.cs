@@ -44,46 +44,62 @@ public sealed class MeteringService : IMeteringService
 
     public async Task<TenantCreditBalanceResponse> GetTenantCreditBalanceAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        var balance = await _repository.GetManagedCreditBalanceAsync(tenantId, cancellationToken);
-        var (monthlyTokens, monthlyCost) = await _repository.GetMonthlyTelemetryAsync(tenantId, cancellationToken);
-
-        return new TenantCreditBalanceResponse
+        try
         {
-            TenantId = tenantId.ToString(),
-            ManagedCreditBalance = balance,
-            MonthlyTotalTokens = monthlyTokens,
-            MonthlyTotalCostUsd = monthlyCost,
-            IsByokEnabled = false, // Em um cenário real, checaríamos as chaves configuradas
-            ActiveMode = "managed"
-        };
+            var balance = await _repository.GetManagedCreditBalanceAsync(tenantId, cancellationToken);
+            var (monthlyTokens, monthlyCost) = await _repository.GetMonthlyTelemetryAsync(tenantId, cancellationToken);
+
+            return new TenantCreditBalanceResponse
+            {
+                TenantId = tenantId.ToString(),
+                ManagedCreditBalance = balance,
+                MonthlyTotalTokens = monthlyTokens,
+                MonthlyTotalCostUsd = monthlyCost,
+                IsByokEnabled = false, // Em um cenário real, checaríamos as chaves configuradas
+                ActiveMode = "managed"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter saldo de créditos gerenciados para o Tenant {TenantId}", tenantId);
+            throw;
+        }
     }
 
     public async Task<PaginatedLlmUsageLogResponse> GetTenantUsageLogsAsync(Guid tenantId, int page, int limit, DateTimeOffset? startDate, DateTimeOffset? endDate, CancellationToken cancellationToken = default)
     {
-        var (items, totalCount) = await _repository.GetUsageLogsPaginatedAsync(tenantId, page, limit, startDate, endDate, cancellationToken);
-        
-        return new PaginatedLlmUsageLogResponse
+        try
         {
-            Items = items.Select(x => new LlmUsageLogResponse
+            var (items, totalCount) = await _repository.GetUsageLogsPaginatedAsync(tenantId, page, limit, startDate, endDate, cancellationToken);
+            
+            return new PaginatedLlmUsageLogResponse
             {
-                Id = x.Id,
-                TenantId = x.TenantId.ToString(),
-                ProductId = x.ProductId,
-                Provider = x.Provider,
-                ModelUsed = x.ModelUsed,
-                PromptTokens = x.PromptTokens,
-                CompletionTokens = x.CompletionTokens,
-                TotalTokens = x.TotalTokens,
-                EstimatedCostUsd = x.EstimatedCostUsd,
-                IsByok = x.IsByok,
-                ExecutionTimeMs = x.ExecutionTimeMs,
-                CreatedAt = x.CreatedAt
-            }),
-            Total = totalCount,
-            Page = page,
-            Limit = limit,
-            TotalPages = (int)Math.Ceiling(totalCount / (double)limit)
-        };
+                Items = items.Select(x => new LlmUsageLogResponse
+                {
+                    Id = x.Id,
+                    TenantId = x.TenantId.ToString(),
+                    ProductId = x.ProductId,
+                    Provider = x.Provider,
+                    ModelUsed = x.ModelUsed,
+                    PromptTokens = x.PromptTokens,
+                    CompletionTokens = x.CompletionTokens,
+                    TotalTokens = x.TotalTokens,
+                    EstimatedCostUsd = x.EstimatedCostUsd,
+                    IsByok = x.IsByok,
+                    ExecutionTimeMs = x.ExecutionTimeMs,
+                    CreatedAt = x.CreatedAt
+                }),
+                Total = totalCount,
+                Page = page,
+                Limit = limit,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)limit)
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao consultar logs de uso de LLM para o Tenant {TenantId}", tenantId);
+            throw;
+        }
     }
 
     public async Task<decimal> ReserveCreditsForLlmAsync(Guid tenantId, ReserveCreditsRequest request, CancellationToken cancellationToken = default)
@@ -92,21 +108,41 @@ public sealed class MeteringService : IMeteringService
         
         if (estimatedCost <= 0) return 0m;
 
-        var success = await _repository.AtomicReserveCreditsAsync(tenantId, estimatedCost, cancellationToken);
-        
-        if (!success)
+        try
         {
-            throw new InvalidOperationException("Insufficient credits to reserve for LLM operation.");
-        }
+            var success = await _repository.AtomicReserveCreditsAsync(tenantId, estimatedCost, cancellationToken);
+            
+            if (!success)
+            {
+                throw new InvalidOperationException("Insufficient credits to reserve for LLM operation.");
+            }
 
-        return estimatedCost;
+            return estimatedCost;
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao reservar créditos de LLM ({EstimatedCost} USD) para o Tenant {TenantId}", estimatedCost, tenantId);
+            throw;
+        }
     }
 
     public async Task RefundCreditsOnFailureAsync(Guid tenantId, decimal reservedCost, CancellationToken cancellationToken = default)
     {
         if (reservedCost > 0)
         {
-            await _repository.AtomicRefundCreditsAsync(tenantId, reservedCost, cancellationToken);
+            try
+            {
+                await _repository.AtomicRefundCreditsAsync(tenantId, reservedCost, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao reembolsar créditos reservados ({ReservedCost} USD) para o Tenant {TenantId}", reservedCost, tenantId);
+                throw;
+            }
         }
     }
 
@@ -132,35 +168,43 @@ public sealed class MeteringService : IMeteringService
             ExecutionTimeMs = request.ExecutionTimeMs
         };
 
-        var savedLog = await _repository.CreateUsageLogAsync(log, cancellationToken);
-
-        if (!request.IsByok && cost > 0)
+        try
         {
-            if (request.ReservedCost.HasValue)
+            var savedLog = await _repository.CreateUsageLogAsync(log, cancellationToken);
+
+            if (!request.IsByok && cost > 0)
             {
-                await _repository.AtomicSettleCreditsAsync(tenantId, request.ReservedCost.Value, cost, cancellationToken);
+                if (request.ReservedCost.HasValue)
+                {
+                    await _repository.AtomicSettleCreditsAsync(tenantId, request.ReservedCost.Value, cost, cancellationToken);
+                }
+                else
+                {
+                    // Fallback se não houve reserva: deduz tudo de uma vez
+                    await _repository.AtomicReserveCreditsAsync(tenantId, cost, cancellationToken);
+                }
             }
-            else
+
+            return new LlmUsageLogResponse
             {
-                // Fallback se não houve reserva: deduz tudo de uma vez
-                await _repository.AtomicReserveCreditsAsync(tenantId, cost, cancellationToken);
-            }
+                Id = savedLog.Id,
+                TenantId = savedLog.TenantId.ToString(),
+                ProductId = savedLog.ProductId,
+                Provider = savedLog.Provider,
+                ModelUsed = savedLog.ModelUsed,
+                PromptTokens = savedLog.PromptTokens,
+                CompletionTokens = savedLog.CompletionTokens,
+                TotalTokens = savedLog.TotalTokens,
+                EstimatedCostUsd = savedLog.EstimatedCostUsd,
+                IsByok = savedLog.IsByok,
+                ExecutionTimeMs = savedLog.ExecutionTimeMs,
+                CreatedAt = savedLog.CreatedAt
+            };
         }
-
-        return new LlmUsageLogResponse
+        catch (Exception ex)
         {
-            Id = savedLog.Id,
-            TenantId = savedLog.TenantId.ToString(),
-            ProductId = savedLog.ProductId,
-            Provider = savedLog.Provider,
-            ModelUsed = savedLog.ModelUsed,
-            PromptTokens = savedLog.PromptTokens,
-            CompletionTokens = savedLog.CompletionTokens,
-            TotalTokens = savedLog.TotalTokens,
-            EstimatedCostUsd = savedLog.EstimatedCostUsd,
-            IsByok = savedLog.IsByok,
-            ExecutionTimeMs = savedLog.ExecutionTimeMs,
-            CreatedAt = savedLog.CreatedAt
-        };
+            _logger.LogError(ex, "Erro ao registrar uso e deduzir créditos de LLM para o Tenant {TenantId}", tenantId);
+            throw;
+        }
     }
 }

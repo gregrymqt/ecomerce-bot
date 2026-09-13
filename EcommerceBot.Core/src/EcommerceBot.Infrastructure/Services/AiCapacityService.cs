@@ -39,83 +39,99 @@ public sealed class AiCapacityService : IAiCapacityService
         }
         request = request with { Provider = provider };
 
-        var balances = await _aiCapacityRepository.GetLatestBalancesAsync(cancellationToken);
-        var currentBalance = balances.GetValueOrDefault(provider, 0m);
-        var newBalance = currentBalance + request.AmountPaid;
-
-        var credit = new AiProviderCredit
+        try
         {
-            Provider = provider,
-            AmountPaid = request.AmountPaid,
-            Currency = string.IsNullOrWhiteSpace(request.Currency) ? "USD" : request.Currency,
-            TokensCredited = request.TokensCredited,
-            BalanceRemaining = newBalance,
-            TransactionReference = request.TransactionReference,
-            Source = request.Source,
-            Notes = request.Notes
-        };
+            var balances = await _aiCapacityRepository.GetLatestBalancesAsync(cancellationToken);
+            var currentBalance = balances.GetValueOrDefault(provider, 0m);
+            var newBalance = currentBalance + request.AmountPaid;
 
-        var id = await _aiCapacityRepository.AddTopupAsync(credit, cancellationToken);
+            var credit = new AiProviderCredit
+            {
+                Provider = provider,
+                AmountPaid = request.AmountPaid,
+                Currency = string.IsNullOrWhiteSpace(request.Currency) ? "USD" : request.Currency,
+                TokensCredited = request.TokensCredited,
+                BalanceRemaining = newBalance,
+                TransactionReference = request.TransactionReference,
+                Source = request.Source,
+                Notes = request.Notes
+            };
 
-        _logger.LogInformation(
-            "Recarga de IA registrada com sucesso: {Provider} +${Amount} (Novo Saldo: ${NewBalance}) [Origem: {Source}]",
-            provider, request.AmountPaid, newBalance, request.Source);
+            var id = await _aiCapacityRepository.AddTopupAsync(credit, cancellationToken);
 
-        return new AiProviderCreditDto
+            _logger.LogInformation(
+                "Recarga de IA registrada com sucesso: {Provider} +${Amount} (Novo Saldo: ${NewBalance}) [Origem: {Source}]",
+                provider, request.AmountPaid, newBalance, request.Source);
+
+            return new AiProviderCreditDto
+            {
+                Id = id,
+                Provider = provider,
+                AmountPaid = request.AmountPaid,
+                Currency = credit.Currency,
+                TokensCredited = request.TokensCredited,
+                BalanceRemaining = newBalance,
+                TransactionReference = request.TransactionReference,
+                Source = request.Source,
+                Notes = request.Notes,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+        }
+        catch (Exception ex)
         {
-            Id = id,
-            Provider = provider,
-            AmountPaid = request.AmountPaid,
-            Currency = credit.Currency,
-            TokensCredited = request.TokensCredited,
-            BalanceRemaining = newBalance,
-            TransactionReference = request.TransactionReference,
-            Source = request.Source,
-            Notes = request.Notes,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
+            _logger.LogError(ex, "Erro ao registrar recarga de capacidade para o provedor {Provider}", provider);
+            throw;
+        }
     }
 
     public async Task<AiCapacityOverviewResponse> GetCapacityOverviewAsync(int horizonDays = 30, CancellationToken cancellationToken = default)
     {
-        var balances = await _aiCapacityRepository.GetLatestBalancesAsync(cancellationToken);
-        var domainTopups = await _aiCapacityRepository.GetRecentTopupsAsync(20, cancellationToken);
-        var history = await _aiCapacityRepository.GetDailyUsageHistoryAsync(90, cancellationToken);
-
-        var topups = domainTopups.Select(t => new AiProviderCreditDto
+        try
         {
-            Id = t.Id,
-            Provider = t.Provider,
-            AmountPaid = t.AmountPaid,
-            Currency = t.Currency,
-            TokensCredited = t.TokensCredited,
-            BalanceRemaining = t.BalanceRemaining,
-            TransactionReference = t.TransactionReference,
-            Source = t.Source,
-            Notes = t.Notes,
-            CreatedAt = t.CreatedAt
-        }).ToList();
+            var balances = await _aiCapacityRepository.GetLatestBalancesAsync(cancellationToken);
+            var domainTopups = await _aiCapacityRepository.GetRecentTopupsAsync(20, cancellationToken);
+            var history = await _aiCapacityRepository.GetDailyUsageHistoryAsync(90, cancellationToken);
 
-        var providerDetails = new Dictionary<string, ProviderCapacityDetailDto>(StringComparer.OrdinalIgnoreCase);
+            var topups = domainTopups.Select(t => new AiProviderCreditDto
+            {
+                Id = t.Id,
+                Provider = t.Provider,
+                AmountPaid = t.AmountPaid,
+                Currency = t.Currency,
+                TokensCredited = t.TokensCredited,
+                BalanceRemaining = t.BalanceRemaining,
+                TransactionReference = t.TransactionReference,
+                Source = t.Source,
+                Notes = t.Notes,
+                CreatedAt = t.CreatedAt
+            }).ToList();
 
-        foreach (var provider in SupportedProviders)
-        {
-            var pHistory = history.Where(h => string.Equals(h.Provider, provider, StringComparison.OrdinalIgnoreCase)).ToList();
-            var currentBalance = balances.GetValueOrDefault(provider, 0m);
+            var providerDetails = new Dictionary<string, ProviderCapacityDetailDto>(StringComparer.OrdinalIgnoreCase);
 
-            providerDetails[provider] = CalculateProviderMetrics(provider, pHistory, currentBalance, horizonDays);
+            foreach (var provider in SupportedProviders)
+            {
+                var pHistory = history.Where(h => string.Equals(h.Provider, provider, StringComparison.OrdinalIgnoreCase)).ToList();
+                var currentBalance = balances.GetValueOrDefault(provider, 0m);
+
+                providerDetails[provider] = CalculateProviderMetrics(provider, pHistory, currentBalance, horizonDays);
+            }
+
+            var consolidated = CalculateConsolidatedMetrics(providerDetails, balances.Values.Sum(), horizonDays);
+
+            return new AiCapacityOverviewResponse
+            {
+                ForecastHorizonDays = horizonDays,
+                GeneratedAt = DateTimeOffset.UtcNow,
+                Consolidated = consolidated,
+                Providers = providerDetails,
+                RecentTopups = topups
+            };
         }
-
-        var consolidated = CalculateConsolidatedMetrics(providerDetails, balances.Values.Sum(), horizonDays);
-
-        return new AiCapacityOverviewResponse
+        catch (Exception ex)
         {
-            ForecastHorizonDays = horizonDays,
-            GeneratedAt = DateTimeOffset.UtcNow,
-            Consolidated = consolidated,
-            Providers = providerDetails,
-            RecentTopups = topups
-        };
+            _logger.LogError(ex, "Erro ao obter visão geral de capacidade de IA (horizonDays: {HorizonDays})", horizonDays);
+            throw;
+        }
     }
 
     public async Task<bool> TriggerForecastRecalculationAsync(CancellationToken cancellationToken = default)
