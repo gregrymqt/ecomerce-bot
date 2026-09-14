@@ -42,6 +42,64 @@ const MP_ERROR_MESSAGES: Record<string, string> = {
 };
 
 /**
+ * Extrai e normaliza com precisão a mensagem de erro retornada pelo SDK do Mercado Pago,
+ * suportando Arrays diretos, objetos aninhados com cause, status HTTP ou instâncias de Error.
+ */
+function extractMercadoPagoErrorMessage(error: unknown): string {
+  if (!error) return MP_ERROR_MESSAGES.default;
+
+  // 1. Caso o SDK tenha rejeitado diretamente com um Array: [{ code, description, message }]
+  if (Array.isArray(error) && error.length > 0) {
+    const first = error[0];
+    if (typeof first === 'object' && first !== null) {
+      const code = String((first as { code?: string | number }).code || '');
+      const desc = (first as { description?: string }).description;
+      const msg = (first as { message?: string }).message;
+      return MP_ERROR_MESSAGES[code] || desc || msg || MP_ERROR_MESSAGES.default;
+    }
+    if (typeof first === 'string') return first;
+  }
+
+  // 2. Caso seja um objeto contendo propriedades de erro ou cause
+  if (typeof error === 'object' && error !== null) {
+    const obj = error as Record<string, unknown>;
+
+    // 2.1. Propriedade 'cause' como Array
+    if (Array.isArray(obj.cause) && obj.cause.length > 0) {
+      const firstCause = obj.cause[0];
+      if (typeof firstCause === 'object' && firstCause !== null) {
+        const causeObj = firstCause as Record<string, unknown>;
+        const code = String(causeObj.code || '');
+        const desc = typeof causeObj.description === 'string' ? causeObj.description : undefined;
+        const msg = typeof causeObj.message === 'string' ? causeObj.message : undefined;
+        return MP_ERROR_MESSAGES[code] || desc || msg || MP_ERROR_MESSAGES.default;
+      }
+      if (typeof firstCause === 'string') return firstCause;
+    }
+
+    // 2.2. Propriedade 'message' descritiva
+    if (typeof obj.message === 'string' && obj.message.trim().length > 0) {
+      return obj.message;
+    }
+
+    // 2.3. Propriedade 'description' ou 'error'
+    if (typeof obj.description === 'string' && obj.description.trim().length > 0) {
+      return obj.description;
+    }
+    if (typeof obj.error === 'string' && obj.error.trim().length > 0) {
+      return obj.error;
+    }
+  }
+
+  // 3. Instância nativa de Error
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return MP_ERROR_MESSAGES.default;
+}
+
+/**
  * Inicializa e obtém a instância singleton oficial do Mercado Pago via SDK.
  */
 export async function getMercadoPagoInstance(): Promise<TInstanceMercadoPago> {
@@ -115,32 +173,17 @@ export const mercadoPagoService = {
     try {
       tokenResult = await mp.createCardToken(cardTokenParams);
     } catch (sdkError: unknown) {
-      const rawError = sdkError as {
-        cause?: Array<{ code: string; description?: string; message?: string }>;
-        message?: string;
-      };
-      if (Array.isArray(rawError?.cause) && rawError.cause.length > 0) {
-        const firstCause = rawError.cause[0];
-        const mapped = MP_ERROR_MESSAGES[firstCause.code] || firstCause.description || firstCause.message || MP_ERROR_MESSAGES.default;
-        throw new Error(mapped, { cause: sdkError });
-      }
-      const msg = sdkError instanceof Error ? sdkError.message : 'Erro na comunicação com o Mercado Pago.';
-      throw new Error(msg, { cause: sdkError });
+      console.error('[MercadoPago] Falha ao criar cardToken:', sdkError);
+      const friendlyMessage = extractMercadoPagoErrorMessage(sdkError);
+      throw new Error(friendlyMessage, { cause: sdkError });
     }
 
-    const rawResult = tokenResult as unknown as {
-      id?: string;
-      cause?: Array<{ code: string; description?: string; message?: string }>;
-      message?: string;
-    };
+    const rawResult = tokenResult as unknown as { id?: string };
 
     if (!rawResult || !rawResult.id) {
-      if (Array.isArray(rawResult?.cause) && rawResult.cause.length > 0) {
-        const firstCause = rawResult.cause[0];
-        const mapped = MP_ERROR_MESSAGES[firstCause.code] || firstCause.description || firstCause.message || MP_ERROR_MESSAGES.default;
-        throw new Error(mapped);
-      }
-      throw new Error(rawResult?.message || MP_ERROR_MESSAGES.default);
+      console.error('[MercadoPago] Resposta sem id de token:', tokenResult);
+      const friendlyMessage = extractMercadoPagoErrorMessage(tokenResult);
+      throw new Error(friendlyMessage);
     }
 
     if (rawResult.id.length < 32) {

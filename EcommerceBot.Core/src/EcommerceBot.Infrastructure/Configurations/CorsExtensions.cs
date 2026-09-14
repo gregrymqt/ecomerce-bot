@@ -21,6 +21,7 @@ public static class CorsExtensions
         {
             // Fallbacks seguros de desenvolvimento
             "http://localhost:5173",
+            "https://localhost:5173",
             "http://localhost:3000"
         };
 

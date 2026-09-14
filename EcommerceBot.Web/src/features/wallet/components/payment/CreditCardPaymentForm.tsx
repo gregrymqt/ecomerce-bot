@@ -86,8 +86,9 @@ export const CreditCardPaymentForm: React.FC<CreditCardPaymentFormProps> = ({
       setFormError('Por favor, informe um número de cartão de crédito válido.');
       return;
     }
-    if (!cardholderName.trim()) {
-      setFormError('Por favor, informe o nome do titular como impresso no cartão.');
+    const trimmedName = cardholderName.trim();
+    if (!trimmedName || !trimmedName.includes(' ') || trimmedName.split(/\s+/).length < 2) {
+      setFormError('Informe o nome e sobrenome do titular como impresso no cartão.');
       return;
     }
     if (!month || !year || month.length !== 2 || year.length !== 2) {
