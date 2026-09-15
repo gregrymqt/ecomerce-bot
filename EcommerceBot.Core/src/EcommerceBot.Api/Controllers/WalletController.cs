@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using EcommerceBot.Application.DTOs.MercadoPago;
 using EcommerceBot.Application.DTOs.Wallet;
 using EcommerceBot.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -88,7 +89,7 @@ public class WalletController : BaseApiController
     [HttpPost("recharge")]
     [ProducesResponseType(typeof(RechargeResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CreateRecharge([FromBody] RechargeRequestDto request, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> CreateRecharge([FromBody] MercadoPagoOrderRequest request, CancellationToken cancellationToken = default)
     {
         var tenantId = CurrentTenantId;
         if (tenantId == Guid.Empty)

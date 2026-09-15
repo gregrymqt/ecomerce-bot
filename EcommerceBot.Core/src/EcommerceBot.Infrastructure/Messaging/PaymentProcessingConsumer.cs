@@ -102,7 +102,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
             {
                 try
                 {
-                    using var doc = System.Text.Json.JsonDocument.Parse(msg.RawPayload);
+                    using var doc = JsonDocument.Parse(msg.RawPayload);
                     var root = doc.RootElement;
                     var dataEl = root.TryGetProperty("data", out var d) ? d : root;
 
@@ -123,7 +123,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
 
                     if (dataEl.TryGetProperty("total_paid_amount", out var paidEl))
                     {
-                        if (paidEl.ValueKind == System.Text.Json.JsonValueKind.Number && paidEl.TryGetDecimal(out var dVal))
+                        if (paidEl.ValueKind == JsonValueKind.Number && paidEl.TryGetDecimal(out var dVal))
                         {
                             paidAmount = dVal;
                         }
@@ -153,10 +153,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                 order = await _orderRepository.GetOrderByExternalReferenceGlobalAsync(externalRef, ct);
             }
 
-            if (order == null)
-            {
-                order = await _orderRepository.GetOrderByMpPaymentIdAsync(resourceId, ct);
-            }
+            order ??= await _orderRepository.GetOrderByMpPaymentIdAsync(resourceId, ct);
 
             var tenantId = order?.TenantId ?? Guid.Empty;
 
