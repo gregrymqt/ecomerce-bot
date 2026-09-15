@@ -3,8 +3,8 @@
     "version": "3.0",
     "generator": "generate_knowledge_graph.py",
     "scope": "End-to-End Monorepo (Frontend, Core API, EDA, Worker, Database, Infra)",
-    "total_nodes": 327,
-    "total_edges": 343
+    "total_nodes": 320,
+    "total_edges": 336
   },
   "nodes": [
     {
@@ -677,13 +677,6 @@
       "metadata": {}
     },
     {
-      "id": "code:CheckoutService",
-      "label": "CheckoutService",
-      "type": "CoreService",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/CheckoutService.cs",
-      "metadata": {}
-    },
-    {
       "id": "code:DiscordAlertService",
       "label": "DiscordAlertService",
       "type": "CoreService",
@@ -992,13 +985,6 @@
       "metadata": {}
     },
     {
-      "id": "code:ICheckoutService",
-      "label": "ICheckoutService",
-      "type": "CoreService",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/ICheckoutService.cs",
-      "metadata": {}
-    },
-    {
       "id": "code:IDiscordAlertService",
       "label": "IDiscordAlertService",
       "type": "CoreService",
@@ -1277,20 +1263,6 @@
       }
     },
     {
-      "id": "controller:CheckoutController",
-      "label": "CheckoutController",
-      "type": "ApiController",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Api/Controllers/CheckoutController.cs",
-      "metadata": {
-        "base_route": "api/v1/[controller]",
-        "endpoints": [
-          "GET api/v1/[controller]/status/{paymentId}",
-          "POST api/v1/[controller]/orders",
-          "GET api/v1/[controller]/orders/{id:guid}"
-        ]
-      }
-    },
-    {
       "id": "controller:ComplianceController",
       "label": "ComplianceController",
       "type": "ApiController",
@@ -1535,7 +1507,8 @@
           "GET api/v1/[controller]/credit-packages",
           "GET api/v1/[controller]/balance",
           "GET api/v1/[controller]/statement",
-          "POST api/v1/[controller]/recharge"
+          "POST api/v1/[controller]/recharge",
+          "GET api/v1/[controller]/recharge/{orderId:guid}"
         ]
       }
     },
@@ -2098,20 +2071,6 @@
       "metadata": {}
     },
     {
-      "id": "frontend_hook:useCreditCardForm",
-      "label": "useCreditCardForm",
-      "type": "FrontendHook",
-      "file": "EcommerceBot.Web/src/features/wallet/hooks/useCreditCardForm.ts",
-      "metadata": {}
-    },
-    {
-      "id": "frontend_hook:useCreditCardRecharge",
-      "label": "useCreditCardRecharge",
-      "type": "FrontendHook",
-      "file": "EcommerceBot.Web/src/features/wallet/hooks/useCreditCardRecharge.ts",
-      "metadata": {}
-    },
-    {
       "id": "frontend_hook:useCreditPackages",
       "label": "useCreditPackages",
       "type": "FrontendHook",
@@ -2119,24 +2078,10 @@
       "metadata": {}
     },
     {
-      "id": "frontend_hook:usePixRecharge",
-      "label": "usePixRecharge",
-      "type": "FrontendHook",
-      "file": "EcommerceBot.Web/src/features/wallet/hooks/usePixRecharge.ts",
-      "metadata": {}
-    },
-    {
       "id": "frontend_hook:useRealtimeWalletBalance",
       "label": "useRealtimeWalletBalance",
       "type": "FrontendHook",
       "file": "EcommerceBot.Web/src/features/wallet/hooks/useRealtimeWalletBalance.ts",
-      "metadata": {}
-    },
-    {
-      "id": "frontend_hook:useRechargeModal",
-      "label": "useRechargeModal",
-      "type": "FrontendHook",
-      "file": "EcommerceBot.Web/src/features/wallet/hooks/useRechargeModal.ts",
       "metadata": {}
     },
     {
@@ -3448,36 +3393,6 @@
       "relationship": "invokes"
     },
     {
-      "source": "code:CheckoutService",
-      "target": "code:OrderRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "code:CheckoutService",
-      "target": "code:PlanRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "code:CheckoutService",
-      "target": "code:TenantRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "code:CheckoutService",
-      "target": "code:MercadoPagoGateway",
-      "relationship": "invokes"
-    },
-    {
-      "source": "code:CheckoutService",
-      "target": "code:UserRepository",
-      "relationship": "invokes"
-    },
-    {
-      "source": "code:CheckoutService",
-      "target": "code:TenantBillingProfileRepository",
-      "relationship": "invokes"
-    },
-    {
       "source": "code:EmailWebhookService",
       "target": "code:EmailRepository",
       "relationship": "invokes"
@@ -3718,6 +3633,11 @@
       "relationship": "invokes"
     },
     {
+      "source": "code:WalletService",
+      "target": "code:UserRepository",
+      "relationship": "invokes"
+    },
+    {
       "source": "code:IAiCapacityRepository",
       "target": "code:AiCapacityRepository",
       "relationship": "invokes"
@@ -3825,11 +3745,6 @@
     {
       "source": "code:ICatalogService",
       "target": "code:CatalogService",
-      "relationship": "invokes"
-    },
-    {
-      "source": "code:ICheckoutService",
-      "target": "code:CheckoutService",
       "relationship": "invokes"
     },
     {
@@ -3990,11 +3905,6 @@
     {
       "source": "controller:BillingProfileController",
       "target": "code:TenantBillingProfileService",
-      "relationship": "invokes"
-    },
-    {
-      "source": "controller:CheckoutController",
-      "target": "code:CheckoutService",
       "relationship": "invokes"
     },
     {
@@ -4218,13 +4128,13 @@
       "relationship": "calls_endpoint"
     },
     {
-      "source": "frontend_service:billing.service",
-      "target": "controller:BillingProfileController",
+      "source": "frontend_hook:useUnifiedPayment",
+      "target": "controller:StreamController",
       "relationship": "calls_endpoint"
     },
     {
-      "source": "frontend_service:wallet.service",
-      "target": "controller:WalletController",
+      "source": "frontend_service:billing.service",
+      "target": "controller:BillingProfileController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4234,7 +4144,7 @@
     },
     {
       "source": "frontend_service:wallet.service",
-      "target": "controller:CheckoutController",
+      "target": "controller:WalletController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4314,12 +4224,12 @@
     },
     {
       "source": "frontend_service:integration.service",
-      "target": "controller:ShopifyIntegrationController",
+      "target": "controller:IntegrationsController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:integration.service",
-      "target": "controller:IntegrationsController",
+      "target": "controller:ShopifyIntegrationController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4339,12 +4249,12 @@
     },
     {
       "source": "frontend_service:product.service",
-      "target": "controller:NuvemshopIntegrationController",
+      "target": "controller:ShopifyIntegrationController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:product.service",
-      "target": "controller:ShopifyIntegrationController",
+      "target": "controller:NuvemshopIntegrationController",
       "relationship": "calls_endpoint"
     },
     {

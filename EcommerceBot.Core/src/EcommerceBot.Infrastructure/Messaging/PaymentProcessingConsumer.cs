@@ -259,6 +259,16 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                 {
                     order.Status = "rejected";
                     await _orderRepository.UpdateOrderAsync(order, ct);
+
+                    // Notifica Frontend via SSE através do canal Redis
+                    var ssePayload = JsonSerializer.Serialize(new
+                    {
+                        type = "payment_rejected",
+                        order_id = order.Id.ToString(),
+                        status = "rejected",
+                        reason = statusDetail ?? "Pagamento não autorizado pela instituição bancária ou operadora."
+                    });
+                    await _redisService.PublishAsync($"events:tenant:{order.TenantId}", ssePayload);
                 }
                 _logger.LogWarning("Payment {ResourceId} rejected or failed with detail {Detail}", resourceId, statusDetail);
             }

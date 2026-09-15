@@ -89,7 +89,7 @@ public class WalletController : BaseApiController
     [HttpPost("recharge")]
     [ProducesResponseType(typeof(RechargeResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CreateRecharge([FromBody] MercadoPagoOrderRequest request, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> CreateRecharge([FromBody] CreateRechargeRequestDto request, CancellationToken cancellationToken = default)
     {
         var tenantId = CurrentTenantId;
         if (tenantId == Guid.Empty)
@@ -117,5 +117,26 @@ public class WalletController : BaseApiController
             _logger.LogError(ex, "Erro inesperado ao criar recarga para tenant {TenantId}", tenantId);
             return ProblemResponse(StatusCodes.Status500InternalServerError, "Erro na recarga de créditos", ex.Message);
         }
+    }
+
+    [HttpGet("recharge/{orderId:guid}")]
+    [ProducesResponseType(typeof(RechargeResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetRecharge(Guid orderId, CancellationToken cancellationToken = default)
+    {
+        var tenantId = CurrentTenantId;
+        if (tenantId == Guid.Empty)
+        {
+            return BadRequestProblem("X-Tenant-ID header é obrigatório.");
+        }
+
+        var result = await _walletService.GetRechargeByIdAsync(orderId, tenantId, cancellationToken);
+        if (result is null)
+        {
+            return NotFoundProblem($"Pedido de recarga '{orderId}' não encontrado.");
+        }
+
+        return Ok(result);
     }
 }

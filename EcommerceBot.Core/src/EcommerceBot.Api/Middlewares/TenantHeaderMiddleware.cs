@@ -32,8 +32,6 @@ public class TenantHeaderMiddleware
         "/api/v1/shopify/oauth",
         "/api/v1/nuvemshop/webhooks",
         "/api/v1/nuvemshop/oauth",
-        "/api/v1/checkout/pix",
-        "/api/v1/checkout/status",
         "/api/v1/admin",
         "/api/v1/plans",
         "/api/v1/wallet/credit-packages",

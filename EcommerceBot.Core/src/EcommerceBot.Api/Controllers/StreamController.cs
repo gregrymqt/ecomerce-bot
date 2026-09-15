@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 namespace EcommerceBot.Api.Controllers;
 
 [Route("api/v1/demo/stream")]
+[Route("api/v1/stream")]
 [EnableCors("DefaultCorsPolicy")]
 public class StreamController : BaseApiController
 {

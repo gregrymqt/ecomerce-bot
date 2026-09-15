@@ -7,10 +7,10 @@
 
 import React from 'react';
 import { PixPaymentDisplay } from '../payment/PixPaymentDisplay';
-import type { PixPaymentResponse, PaymentStatus } from '../../types';
+import type { PixPaymentData, PaymentStatus } from '../../types';
 
 export interface PixPaymentTabProps {
-  pixData: PixPaymentResponse | null;
+  pixData: PixPaymentData | null;
   formattedTimeLeft: string;
   isCopied: boolean;
   paymentStatus: PaymentStatus;
@@ -31,9 +31,9 @@ export const PixPaymentTab: React.FC<PixPaymentTabProps> = ({
   className,
 }) => {
   const pixCode =
-    pixData?.qr_code_copy_paste ||
+    pixData?.pix_qr_code ||
     '00020126580014br.gov.bcb.pix0136ecom-autobot-mp-pix-key-99182305204000053039865405149.005802BR5916ECOM AUTOBOT SAO PAULO6009SAO PAULO62070503***6304E8A2';
-  const qrBase64 = pixData?.qr_code_base64;
+  const qrBase64 = pixData?.pix_qr_code_base64;
 
   return (
     <PixPaymentDisplay

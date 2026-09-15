@@ -18,7 +18,6 @@ export interface GlobalCreditBalanceBadgeProps {
 }
 
 const DEFAULT_RECHARGE_TARGET: CheckoutTarget = {
-  type: 'recharge',
   id: 'quick-recharge-pro',
   name: 'Pacote Pro AI (2.000 Créditos)',
   amountBrl: 149,

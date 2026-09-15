@@ -15,10 +15,6 @@ import type {
   RechargeRequest,
   CreditCardRechargePayload,
   RechargeResponse,
-  PixPaymentResponse,
-  CreditCardPaymentPayload,
-  CreditCardPaymentResponse,
-  OrderStatusSyncResponse,
 } from '../types';
 
 export const CANONICAL_RECHARGE_PACKAGES: RechargePackage[] = [
@@ -193,63 +189,27 @@ export const walletService = {
   },
 
   /**
-   * Gera cobrança transparente via PIX para assinatura de Plano SaaS.
-   * Endpoint: POST /api/v1/checkout/pix
+   * Consulta os dados e status de um pedido de recarga pelo ID.
+   * Endpoint: GET /api/v1/wallet/recharge/{orderId}
    */
-  createPixPlanPayment: async (
-    planId: string,
+  getRechargeStatus: async (
+    orderId: string,
     signal?: AbortSignal
-  ): Promise<PixPaymentResponse> => {
+  ): Promise<RechargeResponse | null> => {
     try {
-      const response = await apiClient.post<PixPaymentResponse>(
-        '/api/v1/checkout/pix',
-        { plan_id: planId },
+      const response = await apiClient.get<RechargeResponse>(
+        `/api/v1/wallet/recharge/${orderId}`,
         { signal }
       );
       return response.data;
     } catch (error: unknown) {
-      const msg = getErrorMessage(error, 'Erro ao gerar cobrança PIX para o plano.');
-      throw new Error(msg, { cause: error });
-    }
-  },
-
-  /**
-   * Processa pagamento via Cartão de Crédito para assinatura de Plano SaaS.
-   * Endpoint: POST /api/v1/checkout/card
-   */
-  processCreditCardPlanPayment: async (
-    payload: CreditCardPaymentPayload,
-    signal?: AbortSignal
-  ): Promise<CreditCardPaymentResponse> => {
-    try {
-      const response = await apiClient.post<CreditCardPaymentResponse>(
-        '/api/v1/checkout/card',
-        payload,
-        { signal }
-      );
-      return response.data;
-    } catch (error: unknown) {
-      const msg = getErrorMessage(error, 'Erro ao processar pagamento do plano com cartão.');
-      throw new Error(msg, { cause: error });
-    }
-  },
-
-  /**
-   * Consulta/sincroniza o status de uma transação de pagamento.
-   * Endpoint: GET /api/v1/checkout/status/{paymentId}
-   */
-  syncPaymentStatus: async (
-    paymentId: string,
-    signal?: AbortSignal
-  ): Promise<OrderStatusSyncResponse> => {
-    try {
-      const response = await apiClient.get<OrderStatusSyncResponse>(
-        `/api/v1/checkout/status/${paymentId}`,
-        { signal }
-      );
-      return response.data;
-    } catch (error: unknown) {
-      const msg = getErrorMessage(error, 'Erro ao sincronizar status do pagamento.');
+      if (typeof error === 'object' && error !== null && 'response' in error) {
+        const axiosErr = error as { response?: { status?: number } };
+        if (axiosErr.response?.status === 404) {
+          return null;
+        }
+      }
+      const msg = getErrorMessage(error, 'Erro ao consultar status da recarga.');
       throw new Error(msg, { cause: error });
     }
   },

@@ -68,7 +68,6 @@ export const WalletPage: React.FC = () => {
     );
     if (!found) return null;
     return {
-      type: 'recharge',
       id: found.id,
       name: `Pacote ${found.name} (${found.credits.toLocaleString('pt-BR')} créditos)`,
       amountBrl: found.price_brl,
@@ -90,7 +89,6 @@ export const WalletPage: React.FC = () => {
   // Handler de seleção de pacote na vitrine
   const handleSelectPackage = useCallback((pkg: RechargePackage) => {
     setSelectedCheckoutTarget({
-      type: 'recharge',
       id: pkg.id,
       name: `Pacote ${pkg.name} (${pkg.credits.toLocaleString('pt-BR')} créditos)`,
       amountBrl: pkg.price_brl,

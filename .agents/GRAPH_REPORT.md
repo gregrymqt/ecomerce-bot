@@ -33,7 +33,7 @@
 - **Governança de Transações:** RCSI ativo (`READ_COMMITTED_SNAPSHOT ON`), Chaves Primárias `NEWSEQUENTIALID()`, clustered por `(TenantId, ...)`.
 
 ## ⚡ 5. Controllers da API Core & Gateways Externos
-- **Controllers Mapeados (25):**
+- **Controllers Mapeados (24):**
   - **`AdminAiCapacityController`** (`/api/v1/admin/ai-capacity`): 3 endpoints.
   - **`AdminEnterpriseLeadsController`** (`/api/v1/admin/enterprise-leads`): 3 endpoints.
   - **`AdminGrowthController`** (`/api/v1/admin`): 5 endpoints.
@@ -41,10 +41,10 @@
   - **`AnalyticsController`** (`/api/v1/[controller]`): 2 endpoints.
   - **`AuthController`** (`/api/v1/[controller]`): 10 endpoints.
   - **`BillingProfileController`** (`/api/v1/billing/profile`): 2 endpoints.
-  - **`CheckoutController`** (`/api/v1/[controller]`): 3 endpoints.
   - **`ComplianceController`** (`/api/v1/compliance`): 2 endpoints.
   - **`EmailWebhookController`** (`/api/v1/emails/webhooks`): 1 endpoints.
-  - *... e mais 15 controllers catalogados no graph.json.*
+  - **`IntegrationsController`** (`/api/v1/integrations`): 4 endpoints.
+  - *... e mais 14 controllers catalogados no graph.json.*
 - **Gateways Externos Integrados:** `ShopifyGateway` (GraphQL 2024+), `NuvemshopGateway` (REST V1), `MercadoPagoGateway` (PIX/CC), `ResendGateway` (E-mails).
 
 ## 🔬 6. Engine de Inteligência Artificial & Machine Learning (Python Worker)
@@ -56,7 +56,7 @@
 ## 🎨 7. Frontend SPA (`EcommerceBot.Web`)
 - **Páginas & Rotas (28):** Auth, ResetPassword, LiveDemo, Catalog, Dashboard, Wallet, Integrations, Metering, TrafficAnalytics, AdminLeads, AdminAiCapacity, AdminGrowth, AdminPlans.
 - **Features (13):** admin, analytics, auth, catalog, dashboard, home, integrations, live-demo, metering, plans, scraper, settings, wallet.
-- **Serviços & Hooks HTTP (69):** Conectados deterministicamente aos Controllers do backend via `calls_endpoint`.
+- **Serviços & Hooks HTTP (65):** Conectados deterministicamente aos Controllers do backend via `calls_endpoint`.
 
 ## 🛠️ 8. Servidor MCP de Diagnóstico & Infraestrutura SRE
 - **Servidor MCP:** `EcommerceBot.Diagnostics.Mcp` (`stdio`, JSON-RPC 2.0).

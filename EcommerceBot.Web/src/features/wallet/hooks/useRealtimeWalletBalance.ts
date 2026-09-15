@@ -96,9 +96,21 @@ export function useRealtimeWalletBalance(): RealtimeWalletBalanceReturn {
           setBalance(data.balance_credits);
         } else if (typeof data.balanceCredits === 'number') {
           setBalance(data.balanceCredits);
+        }
+
+        if (data.type === 'payment_refunded') {
+          window.dispatchEvent(
+            new CustomEvent('wallet:payment-refunded', {
+              detail: {
+                creditsReverted: data.credits_reverted,
+                amount: data.amount,
+                balanceCredits: data.balance_credits,
+              },
+            })
+          );
+          fetchBalance(false);
         } else if (
           data.type === 'payment_approved' ||
-          data.type === 'payment_refunded' ||
           data.type === 'balance_updated'
         ) {
           fetchBalance(false);

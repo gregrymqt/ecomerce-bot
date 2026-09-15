@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import type { Identification, CardTokenParams } from './mercadopago.types';
+import type { CardTokenParams } from './mercadopago.types';
 
 export type TransactionType =
   | 'RECHARGE'
@@ -58,97 +58,73 @@ export interface RechargePackage {
 }
 
 
-export type CheckoutTargetType = 'plan' | 'recharge';
-
 export interface CheckoutTarget {
-  type: CheckoutTargetType;
   id: string;
   name: string;
   amountBrl: number;
   credits: number;
   description?: string;
-  trialDays?: number;
-  billingPeriod?: 'monthly' | 'yearly';
 }
 
+export interface RechargeBillingAddress {
+  zip_code?: string;
+  street_name?: string;
+  street_number?: string;
+  neighborhood?: string;
+  city?: string;
+  federal_unit?: string;
+  complement?: string;
+}
+
+export interface RechargePayer {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  identification_type?: string;
+  identification_number?: string;
+  address?: RechargeBillingAddress;
+}
 
 export interface RechargeRequest {
-  credits_package: number;
+  amount: number;
+  package_id?: string;
   payment_method: 'pix' | 'credit_card';
   card_token?: string;
-  payer_email: string;
-  package_id?: string;
-  amount?: number;
-  payer?: {
-    email?: string;
-    identification?: Identification;
-    address?: {
-      zip_code?: string;
-      street_name?: string;
-      street_number?: string;
-      neighborhood?: string;
-      city?: string;
-      federal_unit?: string;
-      complement?: string;
-    };
-  };
-}
-
-export interface CardPaymentPayer {
-  email: string;
-  identification: Identification;
+  payment_method_id?: string;
+  installments?: number;
+  payer?: RechargePayer;
 }
 
 export interface CreditCardRechargePayload {
-  package_id: string;
   amount: number;
+  package_id?: string;
   payment_method: 'credit_card';
   card_token: string;
   payment_method_id: string;
-  issuer_id?: string;
   installments: number;
-  payer: CardPaymentPayer;
-}
-
-export interface CreditCardPaymentPayload {
-  plan_id: string;
-  card_number: string;
-  cardholder_name: string;
-  expiration_month: string;
-  expiration_year: string;
-  security_code: string;
-  installments: number;
-  doc_number: string;
-  card_token?: string;
-  payment_method_id?: string;
-}
-
-export interface CreditCardPaymentResponse {
-  payment_id: string;
-  status: PaymentStatus;
-  message?: string;
-}
-
-export interface PixPaymentResponse {
-  payment_id: string;
-  qr_code_base64: string;
-  qr_code_copy_paste: string;
-  expires_at: string;
-  status: PaymentStatus;
-}
-
-export interface OrderStatusSyncResponse {
-  payment_id: string;
-  status: PaymentStatus;
-  is_approved: boolean;
+  payer?: RechargePayer;
 }
 
 export interface RechargeResponse {
+  order_id: string;
   payment_id: string;
   status: string;
+  payment_method?: string;
+  total_amount?: number;
+  credits_added?: number;
   pix_qr_code?: string;
-  pix_copia_e_cola?: string;
+  pix_qr_code_base64?: string;
+  ticket_url?: string;
   expiration_date?: string;
+}
+
+export interface PixPaymentData {
+  order_id: string;
+  payment_id: string;
+  pix_qr_code: string;
+  pix_qr_code_base64?: string;
+  expires_at: string;
+  status: PaymentStatus;
 }
 
 export interface StatementFilters {

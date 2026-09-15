@@ -118,7 +118,7 @@ export const UnifiedPaymentModal: React.FC<UnifiedPaymentModalProps> = ({
               <span className="font-bold text-white text-sm">{target.name}</span>
             </div>
             <p className="text-xs text-slate-400">
-              {target.type === 'plan' ? 'Assinatura com ativação instantânea' : 'Recarga avulsa de créditos'}
+              Recarga de créditos perpétuos (sem expiração)
             </p>
           </div>
           <div className="text-right">

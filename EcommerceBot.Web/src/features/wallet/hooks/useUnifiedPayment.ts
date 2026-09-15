@@ -11,10 +11,11 @@ import { walletService } from '../services/wallet.service';
 import { useBillingProfile } from './useBillingProfile';
 import { useCreditCardCheckout } from './useCreditCardCheckout';
 import { useAuth } from '@/features/auth';
+import { SSEClient } from '@/lib/sseClient';
 import type {
   PaymentMethod,
   PaymentStatus,
-  PixPaymentResponse,
+  PixPaymentData,
   CheckoutTarget,
 } from '../types';
 import type {
@@ -63,7 +64,7 @@ export function useUnifiedPayment({
   }, []);
 
   // Estado PIX
-  const [pixData, setPixData] = useState<PixPaymentResponse | null>(null);
+  const [pixData, setPixData] = useState<PixPaymentData | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number>(1800);
   const [isCopied, setIsCopied] = useState<boolean>(false);
 
@@ -122,57 +123,55 @@ export function useUnifiedPayment({
 
   // Copiar PIX
   const handleCopyPix = useCallback(() => {
-    const code = pixData?.qr_code_copy_paste;
+    const code = pixData?.pix_qr_code;
     if (code && typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(code);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 3000);
     }
-  }, [pixData?.qr_code_copy_paste]);
+  }, [pixData?.pix_qr_code]);
 
-  // Geração de Cobrança PIX
+  // Geração de Cobrança PIX unificada para recarga de créditos
   const handleGeneratePix = useCallback(async (customProfile?: TenantBillingProfile) => {
     if (!target) return;
     const activeProf = customProfile || billingProfile;
     setLoading(true);
     setError(null);
 
+    const docType = activeProf?.document_type || 'CPF';
+    const docNum = activeProf?.document_number || '00000000000';
+
     try {
-      if (target.type === 'plan') {
-        const resp = await walletService.createPixPlanPayment(target.id);
-        setPixData(resp);
-      } else {
-        const resp = await walletService.createRecharge({
-          credits_package: target.credits,
-          package_id: target.id,
-          amount: target.amountBrl,
-          payment_method: 'pix',
-          payer_email: user?.email || activeProf?.email || 'cliente@loja.com.br',
-          payer: activeProf ? {
-            email: user?.email || activeProf.email || 'cliente@loja.com.br',
-            identification: {
-              type: activeProf.document_type,
-              number: activeProf.document_number,
-            },
-            address: {
-              zip_code: activeProf.zip_code,
-              street_name: activeProf.street_name,
-              street_number: activeProf.street_number,
-              neighborhood: activeProf.neighborhood,
-              city: activeProf.city,
-              federal_unit: activeProf.federal_unit,
-              complement: activeProf.complement || undefined,
-            },
+      const resp = await walletService.createRecharge({
+        amount: target.amountBrl,
+        package_id: target.id,
+        payment_method: 'pix',
+        payer: {
+          first_name: user?.name?.split(' ')[0] || 'Cliente',
+          last_name: user?.name?.split(' ').slice(1).join(' ') || 'Lojista',
+          email: user?.email || activeProf?.email || 'cliente@loja.com.br',
+          identification_type: docType,
+          identification_number: docNum,
+          address: activeProf ? {
+            zip_code: activeProf.zip_code,
+            street_name: activeProf.street_name,
+            street_number: activeProf.street_number,
+            neighborhood: activeProf.neighborhood,
+            city: activeProf.city,
+            federal_unit: activeProf.federal_unit,
+            complement: activeProf.complement || undefined,
           } : undefined,
-        });
-        setPixData({
-          payment_id: resp.payment_id,
-          qr_code_base64: resp.pix_qr_code || '',
-          qr_code_copy_paste: resp.pix_copia_e_cola || '',
-          expires_at: resp.expiration_date || new Date().toISOString(),
-          status: 'PENDING',
-        });
-      }
+        },
+      });
+
+      setPixData({
+        order_id: resp.order_id,
+        payment_id: resp.payment_id,
+        pix_qr_code: resp.pix_qr_code || '',
+        pix_qr_code_base64: resp.pix_qr_code_base64 || undefined,
+        expires_at: resp.expiration_date || new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        status: 'PENDING',
+      });
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Erro ao gerar cobrança PIX.'));
     } finally {
@@ -210,27 +209,80 @@ export function useUnifiedPayment({
     };
   }, [isOpen, target, paymentMethod, pixData, loading, error, hasBillingProfile, isEditingBilling, handleGeneratePix]);
 
-  // Polling de verificação de aprovação
+  // 1. Detecção reativa em tempo real via Server-Sent Events (SSE)
   useEffect(() => {
-    const paymentId = pixData?.payment_id;
-    if (!paymentId || paymentStatus === 'APPROVED') return;
+    const orderId = pixData?.order_id;
+    if (!orderId || paymentStatus === 'APPROVED' || !isOpen) return;
+
+    const sse = new SSEClient<Record<string, unknown>>();
+    sse.connect({
+      endpoint: '/api/v1/demo/stream',
+      onMessage: (data) => {
+        if (!data || typeof data !== 'object') return;
+        const matchesOrder =
+          String(data.order_id) === String(orderId) || String(data.orderId) === String(orderId);
+
+        if (data.type === 'payment_approved' && matchesOrder) {
+          setPaymentStatus('APPROVED');
+          setSuccessMessage('🎉 Pagamento aprovado com sucesso! Seus créditos foram ativados.');
+          window.dispatchEvent(new CustomEvent('wallet:balance-updated'));
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
+          onSuccessPayment?.();
+        } else if (data.type === 'payment_rejected' && matchesOrder) {
+          setPaymentStatus('REJECTED');
+          const reason = typeof data.reason === 'string' ? data.reason : 'Pagamento não autorizado pela instituição bancária.';
+          setError(`Pagamento recusado: ${reason}`);
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
+        }
+      },
+    });
+
+    return () => {
+      sse.close();
+    };
+  }, [pixData?.order_id, paymentStatus, isOpen, onSuccessPayment]);
+
+  // 2. Polling suave de contingência via GET /api/v1/wallet/recharge/{orderId}
+  useEffect(() => {
+    const orderId = pixData?.order_id;
+    if (!orderId || paymentStatus === 'APPROVED' || paymentStatus === 'REJECTED' || !isOpen) return;
 
     pollingRef.current = setInterval(async () => {
       try {
-        const statusResp = await walletService.syncPaymentStatus(paymentId);
-        if (statusResp.is_approved || statusResp.status === 'APPROVED') {
+        const recharge = await walletService.getRechargeStatus(orderId);
+        if (
+          recharge &&
+          (recharge.status === 'approved' ||
+            recharge.status === 'APPROVED' ||
+            recharge.status === 'paid' ||
+            recharge.status === 'PAID')
+        ) {
           setPaymentStatus('APPROVED');
           setSuccessMessage('🎉 Pagamento aprovado com sucesso! Seus créditos foram ativados.');
           if (pollingRef.current) {
             clearInterval(pollingRef.current);
             pollingRef.current = null;
           }
+          window.dispatchEvent(new CustomEvent('wallet:balance-updated'));
           onSuccessPayment?.();
+        } else if (recharge && (recharge.status === 'rejected' || recharge.status === 'REJECTED')) {
+          setPaymentStatus('REJECTED');
+          setError('Pagamento não autorizado pela instituição bancária.');
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
         }
       } catch {
-        // Silêncio no polling para evitar ruído
+        // Silêncio no polling defensivo
       }
-    }, 4000);
+    }, 5000);
 
     return () => {
       if (pollingRef.current) {
@@ -238,7 +290,7 @@ export function useUnifiedPayment({
         pollingRef.current = null;
       }
     };
-  }, [pixData?.payment_id, paymentStatus, onSuccessPayment]);
+  }, [pixData?.order_id, paymentStatus, isOpen, onSuccessPayment]);
 
   // Orquestração especializada de Cartão de Crédito
   const { cardLoading, handleProcessCreditCard } = useCreditCardCheckout({
