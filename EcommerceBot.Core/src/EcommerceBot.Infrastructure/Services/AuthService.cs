@@ -458,4 +458,51 @@ public sealed class AuthService : IAuthService
                 throw;
             }
         }
+
+        public async Task<(UserResponse User, string AccessToken)> RefreshTokenAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var user = await _userRepository.GetByIdAsync(userId);
+                if (user == null || !user.IsActive)
+                {
+                    throw new InvalidOperationException("Usuário não encontrado ou inativo.");
+                }
+
+                if (IsSuperAdminEmail(user.Email) && !string.Equals(user.Role, "ADMIN", StringComparison.OrdinalIgnoreCase))
+                {
+                    user.Role = "ADMIN";
+                    await _userRepository.UpdateAsync(user);
+                }
+
+                var tenant = await _tenantRepository.GetByIdAsync(user.TenantId);
+                var creditsBalance = tenant?.CreditsBalance ?? 0;
+                var hasActiveCredits = user.Role == "ADMIN" || creditsBalance > 0;
+
+                var jwt = GenerateJwtToken(user, hasActiveCredits, creditsBalance);
+
+                var resp = new UserResponse
+                {
+                    Id = user.Id,
+                    Email = user.Email,
+                    Name = user.FullName,
+                    Role = user.Role,
+                    Tenants = new List<string> { user.TenantId.ToString() },
+                    CreatedAt = user.CreatedAt,
+                    CreditsBalance = creditsBalance,
+                    HasActiveCredits = hasActiveCredits
+                };
+
+                return (resp, jwt);
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao renovar token/sessão para o usuário {UserId}", userId);
+                throw;
+            }
+        }
     }

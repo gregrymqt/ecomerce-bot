@@ -3,6 +3,7 @@ using EcommerceBot.Domain.Interfaces;
 using EcommerceBot.Infrastructure.Data;
 using EcommerceBot.Infrastructure.Gateways;
 using EcommerceBot.Infrastructure.Services;
+using EcommerceBot.Infrastructure.Utils;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EcommerceBot.Infrastructure.Configurations;
@@ -19,6 +20,7 @@ public static class DependencyInjectionExtensions
         services.AddSingleton<IAesGcmCryptoService, AesGcmCryptoService>();
         services.AddScoped<IEcommerceGatewayFactory, EcommerceGatewayFactory>();
         services.AddScoped<IRazorTemplateRenderer, RazorViewToStringRenderer>();
+        services.AddSingleton<IWalletUtils, WalletUtils>();
 
         // 2. Escaneamento automático por convenção via Scrutor (Infrastructure + Application)
         services.Scan(scan => scan

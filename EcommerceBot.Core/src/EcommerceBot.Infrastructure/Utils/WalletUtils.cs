@@ -8,7 +8,24 @@ using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Utils;
 
-public sealed class WalletUtils
+public interface IWalletUtils
+{
+    public MercadoPagoPayerRequest BuildMercadoPagoPayer(
+        User? user,
+        RechargePayerDto? existingPayer,
+        TenantBillingProfile? billingProfile);
+
+    public RechargeResponseDto ToRechargeResponseDto(
+    MercadoPagoOrderResponse mpResponse,
+    Order order,
+    int? creditsAdded = null);
+
+    public (string FirstName, string LastName) ExtractNames(string? rawName);
+
+    public string CleanDocumentSpan(ReadOnlySpan<char> document);
+}
+
+public sealed class WalletUtils : IWalletUtils
 {
     public MercadoPagoPayerRequest BuildMercadoPagoPayer(
         User? user,

@@ -113,6 +113,20 @@ export function useRealtimeWalletBalance(): RealtimeWalletBalanceReturn {
           data.type === 'payment_approved' ||
           data.type === 'balance_updated'
         ) {
+          if (data.type === 'payment_approved') {
+            if (data.refresh_required === true || data.new_role) {
+              window.dispatchEvent(
+                new CustomEvent('auth:refresh-requested', {
+                  detail: data,
+                })
+              );
+            }
+            window.dispatchEvent(
+              new CustomEvent('wallet:payment-approved', {
+                detail: data,
+              })
+            );
+          }
           fetchBalance(false);
         }
       },

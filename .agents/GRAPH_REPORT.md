@@ -39,7 +39,7 @@
   - **`AdminGrowthController`** (`/api/v1/admin`): 5 endpoints.
   - **`AiCreditsWebhookController`** (`/api/v1/webhooks/ai-credits`): 1 endpoints.
   - **`AnalyticsController`** (`/api/v1/[controller]`): 2 endpoints.
-  - **`AuthController`** (`/api/v1/[controller]`): 10 endpoints.
+  - **`AuthController`** (`/api/v1/[controller]`): 11 endpoints.
   - **`BillingProfileController`** (`/api/v1/billing/profile`): 2 endpoints.
   - **`ComplianceController`** (`/api/v1/compliance`): 2 endpoints.
   - **`EmailWebhookController`** (`/api/v1/emails/webhooks`): 1 endpoints.

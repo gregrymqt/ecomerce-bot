@@ -78,6 +78,30 @@ public class AuthController : BaseApiController
         return Ok(new { Message = "Logout realizado com sucesso." });
     }
 
+    [HttpPost("refresh")]
+    public async Task<IActionResult> RefreshToken(CancellationToken cancellationToken = default)
+    {
+        var userId = CurrentUserId;
+        if (userId == Guid.Empty)
+            return UnauthorizedProblem("Sessão ou token de acesso inválido.");
+
+        try
+        {
+            var (user, token) = await _authService.RefreshTokenAsync(userId, cancellationToken);
+            user = user with { AccessToken = token };
+            AppendAuthCookie(token);
+            return Ok(user);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return UnauthorizedProblem(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return ProblemResponse(StatusCodes.Status500InternalServerError, "Erro Interno", ex.Message);
+        }
+    }
+
     [HttpPost("forgot-password")]
     [AllowAnonymous]
     [RateLimit(MaxRequests = 5, WindowSeconds = 60, BlockDurationSeconds = 300)]

@@ -16,6 +16,7 @@ export interface AuthContextType extends AuthState {
   updateProfile: (payload: UpdateUserPayload) => Promise<void>;
   switchTenant: (tenantId: string) => void;
   checkAuth: () => Promise<void>;
+  refreshSession: () => Promise<UserResponse | null>;
   initiateGoogleLogin: (tenantName?: string) => Promise<void>;
   loginWithGoogleCallback: (payload: GoogleCallbackRequest) => Promise<AuthTokenResponse>;
 }

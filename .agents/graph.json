@@ -4,7 +4,7 @@
     "generator": "generate_knowledge_graph.py",
     "scope": "End-to-End Monorepo (Frontend, Core API, EDA, Worker, Database, Infra)",
     "total_nodes": 320,
-    "total_edges": 336
+    "total_edges": 337
   },
   "nodes": [
     {
@@ -547,6 +547,13 @@
       "metadata": {}
     },
     {
+      "id": "code:UserRepository",
+      "label": "UserRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/UserRepository.cs",
+      "metadata": {}
+    },
+    {
       "id": "consumer:ProcessedProductConsumer",
       "label": "ProcessedProductConsumer",
       "type": "MassTransitConsumer",
@@ -632,13 +639,6 @@
       "label": "TrafficAttributionRepository",
       "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/TrafficAttributionRepository.cs",
-      "metadata": {}
-    },
-    {
-      "id": "code:UserRepository",
-      "label": "UserRepository",
-      "type": "CoreRepository",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/UserRepository.cs",
       "metadata": {}
     },
     {
@@ -1239,6 +1239,7 @@
           "POST api/v1/[controller]/register",
           "POST api/v1/[controller]/login",
           "POST api/v1/[controller]/logout",
+          "POST api/v1/[controller]/refresh",
           "POST api/v1/[controller]/forgot-password",
           "POST api/v1/[controller]/reset-password",
           "GET api/v1/[controller]/me",
@@ -2998,6 +2999,11 @@
       "relationship": "invokes"
     },
     {
+      "source": "consumer:PaymentProcessingConsumer",
+      "target": "code:UserRepository",
+      "relationship": "invokes"
+    },
+    {
       "source": "consumer:ProcessedProductConsumer",
       "target": "queue:ecommerce_processed_queue",
       "relationship": "consumes_from"
@@ -4139,12 +4145,12 @@
     },
     {
       "source": "frontend_service:wallet.service",
-      "target": "controller:PlansController",
+      "target": "controller:WalletController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:wallet.service",
-      "target": "controller:WalletController",
+      "target": "controller:PlansController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4199,12 +4205,12 @@
     },
     {
       "source": "frontend_service:liveDemoService",
-      "target": "controller:StreamController",
+      "target": "controller:ScraperController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:liveDemoService",
-      "target": "controller:ScraperController",
+      "target": "controller:StreamController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4219,12 +4225,12 @@
     },
     {
       "source": "frontend_service:integration.service",
-      "target": "controller:NuvemshopIntegrationController",
+      "target": "controller:IntegrationsController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:integration.service",
-      "target": "controller:IntegrationsController",
+      "target": "controller:NuvemshopIntegrationController",
       "relationship": "calls_endpoint"
     },
     {

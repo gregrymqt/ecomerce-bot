@@ -22,6 +22,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly IRobotActivityRepository _activityRepository;
     private readonly ILogger<PaymentProcessingConsumer> _logger;
+    private readonly IUserRepository _userRepository;
 
     public PaymentProcessingConsumer(
         IOrderRepository orderRepository,
@@ -31,7 +32,8 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
         IRedisService redisService,
         IPublishEndpoint publishEndpoint,
         IRobotActivityRepository activityRepository,
-        ILogger<PaymentProcessingConsumer> logger)
+        ILogger<PaymentProcessingConsumer> logger,
+        IUserRepository userRepository)
     {
         _orderRepository = orderRepository;
         _tenantRepository = tenantRepository;
@@ -41,6 +43,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
         _publishEndpoint = publishEndpoint;
         _activityRepository = activityRepository;
         _logger = logger;
+        _userRepository = userRepository;
     }
 
     public async Task Consume(ConsumeContext<PaymentReceivedEvent> context)
@@ -73,7 +76,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                 externalRef = mpOrder.ExternalReference;
                 status = mpOrder.Status;
                 statusDetail = mpOrder.StatusDetail;
-                
+
                 if (decimal.TryParse(mpOrder.TotalPaidAmount?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsedPaid))
                 {
                     paidAmount = parsedPaid;
@@ -158,7 +161,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
             var tenantId = order?.TenantId ?? Guid.Empty;
 
             // 3. Processa aprovação de pagamento
-            var isApproved = (status == "processed" && statusDetail == "accredited") || 
+            var isApproved = (status == "processed" && statusDetail == "accredited") ||
                              (status == "approved");
 
             if (isApproved)
@@ -207,6 +210,16 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                     tenantId = order.TenantId;
                     payerEmail = !string.IsNullOrEmpty(order.PayerEmail) ? order.PayerEmail : payerEmail;
 
+                    var user = await _userRepository.GetByEmailAsync(payerEmail!, ct);
+                    if (user != null && user.Role == "MEMBER")
+                    {
+                        user.Role = "OWNER";
+                        await _userRepository.UpdateAsync(user, ct);
+
+                        _logger.LogInformation("Usuário {UserId} promovido com sucesso para OWNER após confirmação do pedido {OrderId}",
+                                                user.Id, order.Id);
+                    }
+
                     // 4. Notifica o Frontend via Server-Sent Events (SSE) através do canal Redis
                     var ssePayload = JsonSerializer.Serialize(new
                     {
@@ -215,7 +228,9 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                         status = "approved",
                         amount = paidAmount,
                         credits_added = creditsToAdd,
-                        balance_credits = newBalance
+                        balance_credits = newBalance, 
+                        refresh_required = true,
+                        new_role = "OWNER"
                     });
                     await _redisService.PublishAsync($"events:tenant:{tenantId}", ssePayload);
 

@@ -22,7 +22,7 @@ public sealed class WalletService : IWalletService
     private readonly IMercadoPagoGateway _mercadoPagoGateway;
     private readonly ITenantBillingProfileRepository _tenantBillingProfileRepository;
     private readonly ILogger<WalletService> _logger;
-    private readonly WalletUtils _walletUtils;
+    private readonly IWalletUtils _walletUtils;
     private readonly IUserRepository _userRepository;
 
     public WalletService(
@@ -32,7 +32,7 @@ public sealed class WalletService : IWalletService
         IMercadoPagoGateway mercadoPagoGateway,
         ITenantBillingProfileRepository tenantBillingProfileRepository,
         ILogger<WalletService> logger,
-        WalletUtils walletUtils,
+        IWalletUtils walletUtils,
         IUserRepository userRepository
     )
     {

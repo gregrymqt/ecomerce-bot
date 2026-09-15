@@ -73,6 +73,18 @@ export const authService = {
   },
 
   /**
+   * Renova o token de autenticação JWT refletindo as claims atualizadas (ex: promoção de Role para OWNER).
+   */
+  async refreshToken(): Promise<UserResponse> {
+    try {
+      const response = await apiClient.post<UserResponse>('/api/v1/auth/refresh');
+      return response.data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error, 'Falha ao renovar sessão do usuário.'), { cause: error });
+    }
+  },
+
+  /**
    * Atualiza as informações de perfil do usuário autenticado.
    */
   async updateMe(payload: UpdateUserPayload): Promise<UserResponse> {

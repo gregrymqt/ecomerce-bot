@@ -271,6 +271,43 @@ export const useAuthSession = (): AuthContextType => {
     }
   };
 
+  /**
+   * Renova silenciosamente a sessão e o JWT com claims atualizadas do servidor (ex: promoção de Role para OWNER).
+   */
+  const refreshSession = useCallback(async (): Promise<UserResponse | null> => {
+    try {
+      const refreshedUser = await authService.refreshToken();
+      const token = refreshedUser.access_token || refreshedUser.accessToken;
+      if (token) {
+        saveAuthToken(token);
+      }
+      setUser(refreshedUser);
+      setStatus('authenticated');
+      const activeTenant = resolveTenant(refreshedUser.tenants);
+      if (activeTenant) {
+        setCurrentTenant(activeTenant);
+        saveTenantId(activeTenant);
+      }
+      window.dispatchEvent(new CustomEvent('auth:session-refreshed', { detail: refreshedUser }));
+      return refreshedUser;
+    } catch (err: unknown) {
+      console.warn('Falha ao atualizar sessão automaticamente:', err);
+      return null;
+    }
+  }, [resolveTenant]);
+
+  // Listener para solicitações globais de refresh de sessão (ex: disparo via SSE de pagamento aprovado)
+  useEffect(() => {
+    const handleRefreshRequested = () => {
+      refreshSession();
+    };
+
+    window.addEventListener('auth:refresh-requested', handleRefreshRequested);
+    return () => {
+      window.removeEventListener('auth:refresh-requested', handleRefreshRequested);
+    };
+  }, [refreshSession]);
+
   return {
     user,
     currentTenant,
@@ -283,6 +320,7 @@ export const useAuthSession = (): AuthContextType => {
     updateProfile,
     switchTenant,
     checkAuth,
+    refreshSession,
     initiateGoogleLogin,
     loginWithGoogleCallback,
   };

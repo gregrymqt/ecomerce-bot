@@ -81,6 +81,27 @@ describe('useRoleLayout hook', () => {
     expect(result.current.isMember).toBe(false);
   });
 
+  it('deve resolver MerchantLayout para usuário com role OWNER (após promoção via confirmação de pagamento)', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: {
+        email: 'promoted@test.com',
+        name: 'Promoted Owner',
+        role: 'OWNER',
+        plan: 'free',
+        tenants: ['tenant-1'],
+      },
+      status: 'authenticated',
+      isLoading: false,
+    } as unknown as ReturnType<typeof useAuth>);
+
+    const { result } = renderHook(() => useRoleLayout());
+
+    expect(result.current.resolvedLayout).toBe('merchant');
+    expect(result.current.isMerchant).toBe(true);
+    expect(result.current.isMember).toBe(false);
+    expect(result.current.isAdmin).toBe(false);
+  });
+
   it('deve resolver AdminLayout por padrão para Super Admin e permitir alternância para visão loja', () => {
     vi.mocked(useAuth).mockReturnValue({
       user: {

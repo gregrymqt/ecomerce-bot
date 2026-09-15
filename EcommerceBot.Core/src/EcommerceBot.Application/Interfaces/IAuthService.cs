@@ -13,4 +13,5 @@ public interface IAuthService
     Task<AuthenticatedUser> ResolveUserActivePlanAsync(AuthenticatedUser currentUser, string? tenantId);
     Task ForgotPasswordAsync(string email, string? clientOrigin = null);
     Task<string> ResetPasswordAsync(ResetPasswordRequest request);
+    Task<(UserResponse User, string AccessToken)> RefreshTokenAsync(Guid userId, CancellationToken cancellationToken = default);
 }
