@@ -154,9 +154,16 @@ export const walletService = {
    * Solicita a criação de uma nova recarga de créditos na carteira via PIX.
    * Endpoint: POST /api/v1/wallet/recharge
    */
-  createRecharge: async (payload: RechargeRequest): Promise<RechargeResponse> => {
+  createRecharge: async (
+    payload: RechargeRequest,
+    signal?: AbortSignal
+  ): Promise<RechargeResponse> => {
     try {
-      const response = await apiClient.post<RechargeResponse>('/api/v1/wallet/recharge', payload);
+      const response = await apiClient.post<RechargeResponse>(
+        '/api/v1/wallet/recharge',
+        payload,
+        { signal }
+      );
       return response.data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Falha ao solicitar recarga de créditos.');
@@ -168,9 +175,16 @@ export const walletService = {
    * Processa a cobrança de recarga de carteira via Cartão de Crédito.
    * Endpoint: POST /api/v1/wallet/recharge
    */
-  processCreditCardRecharge: async (payload: CreditCardRechargePayload): Promise<RechargeResponse> => {
+  processCreditCardRecharge: async (
+    payload: CreditCardRechargePayload,
+    signal?: AbortSignal
+  ): Promise<RechargeResponse> => {
     try {
-      const { data } = await apiClient.post<RechargeResponse>('/api/v1/wallet/recharge', payload);
+      const { data } = await apiClient.post<RechargeResponse>(
+        '/api/v1/wallet/recharge',
+        payload,
+        { signal }
+      );
       return data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Falha ao processar pagamento com cartão de crédito.');
@@ -182,11 +196,16 @@ export const walletService = {
    * Gera cobrança transparente via PIX para assinatura de Plano SaaS.
    * Endpoint: POST /api/v1/checkout/pix
    */
-  createPixPlanPayment: async (planId: string): Promise<PixPaymentResponse> => {
+  createPixPlanPayment: async (
+    planId: string,
+    signal?: AbortSignal
+  ): Promise<PixPaymentResponse> => {
     try {
-      const response = await apiClient.post<PixPaymentResponse>('/api/v1/checkout/pix', {
-        plan_id: planId,
-      });
+      const response = await apiClient.post<PixPaymentResponse>(
+        '/api/v1/checkout/pix',
+        { plan_id: planId },
+        { signal }
+      );
       return response.data;
     } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Erro ao gerar cobrança PIX para o plano.');
@@ -199,12 +218,14 @@ export const walletService = {
    * Endpoint: POST /api/v1/checkout/card
    */
   processCreditCardPlanPayment: async (
-    payload: CreditCardPaymentPayload
+    payload: CreditCardPaymentPayload,
+    signal?: AbortSignal
   ): Promise<CreditCardPaymentResponse> => {
     try {
       const response = await apiClient.post<CreditCardPaymentResponse>(
         '/api/v1/checkout/card',
-        payload
+        payload,
+        { signal }
       );
       return response.data;
     } catch (error: unknown) {
@@ -217,10 +238,14 @@ export const walletService = {
    * Consulta/sincroniza o status de uma transação de pagamento.
    * Endpoint: GET /api/v1/checkout/status/{paymentId}
    */
-  syncPaymentStatus: async (paymentId: string): Promise<OrderStatusSyncResponse> => {
+  syncPaymentStatus: async (
+    paymentId: string,
+    signal?: AbortSignal
+  ): Promise<OrderStatusSyncResponse> => {
     try {
       const response = await apiClient.get<OrderStatusSyncResponse>(
-        `/api/v1/checkout/status/${paymentId}`
+        `/api/v1/checkout/status/${paymentId}`,
+        { signal }
       );
       return response.data;
     } catch (error: unknown) {

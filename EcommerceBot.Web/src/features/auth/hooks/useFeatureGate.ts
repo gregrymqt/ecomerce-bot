@@ -8,7 +8,7 @@
 
 import { useMemo } from 'react';
 import { useAuth } from './useAuth';
-import { useWallet } from '@/features/wallet/hooks/useWallet';
+import { useRealtimeWalletBalance } from '@/features/wallet/hooks/useRealtimeWalletBalance';
 
 export type PlanType = 'free' | 'pro' | 'enterprise';
 
@@ -33,7 +33,7 @@ export const FEATURE_RULES: Record<string, FeatureGateRule> = {
 
 export function useFeatureGate() {
   const { user, currentTenant } = useAuth();
-  const { balance, loadingBalance } = useWallet();
+  const { balance, isLoading: loadingBalance } = useRealtimeWalletBalance();
 
   const isAdmin = useMemo(() => {
     return Boolean(

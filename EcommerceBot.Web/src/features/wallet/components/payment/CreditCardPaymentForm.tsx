@@ -9,17 +9,9 @@
 import React, { useState } from 'react';
 import { CreditCard, Calendar, Lock, User, FileText, ShieldCheck, Loader2 } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import type { CardTokenParams } from '@/features/wallet/types/mercadopago.types';
+import type { CreditCardPaymentFormData } from '@/features/wallet/types';
 
-export interface CreditCardPaymentFormData extends CardTokenParams {
-  cardNumber: string;
-  cardholderName: string;
-  securityCode: string;
-  installments: number;
-  expirationMonth: string;
-  expirationYear: string;
-  docNumber: string;
-}
+export type { CreditCardPaymentFormData };
 
 export interface CreditCardPaymentFormProps {
   /** Valor base em R$ para cálculo visual das parcelas (default: 197.00) */

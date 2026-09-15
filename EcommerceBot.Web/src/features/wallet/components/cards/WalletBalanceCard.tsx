@@ -15,10 +15,8 @@ import type { WalletBalanceCardProps } from '../../types';
 export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
   balance,
   loading,
-  onOpenRechargeModal,
   onRechargeClick,
 }) => {
-  const handleAction = onRechargeClick || onOpenRechargeModal;
   const formattedBalance = balance !== null ? balance.toLocaleString('pt-BR') : '0';
 
   return (
@@ -70,7 +68,7 @@ export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
       <div>
         <Button
           type="button"
-          onClick={handleAction}
+          onClick={onRechargeClick}
           iconLeft={<Zap className="w-4 h-4 fill-current" />}
           className="w-full min-h-[44px] bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md shadow-indigo-600/20 border-0 transition-all cursor-pointer"
         >

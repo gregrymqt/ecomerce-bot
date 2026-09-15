@@ -233,3 +233,5 @@ export const mercadoPagoService = {
     return mp.getInstallments(params);
   },
 };
+
+export default mercadoPagoService;

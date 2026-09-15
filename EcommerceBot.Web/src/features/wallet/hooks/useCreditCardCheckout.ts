@@ -9,8 +9,7 @@
 import { useState, useCallback } from 'react';
 import { walletService } from '../services/wallet.service';
 import { mercadoPagoService, detectPaymentMethodId } from '../services/mercadoPago.service';
-import type { CreditCardPaymentFormData as CreditCardFormData } from '../components/payment/CreditCardPaymentForm';
-import type { CheckoutTarget } from '../types';
+import type { CheckoutTarget, CreditCardPaymentFormData as CreditCardFormData } from '../types';
 import type { TenantBillingProfile } from '../types/billing.type';
 import { getErrorMessage } from '@/utils/errors';
 

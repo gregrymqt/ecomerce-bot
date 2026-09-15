@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import type { Identification } from './mercadopago.types';
+import type { Identification, CardTokenParams } from './mercadopago.types';
 
 export type TransactionType =
   | 'RECHARGE'
@@ -17,7 +17,6 @@ export type TransactionType =
   | 'REFUND'
   | 'CHARGEBACK_REVERSAL'
   | 'ML_ANALYSIS';
-export type WalletTab = 'BALANCE' | 'PLANS';
 export type PaymentMethod = 'pix' | 'credit_card';
 export type PaymentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
 
@@ -58,18 +57,6 @@ export interface RechargePackage {
   features?: string[];
 }
 
-export interface SaaSPlan {
-  id: string;
-  name: string;
-  description: string;
-  price_monthly_brl: number;
-  price_annual_brl: number;
-  credits_included: number;
-  features: string[];
-  is_popular?: boolean;
-  tier: 'free' | 'starter' | 'pro' | 'enterprise';
-  trial_days?: number;
-}
 
 export type CheckoutTargetType = 'plan' | 'recharge';
 
@@ -82,23 +69,6 @@ export interface CheckoutTarget {
   description?: string;
   trialDays?: number;
   billingPeriod?: 'monthly' | 'yearly';
-}
-
-export interface PixRechargeTabProps {
-  loading: boolean;
-  pixQrCode?: string;
-  pixCopiaECola?: string;
-  expirationDate?: string;
-  onGeneratePix: () => void;
-}
-
-export interface CreditCardRechargeTabProps {
-  packageId?: string;
-  amountBrl?: number;
-  loading?: boolean;
-  onSuccessPayment?: () => void;
-  onSubmitCard?: (payload: CreditCardRechargePayload) => Promise<void>;
-  className?: string;
 }
 
 
@@ -201,29 +171,19 @@ export interface UseWalletReturn {
   refetchWallet: () => Promise<[void, void]>;
 }
 
-export interface CreditCardFormData {
+export interface CreditCardPaymentFormData extends CardTokenParams {
   cardNumber: string;
   cardholderName: string;
-  expirationDate: string;
   securityCode: string;
   installments: number;
-}
-
-export interface UseCreditCardFormProps {
-  onSubmitCard: (cardData: CreditCardFormData) => Promise<void>;
-  amountBrl?: number;
-}
-
-export interface UseRechargeModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccessPayment?: () => void;
+  expirationMonth: string;
+  expirationYear: string;
+  docNumber: string;
 }
 
 export interface WalletBalanceCardProps {
   balance: number | null;
   loading: boolean;
-  onOpenRechargeModal?: () => void;
   onRechargeClick?: () => void;
 }
 
@@ -249,8 +209,6 @@ export interface TransactionHistoryTableProps {
   onPageChange: (page: number) => void;
   itemsPerPage?: number;
 }
-
-export type RechargeModalProps = UseRechargeModalProps;
 
 export interface UnifiedPaymentModalProps {
   isOpen: boolean;
