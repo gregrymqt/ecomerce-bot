@@ -1,6 +1,6 @@
 ---
 name: python-best-practices
-description: "Diretrizes obrigatórias de arquitetura, padrões Python 3.10+, Clean/Hexagonal Architecture, concorrência assíncrona (FastAPI/asyncio), mensageria (RabbitMQ/aio-pika), cache/locks (Redis), inferência ML, Jinja2 templates e observabilidade para o backend worker (EcommerceBot.Worker)."
+description: "Diretrizes obrigatórias de arquitetura, padrões Python 3.10+, Clean/Hexagonal Architecture, concorrência assíncrona (FastAPI/asyncio), mensageria (RabbitMQ/aio-pika), cache/locks (Redis), scraping evasivo (Scrapling/Camoufox/JSON-LD), inferência ML tabular local (Scikit-Learn), Jinja2 templates e observabilidade para o backend worker (EcommerceBot.Worker) com ZERO chamadas externas de LLM."
 ---
 
 # 🐍 Skill: Padrões de Arquitetura & Diretrizes de Python Worker
@@ -12,8 +12,9 @@ description: "Diretrizes obrigatórias de arquitetura, padrões Python 3.10+, Cl
 Este documento define os padrões canônicos de arquitetura, concorrência assíncrona, modelagem, mensageria e observabilidade para microsserviços desenvolvidos em Python no ecossistema **E-commerce Bot** — com foco estrito no microsserviço assíncrono `EcommerceBot.Worker`.
 
 > [!IMPORTANT]
-> **FAIL-CLOSED (Regra 2 do AGENTS.md):**
-> O `EcommerceBot.Worker` **NUNCA** deve importar bibliotecas de banco de dados relacional (`sqlalchemy`, `databases`, `psycopg`, `psycopg2`, `asyncpg`, `pyodbc`, `pymssql`, `tortoise-orm`). Sua comunicação e persistência operacional são estritamente efetuadas através de **RabbitMQ** e **Redis**.
+> **FAIL-CLOSED (Regras 2 e 13 do AGENTS.md):**
+> 1. **Zero Banco Relacional:** O `EcommerceBot.Worker` **NUNCA** deve importar bibliotecas de banco de dados relacional (`sqlalchemy`, `databases`, `psycopg`, `psycopg2`, `asyncpg`, `pyodbc`, `pymssql`, `tortoise-orm`). Sua comunicação e persistência operacional são estritamente efetuadas através de **RabbitMQ** e **Redis**.
+> 2. **Zero Chamadas Externas de LLM:** O `EcommerceBot.Worker` **NUNCA** deve importar SDKs de IA generativa externa (`openai`, `anthropic`, `openrouter`, `langchain`) nem executar chamadas HTTP a provedores de LLM. A orquestração e enriquecimento com IA generativa são de responsabilidade 100% exclusiva do Core API C# (.NET). O Worker atua estritamente como motor de **Scraping Evasivo** e **Machine Learning Tabular Local**.
 
 ---
 
@@ -24,8 +25,8 @@ Este documento define os padrões canônicos de arquitetura, concorrência assí
 Em sistemas corporativos, a organização clássica centrada puramente no framework (pastas como `views/`, `controllers/`, `models/` globais) degrada rapidamente à medida que o serviço cresce. A abordagem canônica baseia-se em **Clean / Hexagonal Architecture** combinada a **Bounded Contexts** do Domain-Driven Design (DDD):
 
 - **Domain (Núcleo Puro):** Entidades de negócio, Value Objects e exceções de domínio. Deve ser independente de bibliotecas de terceiros, brokers externos ou frameworks HTTP.
-- **Application / Use Cases:** Orquestração dos fluxos de trabalho (casos de uso). Coordena entidades, processa mensagens recebidas de filas, aciona rotinas de IA/ML e interage com contratos/interfaces abstratas.
-- **Infrastructure:** Implementações concretas de clientes de mensageria (`aio-pika`), cache e locks (`redis-py`), clientes HTTP resilientes (`httpx`, `curl_cffi`), motores de extração (`scrapling`) e carregamento de modelos preditivos (`scikit-learn`, `joblib`).
+- **Application / Use Cases:** Orquestração dos fluxos de trabalho (casos de uso). Coordena entidades, processa mensagens recebidas de filas, aciona rotinas de scraping e ML e interage com contratos/interfaces abstratas.
+- **Infrastructure:** Implementações concretas de clientes de mensageria (`aio-pika`), cache e locks (`redis-py`), clientes HTTP resilientes (`httpx`, `curl_cffi`), motores de extração (`scrapling`, `camoufox`) e carregamento de modelos preditivos (`scikit-learn`, `joblib`).
 - **Presentation / Ingestion:** Routers e endpoints da API interna (`FastAPI`), handlers/consumers de filas RabbitMQ, schemas de entrada/saída Pydantic e serializers.
 
 #### Estrutura Canônica de Diretórios (`EcommerceBot.Worker`)
@@ -36,13 +37,12 @@ EcommerceBot.Worker/
 │   ├── core/                   # Configurações globais, RabbitMQ, Redis, segurança
 │   │   ├── config/             # Settings fortemente tipadas (Pydantic Settings)
 │   │   └── shared/             # Utilitários globais, anti-SSRF, criptografia
-│   ├── ai/                     # LLM Engine Router (OpenRouter Fallback, prompts)
 │   ├── ml/                     # Inferência Scikit-Learn (RFM, Churn, LTV) & Consumers
-│   ├── scraper/                # ScraperWorker (JSON-LD + Scrapling + anti-SSRF)
+│   ├── scraper/                # ScraperWorker (JSON-LD + Scrapling + Camoufox + anti-SSRF)
 │   ├── templates/              # Templates de e-mail Jinja2 (.html com autoescape)
 │   └── main.py                 # FastAPI app, lifespan assíncrono e health checks
 ├── tests/                      # Testes unitários e de integração assíncronos (pytest)
-├── requirements.txt            # Dependências fixadas (sem drivers de banco relacional)
+├── requirements.txt            # Dependências fixadas (sem drivers de banco relacional e sem SDKs de LLM)
 └── Dockerfile                  # Containerização otimizada para execução assíncrona
 ```
 
@@ -321,7 +321,7 @@ def render_jinja_template(template_name: str, context: dict) -> str:
 
 ## 8. Scraping Resiliente e Proteção Anti-SSRF
 
-O módulo `ScraperWorker` extrai metadados de produtos (`JSON-LD`, microdados, tags OpenGraph) de lojas virtuais usando `scrapling` e `curl_cffi`.
+O módulo `ScraperWorker` extrai metadados estruturados e brutos de produtos (`JSON-LD`, microdados, tags OpenGraph, imagens e texto do DOM) de lojas virtuais usando `scrapling` (Tier 1 HTTP TLS Impersonate) e `camoufox` (Tier 2 Headless Stealth Browser).
 
 ### 8.1. Proteção Rígida Anti-SSRF (Regra 3.3 do AGENTS.md)
 Toda URL submetida para extração de produtos deve ser sanitizada e validada antes de qualquer chamada HTTP de rede:
@@ -351,6 +351,9 @@ def validate_url_safety(target_url: str) -> None:
     if ip.is_loopback or ip.is_private or ip.is_link_local or ip.is_reserved:
         raise ValueError(f"Acesso a endereço IP privado ou restrito bloqueado (Anti-SSRF): {ip_str}")
 ```
+
+### 8.2. Contrato de Saída do Scraper (`ScrapedRawProductEvent`)
+O Worker Python conclui sua execução no scraping publicando o payload bruto na fila `ecommerce_scraped_queue`. **É expressamente proibido invocar modelos de linguagem (LLMs) nesta etapa.** O enriquecimento semântico, tradução e copywriting persuasivo são de responsabilidade do Core API C#.
 
 ---
 
@@ -408,6 +411,7 @@ logger.info(
 |---|---|---|
 | **Arquitetura & Limites** | Clean Architecture, separação de Bounded Contexts e uso de `typing.Protocol` | Módulos monolíticos misturando regras, workers e rotas sem isolamento |
 | **Persistência & Dados** | **Comunicação estritamente via RabbitMQ e Redis** (Zero Banco Relacional) | **Importar SQLAlchemy, asyncpg, psycopg ou criar scripts de banco no Worker** |
+| **IA Generativa & LLMs** | **100% delegada ao Core API C# (.NET)**; Worker emite dados brutos raspados | **Chamar OpenAI, Anthropic ou OpenRouter de dentro do Worker Python** |
 | **Modelagem e Tipagem** | Pydantic V2 para schemas I/O; `dataclasses(slots=True)` congeladas para domínio | Uso irrestrito de dicionários primitivos (`dict[str, Any]`) sem tipagem |
 | **Concorrência Assíncrona** | `async def` para I/O cooperativo; `asyncio.to_thread` para sync I/O isolado | Chamar rotinas bloqueantes (`requests.get`, `time.sleep`) dentro de funções `async def` |
 | **Processamento CPU-Bound** | Execução via `ProcessPoolExecutor` ou bibliotecas compiladas C/Rust (NumPy/Sklearn) | Alocar threads Python convencionais para tarefas pesadas esperando mitigar o GIL |

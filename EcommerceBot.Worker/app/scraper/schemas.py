@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import Optional, List
+from typing import Optional, List, Dict
 from pydantic import BaseModel, Field, AliasChoices, ConfigDict
 
 
@@ -63,9 +63,11 @@ class ProductEnrichmentMetadata(BaseModel):
     )
 
 
-class ProductProcessedEvent(BaseModel):
+class ScrapedRawProductEvent(BaseModel):
     """
-    Evento de retorno publicado em ecommerce_processed_queue consumido pelo C# ProcessedProductConsumer.
+    Contrato da fase intermediária publicado em ecommerce_scraped_queue após scraping perimetral.
+    Consumido pelo Core C# (ScrapedProductConsumer) para orquestração de LLM (OpenRouter),
+    copywriting persuasivo, SEO estruturado e persistência.
     """
     model_config = ConfigDict(populate_by_name=True)
 
@@ -73,96 +75,78 @@ class ProductProcessedEvent(BaseModel):
         ...,
         validation_alias=AliasChoices("tenantId", "TenantId", "tenant_id"),
         serialization_alias="tenantId",
-        description="Identificador do tenant proprietário do evento.",
+        description="Identificador único do tenant proprietário do evento.",
     )
-    sku: str = Field(..., description="SKU ou identificador da requisição.")
-    title: str = Field(default="", description="Título enriquecido do produto.")
-    description: str = Field(default="", description="Descrição comercial e enriquecida.")
-    status: str = Field(default="PROCESSED", description="Status do processamento: PROCESSED ou FAILED.")
-    is_fallback: bool = Field(
-        default=False,
-        validation_alias=AliasChoices("isFallback", "IsFallback", "is_fallback"),
-        serialization_alias="isFallback",
-        description="Indica se o resultado foi gerado via fallback.",
-    )
-    error_message: str = Field(
+    sku: str = Field(
         default="",
+        validation_alias=AliasChoices("sku", "Sku", "productId", "ProductId", "product_id"),
+        serialization_alias="sku",
+        description="SKU ou identificador único do produto.",
+    )
+    url: str = Field(
+        default="",
+        validation_alias=AliasChoices("url", "Url", "targetUrl", "TargetUrl", "target_url"),
+        serialization_alias="url",
+        description="URL pública do produto que foi raspado.",
+    )
+    raw_title: str = Field(
+        default="",
+        validation_alias=AliasChoices("rawTitle", "RawTitle", "raw_title", "title", "Title"),
+        serialization_alias="rawTitle",
+        description="Título bruto extraído do DOM ou meta-tags.",
+    )
+    raw_description_html: str = Field(
+        default="",
+        validation_alias=AliasChoices("rawDescriptionHtml", "RawDescriptionHtml", "raw_description_html"),
+        serialization_alias="rawDescriptionHtml",
+        description="Conteúdo HTML bruto ou sanitizado do produto.",
+    )
+    raw_markdown: str = Field(
+        default="",
+        validation_alias=AliasChoices("rawMarkdown", "RawMarkdown", "raw_markdown"),
+        serialization_alias="rawMarkdown",
+        description="Conteúdo convertido em Markdown limpo para a LLM.",
+    )
+    price: Optional[float] = Field(
+        default=None,
+        validation_alias=AliasChoices("price", "Price"),
+        serialization_alias="price",
+        description="Preço numérico do produto se identificado.",
+    )
+    currency: str = Field(
+        default="BRL",
+        validation_alias=AliasChoices("currency", "Currency"),
+        serialization_alias="currency",
+        description="Moeda do produto (BRL, USD, etc.).",
+    )
+    images: List[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("images", "Images"),
+        serialization_alias="images",
+        description="Lista de URLs de imagens do produto extraídas.",
+    )
+    meta_attributes: Dict[str, str] = Field(
+        default_factory=dict,
+        validation_alias=AliasChoices("metaAttributes", "MetaAttributes", "meta_attributes"),
+        serialization_alias="metaAttributes",
+        description="Atributos adicionais e metadados extraídos (marca, categoria, etc.).",
+    )
+    prompt_context: str = Field(
+        default="",
+        validation_alias=AliasChoices("promptContext", "PromptContext", "prompt_context"),
+        serialization_alias="promptContext",
+        description="Contexto adicional ou tom desejado para a LLM.",
+    )
+    success: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("success", "Success"),
+        serialization_alias="success",
+        description="Indica se a etapa de scraping perimetral foi concluída com sucesso.",
+    )
+    error_message: Optional[str] = Field(
+        default=None,
         validation_alias=AliasChoices("errorMessage", "ErrorMessage", "error_message"),
         serialization_alias="errorMessage",
-        description="Mensagem de erro detalhada em caso de falha.",
-    )
-    ai_metadata_json: str = Field(
-        default="{}",
-        validation_alias=AliasChoices("aiMetadataJson", "AiMetadataJson", "ai_metadata_json"),
-        serialization_alias="aiMetadataJson",
-        description="JSON serializado contendo os metadados do enriquecimento.",
+        description="Mensagem detalhada em caso de falha de scraping ou validação.",
     )
 
-
-class LlmUsageEvent(BaseModel):
-    """
-    Evento de telemetria e consumo de tokens publicado em llm_usage_queue consumido pelo C# LlmUsageConsumer.
-    """
-    model_config = ConfigDict(populate_by_name=True)
-
-    tenant_id: UUID = Field(
-        ...,
-        validation_alias=AliasChoices("tenantId", "TenantId", "tenant_id"),
-        serialization_alias="tenantId",
-        description="Identificador único do tenant.",
-    )
-    product_id: Optional[str] = Field(
-        default=None,
-        validation_alias=AliasChoices("productId", "ProductId", "sku", "product_id"),
-        serialization_alias="productId",
-        description="SKU ou identificador do produto associado.",
-    )
-    provider: str = Field(default="openrouter", description="Provedor de inferência de IA.")
-    model_used: str = Field(
-        default="deepseek/deepseek-chat",
-        validation_alias=AliasChoices("modelUsed", "ModelUsed", "model_used"),
-        serialization_alias="modelUsed",
-        description="Modelo de LLM executado.",
-    )
-    prompt_tokens: int = Field(
-        default=0,
-        validation_alias=AliasChoices("promptTokens", "PromptTokens", "prompt_tokens"),
-        serialization_alias="promptTokens",
-        description="Tokens de prompt consumidos.",
-    )
-    completion_tokens: int = Field(
-        default=0,
-        validation_alias=AliasChoices("completionTokens", "CompletionTokens", "completion_tokens"),
-        serialization_alias="completionTokens",
-        description="Tokens de completude consumidos.",
-    )
-    total_tokens: int = Field(
-        default=0,
-        validation_alias=AliasChoices("totalTokens", "TotalTokens", "total_tokens"),
-        serialization_alias="totalTokens",
-        description="Total de tokens consumidos.",
-    )
-    estimated_cost_usd: float = Field(
-        default=0.0,
-        validation_alias=AliasChoices("estimatedCostUsd", "EstimatedCostUsd", "estimated_cost_usd"),
-        serialization_alias="estimatedCostUsd",
-        description="Custo estimado em USD da inferência.",
-    )
-    is_byok: bool = Field(
-        default=False,
-        validation_alias=AliasChoices("isByok", "IsByok", "is_byok"),
-        serialization_alias="isByok",
-        description="Indica se foi utilizado token BYOK.",
-    )
-    execution_time_ms: int = Field(
-        default=0,
-        validation_alias=AliasChoices("executionTimeMs", "ExecutionTimeMs", "execution_time_ms"),
-        serialization_alias="executionTimeMs",
-        description="Tempo total de execução em milissegundos.",
-    )
-    reserved_cost: Optional[float] = Field(
-        default=None,
-        validation_alias=AliasChoices("reservedCost", "ReservedCost", "reserved_cost"),
-        serialization_alias="reservedCost",
-        description="Custo reservado previamente, se aplicável.",
-    )

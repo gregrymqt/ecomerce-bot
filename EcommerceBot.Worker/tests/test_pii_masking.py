@@ -6,8 +6,6 @@ from app.core.shared.pii_masking import (
     sanitize_llm_input,
     sanitize_untrusted_text,
 )
-from app.ai.router import LLMEngineRouter, SYSTEM_INJECTION_GUARD
-from app.ai.schemas import LLMCompletionRequest, LLMCompletionResponse
 
 
 class TestPIIMaskingAndInjectionDefense(unittest.IsolatedAsyncioTestCase):
@@ -76,36 +74,3 @@ class TestPIIMaskingAndInjectionDefense(unittest.IsolatedAsyncioTestCase):
 
         self.assertNotIn("</scraped_content>", cleaned)
         self.assertIn("&lt;/scraped_content&gt;", cleaned)
-
-    async def test_llm_router_guards_prompt_and_system(self):
-        mock_provider = MagicMock()
-        mock_provider.generate_completion = AsyncMock(
-            return_value=LLMCompletionResponse(
-                content='{"title": "Produto Teste"}',
-                model_used="test-model",
-            )
-        )
-
-        router = LLMEngineRouter(provider=mock_provider)
-
-        request = LLMCompletionRequest(
-            prompt="Meu email é lojista@store.com e quero uma descrição para meu produto.",
-            system_prompt="Você é um assistente de vendas.",
-        )
-
-        await router.generate_completion(request)
-
-        # Inspeciona a requisição repassada para o provider
-        call_args = mock_provider.generate_completion.call_args
-        forwarded_request: LLMCompletionRequest = call_args.kwargs["request"]
-
-        # 1. PII deve ter sido mascarado
-        self.assertNotIn("lojista@store.com", forwarded_request.prompt)
-        self.assertIn("[EMAIL_MASCARADO]", forwarded_request.prompt)
-
-        # 2. Prompt deve estar encapsulado em tags estruturadas
-        self.assertTrue(forwarded_request.prompt.startswith("<user_data>"))
-        self.assertTrue(forwarded_request.prompt.endswith("</user_data>"))
-
-        # 3. System prompt deve ter a instrução de blindagem contra injeção
-        self.assertIn(SYSTEM_INJECTION_GUARD, forwarded_request.system_prompt)

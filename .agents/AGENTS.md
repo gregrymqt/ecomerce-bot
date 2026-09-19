@@ -19,7 +19,7 @@ A violação de qualquer uma das regras abaixo invalida a entrega e interrompe a
 10. **PROIBIDO lógica de serviço ou configuração inline no Program.cs:** O arquivo `Program.cs` destina-se estritamente à orquestração do pipeline de inicialização (*bootstrapping*). É terminantemente proibido declarar lambdas extensas, configurações de options, registros diretos de serviços ou lógica de middlewares/infraestrutura dentro de `Program.cs`. Todo setup DEVE ser encapsulado em métodos de extensão dedicados (`*Extensions.cs`) com nomenclatura semântica clara (ex: `builder.ConfigureSerilog()`, `services.AddInfrastructure()`, `services.AddApiServices()`, `app.UseCustomRequestLogging()`).
 11. **PROIBIDO acoplamento direto Component/Page -> Service no Frontend:** No `EcommerceBot.Web`, componentes de UI (`components/`) e páginas (`pages/`) NUNCA devem importar diretamente arquivos de `services/` ou executar chamadas de rede/API (`apiClient`, `fetch`, `axios`). Toda comunicação com a camada de serviços DEVE ser mediada e encapsulada exclusivamente por custom hooks em `hooks/`.
 12. **PROIBIDO alterar o backend transacional sem consultar a skill de C# (.NET):** Toda criação, modificação ou refatoração de código na pasta `EcommerceBot.Core` DEVE obrigatoriamente inspecionar e seguir as diretrizes da skill `.agents/skills/c#-best-pratices/SKILL.md` para garantir conformidade estrita com os padrões de arquitetura, injeção de dependências, resiliência, performance e observabilidade.
-13. **PROIBIDO alterar o backend worker sem consultar a skill de Python:** Toda criação, modificação ou refatoração de código na pasta `EcommerceBot.Worker` DEVE obrigatoriamente inspecionar e seguir as diretrizes da skill `.agents/skills/python-best-pratices/SKILL.md` para garantir conformidade estrita com os padrões de arquitetura assíncrona, tipagem estrita, ausência total de dependências de banco relacional, mensageria (RabbitMQ/aio-pika), cache/locks (Redis), templates Jinja2 e observabilidade.
+13. **PROIBIDO clientes externos de LLM e violação de skills no Python Worker:** O microsserviço `EcommerceBot.Worker` NUNCA deve importar bibliotecas de clientes externos de LLM (`openai`, `anthropic`, `openrouter`, `langchain`, etc.) nem executar chamadas a provedores externos de IA generativa — essa orquestração é responsabilidade 100% exclusiva do Core API (`EcommerceBot.Core`). Toda criação, modificação ou refatoração de código na pasta `EcommerceBot.Worker` DEVE obrigatoriamente inspecionar e seguir as diretrizes da skill `.agents/skills/python-best-pratices/SKILL.md` para garantir conformidade estrita com os padrões de arquitetura assíncrona, tipagem estrita, ausência total de dependências de banco relacional, mensageria (RabbitMQ/aio-pika), cache/locks (Redis), templates Jinja2 e observabilidade.
 
 ---
 
@@ -68,8 +68,8 @@ NUNCA carregue todas as skills simultaneamente. Inspecione e ative estritamente 
 O **E-commerce Bot** é uma plataforma SaaS monorepo dividida em 4 pilares:
 
 1. **Frontend Web SPA (`EcommerceBot.Web`):** React 18 + TypeScript + Vite + Tailwind CSS. Consome variáveis públicas estritamente através do módulo centralizado `@/config/env` (lendo o `.env` da raiz via `envDir`).
-2. **Core API Central (`EcommerceBot.Core`):** ASP.NET Core Web API em .NET 8/9 (C#) em Clean Architecture / DDD, Dapper + T-SQL puro, pagamentos e orquestração. Carrega o `.env` nativamente via `builder.Configuration.AddDotEnvConfiguration()` e mapeia para classes fortemente tipadas de `Options`. O arquivo `Program.cs` opera sob o **Clean Bootstrapping Pattern**: atua puramente como orquestrador de alto nível, delegando toda configuração de serviços, middlewares e observabilidade para métodos de extensão dedicados em `Configurations/` e `Middlewares/`.
-3. **AI/ML Engine (`EcommerceBot.Worker`):** Microsserviço Python assíncrono (FastAPI + Workers) para scraping, inferência LLM (OpenRouter) e modelos Scikit-Learn. Isolado de qualquer banco de dados, com resolução dinâmica do `.env` da raiz via `resolve_root_env_files()`.
+2. **Core API Central (`EcommerceBot.Core`):** ASP.NET Core Web API em .NET 8/9 (C#) em Clean Architecture / DDD, Dapper + T-SQL puro, pagamentos e orquestração. Assume 100% da orquestração de inferência de LLMs (OpenRouter/DeepSeek), estruturação tipada de prompts persuasivos, persistência via Dapper e liquidação de telemetria. Carrega o `.env` nativamente via `builder.Configuration.AddDotEnvConfiguration()` e mapeia para classes fortemente tipadas de `Options`. O arquivo `Program.cs` opera sob o **Clean Bootstrapping Pattern**: atua puramente como orquestrador de alto nível, delegando toda configuração de serviços, middlewares e observabilidade para métodos de extensão dedicados em `Configurations/` e `Middlewares/`.
+3. **Scraping & Local ML Engine (`EcommerceBot.Worker`):** Microsserviço Python assíncrono (FastAPI + Workers) estritamente focado em Scraping Evasivo multi-tier (Scrapling + Camoufox + JSON-LD) e modelos preditivos locais de Machine Learning em Scikit-Learn (RFM, Churn, LTV). Isolado de qualquer banco de dados relacional e com ZERO dependência de chamadas externas de LLM, com resolução dinâmica do `.env` da raiz via `resolve_root_env_files()`.
 4. **Database & Migrations (`Database.Migrations`):** Runner de migrações determinísticas em .NET com DbUp para Microsoft SQL Server 2022. Carrega a connection string automaticamente do `.env` via `DotEnvHelper.Load()`.
 
 ```text
@@ -82,21 +82,22 @@ O **E-commerce Bot** é uma plataforma SaaS monorepo dividida em 4 pilares:
                                │    EcommerceBot.Core (API .NET 8/9)    │
                                │  • Auth JWT & Multi-Tenancy Estrito    │
                                │  • Dapper + SQL Server 2022            │
+                               │  • Orquestração de LLM (OpenRouter)    │
                                │  • Mercado Pago (PIX / CC / Ledger)    │
                                │  • Shopify (GraphQL) & Nuvemshop (REST)│
                                │  • MassTransit Producer & Consumers    │
                                │  • Redis Cache, RateLimit & SSE Stream │
-                               └───────┬────────────────────────┬───────┘
+                               └───────┬────────────────────────▲───────┘
                                        │                        │
-               queue:ecommerce (RabbitMQ)                       │ analytics_ml_queue
+               queue:ecommerce (RabbitMQ)                       │ ecommerce_scraped_queue
                                        │                        │
-                                       ▼                        ▼
-                               ┌────────────────────────────────────────┐
-                               │  EcommerceBot.Worker (Python AI Engine)│
+                                       ▼                        │
+                               ┌────────────────────────────────┴───────┐
+                               │  EcommerceBot.Worker (Scraping & ML)   │
                                │  • ScraperWorker (JSON-LD + Scrapling) │
-                               │  • LLMEngineRouter (OpenRouter Fallback│
+                               │  • Zero chamadas externas de LLM       │
                                │  • Scikit-Learn (RFM, Churn, LTV)      │
-                               │  • Telemetria de Tokens e Latência     │
+                               │  • Fila analytics_ml_queue / processed │
                                └────────────────────────────────────────┘
 ```
 
@@ -141,12 +142,13 @@ O **E-commerce Bot** é uma plataforma SaaS monorepo dividida em 4 pilares:
 ## 📡 5. Mensageria MassTransit & RabbitMQ
 
 - **Serialização:** Configuração obrigatória com `cfg.UseRawJsonSerializer()` para garantir interoperabilidade total com o Python.
-- **Topologia:**
-  - `queue:ecommerce` / `queue:demo_ecommerce`: Entrada de extração de produtos.
-  - `ecommerce_processed_queue`: Retorno assíncrono consumido por `ProcessedProductConsumer` para persistência Dapper e disparo de SSE no Redis.
+- **Topologia do Pipeline em 2 Fases:**
+  - `queue:ecommerce` / `queue:demo_ecommerce`: Entrada de solicitações de extração de produtos despachadas pelo Core API C#.
+  - `ecommerce_scraped_queue`: Retorno assíncrono do Worker Python contendo o payload bruto raspado (`ScrapedRawProductEvent`), consumido por `ScrapedProductConsumer` no Core C# para orquestração da LLM (OpenRouter), copywriting persuasivo, persistência Dapper e notificação SSE no Redis.
+  - `analytics_ml_queue` / `analytics_processed_queue`: Jobs analíticos de Machine Learning tabular (RFM, Churn, LTV) executados localmente pelo Worker Python via Scikit-Learn.
   - `email_notifications`: Disparos transacionais via Resend.
   - `payments_process_queue`: Conciliação assíncrona de pagamentos Mercado Pago e concessão de benefícios SaaS.
-  - `nuvemshop_bulk_sync`: Sincronização em lote de catálogo com a Nuvemshop.
+  - `nuvemshop_bulk_sync` / `shopify_bulk_sync`: Sincronização em lote de catálogo.
 
 ### 5.1. Padrão Canônico de E-mails e Templates (C# Razor & Python Jinja2)
 Para garantir sanitização XSS, separação absoluta de responsabilidades, preview visual e manutenibilidade, o ecossistema proíbe HTML inline e impõe:

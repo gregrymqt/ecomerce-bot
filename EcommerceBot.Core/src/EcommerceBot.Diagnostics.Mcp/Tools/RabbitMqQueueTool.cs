@@ -27,7 +27,7 @@ public sealed class RabbitMqQueueTool : ISystemDiagnosticTool
     [
         "queue:ecommerce",
         "queue:analytics_ml",
-        "ecommerce_processed_queue",
+        "ecommerce_scraped_queue",
         "email_notifications",
         "nuvemshop_bulk_sync",
         "queue:ecommerce_error",

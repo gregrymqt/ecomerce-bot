@@ -13,7 +13,7 @@ O sistema adota o padrão de **Responsabilidade Segregada** para declaração e 
 ```mermaid
 flowchart LR
     subgraph CoreProducers ["⚡ Core API (.NET)"]
-        ScraperCtrl["ScraperController"]
+        ScraperCtrl["ScraperController / CatalogService"]
         PaymentConsumer["PaymentProcessingConsumer"]
         AnalyticsTrigger["AnalyticsService"]
     end
@@ -21,10 +21,8 @@ flowchart LR
     subgraph RabbitMQBroker ["🐇 RabbitMQ Topologia"]
         Q_ECOMMERCE["queue:ecommerce<br/>(DLX: ecommerce_dlx)"]
         Q_DEMO["queue:demo_ecommerce<br/>(Priority 1-10)"]
+        Q_SCRAPED["queue:ecommerce_scraped_queue<br/>(Payload Bruto)"]
         Q_ML["queue:analytics_ml_queue<br/>(DLX: ecommerce_dlx)"]
-        
-        Q_PROCESSED["queue:ecommerce_processed_queue"]
-        Q_LLM_USAGE["queue:llm_usage_queue"]
         Q_ML_PROCESSED["queue:analytics_processed_queue"]
         Q_EMAILS["queue:email_notifications"]
         
@@ -32,33 +30,32 @@ flowchart LR
         DLQ["queue:dlq_ecommerce<br/>(x-message-ttl: 7 dias)"]
     end
 
-    subgraph PythonWorker ["🐍 AI / ML Worker (Python)"]
-        ScraperW["ScraperWorker<br/>(Tier 1 & Tier 2)"]
+    subgraph PythonWorker ["🐍 Scraping & ML Worker (Python)"]
+        ScraperW["ScraperWorker<br/>(Tier 1 & Tier 2 + JSON-LD)<br/>Zero LLM"]
         MLW["MLWorker<br/>(RFM, Churn, LTV)"]
     end
 
-    subgraph CoreConsumers ["⚡ Core Consumers (.NET)"]
-        ProdConsumer["ProcessedProductConsumer"]
-        LlmConsumer["LlmUsageConsumer"]
+    subgraph CoreConsumers ["⚡ Core Consumers & IA (.NET)"]
+        ScrapedConsumer["ScrapedProductConsumer<br/>(Orquestrador LLM OpenRouter)"]
         EmailConsumer["EmailNotificationConsumer"]
         AnalyticsConsumer["AnalyticsProcessedConsumer"]
     end
 
-    ScraperCtrl -->|Publica| Q_ECOMMERCE
-    ScraperCtrl -->|Publica| Q_DEMO
-    AnalyticsTrigger -->|Publica| Q_ML
+    ScraperCtrl -->|Publica URL| Q_ECOMMERCE
+    ScraperCtrl -->|Publica Demo| Q_DEMO
+    AnalyticsTrigger -->|Publica Job ML| Q_ML
     PaymentConsumer -->|Publica| Q_EMAILS
 
     Q_ECOMMERCE --> ScraperW
     Q_DEMO --> ScraperW
     Q_ML --> MLW
 
-    ScraperW -->|Publica Sucesso/Falha| Q_PROCESSED
-    ScraperW -->|Telemetria Tokens| Q_LLM_USAGE
+    ScraperW -->|Publica ScrapedRawProductEvent| Q_SCRAPED
     MLW -->|Publica Insights| Q_ML_PROCESSED
 
-    Q_PROCESSED --> ProdConsumer
-    Q_LLM_USAGE --> LlmConsumer
+    Q_SCRAPED --> ScrapedConsumer
+    ScrapedConsumer -->|Enriquece com LLM & Persiste| SQL[("SQL Server (Dapper)<br/>dbo.Products & Logs")]
+    ScrapedConsumer -->|Pub/Sub SSE em tempo real| Redis[("Redis Pub/Sub<br/>events:tenant:{id}")]
     Q_ML_PROCESSED --> AnalyticsConsumer
     Q_EMAILS --> EmailConsumer
 
@@ -73,14 +70,14 @@ flowchart LR
 
 | Fila | Produtor | Consumidor | DLX / Retries | Finalidade |
 |---|---|---|---|---|
-| `ecommerce` | Core API | Worker Python | `ecommerce_dlx` / 3 retries | Requisições padrão de extração e enriquecimento de produtos. |
-| `demo_ecommerce` | Core API (Demo) | Worker Python | `ecommerce_dlx` (Max Priority 10) | Requisições do Live Demo com priorização alta. |
-| `analytics_ml_queue` | Core API | Worker Python | `ecommerce_dlx` | Disparo de jobs analíticos de Machine Learning (RFM/Churn/LTV). |
-| `ecommerce_processed_queue` | Worker Python | Core API | MassTransit Error Queue | Retorno do produto com título, copy SEO, tags e imagem. |
-| `llm_usage_queue` | Worker Python | Core API | MassTransit Error Queue | Registro de consumo de tokens (prompt + completion) e modelo utilizado. |
+| `ecommerce` | Core API | Worker Python | `ecommerce_dlx` / 3 retries | Requisições de extração despachadas para coleta pelo ScraperWorker. |
+| `demo_ecommerce` | Core API (Demo) | Worker Python | `ecommerce_dlx` (Max Priority 10) | Requisições de Live Demo com priorização alta. |
+| `ecommerce_scraped_queue` | Worker Python | Core API | MassTransit Error Queue | Retorno assíncrono com dados brutos raspados (`ScrapedRawProductEvent`) para orquestração de LLM no Core. |
+| `analytics_ml_queue` | Core API | Worker Python | `ecommerce_dlx` | Disparo de jobs analíticos de Machine Learning tabular (RFM/Churn/LTV). |
 | `analytics_processed_queue` | Worker Python | Core API | MassTransit Error Queue | Persistência dos scores de clientes e previsões de churn no banco. |
 | `email_notifications` | Core API | Core API | MassTransit Error Queue | Despacho transacional de emails via Resend com templates Razor. |
 | `nuvemshop_bulk_sync` | Core API | Core API | MassTransit Error Queue | Sincronização em lote de produtos para a API Nuvemshop. |
+| `shopify_bulk_sync` | Core API | Core API | MassTransit Error Queue | Sincronização em lote de produtos para a API Shopify. |
 
 ---
 
@@ -92,33 +89,43 @@ flowchart LR
   "tenantId": "d3b07384-d113-4660-9bb0-a398725b33f5",
   "sku": "PROD-1029",
   "url": "https://loja-concorrente.com/produtos/camiseta-algodao-egipcio",
-  "promptCustomizado": "Foque em criar uma copy voltada para o público esportivo premium",
-  "isByok": false,
-  "userApiKey": null
+  "promptContext": "Foque em criar uma copy voltada para o público esportivo premium",
+  "isByok": false
 }
 ```
 
-### 3.2. `ProductProcessedEvent` (Saída do Scraper)
+### 3.2. `ScrapedRawProductEvent` (Saída do Scraper Python para o Core C#)
 ```json
 {
   "tenantId": "d3b07384-d113-4660-9bb0-a398725b33f5",
   "sku": "PROD-1029",
-  "status": "COMPLETED",
+  "url": "https://loja-concorrente.com/produtos/camiseta-algodao-egipcio",
+  "status": "SCRAPED",
+  "titlePreliminary": "Camiseta Algodão Egípcio",
+  "descriptionPreliminary": "Tecido macio de alta durabilidade...",
+  "price": 189.90,
+  "brand": "Marca X",
+  "category": "Moda Masculina",
+  "images": [
+    "https://loja-concorrente.com/images/camiseta-1.jpg"
+  ],
+  "rawDomText": "Camiseta Algodão Egípcio. Tamanhos P, M, G. Composição 100% algodão.",
+  "jsonLdRaw": "{\"@context\":\"https://schema.org\",\"@type\":\"Product\",\"name\":\"Camiseta Algodão Egípcio\"}",
   "errorMessage": null,
-  "aiMetadataJson": "{\"title\":\"Camiseta Algodão Egípcio Ultra Conforto\",\"description\":\"Tecido nobre...\",\"price\":189.90,\"brand\":\"Marca X\",\"category\":\"Moda Masculina\",\"suggested_tags\":[\"algodao-egipcio\",\"premium\",\"moda-masculina\"]}"
+  "executionTimeMs": 420
 }
 ```
 
-### 3.3. `LlmUsageEvent` (Telemetria de Tokens)
+### 3.3. `ProductEnrichmentMetadata` (Enriquecimento Consolidado pelo C# via OpenRouter)
 ```json
 {
-  "tenantId": "d3b07384-d113-4660-9bb0-a398725b33f5",
-  "model": "deepseek/deepseek-chat",
-  "promptTokens": 542,
-  "completionTokens": 188,
-  "totalTokens": 730,
-  "costUsd": 0.000146,
-  "isByok": false
+  "title": "Camiseta Algodão Egípcio Ultra Conforto Premium",
+  "description": "Desenvolvida com fibras selecionadas de algodão egípcio...",
+  "price": 189.90,
+  "brand": "Marca X",
+  "category": "Moda Masculina",
+  "suggestedTags": ["algodao-egipcio", "moda-masculina", "premium"],
+  "modelUsed": "deepseek/deepseek-chat"
 }
 ```
 
@@ -143,7 +150,7 @@ flowchart LR
 
 ## 🕵️ 4. Pipeline de Scraping Anti-Bloqueio Multi-Tier
 
-O Worker implementa uma esteira resiliente de extração em cascata:
+O Worker Python implementa uma esteira resiliente de extração em cascata, delegando 100% da orquestração de LLM para o Core C#:
 
 ```mermaid
 flowchart TD
@@ -154,26 +161,31 @@ flowchart TD
     Cache -->|Sim| ReturnCached[Retorna Cache de 24h]
     Cache -->|Não| Tier1[Tier 1: Scrapling HTTP TLS Impersonate]
     
-    Tier1 -->|Sucesso 200 OK| Extract[Extrator de Dados]
+    Tier1 -->|Sucesso 200 OK| Extract[Extrator de Dados Brutos]
     Tier1 -->|403 Cloudflare / 429 Ban| Tier2[Tier 2: Camoufox Stealth Browser]
     
     Tier2 --> Extract
     
     Extract --> JsonLd{Possui JSON-LD / Schema.org?}
-    JsonLd -->|Sim| ParseJson[Parse Determinístico Instantâneo]
-    JsonLd -->|Não| Html2Md[HTML para Markdown Limpo]
+    JsonLd -->|Sim| ParseJson[Parse Determinístico de Metadados]
+    JsonLd -->|Não| DomExtract[Extração Heurística de Meta Tags e DOM]
     
-    Html2Md --> LLM[DeepSeek / OpenRouter LLM Fallback]
+    ParseJson --> RawPayload[Monta ScrapedRawProductEvent]
+    DomExtract --> RawPayload
     
-    ParseJson --> Enriched[JSON Normalizado]
-    LLM --> Enriched
+    RawPayload --> PubScraped[Publica em ecommerce_scraped_queue]
     
-    Enriched --> PubProcessed[Publica em ecommerce_processed_queue]
+    PubScraped --> CoreConsumer[Core API: ScrapedProductConsumer]
+    CoreConsumer --> LlmGateway[OpenRouterGateway: Prompt Persuasivo & JSON Mode]
+    LlmGateway --> PersistDb[Persistência Dapper em dbo.Products]
+    LlmGateway --> Metering[Telemetria de Tokens em dbo.LLMUsageLogs]
+    PersistDb --> PubSse[Disparo SSE no Redis: events:tenant:id]
 ```
 
 1. **Tier 1 (Fast HTTP):** Utiliza `curl_cffi` para impersonar o *fingerprint* TLS de navegadores reais (Chrome 120+, JA3/JA4 signatures), garantindo requisições ultrarrápidas (< 500ms).
-2. **Tier 2 (Stealth Browser):** Se a página apresentar desafios Cloudflare Turnstile ou bloqueios de renderização JavaScript, o fallback ativa uma instância headless com camuflagem de WebGL, Canvas e áudio.
-3. **Extração Híbrida (JSON-LD + LLM):** Primeiro busca metadados estruturados Schema.org (`@type: Product`). Se não houver, converte o DOM em Markdown limpo e extrai via `deepseek/deepseek-chat` com *Structured JSON Output*.
+2. **Tier 2 (Stealth Browser):** Se a página apresentar desafios Cloudflare Turnstile ou bloqueios de renderização JavaScript, o fallback ativa uma instância headless com camuflagem de WebGL, Canvas e áudio via Camoufox.
+3. **Extração Bruta Pura (Zero LLM no Worker):** Coleta metadados Schema.org (`@type: Product`), microdados e meta tags OpenGraph. O payload bruto raspado é despachado para `ecommerce_scraped_queue`.
+4. **Enriquecimento Centralizado no Core API (.NET):** O C# consome o payload bruto, aplica delimitação anti-prompt injection, executa a chamada ao OpenRouter com JSON Schema enforcement, grava o produto via Dapper e dispara a atualização SSE para o usuário.
 
 ---
 

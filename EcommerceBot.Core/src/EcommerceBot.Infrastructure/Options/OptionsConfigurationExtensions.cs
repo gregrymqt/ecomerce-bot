@@ -23,6 +23,7 @@ public static class OptionsConfigurationExtensions
         services.Configure<AppOptions>(configuration.GetSection(AppOptions.SectionName));
         services.Configure<DiscordOptions>(configuration.GetSection(DiscordOptions.SectionName));
         services.Configure<CorsOptions>(configuration.GetSection(CorsOptions.SectionName));
+        services.Configure<OpenRouterOptions>(configuration.GetSection(OpenRouterOptions.SectionName));
 
         return services;
     }

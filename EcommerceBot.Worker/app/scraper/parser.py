@@ -1,23 +1,59 @@
 import logging
-from typing import Optional, Dict, Any, List
+import re
+from typing import Optional, Dict, Any, List, Tuple
+from bs4 import BeautifulSoup
+import html2text
 from .scrapling_client import ScraplingEngineService
 from .json_ld_parser import JsonLdParserService
-from .markdown_parser import MarkdownParserService
 
 logger = logging.getLogger(__name__)
 
-class ScraperAndLLMParser:
+
+def clean_html_and_convert_to_markdown(raw_html: str, max_markdown_chars: int = 15000) -> Tuple[str, str]:
     """
-    Orquestrador unificado de Web Scraping e Enriquecimento:
+    Higieniza o HTML removendo scripts e blocos irrelevantes e converte deterministamente
+    para Markdown puro sem qualquer dependência ou chamada de IA.
+    """
+    if not raw_html:
+        return "", ""
+
+    try:
+        soup = BeautifulSoup(raw_html, "html.parser")
+        for tag in ["script", "style", "nav", "footer", "header", "iframe", "noscript", "svg"]:
+            for el in soup.find_all(tag):
+                el.decompose()
+
+        main_content = soup.find("main") or soup.find("article") or soup.find("body") or soup
+        clean_html = str(main_content)
+
+        converter = html2text.HTML2Text()
+        converter.ignore_links = False
+        converter.ignore_images = True
+        converter.ignore_tables = False
+        converter.body_width = 0
+        markdown_text = converter.handle(clean_html).strip()
+
+        if len(markdown_text) > max_markdown_chars:
+            markdown_text = markdown_text[:max_markdown_chars] + "\n...[truncated]"
+
+        return clean_html, markdown_text
+    except Exception as ex:
+        logger.warning(f"Falha na conversão de HTML para Markdown: {ex}")
+        return raw_html, ""
+
+
+class ScraperParser:
+    """
+    Motor unificado de Web Scraping determinístico perimetral (Read-to-Raw):
     1. Scrapling Stealth Engine (Tier 1 HTTP TLS -> Tier 2 Camoufox Browser)
-    2. Extração Determinística JSON-LD / OpenGraph
-    3. Fallback Inteligente via DeepSeek Markdown LLM
+    2. Extração Determinística JSON-LD / OpenGraph / Microdata
+    3. Conversão estruturada de HTML para Markdown determinístico
+    ZERO chamadas e ZERO dependências de LLM.
     """
 
     def __init__(self, proxy_url: Optional[str] = None):
         self.engine = ScraplingEngineService(proxy_url=proxy_url)
         self.json_ld_parser = JsonLdParserService()
-        self.markdown_parser = MarkdownParserService()
 
     async def _fetch_and_parse_shopify_json(self, url: str) -> Optional[Dict[str, Any]]:
         """
@@ -25,7 +61,6 @@ class ScraperAndLLMParser:
         """
         try:
             import httpx
-            import re
             from app.core.shared.security import validate_url_safety
 
             validate_url_safety(url)
@@ -77,15 +112,26 @@ class ScraperAndLLMParser:
                         elif isinstance(img, str):
                             images.append(img)
 
+                meta_attrs = {
+                    "brand": str(brand),
+                    "category": str(category),
+                    "source": "shopify_json"
+                }
+
                 logger.info(f"Extração JSON nativa Shopify bem-sucedida para {url}: {title}")
                 return {
                     "title": title,
+                    "raw_title": title,
                     "description": description,
+                    "raw_description_html": raw_html_body,
+                    "raw_markdown": description,
                     "price": price,
+                    "currency": "BRL",
                     "sku": sku,
                     "brand": brand,
                     "category": category,
                     "images": images,
+                    "meta_attributes": meta_attrs,
                     "source_url": url,
                     "model_used": "shopify/native-json-api",
                     "status": "PROCESSED"
@@ -95,6 +141,10 @@ class ScraperAndLLMParser:
             return None
 
     async def parse_and_enrich(self, url: str, prompt_context: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Executa a extração perimetral do produto via Scrapling, JSON-LD e conversão para Markdown.
+        Retorna os dados brutos estruturados para publicação no RabbitMQ.
+        """
         # 0. Atalho inteligente: Se a URL terminar em .json, processa diretamente via httpx
         if url.strip().lower().endswith(".json"):
             logger.info(f"Detectada URL terminada em .json ({url}). Acionando atalho assíncrono httpx...")
@@ -102,15 +152,15 @@ class ScraperAndLLMParser:
             if shopify_result:
                 return shopify_result
 
-        logger.info(f"🕷️ [Scrapling Pipeline] Coletando página: {url}")
+        logger.info(f"🕷️ [Scrapling Pipeline] Coletando página perimetral: {url}")
         page = await self.engine.fetch_page(url)
 
         # ─────────────────────────────────────────────────────────────
-        # 1. Coleta scripts JSON-LD e Meta Tags via Scrapling / BS4
+        # 1. Coleta scripts JSON-LD e HTML bruto
         # ─────────────────────────────────────────────────────────────
         json_scripts = []
         raw_html = ""
-        
+
         if hasattr(page, "css"):
             try:
                 json_scripts = page.css('script[type="application/ld+json"]').get_all_text()
@@ -119,14 +169,13 @@ class ScraperAndLLMParser:
             raw_html = getattr(page, "text", "") or str(page)
         elif hasattr(page, "text"):
             raw_html = page.text
-            from bs4 import BeautifulSoup
             soup = BeautifulSoup(raw_html, "html.parser")
             json_scripts = [s.get_text() for s in soup.find_all("script", type="application/ld+json")]
 
-        # Extração 1: JSON-LD
+        # Extração 1: JSON-LD determinístico
         extracted = self.json_ld_parser.extract_from_json_ld(json_scripts)
 
-        # Extração 2: Meta tags se faltar campos
+        # Extração 2: Meta tags / OpenGraph se faltarem campos essenciais
         if not extracted["title"] or not extracted["description"] or not extracted["price"]:
             if hasattr(page, "xpath") and hasattr(page, "css"):
                 try:
@@ -149,36 +198,39 @@ class ScraperAndLLMParser:
                     logger.debug(f"Erro ao extrair meta tags: {meta_err}")
 
         # ─────────────────────────────────────────────────────────────
-        # 2. Fallback LLM (DeepSeek Markdown) se ainda faltar título/descrição
+        # 2. Conversão Determinística de HTML para Markdown
         # ─────────────────────────────────────────────────────────────
-        model_used = "scrapling/adaptive-dom"
-        if (not extracted["title"] or not extracted["description"]) and raw_html:
-            logger.info(f"Dados estruturados incompletos para {url}. Acionando Fallback DeepSeek LLM.")
-            llm_data = await self.markdown_parser.parse(raw_html)
-            if llm_data:
-                extracted["title"] = extracted["title"] or llm_data.get("title")
-                extracted["description"] = extracted["description"] or llm_data.get("description")
-                if not extracted["price"] and llm_data.get("price"):
-                    extracted["price"] = self.json_ld_parser._extract_price(llm_data.get("price"))
-                if not extracted["sku"] and llm_data.get("sku"):
-                    extracted["sku"] = llm_data.get("sku")
-                if not extracted["images"] and llm_data.get("image_url"):
-                    extracted["images"] = [llm_data.get("image_url")]
-                model_used = "deepseek/deepseek-chat"
+        clean_html, markdown_text = clean_html_and_convert_to_markdown(raw_html)
 
         title = extracted.get("title") or "Produto Extraído via Scrapling"
-        description = extracted.get("description") or f"Produto coletado automaticamente da fonte {url}."
+        description = extracted.get("description") or markdown_text or f"Produto coletado automaticamente da fonte {url}."
         price = extracted.get("price") or 0.0
+
+        meta_attributes = {
+            "brand": str(extracted.get("brand") or ""),
+            "category": str(extracted.get("category") or ""),
+            "model_used": "scrapling/adaptive-dom",
+            "source_url": url,
+        }
 
         return {
             "title": title,
+            "raw_title": title,
             "description": description,
+            "raw_description_html": clean_html or raw_html,
+            "raw_markdown": markdown_text or description,
             "price": price,
+            "currency": "BRL",
             "sku": extracted.get("sku"),
             "brand": extracted.get("brand"),
             "category": extracted.get("category"),
             "images": extracted.get("images", []),
+            "meta_attributes": meta_attributes,
             "source_url": url,
-            "model_used": model_used,
+            "model_used": "scrapling/adaptive-dom",
             "status": "PROCESSED"
         }
+
+
+# Alias de compatibilidade total para testes e consumidores legados
+ScraperAndLLMParser = ScraperParser

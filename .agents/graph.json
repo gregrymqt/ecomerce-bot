@@ -3,8 +3,8 @@
     "version": "3.0",
     "generator": "generate_knowledge_graph.py",
     "scope": "End-to-End Monorepo (Frontend, Core API, EDA, Worker, Database, Infra)",
-    "total_nodes": 320,
-    "total_edges": 337
+    "total_nodes": 323,
+    "total_edges": 334
   },
   "nodes": [
     {
@@ -397,6 +397,13 @@
       "metadata": {}
     },
     {
+      "id": "gateway:OpenRouterGateway",
+      "label": "OpenRouterGateway",
+      "type": "ExternalGateway",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Gateways/OpenRouterGateway.cs",
+      "metadata": {}
+    },
+    {
       "id": "gateway:ResendGateway",
       "label": "ResendGateway",
       "type": "ExternalGateway",
@@ -471,22 +478,6 @@
       "metadata": {}
     },
     {
-      "id": "consumer:LlmUsageConsumer",
-      "label": "LlmUsageConsumer",
-      "type": "MassTransitConsumer",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Messaging/LlmUsageConsumer.cs",
-      "metadata": {
-        "message": "LlmUsageEvent"
-      }
-    },
-    {
-      "id": "code:MeteringRepository",
-      "label": "MeteringRepository",
-      "type": "CoreServiceOrRepo",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/MeteringRepository.cs",
-      "metadata": {}
-    },
-    {
       "id": "consumer:NuvemshopBulkSyncConsumer",
       "label": "NuvemshopBulkSyncConsumer",
       "type": "MassTransitConsumer",
@@ -554,13 +545,27 @@
       "metadata": {}
     },
     {
-      "id": "consumer:ProcessedProductConsumer",
-      "label": "ProcessedProductConsumer",
+      "id": "consumer:ScrapedProductConsumer",
+      "label": "ScrapedProductConsumer",
       "type": "MassTransitConsumer",
-      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Messaging/ProcessedProductConsumer.cs",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Messaging/ScrapedProductConsumer.cs",
       "metadata": {
-        "message": "ProductProcessedEvent"
+        "message": "ScrapedRawProductEvent"
       }
+    },
+    {
+      "id": "code:OpenRouterGateway",
+      "label": "OpenRouterGateway",
+      "type": "CoreServiceOrRepo",
+      "file": "",
+      "metadata": {}
+    },
+    {
+      "id": "code:MeteringRepository",
+      "label": "MeteringRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/MeteringRepository.cs",
+      "metadata": {}
     },
     {
       "id": "consumer:ShopifyBulkSyncConsumer",
@@ -705,6 +710,13 @@
       "metadata": {}
     },
     {
+      "id": "code:LlmContentParserService",
+      "label": "LlmContentParserService",
+      "type": "CoreService",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/LlmContentParserService.cs",
+      "metadata": {}
+    },
+    {
       "id": "code:MachineLearningService",
       "label": "MachineLearningService",
       "type": "CoreService",
@@ -737,6 +749,13 @@
       "label": "PlanService",
       "type": "CoreService",
       "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/PlanService.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:ProductEnrichmentPromptService",
+      "label": "ProductEnrichmentPromptService",
+      "type": "CoreService",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Services/ProductEnrichmentPromptService.cs",
       "metadata": {}
     },
     {
@@ -1160,6 +1179,27 @@
       "metadata": {}
     },
     {
+      "id": "gateway:IOpenRouterGateway",
+      "label": "IOpenRouterGateway",
+      "type": "ExternalGateway",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/Gateways/IOpenRouterGateway.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:ILlmContentParserService",
+      "label": "ILlmContentParserService",
+      "type": "CoreService",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/Services/ILlmContentParserService.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:IProductEnrichmentPromptService",
+      "label": "IProductEnrichmentPromptService",
+      "type": "CoreService",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Application/Interfaces/Services/IProductEnrichmentPromptService.cs",
+      "metadata": {}
+    },
+    {
       "id": "controller:AdminAiCapacityController",
       "label": "AdminAiCapacityController",
       "type": "ApiController",
@@ -1566,33 +1606,6 @@
       "label": "json_ld_parser.py",
       "type": "ScraperComponent",
       "file": "EcommerceBot.Worker/app/scraper/json_ld_parser.py",
-      "metadata": {}
-    },
-    {
-      "id": "scraper_component:markdown_parser",
-      "label": "markdown_parser.py",
-      "type": "ScraperComponent",
-      "file": "EcommerceBot.Worker/app/scraper/markdown_parser.py",
-      "metadata": {}
-    },
-    {
-      "id": "ai:LLMEngineRouter",
-      "label": "LLMEngineRouter",
-      "type": "AIRouter",
-      "file": "EcommerceBot.Worker/app/ai/router.py",
-      "metadata": {
-        "features": [
-          "PII Masking",
-          "Anti-Prompt Injection",
-          "OWASP LLM Guard"
-        ]
-      }
-    },
-    {
-      "id": "external_api:OpenRouterLLM",
-      "label": "OpenRouter AI API",
-      "type": "ExternalApi",
-      "file": "",
       "metadata": {}
     },
     {
@@ -2919,16 +2932,6 @@
       "relationship": "invokes"
     },
     {
-      "source": "consumer:LlmUsageConsumer",
-      "target": "queue:llm_usage_queue",
-      "relationship": "consumes_from"
-    },
-    {
-      "source": "consumer:LlmUsageConsumer",
-      "target": "code:MeteringRepository",
-      "relationship": "invokes"
-    },
-    {
       "source": "consumer:NuvemshopBulkSyncConsumer",
       "target": "queue:nuvemshop_bulk_sync",
       "relationship": "consumes_from"
@@ -3004,27 +3007,27 @@
       "relationship": "invokes"
     },
     {
-      "source": "consumer:ProcessedProductConsumer",
-      "target": "queue:ecommerce_processed_queue",
-      "relationship": "consumes_from"
+      "source": "consumer:ScrapedProductConsumer",
+      "target": "code:OpenRouterGateway",
+      "relationship": "invokes"
     },
     {
-      "source": "consumer:ProcessedProductConsumer",
-      "target": "channel:events:tenant",
-      "relationship": "publishes_to"
-    },
-    {
-      "source": "consumer:ProcessedProductConsumer",
+      "source": "consumer:ScrapedProductConsumer",
       "target": "code:ProductRepository",
       "relationship": "invokes"
     },
     {
-      "source": "consumer:ProcessedProductConsumer",
+      "source": "consumer:ScrapedProductConsumer",
       "target": "code:TenantRepository",
       "relationship": "invokes"
     },
     {
-      "source": "consumer:ProcessedProductConsumer",
+      "source": "consumer:ScrapedProductConsumer",
+      "target": "code:MeteringRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:ScrapedProductConsumer",
       "target": "code:RedisService",
       "relationship": "invokes"
     },
@@ -3869,6 +3872,16 @@
       "relationship": "invokes"
     },
     {
+      "source": "code:ILlmContentParserService",
+      "target": "code:LlmContentParserService",
+      "relationship": "invokes"
+    },
+    {
+      "source": "code:IProductEnrichmentPromptService",
+      "target": "code:ProductEnrichmentPromptService",
+      "relationship": "invokes"
+    },
+    {
       "source": "controller:AdminAiCapacityController",
       "target": "code:AiCapacityService",
       "relationship": "invokes"
@@ -4069,21 +4082,6 @@
       "relationship": "uses"
     },
     {
-      "source": "worker:ScraperWorker",
-      "target": "scraper_component:markdown_parser",
-      "relationship": "uses"
-    },
-    {
-      "source": "ai:LLMEngineRouter",
-      "target": "external_api:OpenRouterLLM",
-      "relationship": "integrates_with"
-    },
-    {
-      "source": "scraper_component:parser",
-      "target": "ai:LLMEngineRouter",
-      "relationship": "invokes"
-    },
-    {
       "source": "worker:MLWorker",
       "target": "queue:analytics_ml_queue",
       "relationship": "consumes_from"
@@ -4225,12 +4223,12 @@
     },
     {
       "source": "frontend_service:integration.service",
-      "target": "controller:IntegrationsController",
+      "target": "controller:NuvemshopIntegrationController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:integration.service",
-      "target": "controller:NuvemshopIntegrationController",
+      "target": "controller:IntegrationsController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4250,12 +4248,12 @@
     },
     {
       "source": "frontend_service:product.service",
-      "target": "controller:ProductsController",
+      "target": "controller:ShopifyIntegrationController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:product.service",
-      "target": "controller:ShopifyIntegrationController",
+      "target": "controller:ProductsController",
       "relationship": "calls_endpoint"
     },
     {

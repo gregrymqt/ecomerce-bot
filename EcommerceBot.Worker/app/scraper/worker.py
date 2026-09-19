@@ -3,8 +3,8 @@ import hashlib
 import json
 import aio_pika
 from pydantic import ValidationError
-from .parser import ScraperAndLLMParser
-from .schemas import ScrapingRequest, ProductEnrichmentMetadata, ProductProcessedEvent, LlmUsageEvent
+from .parser import ScraperParser, ScraperAndLLMParser
+from .schemas import ScrapingRequest, ScrapedRawProductEvent
 from app.core.config.settings import settings
 from app.core.shared.logger import get_logger
 from app.core.shared.security import validate_url_safety
@@ -12,17 +12,16 @@ from app.core.config.redis_db import redis_cache
 from app.core.config.rabbitmq import (
     QUEUE_ECOMMERCE,
     QUEUE_DEMO_ECOMMERCE,
-    QUEUE_ECOMMERCE_PROCESSED,
-    QUEUE_LLM_USAGE,
+    QUEUE_ECOMMERCE_SCRAPED,
     ECOMMERCE_QUEUE_ARGS,
     DEMO_ECOMMERCE_QUEUE_ARGS,
 )
 
 logger = get_logger("worker.scraper")
 
-QUEUE_OUTPUT = QUEUE_ECOMMERCE_PROCESSED
+QUEUE_OUTPUT = QUEUE_ECOMMERCE_SCRAPED
 
-async def _process_single_message(message: aio_pika.IncomingMessage, channel: aio_pika.Channel, parser: ScraperAndLLMParser):
+async def _process_single_message(message: aio_pika.IncomingMessage, channel: aio_pika.Channel, parser: ScraperParser):
     async with message.process():
         body_text = message.body.decode("utf-8")
         try:
@@ -32,21 +31,19 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
                 f"Payload com erro de validação Pydantic no ScraperWorker: {val_err}",
                 extra={"body": body_text, "errors": val_err.errors()}
             )
-            # Tenta recuperar tenant_id e sku para notificar o C# (estorno de créditos no Ledger e encerramento de SSE)
+            # Notifica o C# via ScrapedRawProductEvent com Success=False para centralização de estornos e SSE
             try:
                 raw_payload = json.loads(body_text)
                 raw_tenant = raw_payload.get("tenantId") or raw_payload.get("TenantId") or raw_payload.get("tenant_id")
                 raw_sku = raw_payload.get("sku") or raw_payload.get("Sku") or raw_payload.get("productId") or raw_payload.get("ProductId") or "unknown"
+                raw_url = raw_payload.get("url") or raw_payload.get("Url") or raw_payload.get("targetUrl") or ""
                 if raw_tenant:
-                    failed_event = ProductProcessedEvent(
+                    failed_event = ScrapedRawProductEvent(
                         tenant_id=raw_tenant,
                         sku=str(raw_sku),
-                        title="",
-                        description="",
-                        status="FAILED",
-                        is_fallback=True,
-                        error_message=f"Payload inválido ou incompleto recebido no ScraperWorker: {val_err.error_count()} erro(s) de validação.",
-                        ai_metadata_json="{}"
+                        url=str(raw_url),
+                        success=False,
+                        error_message=f"Payload inválido ou incompleto recebido no ScraperWorker: {val_err.error_count()} erro(s) de validação."
                     )
                     await channel.default_exchange.publish(
                         aio_pika.Message(
@@ -67,7 +64,6 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
         sku = req.sku
         url = req.url
         prompt_ctx = req.prompt_context
-        is_byok = req.is_byok
 
         # 1. Verificação de Idempotência no Redis (TTL 24h) baseada no hash SHA-256 da URL canônica
         canonical_url = str(url).strip().lower()
@@ -81,7 +77,7 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
             return
 
         logger.info(
-            f"Processando Scraping com Scrapling para Tenant {tenant_id} | SKU {sku} | URL {url} | BYOK: {is_byok}",
+            f"Processando Scraping determinístico para Tenant {tenant_id} | SKU {sku} | URL {url}",
             extra={"tenant_id": str(tenant_id), "sku": str(sku), "url": str(url)}
         )
 
@@ -93,15 +89,13 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
                 f"Bloqueio de segurança Anti-SSRF/Rede para URL {url}: {ssrf_err}",
                 extra={"tenant_id": str(tenant_id), "sku": str(sku), "reason": str(ssrf_err)}
             )
-            failed_event = ProductProcessedEvent(
+            failed_event = ScrapedRawProductEvent(
                 tenant_id=tenant_id,
                 sku=sku,
-                title="",
-                description="",
-                status="FAILED",
-                is_fallback=True,
-                error_message=f"Bloqueio de rede / Anti-SSRF: {ssrf_err}",
-                ai_metadata_json="{}"
+                url=str(url),
+                prompt_context=prompt_ctx,
+                success=False,
+                error_message=f"Bloqueio de rede / Anti-SSRF: {ssrf_err}"
             )
             try:
                 await channel.default_exchange.publish(
@@ -122,65 +116,42 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
             raw_images = result.get("images", [])
             images_list = raw_images if isinstance(raw_images, list) else []
 
-            enrichment_metadata = ProductEnrichmentMetadata(
-                price=result.get("price"),
-                brand=result.get("brand"),
-                category=result.get("category"),
-                model_used=result.get("model_used", "scrapling/adaptive-dom"),
-                images=images_list
-            )
+            meta_attrs = result.get("meta_attributes", {})
+            if not isinstance(meta_attrs, dict):
+                meta_attrs = {}
 
-            response_event = ProductProcessedEvent(
+            response_event = ScrapedRawProductEvent(
                 tenant_id=tenant_id,
                 sku=sku,
-                title=result.get("title", ""),
-                description=result.get("description", ""),
-                status="PROCESSED",
-                is_fallback=False,
-                error_message="",
-                ai_metadata_json=enrichment_metadata.model_dump_json(by_alias=True)
+                url=url,
+                raw_title=result.get("raw_title") or result.get("title", ""),
+                raw_description_html=result.get("raw_description_html", ""),
+                raw_markdown=result.get("raw_markdown") or result.get("description", ""),
+                price=result.get("price"),
+                currency=result.get("currency", "BRL"),
+                images=images_list,
+                meta_attributes={str(k): str(v) for k, v in meta_attrs.items()},
+                prompt_context=prompt_ctx,
+                success=True,
+                error_message=None
             )
-            logger.info(f"Scraping bem-sucedido para SKU {sku}. Publicando no {QUEUE_OUTPUT}")
-
-            # Publica evento assíncrono de telemetria de LLM em llm_usage_queue
-            usage_event = LlmUsageEvent(
-                tenant_id=tenant_id,
-                product_id=sku,
-                provider="openrouter",
-                model_used=result.get("model_used", "deepseek/deepseek-chat"),
-                prompt_tokens=result.get("prompt_tokens", 350),
-                completion_tokens=result.get("completion_tokens", 250),
-                total_tokens=result.get("total_tokens", 600),
-                estimated_cost_usd=0.0 if is_byok else 0.00015,
-                is_byok=is_byok,
-                execution_time_ms=result.get("duration_ms", 1200)
-            )
-            await channel.default_exchange.publish(
-                aio_pika.Message(
-                    body=usage_event.model_dump_json(by_alias=True).encode("utf-8"),
-                    content_type="application/json",
-                    delivery_mode=aio_pika.DeliveryMode.PERSISTENT
-                ),
-                routing_key=QUEUE_LLM_USAGE
-            )
+            logger.info(f"Scraping concluído para SKU {sku}. Publicando dados brutos em {QUEUE_OUTPUT}")
 
             # 3. Registra chave de idempotência com TTL de 24h
             await redis_cache.set_idempotency_key(idempotency_key, ttl_seconds=86400)
 
         except Exception as ex:
-            logger.error(f"Falha no Scraping para SKU {sku} ({url}): {ex}", exc_info=True)
-            response_event = ProductProcessedEvent(
+            logger.error(f"Falha no Scraping perimetral para SKU {sku} ({url}): {ex}", exc_info=True)
+            response_event = ScrapedRawProductEvent(
                 tenant_id=tenant_id,
                 sku=sku,
-                title="",
-                description="",
-                status="FAILED",
-                is_fallback=True,
-                error_message=str(ex),
-                ai_metadata_json="{}"
+                url=url,
+                prompt_context=prompt_ctx,
+                success=False,
+                error_message=str(ex)
             )
 
-        # Publica o resultado no RabbitMQ
+        # Publica o resultado (sucesso ou falha) na fila de scraping intermediária
         try:
             await channel.default_exchange.publish(
                 aio_pika.Message(
@@ -198,9 +169,10 @@ async def start_scraper_worker():
     """
     Worker resiliente com reconexão automática ao RabbitMQ e DLQs configuradas.
     Escuta concorrentemente as filas QUEUE_ECOMMERCE e QUEUE_DEMO_ECOMMERCE.
+    Publica os dados raspados em QUEUE_ECOMMERCE_SCRAPED para orquestração no C#.
     """
     logger.info(f"Inicializando ScraperWorker conectado a {settings.RABBITMQ_URL}...")
-    parser = ScraperAndLLMParser()
+    parser = ScraperParser()
 
     while True:
         try:
@@ -213,7 +185,6 @@ async def start_scraper_worker():
                 queue_prod = await channel.declare_queue(QUEUE_ECOMMERCE, durable=True, arguments=ECOMMERCE_QUEUE_ARGS)
                 queue_demo = await channel.declare_queue(QUEUE_DEMO_ECOMMERCE, durable=True, arguments=DEMO_ECOMMERCE_QUEUE_ARGS)
                 await channel.declare_queue(QUEUE_OUTPUT, durable=True)
-                await channel.declare_queue(QUEUE_LLM_USAGE, durable=True)
 
                 logger.info(f"ScraperWorker pronto e escutando nas filas '{QUEUE_ECOMMERCE}' e '{QUEUE_DEMO_ECOMMERCE}'...")
 

@@ -17,7 +17,7 @@ flowchart TD
     subgraph CoreBackend ["⚡ Core API (.NET 9)"]
         API["EcommerceBot.Api<br/>(Controllers, Middlewares)"]
         APP["EcommerceBot.Application<br/>(Use Cases, DTOs, ViewModels)"]
-        INFRA["EcommerceBot.Infrastructure<br/>(Dapper, MassTransit, Gateways)"]
+        INFRA["EcommerceBot.Infrastructure<br/>(Dapper, MassTransit, LLM Gateways)"]
         DOMAIN["EcommerceBot.Domain<br/>(Entidades, Enums, Interfaces)"]
     end
 
@@ -31,8 +31,8 @@ flowchart TD
         RABBIT[("RabbitMQ 3.13<br/>(Raw JSON + DLQs 7d)")]
     end
 
-    subgraph AIEngine ["🐍 AI / ML Engine (Python 3.13)"]
-        WORKER["EcommerceBot.Worker<br/>(Scrapling + DeepSeek + Scikit-Learn)"]
+    subgraph AIEngine ["🐍 Scraping & ML Worker (Python 3.13)"]
+        WORKER["EcommerceBot.Worker<br/>(Scrapling + Camoufox + Scikit-Learn)"]
     end
 
     SPA -->|HTTP / SSE / Cookie JWT| API
@@ -52,8 +52,8 @@ flowchart TD
 | Componente | Tecnologia | Responsabilidade Principal |
 |---|---|---|
 | **`EcommerceBot.Web`** | React 18, TypeScript, Vite, Tailwind CSS | SPA responsiva (Mobile-First, A11y), autenticação JWT via Cookie `HttpOnly`, SSE em tempo real. |
-| **`EcommerceBot.Core`** | .NET 9, C#, ASP.NET Core Web API | Clean Architecture / DDD, autenticação, multi-tenancy estrito, Dapper ORM, Gateways (Mercado Pago, Resend, Shopify, Nuvemshop), orquestração MassTransit. |
-| **`EcommerceBot.Worker`** | Python 3.13, FastAPI, aio-pika, Scrapling, Scikit-Learn | Inferência LLM (OpenRouter / DeepSeek / Groq), Web Scraping inteligente anti-bot e modelos preditivos de Machine Learning (RFM, Churn, LTV). **Zero acesso direto ao banco de dados.** |
+| **`EcommerceBot.Core`** | .NET 9, C#, ASP.NET Core Web API | Clean Architecture / DDD, autenticação, multi-tenancy estrito, Dapper ORM, Gateways (Mercado Pago, Resend, Shopify, Nuvemshop, OpenRouter LLM), orquestração MassTransit e enriquecimento semântico com IA. |
+| **`EcommerceBot.Worker`** | Python 3.13, FastAPI, aio-pika, Scrapling, Scikit-Learn | Web Scraping evasivo multi-tier (Scrapling + Camoufox + JSON-LD) e modelos preditivos locais de Machine Learning (RFM, Churn, LTV). **Zero chamadas externas de LLM e zero acesso direto ao banco de dados.** |
 | **`Database.Migrations`** | .NET 8, C#, DbUp | Execução determinística e idempotente de migrações T-SQL no Microsoft SQL Server 2022. |
 
 ---
@@ -110,5 +110,6 @@ EcommerceBot.Core/
 
 O `EcommerceBot.Worker` foi desenhado seguindo a filosofia de microsserviço especializado:
 - **Sem Conexão com Banco de Dados:** O Worker não possui drivers relacionais (`asyncpg`, `pyodbc`, `psycopg2`). Qualquer necessidade de persistência ou leitura é solicitada e confirmada via eventos AMQP no RabbitMQ.
+- **Zero Chamadas Externas de LLM:** O Worker não orquestra nem executa chamadas a APIs de LLMs externas (OpenRouter, DeepSeek). Sua responsabilidade no fluxo de produtos restringe-se a raspar o HTML e metadados brutos e despachar o evento `ScrapedRawProductEvent` para a fila `ecommerce_scraped_queue` consumida pelo Core API C#.
 - **Processamento Assíncrono Não-Bloqueante:** Mensagens de scraping I/O-bound utilizam `asyncio` e bibliotecas assíncronas (`aio-pika`, `httpx`, `curl_cffi`). Modelos de ML CPU-bound (Scikit-Learn) são executados via `asyncio.to_thread` para não travar o loop de consumo.
 - **Fail-Safe & Dead-Lettering:** Erros de scraping transitórios ou definitivos publicam eventos de falha e, em caso de erro irrecuperável do worker, a mensagem é roteada para a DLQ `dlq_ecommerce`.

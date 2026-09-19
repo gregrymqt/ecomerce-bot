@@ -167,6 +167,8 @@ public sealed class ProductRepository : IProductRepository
                 StockQuantity = @StockQuantity,
                 Status = @Status,
                 ImagesJson = @ImagesJson,
+                EnrichmentMetadata = COALESCE(@EnrichmentMetadata, EnrichmentMetadata),
+                ErrorMessage = @ErrorMessage,
                 ShopifyProductId = COALESCE(@ShopifyProductId, ShopifyProductId),
                 ShopifyVariantId = COALESCE(@ShopifyVariantId, ShopifyVariantId),
                 ShopifyInventoryItemId = COALESCE(@ShopifyInventoryItemId, ShopifyInventoryItemId),

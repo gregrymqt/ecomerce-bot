@@ -17,11 +17,10 @@ public static class MassTransitExtensions
         services.AddMassTransit(x =>
         {
             // 1. Registra os Consumers de eventos
-            x.AddConsumer<ProcessedProductConsumer>();
+            x.AddConsumer<ScrapedProductConsumer>();
             x.AddConsumer<EmailNotificationConsumer>();
             x.AddConsumer<NuvemshopBulkSyncConsumer>();
             x.AddConsumer<ShopifyBulkSyncConsumer>();
-            x.AddConsumer<LlmUsageConsumer>();
             x.AddConsumer<AnalyticsProcessedConsumer>();
             x.AddConsumer<PaymentProcessingConsumer>();
 
@@ -46,14 +45,9 @@ public static class MassTransitExtensions
                 ));
 
                 // 2. Endpoints de fila de Scraping e IA
-                cfg.ReceiveEndpoint("ecommerce_processed_queue", e =>
+                cfg.ReceiveEndpoint("ecommerce_scraped_queue", e =>
                 {
-                    e.ConfigureConsumer<ProcessedProductConsumer>(context);
-                });
-
-                cfg.ReceiveEndpoint("llm_usage_queue", e =>
-                {
-                    e.ConfigureConsumer<LlmUsageConsumer>(context);
+                    e.ConfigureConsumer<ScrapedProductConsumer>(context);
                 });
 
                 // 3. Endpoints de Notificações e Integrações

@@ -79,42 +79,6 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("AES_MASTER_KEY", "Security__AesMasterKey")
     )
 
-    # Provedores de IA / LLMs
-    OPENROUTER_API_KEY: str = Field(
-        default="",
-        validation_alias=AliasChoices("OPENROUTER_API_KEY", "OpenRouter_API_Key", "OPENROUTER_KEY")
-    )
-    OPENROUTER_BASE_URL: str = Field(
-        default="https://openrouter.ai/api/v1",
-        validation_alias=AliasChoices("OPENROUTER_BASE_URL", "OpenRouter_Base_Url")
-    )
-    DEEPSEEK_API_KEY: str | None = Field(
-        default=None,
-        validation_alias=AliasChoices("DEEPSEEK_API_KEY", "Deepseek_Api_Key", "DEEPSEEK_KEY")
-    )
-    GROQ_API_KEY: str | None = Field(
-        default=None,
-        validation_alias=AliasChoices("GROQ_API_KEY", "Groq_API_KEY", "GROQ_KEY")
-    )
-    OPENAI_API_KEY: str | None = Field(
-        default=None,
-        validation_alias=AliasChoices("OPENAI_API_KEY", "OpenAI_API_Key", "OPENAI_KEY")
-    )
-
-    # Modelos Padrão e Fallbacks
-    DEFAULT_PRIMARY_MODEL: str = Field(
-        default="deepseek/deepseek-chat",
-        validation_alias=AliasChoices("DEFAULT_PRIMARY_MODEL", "Primary_Model")
-    )
-    DEFAULT_FALLBACK_MODEL_1: str = Field(
-        default="groq/llama-3.3-70b-versatile",
-        validation_alias=AliasChoices("DEFAULT_FALLBACK_MODEL_1", "Fallback_Model_1")
-    )
-    DEFAULT_FALLBACK_MODEL_2: str = Field(
-        default="google/gemini-2.0-flash-001",
-        validation_alias=AliasChoices("DEFAULT_FALLBACK_MODEL_2", "Fallback_Model_2")
-    )
-
     # Alertas e Telemetria
     LOW_BALANCE_THRESHOLD: int = 10
     DISCORD_WEBHOOK_URL: str = Field(

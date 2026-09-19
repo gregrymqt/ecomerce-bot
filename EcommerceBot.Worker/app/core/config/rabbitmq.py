@@ -16,9 +16,8 @@ QUEUE_ECOMMERCE = "ecommerce"
 QUEUE_DEMO_ECOMMERCE = "demo_ecommerce"
 QUEUE_ANALYTICS_ML = "analytics_ml_queue"
 
-QUEUE_ECOMMERCE_PROCESSED = "ecommerce_processed_queue"
+QUEUE_ECOMMERCE_SCRAPED = "ecommerce_scraped_queue"
 QUEUE_ANALYTICS_PROCESSED = "analytics_processed_queue"
-QUEUE_LLM_USAGE = "llm_usage_queue"
 QUEUE_DLQ_ECOMMERCE = "dlq_ecommerce"
 
 # Argumentos Canônicos de Filas (Garante correspondência exata em todos os workers)
@@ -128,13 +127,8 @@ async def configure_rabbitmq_topology(
         # ------------------------------------------------------------------
         # 3. FILAS DE SAÍDA DO WORKER (Consumidas pelo Core .NET)
         # ------------------------------------------------------------------
-        ecommerce_processed_queue = await channel.declare_queue(
-            QUEUE_ECOMMERCE_PROCESSED,
-            durable=True
-        )
-
-        llm_usage_queue = await channel.declare_queue(
-            QUEUE_LLM_USAGE,
+        ecommerce_scraped_queue = await channel.declare_queue(
+            QUEUE_ECOMMERCE_SCRAPED,
             durable=True
         )
 
@@ -148,10 +142,9 @@ async def configure_rabbitmq_topology(
         return {
             "demo_ecommerce": demo_ecommerce,
             "ecommerce": ecommerce,
-            "ecommerce_processed_queue": ecommerce_processed_queue,
+            "ecommerce_scraped_queue": ecommerce_scraped_queue,
             "analytics_ml_queue": analytics_ml_queue,
             "analytics_processed_queue": analytics_processed_queue,
-            "llm_usage_queue": llm_usage_queue,
             "dlq_ecommerce": dlq_ecommerce,
         }
 
