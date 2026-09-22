@@ -1,0 +1,51 @@
+{
+  "id": "golden_cosmetics_003",
+  "category": "Beleza > Cuidados com a Pele > Sérum Facial",
+  "input": {
+    "tenantId": "33333333-3333-3333-3333-333333333333",
+    "sku": "BEAU-SERUM-003",
+    "url": "https://lojaexemplo.com.br/serum-glow-vitamina-c",
+    "rawTitle": "Sérum Facial Vitamina C Glow 15% Ácido Hialurônico 30ml Tratamento Pele",
+    "rawMarkdown": "Sérum antioxidante de alta performance com 15% de Vitamina C estabilizada e Ácido Hialurônico de baixo peso molecular. Reduz a aparência de poros e linhas finas, promovendo brilho saudável. Textura aquosa de rápida absorção, livre de parabenos, crueldade animal e sulfatos. Modo de uso: aplicar 3 a 4 gotas pela manhã e à noite antes do hidratante.",
+    "price": 129.50,
+    "currency": "BRL",
+    "metaAttributes": {
+      "category": "Beleza > Cuidados com a Pele > Sérum Facial",
+      "brand": "Glow Dermocosmetics",
+      "volume": "30ml",
+      "skin_type": "Todos os tipos de pele"
+    },
+    "promptContext": "Tom inspirador, dermatológico e focado em autocuidado e luminosidade da pele."
+  },
+  "expected_output": {
+    "title": "Sérum Facial Glow Vitamina C 15% 30ml - Uniformizador e Firmeza",
+    "description": "Revitalize a saúde e a radiância da sua pele com o Sérum Facial Glow Vitamina C 15%. Formulado com uma concentração pura e estável de Vitamina C combinada com Ácido Hialurônico, atua na redução de manchas superficiais, estímulo à produção natural de colágeno e proteção celular contra o estresse oxidativo diário. Sua textura aquosa ultraleve é rapidamente absorvida sem deixar resíduos oleosos.",
+    "bullet_points": [
+      "Fórmula potente com 15% de Vitamina C estabilizada para ação antioxidante avançada",
+      "Ácido hialurônico de baixo peso molecular para hidratação profunda e duradoura",
+      "Textura fluida não-oleosa com absorção rápida para todos os tipos de pele",
+      "Fórmula limpa: dermatologicamente testada, vegana e livre de crueldade animal"
+    ],
+    "seo_keywords": [
+      "sérum vitamina c facial",
+      "antioxidante com ácido hialurônico",
+      "sérum clareador de manchas",
+      "cuidados com a pele glow",
+      "sérum anti-idade facial 30ml"
+    ],
+    "faqs": [
+      {
+        "question": "O sérum com vitamina C pode ser usado durante o dia?",
+        "answer": "Sim. Recomenda-se a aplicação diurna seguida obrigatoriamente do uso de protetor solar com FPS 30 ou superior para potencializar a ação fotoprotetora."
+      },
+      {
+        "question": "Pessoas com pele oleosa ou acneica podem utilizar o produto?",
+        "answer": "Sim. O sérum é formulado em base aquosa não comedogênica, absorvendo rapidamente sem obstruir os poros ou estimular o brilho excessivo."
+      },
+      {
+        "question": "Em quanto tempo é possível notar os primeiros resultados?",
+        "answer": "Com uso contínuo diário, melhorias na textura e luminosidade são visíveis a partir da segunda semana de aplicação regular."
+      }
+    ]
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "id": "golden_fashion_001",
+  "category": "Moda Feminina > Vestidos",
+  "input": {
+    "tenantId": "11111111-1111-1111-1111-111111111111",
+    "sku": "FASH-VEST-001",
+    "url": "https://lojaexemplo.com.br/vestido-midi-canelado",
+    "rawTitle": "Vestido Midi Canelado Elegance Feminino Manga Curta Tecido Premium",
+    "rawMarkdown": "Vestido confeccionado em tecido canelado encorpado com elastano. Modelagem justa ao corpo com fenda lateral discreta. Composição: 96% viscose, 4% elastano. Ideal para eventos sociais e ambiente corporativo.",
+    "price": 189.90,
+    "currency": "BRL",
+    "metaAttributes": {
+      "category": "Moda Feminina > Vestidos",
+      "brand": "Elegance Fashion",
+      "material": "Viscose com elastano",
+      "color": "Preto Clássico"
+    },
+    "promptContext": "Tom sofisticado e focado em caimento e estilo de vida."
+  },
+  "expected_output": {
+    "title": "Vestido Midi Canelado Elegance Feminino - Caimento Impecável e Conforto",
+    "description": "Realce sua elegância natural com o Vestido Midi Canelado Elegance. Desenvolvido em malha premium encorpada com elastano, adapta-se com perfeição às curvas proporcionando extremo conforto e liberdade de movimentos ao longo de todo o dia. Uma peça versátil e indispensável para compor looks refinados no trabalho ou ocasiões especiais.",
+    "bullet_points": [
+      "Malha canelada premium encorpada que não marca e não fica transparente",
+      "Composição com elastano para caimento ajustado com máxima mobilidade",
+      "Comprimento midi clássico com fenda lateral sutil para um toque sofisticado",
+      "Fácil manutenção: tecido que não amassa com facilidade e mantém a cor viva"
+    ],
+    "seo_keywords": [
+      "vestido midi canelado",
+      "vestido feminino elegante",
+      "vestido midi manga curta",
+      "moda feminina sofisticada",
+      "vestido midi trabalho"
+    ],
+    "faqs": [
+      {
+        "question": "O tecido do vestido canelado fica transparente no corpo?",
+        "answer": "Não. O tecido possui gramatura premium e forro duplo na parte superior, assegurando opacidade completa mesmo sob luz solar direta."
+      },
+      {
+        "question": "Como escolher o tamanho ideal do vestido?",
+        "answer": "Devido à elasticidade da malha canelada, recomendamos escolher o seu tamanho habitual para um caimento ajustado e confortável."
+      },
+      {
+        "question": "A peça encolhe após a lavagem?",
+        "answer": "Não, desde que sejam seguidas as orientações de lavagem em água fria e secagem à sombra indicadas na etiqueta."
+      }
+    ]
+  }
+}

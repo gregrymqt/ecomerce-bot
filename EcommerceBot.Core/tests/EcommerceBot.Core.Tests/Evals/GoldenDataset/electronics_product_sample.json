@@ -1,0 +1,52 @@
+{
+  "id": "golden_electronics_002",
+  "category": "Eletrônicos > Áudio > Fones de Ouvido",
+  "input": {
+    "tenantId": "22222222-2222-2222-2222-222222222222",
+    "sku": "ELEC-FONE-002",
+    "url": "https://lojaexemplo.com.br/fone-soundpro-max-anc",
+    "rawTitle": "Fone De Ouvido Sem Fio Bluetooth SoundPro Max Cancelamento Ruído Bateria 40h Preto",
+    "rawMarkdown": "Fone over-ear com drivers de 40mm. Cancelamento ativo de ruído ANC híbrido até 35dB. Bluetooth 5.3 com codec AAC e SBC. Autonomia de 40 horas sem ANC e 30 horas com ANC ativado. Carregamento rápido USB-C (10 min = 5 horas). Microfone embutido com ENC para chamadas limpas. Garantia de 12 meses.",
+    "price": 349.00,
+    "currency": "BRL",
+    "metaAttributes": {
+      "category": "Eletrônicos > Áudio > Fones de Ouvido",
+      "brand": "SoundPro",
+      "connectivity": "Bluetooth 5.3",
+      "battery": "40 horas"
+    },
+    "promptContext": "Tom técnico, objetivo e autoritário destacando especificações de áudio e bateria."
+  },
+  "expected_output": {
+    "title": "Fone Bluetooth SoundPro Max ANC - Cancelamento Ativo e 40h de Bateria",
+    "description": "Mergulhe em uma experiência sonora de alta fidelidade com o Fone Bluetooth SoundPro Max. Dotado de Cancelamento Ativo de Ruído (ANC) híbrido capaz de atenuar até 35dB de ruídos externos e drivers acústicos de 40mm, entrega agudos límpidos e graves encorpados. Sua conectividade Bluetooth 5.3 garante latência ultrabaixa para músicas, filmes e videochamadas com até 40 horas ininterruptas de bateria.",
+    "bullet_points": [
+      "Cancelamento Ativo de Ruído (ANC) híbrido de até 35dB para imersão acústica total",
+      "Bateria com autonomia prolongada de até 40 horas contínuas e carga rápida USB-C",
+      "Conexão Bluetooth 5.3 de alcance estável com suporte a múltiplos dispositivos",
+      "Microfones direcionais com tecnologia ENC para chamadas de voz com máxima nitidez",
+      "Almofadas com memória de espuma e design ergonômico para uso confortável prolongado"
+    ],
+    "seo_keywords": [
+      "fone bluetooth cancelamento de ruído",
+      "fone soundpro max anc",
+      "headphone sem fio 40h bateria",
+      "fone over ear bluetooth",
+      "fone de ouvido para trabalho e viagem"
+    ],
+    "faqs": [
+      {
+        "question": "O fone funciona com fio caso a bateria descarregue?",
+        "answer": "Sim, acompanha cabo de áudio P2 (3.5mm) banhado a ouro que permite uso contínuo mesmo com a bateria zerada."
+      },
+      {
+        "question": "É compatível com computadores e videogames?",
+        "answer": "Sim, é compatível via Bluetooth com smartphones Android, iOS, computadores Windows, Mac e consoles compatíveis com áudio Bluetooth."
+      },
+      {
+        "question": "Qual o período de garantia do produto?",
+        "answer": "O produto possui garantia oficial de 12 meses contra qualquer defeito de fabricação com suporte nacional."
+      }
+    ]
+  }
+}
