@@ -23,6 +23,7 @@ public sealed record ProductEnrichmentLlmResponse
     public int TotalTokens => PromptTokens + CompletionTokens;
     public decimal TotalCostEstimated { get; init; }
     public string ModelUsed { get; init; } = string.Empty;
+    public long? ExecutionTimeMs { get; init; }
     public bool IsFallback { get; init; }
     public string? ErrorMessage { get; init; }
 }

@@ -3,8 +3,8 @@
     "version": "3.0",
     "generator": "generate_knowledge_graph.py",
     "scope": "End-to-End Monorepo (Frontend, Core API, EDA, Worker, Database, Infra)",
-    "total_nodes": 323,
-    "total_edges": 334
+    "total_nodes": 326,
+    "total_edges": 338
   },
   "nodes": [
     {
@@ -222,6 +222,13 @@
       "label": "vw_Monitor_ActiveSnapshotTransactions",
       "type": "DatabaseView",
       "file": "Database.Migrations/Scripts/016_Diagnostic_Deadlocks_And_WaitStats_Views.sql",
+      "metadata": {}
+    },
+    {
+      "id": "table:CategorySeoGuidelines",
+      "label": "CategorySeoGuidelines",
+      "type": "DatabaseTable",
+      "file": "Database.Migrations/Scripts/017_Category_Seo_Guidelines.sql",
       "metadata": {}
     },
     {
@@ -568,6 +575,13 @@
       "metadata": {}
     },
     {
+      "id": "code:CategorySeoGuidelinesRepository",
+      "label": "CategorySeoGuidelinesRepository",
+      "type": "CoreServiceOrRepo",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Infrastructure/Repositories/CategorySeoGuidelinesRepository.cs",
+      "metadata": {}
+    },
+    {
       "id": "consumer:ShopifyBulkSyncConsumer",
       "label": "ShopifyBulkSyncConsumer",
       "type": "MassTransitConsumer",
@@ -854,6 +868,13 @@
       "label": "IAuditRepository",
       "type": "CoreRepository",
       "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/IAuditRepository.cs",
+      "metadata": {}
+    },
+    {
+      "id": "code:ICategorySeoGuidelinesRepository",
+      "label": "ICategorySeoGuidelinesRepository",
+      "type": "CoreRepository",
+      "file": "EcommerceBot.Core/src/EcommerceBot.Domain/Interfaces/ICategorySeoGuidelinesRepository.cs",
       "metadata": {}
     },
     {
@@ -2857,6 +2878,11 @@
       "relationship": "references"
     },
     {
+      "source": "table:CategorySeoGuidelines",
+      "target": "table:Tenants",
+      "relationship": "references"
+    },
+    {
       "source": "exchange:ecommerce_dlx",
       "target": "queue:dlq_ecommerce",
       "relationship": "routes_dead_letter"
@@ -3028,6 +3054,11 @@
     },
     {
       "source": "consumer:ScrapedProductConsumer",
+      "target": "code:CategorySeoGuidelinesRepository",
+      "relationship": "invokes"
+    },
+    {
+      "source": "consumer:ScrapedProductConsumer",
       "target": "code:RedisService",
       "relationship": "invokes"
     },
@@ -3084,6 +3115,11 @@
     {
       "source": "code:AuditRepository",
       "target": "table:AuditLogs",
+      "relationship": "queries"
+    },
+    {
+      "source": "code:CategorySeoGuidelinesRepository",
+      "target": "table:CategorySeoGuidelines",
       "relationship": "queries"
     },
     {
@@ -3657,6 +3693,11 @@
       "relationship": "invokes"
     },
     {
+      "source": "code:ICategorySeoGuidelinesRepository",
+      "target": "code:CategorySeoGuidelinesRepository",
+      "relationship": "invokes"
+    },
+    {
       "source": "code:IEmailRepository",
       "target": "code:EmailRepository",
       "relationship": "invokes"
@@ -4203,12 +4244,12 @@
     },
     {
       "source": "frontend_service:liveDemoService",
-      "target": "controller:ScraperController",
+      "target": "controller:StreamController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:liveDemoService",
-      "target": "controller:StreamController",
+      "target": "controller:ScraperController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4223,12 +4264,12 @@
     },
     {
       "source": "frontend_service:integration.service",
-      "target": "controller:NuvemshopIntegrationController",
+      "target": "controller:IntegrationsController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:integration.service",
-      "target": "controller:IntegrationsController",
+      "target": "controller:NuvemshopIntegrationController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4253,12 +4294,12 @@
     },
     {
       "source": "frontend_service:product.service",
-      "target": "controller:ProductsController",
+      "target": "controller:NuvemshopIntegrationController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:product.service",
-      "target": "controller:NuvemshopIntegrationController",
+      "target": "controller:ProductsController",
       "relationship": "calls_endpoint"
     },
     {

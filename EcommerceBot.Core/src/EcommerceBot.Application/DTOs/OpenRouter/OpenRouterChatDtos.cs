@@ -34,12 +34,30 @@ public sealed record OpenRouterMessage
 }
 
 /// <summary>
-/// Especificação do formato de resposta estruturada (ex: json_object).
+/// Configuração do JSON Schema estrito para Structured Outputs da API OpenRouter/OpenAI.
+/// </summary>
+public sealed record OpenRouterJsonSchemaConfig
+{
+    [JsonPropertyName("name")]
+    public string Name { get; init; } = "product_enrichment";
+
+    [JsonPropertyName("strict")]
+    public bool Strict { get; init; } = true;
+
+    [JsonPropertyName("schema")]
+    public object Schema { get; init; } = new();
+}
+
+/// <summary>
+/// Especificação do formato de resposta estruturada (ex: json_object ou json_schema).
 /// </summary>
 public sealed record OpenRouterResponseFormat
 {
     [JsonPropertyName("type")]
     public string Type { get; init; } = "json_object";
+
+    [JsonPropertyName("json_schema")]
+    public OpenRouterJsonSchemaConfig? JsonSchema { get; init; }
 }
 
 /// <summary>

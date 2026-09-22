@@ -43,34 +43,42 @@ public class RateLimitAttribute : Attribute, IAsyncActionFilter
             return;
         }
 
-        var ip = GetClientIp(httpContext);
+        var (clientKey, clientType, _) = ResolveClientIdentifier(httpContext);
         var routeKey = context.ActionDescriptor.DisplayName?.Replace(" ", "_") ?? "global";
-        var blockKey = $"rate_limit:blocked:{ip}";
+        var blockKey = $"rate_limit:blocked:{clientKey}";
 
-        // 1. Verifica se o IP está em ban/bloqueio temporário
+        // 1. Verifica se o cliente (Tenant ou IP) está em ban/bloqueio temporário
         if (await redisService.KeyExistsAsync(blockKey))
         {
             httpContext.Response.Headers.Append("Retry-After", BlockDurationSeconds.ToString());
+            var message = clientType == "Tenant"
+                ? "Sua organização foi temporariamente bloqueada por excesso de requisições suspeitas."
+                : "Seu IP foi temporariamente bloqueado por excesso de requisições suspeitas.";
+
             context.Result = CreateProblemResult(
                 httpContext,
-                "Seu IP foi temporariamente bloqueado por excesso de requisições suspeitas.",
+                message,
                 BlockDurationSeconds);
             return;
         }
 
         // 2. Incrementa contador de requisições no Redis
-        var counterKey = $"rate_limit:req:{routeKey}:{ip}";
+        var counterKey = $"rate_limit:req:{routeKey}:{clientKey}";
         var currentCount = await redisService.IncrementAsync(counterKey, 1, TimeSpan.FromSeconds(WindowSeconds));
 
-        // 3. Se excedeu o limite máximo, aplica o bloqueio de IP
+        // 3. Se excedeu o limite máximo, aplica o bloqueio temporário
         if (currentCount > MaxRequests)
         {
             await redisService.SetAsync(blockKey, "blocked", TimeSpan.FromSeconds(BlockDurationSeconds));
 
             httpContext.Response.Headers.Append("Retry-After", BlockDurationSeconds.ToString());
+            var blockMessage = clientType == "Tenant"
+                ? $"Limite de requisições excedido para a sua organização ({MaxRequests} req/{WindowSeconds}s). Acesso bloqueado por {BlockDurationSeconds} segundos."
+                : $"Limite de requisições excedido ({MaxRequests} req/{WindowSeconds}s). IP bloqueado por {BlockDurationSeconds} segundos.";
+
             context.Result = CreateProblemResult(
                 httpContext,
-                $"Limite de requisições excedido ({MaxRequests} req/{WindowSeconds}s). IP bloqueado por {BlockDurationSeconds} segundos.",
+                blockMessage,
                 BlockDurationSeconds);
             return;
         }
@@ -118,5 +126,36 @@ public class RateLimitAttribute : Attribute, IAsyncActionFilter
         }
 
         return context.Connection.RemoteIpAddress?.ToString() ?? "unknown_ip";
+    }
+
+    private static (string ClientKey, string ClientType, string ClientIdentifier) ResolveClientIdentifier(HttpContext httpContext)
+    {
+        // 1. Tenta resolver via ITenantContext Scoped injetado pelo TenantHeaderMiddleware
+        var tenantContext = httpContext.RequestServices.GetService<ITenantContext>();
+        if (tenantContext != null && tenantContext.TenantId != Guid.Empty)
+        {
+            return ($"tenant:{tenantContext.TenantId}", "Tenant", tenantContext.TenantId.ToString());
+        }
+
+        // 2. Tenta resolver via claim JWT de usuário autenticado
+        if (httpContext.User.Identity?.IsAuthenticated == true)
+        {
+            var tenantClaim = httpContext.User.FindFirst("tenantId")?.Value;
+            if (Guid.TryParse(tenantClaim, out var claimTenantId) && claimTenantId != Guid.Empty)
+            {
+                return ($"tenant:{claimTenantId}", "Tenant", claimTenantId.ToString());
+            }
+        }
+
+        // 3. Tenta resolver via header X-Tenant-ID
+        if (httpContext.Request.Headers.TryGetValue("X-Tenant-ID", out var headerVal) &&
+            Guid.TryParse(headerVal.ToString(), out var headerTenantId) && headerTenantId != Guid.Empty)
+        {
+            return ($"tenant:{headerTenantId}", "Tenant", headerTenantId.ToString());
+        }
+
+        // 4. Fallback para rotas públicas/anônimas: Rate limit por IP
+        var ip = GetClientIp(httpContext);
+        return ($"ip:{ip}", "IP", ip);
     }
 }

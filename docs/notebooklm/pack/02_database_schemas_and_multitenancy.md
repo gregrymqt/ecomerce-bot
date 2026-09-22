@@ -300,6 +300,18 @@ Este módulo detalha o modelo de persistência relacional do **SQL Server 2022**
   - `CreatedAt`: `DATETIMEOFFSET` (NOT NULL)
   - `REFERENCES`: `dbo` (NULL)
 
+### 🗄️ Tabela `dbo.CategorySeoGuidelines` (Script: `017_Category_Seo_Guidelines.sql`)
+  - `Id`: `UNIQUEIDENTIFIER` (NOT NULL)
+  - `TenantId`: `UNIQUEIDENTIFIER` (NULL)
+  - `CategoryPattern`: `NVARCHAR(150)` (NOT NULL)
+  - `MandatoryKeywords`: `NVARCHAR(MAX)` (NULL)
+  - `RecommendedTone`: `NVARCHAR(200)` (NOT NULL)
+  - `FewShotExampleTitle`: `NVARCHAR(200)` (NULL)
+  - `FewShotExampleDescription`: `NVARCHAR(1000)` (NULL)
+  - `IsActive`: `BIT` (NOT NULL)
+  - `CreatedAt`: `DATETIMEOFFSET` (NOT NULL)
+  - `REFERENCES`: `dbo` (NULL)
+
 
 ---
 

@@ -10,5 +10,6 @@ public sealed class OpenRouterOptions
     public string ApiKey { get; set; } = string.Empty;
     public string BaseUrl { get; set; } = "https://openrouter.ai/api/v1";
     public string DefaultModel { get; set; } = "deepseek/deepseek-chat";
+    public string FallbackModel { get; set; } = "meta-llama/llama-3.1-8b-instruct";
     public int TimeoutSeconds { get; set; } = 60;
 }

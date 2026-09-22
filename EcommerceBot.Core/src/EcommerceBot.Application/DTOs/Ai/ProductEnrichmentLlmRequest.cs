@@ -20,4 +20,5 @@ public sealed record ProductEnrichmentLlmRequest
     public Dictionary<string, string> MetaAttributes { get; init; } = new();
     public string PromptContext { get; init; } = string.Empty;
     public string? CustomModel { get; init; }
+    public CategorySeoGuidelineDto? SeoGuideline { get; init; }
 }

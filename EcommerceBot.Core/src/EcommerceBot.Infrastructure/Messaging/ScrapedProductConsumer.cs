@@ -27,6 +27,7 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
     private readonly IProductRepository _productRepository;
     private readonly ITenantRepository _tenantRepository;
     private readonly IMeteringRepository _meteringRepository;
+    private readonly ICategorySeoGuidelinesRepository _categorySeoRepository;
     private readonly IRedisService _redisService;
     private readonly ILogger<ScrapedProductConsumer> _logger;
 
@@ -35,6 +36,7 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
         IProductRepository productRepository,
         ITenantRepository tenantRepository,
         IMeteringRepository meteringRepository,
+        ICategorySeoGuidelinesRepository categorySeoRepository,
         IRedisService redisService,
         ILogger<ScrapedProductConsumer> logger)
     {
@@ -42,6 +44,7 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
         _productRepository = productRepository;
         _tenantRepository = tenantRepository;
         _meteringRepository = meteringRepository;
+        _categorySeoRepository = categorySeoRepository;
         _redisService = redisService;
         _logger = logger;
     }
@@ -65,9 +68,41 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
             return;
         }
 
-        // 2. Scraping bem-sucedido: orquestrar inferência de IA via OpenRouter
+        // 2. Scraping bem-sucedido: buscar diretrizes relacionais de SEO por categoria e orquestrar IA
         try
         {
+            var category = message.MetaAttributes.GetValueOrDefault("category")
+                ?? message.MetaAttributes.GetValueOrDefault("categoria")
+                ?? "Geral";
+
+            CategorySeoGuidelineDto? seoGuideline = null;
+            try
+            {
+                var guideline = await _categorySeoRepository.GetGuidelineByCategoryAsync(
+                    message.TenantId,
+                    category,
+                    context.CancellationToken);
+
+                if (guideline != null)
+                {
+                    seoGuideline = new CategorySeoGuidelineDto
+                    {
+                        Id = guideline.Id,
+                        TenantId = guideline.TenantId,
+                        CategoryPattern = guideline.CategoryPattern,
+                        MandatoryKeywords = guideline.MandatoryKeywords,
+                        RecommendedTone = guideline.RecommendedTone,
+                        FewShotExampleTitle = guideline.FewShotExampleTitle,
+                        FewShotExampleDescription = guideline.FewShotExampleDescription
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Falha ao buscar diretriz de SEO para Tenant {TenantId} e Categoria {Category}. Prosseguindo sem diretriz customizada.",
+                    message.TenantId, category);
+            }
+
             var llmRequest = new ProductEnrichmentLlmRequest
             {
                 TenantId = message.TenantId,
@@ -80,7 +115,8 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
                 Currency = message.Currency,
                 Images = message.Images,
                 MetaAttributes = message.MetaAttributes,
-                PromptContext = message.PromptContext
+                PromptContext = message.PromptContext,
+                SeoGuideline = seoGuideline
             };
 
             var enrichmentResult = await _openRouterGateway.EnrichProductAsync(llmRequest, context.CancellationToken);
@@ -105,13 +141,15 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
                 seoKeywords = enrichmentResult.SeoKeywords,
                 faqs = enrichmentResult.Faqs,
                 modelUsed = enrichmentResult.ModelUsed,
+                promptTokens = enrichmentResult.PromptTokens,
+                completionTokens = enrichmentResult.CompletionTokens,
                 totalTokens = enrichmentResult.TotalTokens,
+                executionTimeMs = enrichmentResult.ExecutionTimeMs,
                 costUsd = enrichmentResult.TotalCostEstimated,
                 metaAttributes = message.MetaAttributes
             });
 
             var imagesJson = message.Images.Count > 0 ? JsonSerializer.Serialize(message.Images) : null;
-            var category = message.MetaAttributes.GetValueOrDefault("category") ?? "Geral";
             var brand = message.MetaAttributes.GetValueOrDefault("brand");
 
             var existingProduct = await _productRepository.GetBySkuAsync(message.TenantId, message.Sku, context.CancellationToken);
@@ -170,7 +208,9 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
                     TotalTokens = enrichmentResult.TotalTokens,
                     EstimatedCostUsd = enrichmentResult.TotalCostEstimated,
                     IsByok = false,
-                    ExecutionTimeMs = null,
+                    ExecutionTimeMs = enrichmentResult.ExecutionTimeMs.HasValue
+                        ? (int)Math.Min(enrichmentResult.ExecutionTimeMs.Value, int.MaxValue)
+                        : null,
                     CreatedAt = DateTimeOffset.UtcNow
                 };
 

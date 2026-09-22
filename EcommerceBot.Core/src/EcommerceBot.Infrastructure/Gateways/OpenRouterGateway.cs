@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Ai;
+using EcommerceBot.Application.DTOs.OpenRouter;
 using EcommerceBot.Application.Interfaces.Gateways;
 using EcommerceBot.Application.Interfaces.Services;
 using EcommerceBot.Domain.Services;
@@ -52,49 +53,101 @@ public sealed class OpenRouterGateway : IOpenRouterGateway
             throw new InvalidOperationException("OpenRouter API key is not configured in OpenRouterOptions.");
         }
 
-        var modelToUse = !string.IsNullOrWhiteSpace(request.CustomModel)
+        var primaryModel = !string.IsNullOrWhiteSpace(request.CustomModel)
             ? request.CustomModel
             : (!string.IsNullOrWhiteSpace(_options.DefaultModel) ? _options.DefaultModel : "deepseek/deepseek-chat");
 
+        var fallbackModel = !string.IsNullOrWhiteSpace(_options.FallbackModel) ? _options.FallbackModel : null;
+
         var stopwatch = Stopwatch.StartNew();
+        var modelToUse = primaryModel;
 
         try
         {
-            var promptRequest = _promptService.BuildPromptRequest(request, modelToUse);
+            OpenRouterChatCompletionResponse? completionResponse = null;
+            string? failureReason = null;
 
-            _logger.LogInformation(
-                "[OpenRouterGateway] Iniciando enriquecimento do SKU: {Sku} | Tenant: {TenantId} | Modelo: {Model}",
-                request.Sku,
-                request.TenantId,
-                modelToUse);
-
-            var completionResponse = await _client.CreateChatCompletionAsync(promptRequest, effectiveApiKey, cancellationToken);
-
-            if (completionResponse?.Error != null)
+            try
             {
-                var errorMsg = $"OpenRouter API error: {completionResponse.Error.Message} (Code: {completionResponse.Error.Code})";
-                _logger.LogWarning("[OpenRouterGateway] {Error} para SKU: {Sku}", errorMsg, request.Sku);
-                return BuildFallbackResponse(request, errorMsg, modelToUse);
+                var promptRequest = _promptService.BuildPromptRequest(request, primaryModel);
+
+                _logger.LogInformation(
+                    "[OpenRouterGateway] Iniciando enriquecimento do SKU: {Sku} | Tenant: {TenantId} | Modelo: {Model}",
+                    request.Sku,
+                    request.TenantId,
+                    primaryModel);
+
+                completionResponse = await _client.CreateChatCompletionAsync(promptRequest, effectiveApiKey, cancellationToken);
+
+                if (completionResponse?.Error != null)
+                {
+                    failureReason = $"OpenRouter API error: {completionResponse.Error.Message} (Code: {completionResponse.Error.Code})";
+                }
+                else if (completionResponse?.Choices == null || completionResponse.Choices.Count == 0)
+                {
+                    failureReason = "OpenRouter retornou lista de choices vazia.";
+                }
+                else if (string.IsNullOrWhiteSpace(completionResponse.Choices[0].Message?.Content))
+                {
+                    failureReason = "Assistente retornou mensagem vazia.";
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                failureReason = ex.Message;
+                _logger.LogWarning(ex, "[OpenRouterGateway] Exceção durante chamada ao modelo primário ({Primary}) para SKU: {Sku}", primaryModel, request.Sku);
             }
 
-            if (completionResponse?.Choices == null || completionResponse.Choices.Count == 0)
+            // Chaveamento para Fallback Model se a chamada primária falhou
+            if (failureReason != null && !string.IsNullOrWhiteSpace(fallbackModel) && !string.Equals(fallbackModel, primaryModel, StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogWarning("[OpenRouterGateway] Choices vazias retornadas para SKU: {Sku}", request.Sku);
-                return BuildFallbackResponse(request, "OpenRouter retornou lista de choices vazia.", modelToUse);
+                _logger.LogWarning(
+                    "[OpenRouterGateway] Falha no modelo primário ({Primary}). Acionando modelo secundário ({Fallback}) para SKU {Sku}",
+                    primaryModel,
+                    _options.FallbackModel,
+                    request.Sku);
+
+                try
+                {
+                    var fallbackPromptRequest = _promptService.BuildPromptRequest(request, fallbackModel);
+                    completionResponse = await _client.CreateChatCompletionAsync(fallbackPromptRequest, effectiveApiKey, cancellationToken);
+                    modelToUse = fallbackModel;
+                    failureReason = null;
+
+                    if (completionResponse?.Error != null)
+                    {
+                        failureReason = $"Fallback OpenRouter API error: {completionResponse.Error.Message} (Code: {completionResponse.Error.Code})";
+                    }
+                    else if (completionResponse?.Choices == null || completionResponse.Choices.Count == 0)
+                    {
+                        failureReason = "Fallback OpenRouter retornou lista de choices vazia.";
+                    }
+                    else if (string.IsNullOrWhiteSpace(completionResponse.Choices[0].Message?.Content))
+                    {
+                        failureReason = "Fallback Assistente retornou mensagem vazia.";
+                    }
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    failureReason = ex.Message;
+                    _logger.LogError(ex, "[OpenRouterGateway] Exceção durante chamada ao modelo secundário ({Fallback}) para SKU: {Sku}", fallbackModel, request.Sku);
+                }
             }
 
-            var assistantContent = completionResponse.Choices[0].Message?.Content;
-            if (string.IsNullOrWhiteSpace(assistantContent))
+            if (failureReason != null)
             {
-                _logger.LogWarning("[OpenRouterGateway] Mensagem do assistente veio vazia para SKU: {Sku}", request.Sku);
-                return BuildFallbackResponse(request, "Assistente retornou mensagem vazia.", modelToUse);
+                stopwatch.Stop();
+                _logger.LogWarning("[OpenRouterGateway] {Error} para SKU: {Sku}", failureReason, request.Sku);
+                return BuildFallbackResponse(request, failureReason, modelToUse, stopwatch.ElapsedMilliseconds);
             }
 
+            var assistantContent = completionResponse!.Choices![0].Message!.Content;
             var parsedContent = _contentParser.ParseContent(assistantContent);
             if (parsedContent == null)
             {
+                stopwatch.Stop();
                 _logger.LogWarning("[OpenRouterGateway] Falha no parsing do JSON gerado para SKU: {Sku}", request.Sku);
-                return BuildFallbackResponse(request, "Falha ao converter saída JSON do modelo.", modelToUse);
+                return BuildFallbackResponse(request, "Falha ao converter saída JSON do modelo.", modelToUse, stopwatch.ElapsedMilliseconds);
             }
 
             var promptTokens = completionResponse.Usage?.PromptTokens ?? 0;
@@ -102,10 +155,13 @@ public sealed class OpenRouterGateway : IOpenRouterGateway
             var totalCost = LlmPricingCalculator.CalculateCost(modelToUse, promptTokens, completionTokens);
 
             stopwatch.Stop();
+            var elapsedMs = stopwatch.ElapsedMilliseconds;
+
             _logger.LogInformation(
-                "[OpenRouterGateway] SKU {Sku} enriquecido com sucesso em {ElapsedMs}ms | Tokens: {Prompt}+{Completion} | Custo: ${Cost:F6}",
+                "[OpenRouterGateway] SKU {Sku} enriquecido com sucesso em {ElapsedMs}ms | Modelo: {Model} | Tokens: {Prompt}+{Completion} | Custo: ${Cost:F6}",
                 request.Sku,
-                stopwatch.ElapsedMilliseconds,
+                elapsedMs,
+                modelToUse,
                 promptTokens,
                 completionTokens,
                 totalCost);
@@ -137,6 +193,7 @@ public sealed class OpenRouterGateway : IOpenRouterGateway
                 CompletionTokens = completionTokens,
                 TotalCostEstimated = totalCost,
                 ModelUsed = modelToUse,
+                ExecutionTimeMs = elapsedMs,
                 IsFallback = false,
                 ErrorMessage = null
             };
@@ -150,14 +207,15 @@ public sealed class OpenRouterGateway : IOpenRouterGateway
                 request.Sku,
                 stopwatch.ElapsedMilliseconds);
 
-            return BuildFallbackResponse(request, ex.Message, modelToUse);
+            return BuildFallbackResponse(request, ex.Message, modelToUse, stopwatch.ElapsedMilliseconds);
         }
     }
 
     private static ProductEnrichmentLlmResponse BuildFallbackResponse(
         ProductEnrichmentLlmRequest request,
         string errorMessage,
-        string modelUsed)
+        string modelUsed,
+        long? executionTimeMs = null)
     {
         var fallbackTitle = !string.IsNullOrWhiteSpace(request.RawTitle)
             ? request.RawTitle
@@ -178,6 +236,7 @@ public sealed class OpenRouterGateway : IOpenRouterGateway
             CompletionTokens = 0,
             TotalCostEstimated = 0m,
             ModelUsed = modelUsed,
+            ExecutionTimeMs = executionTimeMs,
             IsFallback = true,
             ErrorMessage = errorMessage
         };

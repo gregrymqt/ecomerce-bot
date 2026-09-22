@@ -47,6 +47,8 @@ public static class MassTransitExtensions
                 // 2. Endpoints de fila de Scraping e IA
                 cfg.ReceiveEndpoint("ecommerce_scraped_queue", e =>
                 {
+                    e.PrefetchCount = 4;
+                    e.ConcurrentMessageLimit = 2;
                     e.ConfigureConsumer<ScrapedProductConsumer>(context);
                 });
 

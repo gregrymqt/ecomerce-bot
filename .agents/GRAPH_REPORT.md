@@ -27,7 +27,7 @@
 - **Barramento Real-Time:** Redis Pub/Sub com canal parametrizado `events:tenant:{tenantId}` consumido pelo cliente SSE.
 
 ## 🗄️ 4. Banco de Dados, Linhagem & Governança (SQL Server 2022)
-- **Tabelas Monitoradas (22):** AiProviderCredits, AuditLogs, CreditTransactions, EmailLogs, EnterpriseLeads, LLMUsageLogs, OrderItems, Orders, Plans, Products, RobotActivities, Roles, SaasAdSpends, SaasTrafficVisits...
+- **Tabelas Monitoradas (23):** AiProviderCredits, AuditLogs, CategorySeoGuidelines, CreditTransactions, EmailLogs, EnterpriseLeads, LLMUsageLogs, OrderItems, Orders, Plans, Products, RobotActivities, Roles, SaasAdSpends...
 - **Views Diagnósticas (7):** vw_Monitor_ActiveSnapshotTransactions, vw_Monitor_Deadlocks, vw_Monitor_MissingIndexes, vw_Monitor_TableSizes, vw_Monitor_TopQueries, vw_Monitor_VersionStore, vw_Monitor_WaitStats.
 - **Políticas RLS Ativas (1):** `TenantSecurityPolicy` protegendo isolamento por `SESSION_CONTEXT(TenantId)` com predicado `Security.fn_TenantAccessPredicate`.
 - **Governança de Transações:** RCSI ativo (`READ_COMMITTED_SNAPSHOT ON`), Chaves Primárias `NEWSEQUENTIALID()`, clustered por `(TenantId, ...)`.

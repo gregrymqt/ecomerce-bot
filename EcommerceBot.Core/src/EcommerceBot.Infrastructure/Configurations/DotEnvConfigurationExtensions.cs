@@ -47,6 +47,12 @@ public static class DotEnvConfigurationExtensions
         { "GOOGLE_CLIENT_SECRET", "Google:ClientSecret" },
         { "GOOGLE_REDIRECT_URI", "Google:RedirectUri" },
         { "DISCORD_WEBHOOK_URL", "Discord:WebhookUrl" },
+        { "OPENROUTER_API_KEY", "OpenRouter:ApiKey" },
+        { "OPENROUTER_BASE_URL", "OpenRouter:BaseUrl" },
+        { "OPENROUTER_DEFAULT_MODEL", "OpenRouter:DefaultModel" },
+        { "OPENROUTER_FALLBACK_MODEL", "OpenRouter:FallbackModel" },
+        { "DEFAULT_PRIMARY_MODEL", "OpenRouter:DefaultModel" },
+        { "DEFAULT_FALLBACK_MODEL_1", "OpenRouter:FallbackModel" },
         { "PUBLIC_BASE_URL", "App:BaseUrl" },
         { "FRONTEND_URL", "App:FrontendUrl" }
     };
