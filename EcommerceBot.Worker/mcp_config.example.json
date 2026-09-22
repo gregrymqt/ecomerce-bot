@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "ecommercebot-scraper-worker": {
+      "command": "${WORKER_PATH}/.venv/Scripts/python.exe",
+      "args": [
+        "${WORKER_PATH}/mcp_server.py"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "ecommercebot-scraper-worker": {
+      "command": "C:\\Users\\digob\\Desktop\\ecommerce-bot\\EcommerceBot.Worker\\.venv\\Scripts\\python.exe",
+      "args": [
+        "C:\\Users\\digob\\Desktop\\ecommerce-bot\\EcommerceBot.Worker\\mcp_server.py"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  }
+}

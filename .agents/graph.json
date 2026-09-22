@@ -4184,12 +4184,12 @@
     },
     {
       "source": "frontend_service:wallet.service",
-      "target": "controller:WalletController",
+      "target": "controller:PlansController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:wallet.service",
-      "target": "controller:PlansController",
+      "target": "controller:WalletController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4244,12 +4244,12 @@
     },
     {
       "source": "frontend_service:liveDemoService",
-      "target": "controller:StreamController",
+      "target": "controller:ScraperController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:liveDemoService",
-      "target": "controller:ScraperController",
+      "target": "controller:StreamController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4294,12 +4294,12 @@
     },
     {
       "source": "frontend_service:product.service",
-      "target": "controller:NuvemshopIntegrationController",
+      "target": "controller:ProductsController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:product.service",
-      "target": "controller:ProductsController",
+      "target": "controller:NuvemshopIntegrationController",
       "relationship": "calls_endpoint"
     },
     {
