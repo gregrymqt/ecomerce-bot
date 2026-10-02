@@ -11,6 +11,16 @@ Este documento define os padrões canônicos de arquitetura, acessibilidade, per
 
 ## 🏗️ 1. Arquitetura em 4 Camadas (Feature-Driven)
 
+### 🌐 1.0. Decisão Arquitetural Canônica: SPA Compilado (Vite) vs. SSR (Next.js)
+- **Topologia:** Estritamente Single Page Application (SPA) em React 19 + Vite + Nginx Alpine.
+- **Racional Técnico Inviolável:**
+  - **Zero Node Runtime em Produção:** Artefatos puramente estáticos (`dist/`) com custo de computação nulo no servidor e consumo mínimo de memória (< 25 MB RAM).
+  - **Proteção da VPS (6 GB RAM):** Preserva a margem de ~580 MB livres da VPS para o Buffer Pool do SQL Server 2022 e API .NET Core, eliminando o risco de *Linux OOM Killer*.
+  - **Compatibilidade Multi-Tenant & SSE:** Propagação nativa de `X-Tenant-ID` e `Authorization` via Axios interceptors no cliente e streaming ininterrupto de SSE (`SSEClient` via Fetch Stream) sem intermediários Node.js ou BFFs redundantes.
+  - **Cache Imutável:** Assets com hash em `/assets/` recebem `Cache-Control: public, max-age=31536000, immutable`, enquanto `index.html` opera sob `no-cache, no-store, must-revalidate` para garantir atualizações instantâneas de versão.
+
+---
+
 Todo módulo dentro de `src/features/` deve respeitar rigorosamente a separação de responsabilidades:
 
 - **Types (`features/{feature}/types/`):** Modelos de dados e contratos de payload em TypeScript estrito. Proibido o uso de `any`.

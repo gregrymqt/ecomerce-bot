@@ -129,6 +129,10 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
+      # 🚀 Tuning de Garbage Collector para VPS (Workstation GC + 256MB Hard Limit + Trim Commit)
+      - DOTNET_ServerGarbageCollection=0
+      - DOTNET_GCHeapHardLimit=0x10000000
+      - DOTNET_GCTrimCommit=1
       - ConnectionStrings__DefaultConnection=${ConnectionStrings__DefaultConnection:-${MSSQL_CONNECTION_STRING:-Server=mssql,1433;Database=EcommerceBotDb;User Id=usr_ecommerce_api;Password=${MSSQL_API_PASSWORD:-Api@Secure_Passw0rd_Prod2026!};TrustServerCertificate=True;Encrypt=False;}}
       - MSSQL_CONNECTION_STRING=${MSSQL_CONNECTION_STRING:-${ConnectionStrings__DefaultConnection:-Server=mssql,1433;Database=EcommerceBotDb;User Id=usr_ecommerce_api;Password=${MSSQL_API_PASSWORD:-Api@Secure_Passw0rd_Prod2026!};TrustServerCertificate=True;Encrypt=False;}}
       - ConnectionStrings__Redis=${ConnectionStrings__Redis:-${Redis__ConnectionString:-redis:6379,password=${REDIS_PASSWORD:-prod_redis_password_secure},abortConnect=false}}

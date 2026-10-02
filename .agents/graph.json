@@ -4244,12 +4244,12 @@
     },
     {
       "source": "frontend_service:liveDemoService",
-      "target": "controller:ScraperController",
+      "target": "controller:StreamController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:liveDemoService",
-      "target": "controller:StreamController",
+      "target": "controller:ScraperController",
       "relationship": "calls_endpoint"
     },
     {
@@ -4269,22 +4269,22 @@
     },
     {
       "source": "frontend_service:integration.service",
-      "target": "controller:NuvemshopIntegrationController",
-      "relationship": "calls_endpoint"
-    },
-    {
-      "source": "frontend_service:integration.service",
       "target": "controller:ShopifyIntegrationController",
       "relationship": "calls_endpoint"
     },
     {
-      "source": "frontend_service:dashboard.service",
-      "target": "controller:SystemController",
+      "source": "frontend_service:integration.service",
+      "target": "controller:NuvemshopIntegrationController",
       "relationship": "calls_endpoint"
     },
     {
       "source": "frontend_service:dashboard.service",
       "target": "controller:ScraperController",
+      "relationship": "calls_endpoint"
+    },
+    {
+      "source": "frontend_service:dashboard.service",
+      "target": "controller:SystemController",
       "relationship": "calls_endpoint"
     },
     {

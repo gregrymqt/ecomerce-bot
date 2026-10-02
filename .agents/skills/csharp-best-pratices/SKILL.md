@@ -466,3 +466,23 @@ var enriched = JsonSerializer.Deserialize<ProductEnrichmentMetadata>(jsonRespons
 Após cada resposta bem-sucedida de inferência de LLM:
 1. Registre o consumo exato de tokens (`prompt_tokens`, `completion_tokens`, `model_used`) na tabela `dbo.LLMUsageLogs`.
 2. Para tenants em regime gerenciado (sem BYOK ativo), liquide atomicamente o custo proporcional em USD/BRL do saldo do tenant via `IMeteringRepository.AtomicSettleCreditsAsync`.
+
+---
+
+## 10. Governança de Memória e Tuning de GC em Contêineres (.NET 9)
+
+Em ambientes de VPS compartilhada com restrição de memória (ex: 6 GB / 3 vCPUs):
+
+### 10.1. Workstation GC & Limites de Heap Obrigatórios
+O runtime .NET ativa Server GC por padrão em hosts com múltiplas vCPUs, retendo memória agressivamente. Em contêineres de microsserviços, configure obrigatoriamente:
+- `DOTNET_ServerGarbageCollection=0`: Ativa o Workstation GC (heap único, coletas síncronas na thread alocadora).
+- `DOTNET_GCHeapHardLimit=0x10000000`: Teto rígido de 256 MB para o heap do GC, forçando coletas antes de atingir o limite cgroup do Docker (768 MB).
+- `DOTNET_GCTrimCommit=1`: Força a devolução de páginas de memória não utilizadas ao kernel Linux após picos de tráfego.
+
+### 10.2. Prevenção de ThreadPool Starvation (Sync-over-Async)
+- **PROIBIDO Bloqueio Síncrono:** Nunca utilize `.Result`, `.Wait()` ou `.GetAwaiter().GetResult()` sobre chamadas assíncronas (`Task`/`ValueTask`). O bloqueio de threads de I/O satura a ThreadPool do Kestrel e causa picos de latência sob concorrência.
+- **Fechamento Determinístico de Conexões:** Sempre utilize blocos `await using var connection = ...` para conexões Dapper (`SqlConnection`), evitando esgotamento do connection pool ADO.NET.
+
+### 10.3. Eficiência de Alocação de Memória
+- Prefira `ValueTask<T>` para métodos assíncronos que frequentemente completam de forma síncrona (ex: leituras de cache local).
+- Utilize `Span<T>`, `ReadOnlySpan<T>` e `ArrayPool<byte>.Shared` para manipulação de buffers binários (criptografia AES-256 GCM e hashes HMAC).

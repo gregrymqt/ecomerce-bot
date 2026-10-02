@@ -28,7 +28,10 @@ WORKDIR /app
 
 ENV ASPNETCORE_URLS=http://+:8080 \
     ASPNETCORE_ENVIRONMENT=Production \
-    DOTNET_RUNNING_IN_CONTAINER=true
+    DOTNET_RUNNING_IN_CONTAINER=true \
+    DOTNET_ServerGarbageCollection=0 \
+    DOTNET_GCHeapHardLimit=0x10000000 \
+    DOTNET_GCTrimCommit=1
 
 # Copia os binários compilados
 COPY --from=build /app/publish .
