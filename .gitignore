@@ -162,3 +162,6 @@ EcommerceBot.Worker/app/ml/models/artifacts/*.pkl
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
