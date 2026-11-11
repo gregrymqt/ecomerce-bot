@@ -142,7 +142,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
           name: payload.name,
           email: payload.email,
           password: payload.password,
-          tenants: payload.tenantName ? [payload.tenantName] : undefined,
+          tenantName: payload.tenantName || undefined,
         });
         onSuccess?.();
       } catch {

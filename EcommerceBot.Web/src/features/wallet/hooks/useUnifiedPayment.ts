@@ -23,6 +23,7 @@ import type {
   UpsertTenantBillingProfilePayload,
 } from '../types/billing.type';
 import { getErrorMessage } from '@/utils/errors';
+import { isValidCpfOrCnpjDigits, sanitizeDocumentNumber } from '../utils/documentValidation';
 
 export interface UseUnifiedPaymentOptions {
   isOpen: boolean;
@@ -135,11 +136,20 @@ export function useUnifiedPayment({
   const handleGeneratePix = useCallback(async (customProfile?: TenantBillingProfile) => {
     if (!target) return;
     const activeProf = customProfile || billingProfile;
+    const rawDoc = activeProf?.document_number;
+
+    if (!isValidCpfOrCnpjDigits(rawDoc)) {
+      setError('Informe um CPF ou CNPJ válido nos Dados Fiscais antes de gerar a cobrança PIX.');
+      setIsEditingBilling(true);
+      setLoading(false);
+      return;
+    }
+
+    const docNum = sanitizeDocumentNumber(rawDoc);
+    const docType = activeProf?.document_type || (docNum.length === 14 ? 'CNPJ' : 'CPF');
+
     setLoading(true);
     setError(null);
-
-    const docType = activeProf?.document_type || 'CPF';
-    const docNum = activeProf?.document_number || '00000000000';
 
     try {
       const resp = await walletService.createRecharge({
@@ -177,7 +187,7 @@ export function useUnifiedPayment({
     } finally {
       setLoading(false);
     }
-  }, [target, user, billingProfile]);
+  }, [target, user, billingProfile, setIsEditingBilling]);
 
   const handleSaveBilling = useCallback(
     async (payload: UpsertTenantBillingProfilePayload) => {
@@ -216,7 +226,7 @@ export function useUnifiedPayment({
 
     const sse = new SSEClient<Record<string, unknown>>();
     sse.connect({
-      endpoint: '/api/v1/demo/stream',
+      endpoint: '/api/v1/stream',
       onMessage: (data) => {
         if (!data || typeof data !== 'object') return;
         const matchesOrder =
@@ -297,6 +307,7 @@ export function useUnifiedPayment({
     target,
     userEmail: user?.email,
     billingProfile,
+    onRequireBillingEdit: () => setIsEditingBilling(true),
     onPaymentApproved: (msg) => {
       setPaymentStatus('APPROVED');
       setSuccessMessage(msg);

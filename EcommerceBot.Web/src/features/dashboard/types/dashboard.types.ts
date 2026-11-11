@@ -32,9 +32,9 @@ export interface DashboardKpiMetrics {
   success_rate_percentage: number;
   /** Estimativa de horas de trabalho economizadas pela automação */
   estimated_hours_saved: number;
-  /** Quantidade de créditos de IA consumidos */
-  credits_used: number;
-  /** Limite total de créditos do plano ativo */
+  /** Saldo atual de créditos disponíveis */
+  credits_remaining: number;
+  /** Limite total de créditos adquiridos/contratados */
   credits_total: number;
 }
 

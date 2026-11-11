@@ -17,33 +17,22 @@ export class LiveDemoService {
   }
 
   /**
-   * Dispara a requisição POST para o backend solicitando a extração da URL.
-   * Endpoint primário: POST /api/v1/scraper/extract
-   * Endpoint de compatibilidade: POST /api/v1/demo
+   * Dispara a requisição POST pública para o backend solicitando a demonstração em tempo real.
+   * Endpoint real: POST /api/v1/system/demo
    */
   public async requestDemoIngestion(urls: string[]): Promise<{ status: string; task_id?: string }> {
-    const targetUrl = urls[0] || '';
-    try {
-      const response = await apiClient.post<{ status: string; task_id?: string }>(
-        '/api/v1/scraper/extract',
-        { url: targetUrl }
-      );
-      return response.data;
-    } catch {
-      // Fallback para rota legada se existir
-      const response = await apiClient.post<{ status: string; task_id?: string }>(
-        '/api/v1/demo',
-        { urls }
-      );
-      return response.data;
-    }
+    const response = await apiClient.post<{ status: string; task_id?: string }>(
+      '/api/v1/system/demo',
+      { urls }
+    );
+    return response.data;
   }
 
   /**
-   * Conecta ao endpoint Server-Sent Events (SSE) `/api/v1/demo/stream` utilizando a instância de SSEClient.
+   * Conecta ao endpoint público Server-Sent Events (SSE) `/api/v1/system/demo/stream` via SSEClient.
    */
   public connectStream(targetUrl: string, callbacks: StreamCallbacks): void {
-    const endpoint = `/api/v1/demo/stream?url=${encodeURIComponent(targetUrl)}`;
+    const endpoint = `/api/v1/system/demo/stream?url=${encodeURIComponent(targetUrl)}`;
 
     this.sseClient.connect({
       endpoint,

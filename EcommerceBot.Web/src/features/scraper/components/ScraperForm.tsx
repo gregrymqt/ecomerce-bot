@@ -27,27 +27,23 @@ import { cn } from '@/lib/utils';
 import { useScraper } from '../hooks/useScraper';
 import { useScraperStream } from '../hooks/useScraperStream';
 import type { ScraperFormProps } from '../types';
-import { isValidHttpUrl } from '@/utils/security';
 import { ScraperBatchForm } from './ScraperBatchForm';
 import { ScraperStreamConsole } from './ScraperStreamConsole';
 
-export const ScraperForm: React.FC<ScraperFormProps> = ({ className }) => {
+export const ScraperForm: React.FC<ScraperFormProps> = ({ className, onSuccess }) => {
   const { url, setUrl, isLoading, error: scraperError, submitUrl, reset: resetScraper } = useScraper();
   const { events, progress, isStreaming, error: streamError, lastEvent, connect, disconnect } = useScraperStream();
 
   const [mode, setMode] = useState<'single' | 'batch'>('single');
 
-  const handleSubmitSingle = (e: React.FormEvent) => {
+  const handleSubmitSingle = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Trava de Segurança contra esquemas inválidos (ex: javascript: alert(1))
-    if (!isValidHttpUrl(url)) {
-      return;
-    }
-
-    submitUrl().then(() => {
+    const ok = await submitUrl();
+    if (ok) {
       connect();
-    });
+      onSuccess?.();
+    }
   };
 
   const handleStop = () => {
@@ -210,7 +206,7 @@ export const ScraperForm: React.FC<ScraperFormProps> = ({ className }) => {
       )}
 
       {/* Form Modo 2: Ingestão em Lote */}
-      {mode === 'batch' && <ScraperBatchForm />}
+      {mode === 'batch' && <ScraperBatchForm onSuccess={onSuccess} />}
     </div>
   );
 };

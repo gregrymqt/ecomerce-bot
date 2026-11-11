@@ -64,7 +64,7 @@ export const Alert: React.FC<AlertProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="shrink-0 p-1 -mr-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+          className="shrink-0 p-2 -mr-2 -mt-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer"
           aria-label="Fechar"
         >
           <X className="w-4 h-4" />

@@ -98,7 +98,7 @@ export const LeadsDataTable: React.FC<LeadsDataTableProps> = ({
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="p-1 text-emerald-400 hover:bg-emerald-500/10 rounded min-h-[32px] min-w-[32px] flex items-center justify-center"
+                            className="p-2 text-emerald-400 hover:bg-emerald-500/10 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center"
                             title="WhatsApp"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />

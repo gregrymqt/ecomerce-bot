@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { authService } from '../services/authService';
-import { getTenantId, saveTenantId, clearTenantId, saveAuthToken, clearAuthToken } from '@/utils/storage';
+import { getTenantId, saveTenantId, clearTenantId, getAuthToken, saveAuthToken, clearAuthToken } from '@/utils/storage';
 import { getErrorMessage } from '@/utils/errors';
 import type {
   AuthenticatedUser,
@@ -97,6 +97,15 @@ export const useAuthSession = (): AuthContextType => {
     let isMounted = true;
 
     const initializeAuth = async () => {
+      const token = getAuthToken();
+      if (!token) {
+        if (isMounted) {
+          resetAuthState();
+          setIsLoading(false);
+        }
+        return;
+      }
+
       try {
         await checkAuth();
       } catch {

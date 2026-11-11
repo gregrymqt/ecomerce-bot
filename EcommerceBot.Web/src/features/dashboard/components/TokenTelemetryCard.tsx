@@ -16,36 +16,13 @@ export interface TokenTelemetryCardProps {
   className?: string;
 }
 
-const DEFAULT_PROVIDERS: TokenProviderUsage[] = [
-  {
-    provider_name: 'DeepSeek V3 (BYOK)',
-    used_tokens_display: '420.5K',
-    max_tokens_display: '500.0K',
-    percentage: 84,
-    is_byok: true,
-  },
-  {
-    provider_name: 'Groq Llama 3 (BYOK)',
-    used_tokens_display: '280.1K',
-    max_tokens_display: '400.0K',
-    percentage: 70,
-    is_byok: true,
-  },
-  {
-    provider_name: 'OpenAI GPT-4o (Global)',
-    used_tokens_display: '95.4K',
-    max_tokens_display: '150.0K',
-    percentage: 63,
-    is_byok: false,
-  },
-];
-
 export const TokenTelemetryCard: React.FC<TokenTelemetryCardProps> = ({
-  providers = DEFAULT_PROVIDERS,
-  averageLatencyMs = 120,
+  providers = [],
+  averageLatencyMs = 0,
   className,
 }) => {
-  const items = providers && providers.length > 0 ? providers : DEFAULT_PROVIDERS;
+  const items = providers ?? [];
+  const hasByokActive = items.some((item) => item.is_byok);
 
   return (
     <div
@@ -76,38 +53,53 @@ export const TokenTelemetryCard: React.FC<TokenTelemetryCardProps> = ({
           </div>
         </div>
 
-        {/* Lista de Provedores com Barra de Consumo */}
+        {/* Lista de Provedores com Barra de Consumo ou Estado Vazio */}
         <div className="py-4 space-y-4">
-          {items.map((item, idx) => (
-            <div key={idx} className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs sm:text-sm">
-                <span className="font-semibold text-slate-200 flex items-center gap-1.5">
-                  {item.is_byok && <Key className="h-3.5 w-3.5 text-violet-400" />}
-                  {item.provider_name}
-                </span>
-                <span className="font-mono text-xs text-slate-400">
-                  {item.used_tokens_display} / {item.max_tokens_display}
-                </span>
-              </div>
-              <div className="w-full bg-[#090D16] rounded-full h-2 border border-[#1E293B] overflow-hidden">
-                <div
-                  className="bg-gradient-to-r from-purple-600 to-violet-500 h-full rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, item.percentage)}%` }}
-                />
-              </div>
+          {items.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[#1E293B] bg-[#090D16]/40 p-6 text-center">
+              <p className="text-xs sm:text-sm font-medium text-slate-300">
+                Nenhum consumo de tokens registrado no período.
+              </p>
             </div>
-          ))}
+          ) : (
+            items.map((item, idx) => (
+              <div key={idx} className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs sm:text-sm">
+                  <span className="font-semibold text-slate-200 flex items-center gap-1.5">
+                    {item.is_byok && <Key className="h-3.5 w-3.5 text-violet-400" />}
+                    {item.provider_name}
+                  </span>
+                  <span className="font-mono text-xs text-slate-400">
+                    {item.used_tokens_display} / {item.max_tokens_display}
+                  </span>
+                </div>
+                <div className="w-full bg-[#090D16] rounded-full h-2 border border-[#1E293B] overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-purple-600 to-violet-500 h-full rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(100, item.percentage)}%` }}
+                  />
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
-      {/* Selo BYOK Econômico */}
+      {/* Selo de Modo de Execução (BYOK Real ou SaaS Gerenciado) */}
       <div className="pt-3 border-t border-[#1E293B]">
-        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 flex items-center gap-2 text-xs text-emerald-300">
-          <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
-          <span className="font-semibold">
-            BYOK Ativo — Reduzindo custos operacionais em até 80%
-          </span>
-        </div>
+        {hasByokActive ? (
+          <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 flex items-center gap-2 text-xs text-emerald-300">
+            <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
+            <span className="font-semibold">
+              BYOK Ativo — Utilizando sua chave própria do provedor LLM
+            </span>
+          </div>
+        ) : (
+          <div className="rounded-xl bg-slate-900/70 border border-[#1E293B] p-3 flex items-center gap-2 text-xs text-slate-400">
+            <ShieldCheck className="h-4 w-4 text-slate-400 shrink-0" />
+            <span>Execução via créditos gerenciados da plataforma.</span>
+          </div>
+        )}
       </div>
     </div>
   );

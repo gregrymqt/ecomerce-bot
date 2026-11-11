@@ -12,6 +12,8 @@ import {
   Sparkles,
   RotateCcw,
   Cpu,
+  AlertTriangle,
+  Eye,
 } from 'lucide-react';
 import { useLiveDemoSSE } from '../hooks';
 import {
@@ -24,17 +26,23 @@ import { SEO } from '@/components/common/SEO';
 
 export const LiveDemoPage: React.FC = () => {
   const navigate = useNavigate();
-  const { status, logs, progress, result, targetUrl, startExtraction, resetDemo, clearLogs } =
-    useLiveDemoSSE();
+  const {
+    status,
+    logs,
+    progress,
+    result,
+    targetUrl,
+    errorMessage,
+    startExtraction,
+    loadOfflinePreviewSample,
+    resetDemo,
+    clearLogs,
+  } = useLiveDemoSSE();
 
   const isWorking = status === 'connecting' || status === 'simulating' || status === 'connected';
 
   return (
-    <div
-      role="main"
-      aria-label="Demonstração em Tempo Real de Enriquecimento de Produtos"
-      className="w-full max-w-7xl mx-auto space-y-12 animate-in fade-in duration-300 pb-12"
-    >
+    <div className="w-full max-w-7xl mx-auto space-y-12 animate-in fade-in duration-300 pb-12">
       <SEO
         title="Demonstração em Tempo Real"
         description="Assista ao robô extraindo e enriquecendo títulos e descrições de e-commerce ao vivo via Server-Sent Events."
@@ -100,10 +108,47 @@ export const LiveDemoPage: React.FC = () => {
             />
           </div>
 
-          {/* Resultado Enriquecido à Direita */}
+          {/* Resultado Enriquecido ou Estado de Erro Explícito à Direita */}
           <div className="lg:col-span-6">
             {result ? (
               <ResultPreviewCard result={result} />
+            ) : status === 'error' ? (
+              <div
+                role="alert"
+                className="w-full rounded-2xl bg-slate-950/80 border border-rose-500/30 p-8 flex flex-col items-center justify-center text-center min-h-[360px] gap-4"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                  <AlertTriangle className="w-7 h-7" aria-hidden="true" />
+                </div>
+                <div className="space-y-1.5 max-w-md">
+                  <h3 className="text-base font-bold text-white">
+                    Não foi possível concluir a demonstração ao vivo
+                  </h3>
+                  <p className="text-xs sm:text-sm text-rose-300 leading-relaxed">
+                    {errorMessage || 'O servidor de eventos em tempo real não respondeu dentro do prazo esperado.'}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                  {targetUrl && (
+                    <button
+                      type="button"
+                      onClick={() => startExtraction(targetUrl)}
+                      className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors inline-flex items-center gap-2 cursor-pointer"
+                    >
+                      <RotateCcw className="w-4 h-4" aria-hidden="true" />
+                      Tentar novamente
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={loadOfflinePreviewSample}
+                    className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-semibold text-slate-200 bg-slate-900 hover:bg-slate-800 border border-slate-700 transition-colors inline-flex items-center gap-2 cursor-pointer"
+                  >
+                    <Eye className="w-4 h-4 text-amber-400" aria-hidden="true" />
+                    Abrir prévia de amostra offline
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="w-full rounded-2xl bg-slate-950/60 border border-slate-800/80 p-8 flex flex-col items-center justify-center text-center min-h-[360px] gap-4">
                 <div className="w-14 h-14 rounded-2xl bg-purple-950/40 border border-purple-500/20 flex items-center justify-center shadow-inner">

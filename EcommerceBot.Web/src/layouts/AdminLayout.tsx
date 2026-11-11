@@ -110,7 +110,7 @@ export const AdminLayout: React.FC = () => {
                   size="sm"
                   onClick={() => logout()}
                   title="Sair da conta"
-                  className="min-h-[36px] px-2 text-rose-400 hover:bg-rose-950/30"
+                  className="min-h-[44px] min-w-[44px] px-2 text-rose-400 hover:bg-rose-950/30"
                 >
                   <LogOut className="w-4 h-4" />
                 </Button>
@@ -147,7 +147,7 @@ export const AdminLayout: React.FC = () => {
                 navigate('/catalog');
               }}
               iconLeft={<Store className="w-4 h-4 text-emerald-400" />}
-              className="min-h-[38px] text-xs font-bold border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 cursor-pointer"
+              className="min-h-[44px] text-xs font-bold border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 cursor-pointer"
             >
               👁️ Alternar para Visão Loja
             </Button>

@@ -12,6 +12,7 @@ import { mercadoPagoService, detectPaymentMethodId } from '../services/mercadoPa
 import type { CheckoutTarget, CreditCardPaymentFormData as CreditCardFormData } from '../types';
 import type { TenantBillingProfile } from '../types/billing.type';
 import { getErrorMessage } from '@/utils/errors';
+import { isValidCpfOrCnpjDigits, sanitizeDocumentNumber } from '../utils/documentValidation';
 
 export interface UseCreditCardCheckoutOptions {
   target: CheckoutTarget | null;
@@ -19,6 +20,7 @@ export interface UseCreditCardCheckoutOptions {
   billingProfile: TenantBillingProfile | null;
   onPaymentApproved: (message: string) => void;
   onPaymentDeclined: (message: string) => void;
+  onRequireBillingEdit?: () => void;
   onSuccessPayment?: () => void;
 }
 
@@ -28,6 +30,7 @@ export function useCreditCardCheckout({
   billingProfile,
   onPaymentApproved,
   onPaymentDeclined,
+  onRequireBillingEdit,
   onSuccessPayment,
 }: UseCreditCardCheckoutOptions) {
   const [loading, setLoading] = useState<boolean>(false);
@@ -35,9 +38,19 @@ export function useCreditCardCheckout({
   const handleProcessCreditCard = useCallback(
     async (formData: CreditCardFormData) => {
       if (!target) return;
+
+      const rawDoc = formData.docNumber || billingProfile?.document_number;
+      if (!isValidCpfOrCnpjDigits(rawDoc)) {
+        onPaymentDeclined(
+          'Informe um CPF ou CNPJ válido do titular antes de finalizar o pagamento.'
+        );
+        onRequireBillingEdit?.();
+        return;
+      }
+
       setLoading(true);
 
-      const docNum = formData.docNumber || billingProfile?.document_number || '00000000000';
+      const docNum = sanitizeDocumentNumber(rawDoc);
       const docType = (billingProfile?.document_type as 'CPF' | 'CNPJ') || (docNum.length > 11 ? 'CNPJ' : 'CPF');
       const paymentMethodId = detectPaymentMethodId(formData.cardNumber);
 
@@ -83,7 +96,7 @@ export function useCreditCardCheckout({
         setLoading(false);
       }
     },
-    [target, userEmail, billingProfile, onPaymentApproved, onPaymentDeclined, onSuccessPayment]
+    [target, userEmail, billingProfile, onPaymentApproved, onPaymentDeclined, onRequireBillingEdit, onSuccessPayment]
   );
 
   return {

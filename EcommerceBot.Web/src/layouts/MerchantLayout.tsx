@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { apiClient } from '@/lib/apiClient';
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -25,6 +26,32 @@ export const MerchantLayout: React.FC = () => {
   const location = useLocation();
   const { user, currentTenant, logout } = useAuth();
   const { setAdminViewMode } = useRoleLayout();
+  const [tenantProfile, setTenantProfile] = useState<{ tenantId: string; name: string } | null>(null);
+
+  useEffect(() => {
+    if (!currentTenant) {
+      return;
+    }
+
+    let isMounted = true;
+    apiClient
+      .get<{ name?: string }>('/api/v1/tenant/me')
+      .then((res) => {
+        if (isMounted && res.data?.name) {
+          setTenantProfile({ tenantId: currentTenant, name: res.data.name });
+        }
+      })
+      .catch(() => {
+        // Mantém fallback amigável se o perfil do tenant não estiver acessível no momento
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentTenant]);
+
+  const tenantName = tenantProfile?.tenantId === currentTenant ? tenantProfile.name : null;
+  const storeLabel = tenantName || 'Loja Ativa';
 
   const isAdmin = Boolean(user && (user.is_admin === true || user.role === 'admin' || user.role === 'ADMIN'));
 
@@ -107,7 +134,7 @@ export const MerchantLayout: React.FC = () => {
           <div className="flex flex-col gap-2 p-1">
             {currentTenant && (
               <div className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
-                <span className="font-semibold truncate">Loja: {currentTenant}</span>
+                <span className="font-semibold truncate">Loja: {storeLabel}</span>
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               </div>
             )}
@@ -125,7 +152,7 @@ export const MerchantLayout: React.FC = () => {
                   size="sm"
                   onClick={() => logout()}
                   title="Sair da conta"
-                  className="min-h-[36px] px-2 text-rose-400 hover:bg-rose-950/30"
+                  className="min-h-[44px] min-w-[44px] px-2 text-rose-400 hover:bg-rose-950/30"
                 >
                   <LogOut className="w-4 h-4" />
                 </Button>
@@ -158,7 +185,7 @@ export const MerchantLayout: React.FC = () => {
                   navigate('/admin/leads');
                 }}
                 iconLeft={<Building className="w-4 h-4 text-sky-400" />}
-                className="min-h-[38px] text-xs font-bold border-indigo-500/30 bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 cursor-pointer"
+                className="min-h-[44px] text-xs font-bold border-indigo-500/30 bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 cursor-pointer"
               >
                 🛡️ Voltar ao Admin CRM
               </Button>
@@ -166,10 +193,10 @@ export const MerchantLayout: React.FC = () => {
 
             {currentTenant ? (
               <Badge variant="info" icon={<ShieldCheck className="w-3.5 h-3.5" />}>
-                Tenant: {currentTenant}
+                {storeLabel}
               </Badge>
             ) : (
-              <Badge variant="warning">Tenant Padrão</Badge>
+              <Badge variant="warning">Loja Padrão</Badge>
             )}
           </div>
         </header>

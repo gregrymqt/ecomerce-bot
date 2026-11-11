@@ -43,18 +43,13 @@ export function useAuthForm(initialMode: AuthMode = 'login'): UseAuthFormReturn 
         const userResp = await login({
           email: data.email,
           password: data.password,
-          tenant_id: data.tenant?.trim() || undefined,
         });
-        const plan = userResp?.plan?.toLowerCase() || 'free';
         const isAdmin = userResp?.is_admin === true || userResp?.role?.toUpperCase() === 'ADMIN';
-        const isPaidUser = plan === 'pro' || plan === 'enterprise';
 
         if (isAdmin) {
           navigate('/admin/leads');
-        } else if (isPaidUser) {
-          navigate('/dashboard');
         } else {
-          navigate('/demo');
+          navigate('/dashboard');
         }
       } catch (err) {
         getErrorMessage(err);
@@ -77,22 +72,18 @@ export function useAuthForm(initialMode: AuthMode = 'login'): UseAuthFormReturn 
           name: data.name,
           email: data.email,
           password: data.password,
-          tenants: data.tenantName?.trim() ? [data.tenantName.trim()] : undefined,
+          tenantName: data.tenantName?.trim() || undefined,
           utm_source: storedUtms.utm_source,
           utm_medium: storedUtms.utm_medium,
           utm_campaign: storedUtms.utm_campaign,
           ad_id: storedUtms.ad_id,
         });
-        const plan = userResp?.plan?.toLowerCase() || 'free';
         const isAdmin = userResp?.is_admin === true || userResp?.role?.toUpperCase() === 'ADMIN';
-        const isPaidUser = plan === 'pro' || plan === 'enterprise';
 
         if (isAdmin) {
           navigate('/admin/leads');
-        } else if (isPaidUser) {
-          navigate('/dashboard');
         } else {
-          navigate('/demo');
+          navigate('/dashboard');
         }
       } catch (err) {
         getErrorMessage(err);

@@ -100,4 +100,55 @@ describe('Modal component (React Portal)', () => {
 
     expect(document.body.style.overflow).toBe('unset');
   });
+
+  it('deve aplicar aria-labelledby, aria-describedby, focus inicial, focus trap e restaurar foco ao fechar', () => {
+    const triggerButton = document.createElement('button');
+    triggerButton.textContent = 'Abrir modal';
+    document.body.appendChild(triggerButton);
+    triggerButton.focus();
+
+    const { rerender } = render(
+      <Modal
+        isOpen={true}
+        onClose={vi.fn()}
+        title="Modal Acessível"
+        description="Descrição acessível"
+      >
+        <button type="button">Ação Interna</button>
+      </Modal>
+    );
+
+    const dialog = screen.getByRole('dialog');
+    const heading = screen.getByText('Modal Acessível');
+    const desc = screen.getByText('Descrição acessível');
+    const closeButton = screen.getByRole('button', { name: /Fechar modal/i });
+    const innerButton = screen.getByRole('button', { name: 'Ação Interna' });
+
+    expect(dialog).toHaveAttribute('aria-labelledby', heading.id);
+    expect(dialog).toHaveAttribute('aria-describedby', desc.id);
+    expect(document.activeElement).toBe(closeButton);
+
+    // Tab a partir do último elemento foca de volta o primeiro
+    innerButton.focus();
+    fireEvent.keyDown(window, { key: 'Tab' });
+    expect(document.activeElement).toBe(closeButton);
+
+    // Shift+Tab a partir do primeiro elemento foca de volta o último
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(innerButton);
+
+    rerender(
+      <Modal
+        isOpen={false}
+        onClose={vi.fn()}
+        title="Modal Acessível"
+        description="Descrição acessível"
+      >
+        <button type="button">Ação Interna</button>
+      </Modal>
+    );
+
+    expect(document.activeElement).toBe(triggerButton);
+    triggerButton.remove();
+  });
 });

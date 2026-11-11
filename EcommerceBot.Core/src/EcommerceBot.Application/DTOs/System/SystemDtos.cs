@@ -9,6 +9,16 @@ public sealed record DashboardTelemetryResponse
     public List<TokenTelemetrySchema> TokenUsage { get; init; } = new();
     public double AverageLatencyMs { get; init; }
     public double HoursSaved { get; init; }
+    public int CreditsBalance { get; init; }
+    public int CreditsTotal { get; init; }
+    public List<VolumeChartPoint> VolumeChart { get; init; } = new();
+}
+
+public sealed record VolumeChartPoint
+{
+    public string Label { get; init; } = string.Empty;
+    public int RawCount { get; init; }
+    public int ProcessedCount { get; init; }
 }
 
 public sealed record ProductStatusSummary
@@ -25,6 +35,7 @@ public sealed record TokenTelemetrySchema
     public int TotalPromptTokens { get; init; }
     public int TotalCompletionTokens { get; init; }
     public int TotalTokens { get; init; }
+    public bool IsByok { get; init; }
 }
 
 public sealed record RobotActivityDto

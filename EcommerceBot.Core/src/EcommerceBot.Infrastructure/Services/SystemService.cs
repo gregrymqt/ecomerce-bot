@@ -29,6 +29,7 @@ public sealed class SystemService : ISystemService
     private readonly IConnectionMultiplexer _redis;
     private readonly ILogger<SystemService> _logger;
     private readonly ISendEndpointProvider? _sendEndpointProvider;
+    private readonly ITenantRepository? _tenantRepository;
 
     public SystemService(
         IProductRepository productRepository,
@@ -36,7 +37,8 @@ public sealed class SystemService : ISystemService
         IDbConnectionFactory dbConnectionFactory,
         IConnectionMultiplexer redis,
         ILogger<SystemService> logger,
-        ISendEndpointProvider? sendEndpointProvider = null)
+        ISendEndpointProvider? sendEndpointProvider = null,
+        ITenantRepository? tenantRepository = null)
     {
         _productRepository = productRepository;
         _activityRepository = activityRepository;
@@ -44,7 +46,10 @@ public sealed class SystemService : ISystemService
         _redis = redis;
         _logger = logger;
         _sendEndpointProvider = sendEndpointProvider;
+        _tenantRepository = tenantRepository;
     }
+
+    private sealed record ProductTelemetryRow(string Status, DateTimeOffset CreatedAt);
 
     public async Task<DashboardTelemetryResponse> GetTelemetryMetricsAsync(Guid tenantId, string timeframe, CancellationToken cancellationToken = default)
     {
@@ -58,35 +63,36 @@ public sealed class SystemService : ISystemService
 
         try
         {
-            // 1. LlmUsageLogs aggregation instead of TokenTelemetryModel!
+            // 1. LlmUsageLogs aggregation (inclui flag IsByok real)
             using var conn = await _dbConnectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
             var cutoff = DateTimeOffset.UtcNow.Subtract(timeSpan);
             var tokenSql = @"
                 SELECT Provider, 
                        SUM(PromptTokens) as TotalPromptTokens, 
                        SUM(CompletionTokens) as TotalCompletionTokens, 
-                       SUM(TotalTokens) as TotalTokens
+                       SUM(TotalTokens) as TotalTokens,
+                       CAST(MAX(CASE WHEN IsByok = 1 THEN 1 ELSE 0 END) AS BIT) as IsByok
                 FROM dbo.LlmUsageLogs
                 WHERE TenantId = @TenantId AND CreatedAt >= @Cutoff
                 GROUP BY Provider";
-                
+
             var tokenUsage = (await conn.QueryAsync<TokenTelemetrySchema>(new CommandDefinition(tokenSql, new { TenantId = tenantId, Cutoff = cutoff }, cancellationToken: cancellationToken))).ToList();
 
-            // 2. Product status aggregation
-            var statusSql = @"
-                SELECT Status, COUNT(Id) as Count
+            // 2. Product status & série temporal real de volume
+            var productsSql = @"
+                SELECT Status, CreatedAt
                 FROM dbo.Products
-                WHERE TenantId = @TenantId AND CreatedAt >= @Cutoff
-                GROUP BY Status";
-            var statuses = await conn.QueryAsync(new CommandDefinition(statusSql, new { TenantId = tenantId, Cutoff = cutoff }, cancellationToken: cancellationToken));
+                WHERE TenantId = @TenantId AND CreatedAt >= @Cutoff";
+            var productRows = (await conn.QueryAsync<ProductTelemetryRow>(new CommandDefinition(productsSql, new { TenantId = tenantId, Cutoff = cutoff }, cancellationToken: cancellationToken))).ToList();
+
             int raw = 0, processing = 0, processed = 0, failed = 0;
-            foreach (var status in statuses)
+            foreach (var row in productRows)
             {
-                var s = ((string)status.Status).ToLower();
-                if (s == "raw") raw += (int)status.Count;
-                else if (s == "processing") processing += (int)status.Count;
-                else if (s == "processed") processed += (int)status.Count;
-                else if (s == "failed") failed += (int)status.Count;
+                var s = (row.Status ?? string.Empty).Trim().ToLowerInvariant();
+                if (s == "raw") raw++;
+                else if (s == "processing") processing++;
+                else if (s is "processed" or "enriched") processed++;
+                else if (s == "failed") failed++;
             }
 
             var productStatus = new ProductStatusSummary
@@ -97,11 +103,61 @@ public sealed class SystemService : ISystemService
                 Failed = failed
             };
 
-            // 3. Average Latency
+            var isHourly = timeframe is not ("7d" or "30d");
+            var volumeChart = productRows
+                .GroupBy(row =>
+                {
+                    var utc = row.CreatedAt.ToUniversalTime();
+                    return isHourly
+                        ? new DateTimeOffset(utc.Year, utc.Month, utc.Day, utc.Hour, 0, 0, TimeSpan.Zero)
+                        : new DateTimeOffset(utc.Year, utc.Month, utc.Day, 0, 0, 0, TimeSpan.Zero);
+                })
+                .OrderBy(group => group.Key)
+                .Select(group => new VolumeChartPoint
+                {
+                    Label = isHourly
+                        ? group.Key.ToString("HH':00'", CultureInfo.InvariantCulture)
+                        : group.Key.ToString("dd/MM", CultureInfo.InvariantCulture),
+                    RawCount = group.Count(),
+                    ProcessedCount = group.Count(item =>
+                    {
+                        var st = (item.Status ?? string.Empty).Trim().ToLowerInvariant();
+                        return st is "processed" or "enriched";
+                    })
+                })
+                .ToList();
+
+            // 3. Saldo real de créditos do Tenant
+            int creditsBalance = 0;
+            if (_tenantRepository != null)
+            {
+                var tenant = await _tenantRepository.GetByIdAsync(tenantId, cancellationToken);
+                creditsBalance = tenant?.CreditsBalance ?? 0;
+            }
+
+            int totalAcquiredCredits = creditsBalance;
+            try
+            {
+                const string creditsSql = @"
+                    SELECT COALESCE(SUM(Amount), 0)
+                    FROM dbo.CreditTransactions
+                    WHERE TenantId = @TenantId AND Amount > 0";
+                var acquired = await conn.QueryFirstOrDefaultAsync<int?>(
+                    new CommandDefinition(creditsSql, new { TenantId = tenantId }, cancellationToken: cancellationToken));
+                if (acquired.HasValue)
+                {
+                    totalAcquiredCredits = Math.Max(creditsBalance, acquired.Value);
+                }
+            }
+            catch (Exception credEx)
+            {
+                _logger.LogWarning(credEx, "Aviso: Não foi possível somar histórico de créditos para Tenant {TenantId}. Usando saldo atual como base.", tenantId);
+            }
+
+            // 4. Average Latency
             var avgLatency = await _activityRepository.GetAverageLatencyAsync(tenantId, timeSpan, cancellationToken);
 
-            // 4. Hours Saved
-            // Exemplo: 10 mins (0.16h) salvos por produto processado
+            // 5. Hours Saved (10 mins = ~0.16h salvos por produto processado)
             var hoursSaved = productStatus.Processed * 0.16;
 
             return new DashboardTelemetryResponse
@@ -109,7 +165,10 @@ public sealed class SystemService : ISystemService
                 ProductStatus = productStatus,
                 TokenUsage = tokenUsage,
                 AverageLatencyMs = avgLatency,
-                HoursSaved = Math.Round(hoursSaved, 2)
+                HoursSaved = Math.Round(hoursSaved, 2),
+                CreditsBalance = creditsBalance,
+                CreditsTotal = totalAcquiredCredits,
+                VolumeChart = volumeChart
             };
         }
         catch (Exception ex)

@@ -56,6 +56,19 @@ export const productService = {
   },
 
   /**
+   * Regenera título e copywriting de SEO via IA real no backend para um produto existente.
+   */
+  regenerateProductCopy: async (sku: string): Promise<Product> => {
+    try {
+      const response = await apiClient.post<Product>(`/api/v1/products/${sku}/regenerate`);
+      return response.data;
+    } catch (error: unknown) {
+      const message = getErrorMessage(error, 'Erro ao regenerar copywriting com IA.');
+      throw new Error(message, { cause: error });
+    }
+  },
+
+  /**
    * Remove um produto pelo SKU.
    */
   deleteProduct: async (sku: string): Promise<{ status: string; message: string }> => {

@@ -5,7 +5,7 @@
  */
 
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, Building, LogIn } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 import type { LoginFormData } from '../../types/auth.types';
 import { useAuth } from '../../hooks/useAuth';
 import { GoogleAuthButton } from '../sso/GoogleAuthButton';
@@ -56,7 +56,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   const { login, isLoading: authIsLoading, error: authError } = useAuth();
 
   const [formData, setFormData] = useState<LoginFormData>({
-    tenant: '',
     email: initialEmail,
     password: '',
   });
@@ -115,7 +114,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     if (!validate()) return;
 
     const payload: LoginFormData = {
-      tenant: formData.tenant?.trim() || undefined,
       email: formData.email.trim(),
       password: formData.password,
     };
@@ -129,7 +127,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         await login({
           email: payload.email,
           password: payload.password,
-          tenant_id: payload.tenant,
         });
         onSuccess?.();
       } catch {
@@ -159,22 +156,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
       {/* Formulário Principal */}
       <form onSubmit={handleSubmitForm} noValidate className="space-y-4">
-        {/* Campo ID da Loja / Tenant */}
-        <FormField
-          label="ID da Loja (Opcional)"
-          name="tenant"
-          type="text"
-          placeholder="ex: minha-loja-01"
-          value={formData.tenant || ''}
-          onChange={handleChange}
-          error={fieldErrors.tenant}
-          helperText="Informe o ID do tenant se possuir mais de uma organização"
-          iconLeft={<Building className="w-5 h-5 shrink-0" />}
-          autoComplete="organization"
-          disabled={isLoading}
-          className="min-h-[44px] text-base bg-slate-900/50 border-slate-700/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-        />
-
         {/* Campo E-mail */}
         <FormField
           label="E-mail"

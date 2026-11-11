@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '@/features/auth';
 import { AppRoutes } from '@/routes/AppRoutes';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { JsonLd } from '@/components/common/JsonLd';
 import { initGA } from '@/lib/analytics';
 import { initClarity } from '@/lib/clarity';
@@ -24,11 +25,13 @@ export default function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <JsonLd data={websiteSchemaData} />
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <JsonLd data={websiteSchemaData} />
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

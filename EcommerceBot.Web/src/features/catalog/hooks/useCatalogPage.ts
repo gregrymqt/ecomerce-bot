@@ -7,6 +7,8 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { CatalogProduct, FilterStatus, AITone, ProductStatus, EcomPlatform } from '../types';
 import type { AlertVariant } from '@/components/ui/feedback/Alert';
+import { getErrorMessage } from '@/utils/errors';
+import { productService } from '../services/product.service';
 import { useProducts } from './useProducts';
 import { useProductSync } from './useProductSync';
 
@@ -125,29 +127,36 @@ export function useCatalogPage() {
     }
   };
 
-  // Re-gerar Título por IA
+  // Re-gerar Título & Copywriting via IA Real (POST /api/v1/products/{sku}/regenerate)
   const handleRegenerateAiTitle = async (product: CatalogProduct) => {
     setRegeneratingSku(product.sku);
     try {
-      const newTitleAi = `${product.titleOriginal} — Otimizado IA (${new Date().toLocaleTimeString('pt-BR', { minute: '2-digit', second: '2-digit' })})`;
-
-      // Persiste no backend via PATCH /api/v1/products/{sku}
-      await apiUpdateProduct(product.sku, {
-        title: product.titleOriginal,
-        description: product.descriptionAi,
-        status: 'Processed',
-        attributes: { title_ai: newTitleAi },
-      });
+      const updated = await productService.regenerateProductCopy(product.sku);
 
       setLocalOverrides((prev) => ({
         ...prev,
-        [product.sku]: { ...prev[product.sku], titleAi: newTitleAi, status: 'PROCESSED' },
+        [product.sku]: {
+          ...prev[product.sku],
+          titleAi: updated.title || product.titleAi,
+          descriptionAi: updated.description ?? product.descriptionAi,
+          status: normalizeBackendStatus(String(updated.status || 'PROCESSED')),
+        },
       }));
-    } catch {
+      window.dispatchEvent(new CustomEvent('wallet:balance-updated'));
+      void refetch();
+      setAlertInfo({
+        variant: 'success',
+        title: 'Copy Regenerada com IA',
+        message: `Título e descrição do produto SKU ${product.sku} atualizados com sucesso.`,
+      });
+    } catch (err: unknown) {
       setAlertInfo({
         variant: 'error',
         title: 'Erro na IA',
-        message: `Falha ao re-gerar título por IA para o produto SKU ${product.sku}.`,
+        message: getErrorMessage(
+          err,
+          `Falha ao re-gerar título por IA para o produto SKU ${product.sku}.`
+        ),
       });
     } finally {
       setRegeneratingSku(null);

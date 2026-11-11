@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.DTOs.Products;
 using EcommerceBot.Application.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcommerceBot.Api.Controllers;
@@ -94,5 +95,30 @@ public class ProductsController : BaseApiController
             return NotFoundProblem($"Produto com SKU '{sku}' não encontrado.");
 
         return Ok(new { message = "Produto excluído com sucesso." });
+    }
+
+    [HttpPost("{sku}/regenerate")]
+    [RateLimit(MaxRequests = 20, WindowSeconds = 60, BlockDurationSeconds = 300)]
+    public async Task<IActionResult> RegenerateProductCopy(
+        [FromHeader(Name = "X-Tenant-ID")] Guid tenantId,
+        string sku,
+        CancellationToken cancellationToken = default)
+    {
+        var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
+        if (activeTenantId == Guid.Empty)
+            return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
+
+        try
+        {
+            var result = await _catalogService.RegenerateProductCopyAsync(activeTenantId, sku, cancellationToken);
+            if (result == null)
+                return NotFoundProblem($"Produto com SKU '{sku}' não encontrado.");
+
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ProblemResponse(StatusCodes.Status422UnprocessableEntity, "AI Regeneration Failed", ex.Message);
+        }
     }
 }

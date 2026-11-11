@@ -15,18 +15,13 @@ export interface SystemHealthWidgetProps {
   className?: string;
 }
 
-const DEFAULT_HEALTH_ITEMS: SystemHealthItem[] = [
-  { service_name: 'ScraperWorker Pool', status: 'ONLINE', details: '3 instâncias ativas' },
-  { service_name: 'ProcessorWorker (LLM)', status: 'ONLINE', details: 'Timeout cleanup OK' },
-  { service_name: 'RabbitMQ (aio-pika)', status: 'ONLINE', details: 'Fila ecommerce_prod limpa' },
-  { service_name: 'Redis Pub/Sub & Cache', status: 'ONLINE', details: 'Rate limit & Pub/Sub 0ms' },
-];
-
 export const SystemHealthWidget: React.FC<SystemHealthWidgetProps> = ({
-  healthItems = DEFAULT_HEALTH_ITEMS,
+  healthItems = [],
   className,
 }) => {
-  const items = healthItems && healthItems.length > 0 ? healthItems : DEFAULT_HEALTH_ITEMS;
+  const items = healthItems ?? [];
+  const allOnline = items.length > 0 && items.every((item) => item.status === 'ONLINE');
+  const hasOffline = items.some((item) => item.status === 'OFFLINE');
 
   return (
     <div
@@ -47,15 +42,35 @@ export const SystemHealthWidget: React.FC<SystemHealthWidgetProps> = ({
           </div>
         </div>
 
-        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+        <span
+          className={cn(
+            'inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border',
+            allOnline
+              ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+              : hasOffline
+                ? 'text-red-400 bg-red-500/10 border-red-500/20'
+                : 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+          )}
+        >
           <Activity className="h-3.5 w-3.5" />
-          100% Online
+          {items.length === 0
+            ? 'Sem Leituras'
+            : allOnline
+              ? '100% Online'
+              : hasOffline
+                ? 'Serviço Offline'
+                : 'Degradado'}
         </span>
       </div>
 
       {/* Lista de Serviços */}
       <div className="space-y-3">
-        {items.map((svc, idx) => (
+        {items.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-[#1E293B] bg-[#090D16]/40 p-5 text-center text-xs text-slate-400">
+            Nenhuma leitura de saúde disponível no momento.
+          </div>
+        ) : (
+          items.map((svc, idx) => (
           <div
             key={idx}
             className="rounded-xl bg-[#090D16] border border-[#1E293B] p-3 flex items-center justify-between text-xs sm:text-sm"
@@ -82,11 +97,21 @@ export const SystemHealthWidget: React.FC<SystemHealthWidgetProps> = ({
               </div>
             </div>
 
-            <span className="font-mono text-xs font-bold uppercase text-emerald-400">
+            <span
+              className={cn(
+                'font-mono text-xs font-bold uppercase',
+                svc.status === 'ONLINE'
+                  ? 'text-emerald-400'
+                  : svc.status === 'OFFLINE'
+                    ? 'text-red-400'
+                    : 'text-amber-400'
+              )}
+            >
               {svc.status}
             </span>
           </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

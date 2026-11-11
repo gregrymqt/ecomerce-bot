@@ -15,6 +15,7 @@ import {
   TopUpCreditModal,
 } from '../components';
 import { Button, Alert } from '@/components/ui';
+import { SEO } from '@/components/common/SEO';
 
 export const MeteringDashboardPage: React.FC = () => {
   const {
@@ -36,11 +37,11 @@ export const MeteringDashboardPage: React.FC = () => {
   const totalCost30d = balance?.estimated_cost_usd_30d ?? 0;
 
   return (
-    <div
-      role="main"
-      aria-label="Painel de Consumo e Telemetria de IA"
-      className="space-y-6 max-w-7xl mx-auto animate-fade-in pb-12"
-    >
+    <div className="space-y-6 max-w-7xl mx-auto animate-fade-in pb-12">
+      <SEO
+        title="Consumo & Telemetria de IA"
+        description="Acompanhe seu saldo de créditos, uso de chaves BYOK e histórico de tokens LLM."
+      />
       {/* Header Principal da Página */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
@@ -80,7 +81,7 @@ export const MeteringDashboardPage: React.FC = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => refetchAll()}
-                className="min-h-[36px]"
+                className="min-h-[44px]"
               >
                 Tentar Novamente
               </Button>
