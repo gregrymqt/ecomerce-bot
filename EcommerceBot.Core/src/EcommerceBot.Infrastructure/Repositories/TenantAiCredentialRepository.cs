@@ -21,7 +21,7 @@ public sealed class TenantAiCredentialRepository : ITenantAiCredentialRepository
         using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         const string sql = """
             SELECT * FROM dbo.TenantAiCredentials 
-            WHERE TenantId = @TenantId AND Provider = @Provider AND IsActive = 1
+            WHERE TenantId = @TenantId AND UPPER(Provider) = UPPER(@Provider) AND IsActive = 1
         """;
         var cmd = new CommandDefinition(sql, new { TenantId = tenantId, Provider = provider }, cancellationToken: cancellationToken);
         return await connection.QueryFirstOrDefaultAsync<TenantAiCredential>(cmd);
@@ -30,7 +30,10 @@ public sealed class TenantAiCredentialRepository : ITenantAiCredentialRepository
     public async Task<bool> HasActiveByokAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
-        const string sql = "SELECT COUNT(1) FROM dbo.TenantAiCredentials WHERE TenantId = @TenantId AND IsActive = 1";
+        const string sql = """
+            SELECT COUNT(1) FROM dbo.TenantAiCredentials
+            WHERE TenantId = @TenantId AND UPPER(Provider) = 'OPENROUTER' AND IsActive = 1
+        """;
         var cmd = new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken);
         var count = await connection.ExecuteScalarAsync<int>(cmd);
         return count > 0;

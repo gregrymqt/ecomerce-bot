@@ -32,6 +32,14 @@ public sealed class UserRepository : IUserRepository
         return await connection.QueryFirstOrDefaultAsync<User>(cmd);
     }
 
+    public async Task<User?> GetByEmailAndTenantAsync(string email, Guid tenantId, CancellationToken cancellationToken = default)
+    {
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
+        const string sql = "SELECT * FROM dbo.Users WHERE LOWER(Email) = LOWER(@Email) AND TenantId = @TenantId;";
+        var cmd = new CommandDefinition(sql, new { Email = email, TenantId = tenantId }, cancellationToken: cancellationToken);
+        return await connection.QueryFirstOrDefaultAsync<User>(cmd);
+    }
+
     public async Task<User> CreateAsync(User user, CancellationToken cancellationToken = default)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync();
@@ -65,7 +73,7 @@ public sealed class UserRepository : IUserRepository
                 PasswordHash = @PasswordHash,
                 FullName = @FullName,
                 Role = @Role,
-                RoleId = COALESCE(@RoleId, (SELECT TOP 1 Id FROM dbo.Roles WHERE Name = @Role), RoleId),
+                RoleId = COALESCE((SELECT TOP 1 Id FROM dbo.Roles WHERE Name = @Role), @RoleId, RoleId),
                 IsActive = @IsActive,
                 UpdatedAt = SYSDATETIMEOFFSET()
             WHERE Id = @Id;";

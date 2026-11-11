@@ -66,7 +66,7 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
                 ? message.ErrorMessage
                 : "Falha na extração de scraping perimetral de produto.";
 
-            await HandleFailureAsync(message.TenantId, message.Sku, errorMessage, channel, context.CancellationToken);
+            await HandleFailureAsync(message.TenantId, message.Sku, message.IsByok, errorMessage, channel, context.CancellationToken);
             return;
         }
 
@@ -118,6 +118,7 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
                 Images = message.Images,
                 MetaAttributes = message.MetaAttributes,
                 PromptContext = message.PromptContext,
+                UseTenantByok = message.IsByok,
                 SeoGuideline = seoGuideline
             };
 
@@ -129,7 +130,7 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
                 _logger.LogWarning("OpenRouter Gateway retornou fallback com erro para Tenant {TenantId}, SKU {Sku}: {Error}",
                     message.TenantId, message.Sku, enrichmentResult.ErrorMessage);
 
-                await HandleFailureAsync(message.TenantId, message.Sku, enrichmentResult.ErrorMessage, channel, context.CancellationToken);
+                await HandleFailureAsync(message.TenantId, message.Sku, message.IsByok, enrichmentResult.ErrorMessage, channel, context.CancellationToken);
                 return;
             }
 
@@ -209,7 +210,7 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
                     CompletionTokens = enrichmentResult.CompletionTokens,
                     TotalTokens = enrichmentResult.TotalTokens,
                     EstimatedCostUsd = enrichmentResult.TotalCostEstimated,
-                    IsByok = false,
+                    IsByok = message.IsByok,
                     ExecutionTimeMs = enrichmentResult.ExecutionTimeMs.HasValue
                         ? (int)Math.Min(enrichmentResult.ExecutionTimeMs.Value, int.MaxValue)
                         : null,
@@ -275,14 +276,14 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
             _logger.LogError(ex, "Exceção inesperada durante o enriquecimento de produto para Tenant {TenantId}, SKU {Sku}",
                 message.TenantId, message.Sku);
 
-            await HandleFailureAsync(message.TenantId, message.Sku, ex.Message, channel, context.CancellationToken);
+            await HandleFailureAsync(message.TenantId, message.Sku, message.IsByok, ex.Message, channel, context.CancellationToken);
         }
     }
 
-    private async Task HandleFailureAsync(Guid tenantId, string sku, string errorMessage, string channel, CancellationToken cancellationToken)
+    private async Task HandleFailureAsync(Guid tenantId, string sku, bool isByok, string errorMessage, string channel, CancellationToken cancellationToken)
     {
-        _logger.LogWarning("Falha no enriquecimento de produto para Tenant {TenantId}, SKU {Sku}: {Error}. Atualizando status para FAILED e estornando crédito.",
-            tenantId, sku, errorMessage);
+        _logger.LogWarning("Falha no enriquecimento de produto para Tenant {TenantId}, SKU {Sku} (IsByok={IsByok}): {Error}. Atualizando status para FAILED.",
+            tenantId, sku, isByok, errorMessage);
 
         // Atualizar status no banco de dados
         try
@@ -294,32 +295,35 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
             _logger.LogError(ex, "Falha ao atualizar status de falha do produto para Tenant {TenantId}, SKU {Sku}", tenantId, sku);
         }
 
-        // Estorno atômico de 1 crédito no Ledger
-        try
+        // Estorno atômico de 1 crédito no Ledger apenas quando houve débito prévio (não-BYOK)
+        if (!isByok)
         {
-            var newBalance = await _tenantRepository.AddCreditsAsync(
-                tenantId: tenantId,
-                amount: 1,
-                type: "REFUND",
-                description: $"Estorno automático por falha no processamento (SKU: {sku})",
-                referenceId: sku,
-                cancellationToken: cancellationToken
-            );
-
-            var refundPayload = JsonSerializer.Serialize(new
+            try
             {
-                type = "credits_refunded",
-                sku,
-                amount = 1,
-                balance_credits = newBalance,
-                timestamp = DateTimeOffset.UtcNow
-            });
+                var newBalance = await _tenantRepository.AddCreditsAsync(
+                    tenantId: tenantId,
+                    amount: 1,
+                    type: "REFUND",
+                    description: $"Estorno automático por falha no processamento (SKU: {sku})",
+                    referenceId: sku,
+                    cancellationToken: cancellationToken
+                );
 
-            await _redisService.PublishAsync(channel, refundPayload);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Falha ao estornar crédito no Ledger para Tenant {TenantId}, SKU {Sku}", tenantId, sku);
+                var refundPayload = JsonSerializer.Serialize(new
+                {
+                    type = "credits_refunded",
+                    sku,
+                    amount = 1,
+                    balance_credits = newBalance,
+                    timestamp = DateTimeOffset.UtcNow
+                });
+
+                await _redisService.PublishAsync(channel, refundPayload);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Falha ao estornar crédito no Ledger para Tenant {TenantId}, SKU {Sku}", tenantId, sku);
+            }
         }
 
         // Notificar falha via SSE para o Frontend React

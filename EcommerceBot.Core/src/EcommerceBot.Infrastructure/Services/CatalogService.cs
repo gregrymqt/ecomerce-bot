@@ -18,20 +18,20 @@ public sealed class CatalogService : ICatalogService
     private readonly IProductRepository _productRepository;
     private readonly ITenantRepository _tenantRepository;
     private readonly ITenantAiCredentialRepository _tenantAiCredentialRepository;
-    private readonly IPublishEndpoint _publishEndpoint;
+    private readonly ISendEndpointProvider _sendEndpointProvider;
     private readonly ILogger<CatalogService> _logger;
 
     public CatalogService(
         IProductRepository productRepository,
         ITenantRepository tenantRepository,
         ITenantAiCredentialRepository tenantAiCredentialRepository,
-        IPublishEndpoint publishEndpoint,
+        ISendEndpointProvider sendEndpointProvider,
         ILogger<CatalogService> logger)
     {
         _productRepository = productRepository;
         _tenantRepository = tenantRepository;
         _tenantAiCredentialRepository = tenantAiCredentialRepository;
-        _publishEndpoint = publishEndpoint;
+        _sendEndpointProvider = sendEndpointProvider;
         _logger = logger;
     }
 
@@ -168,7 +168,8 @@ public sealed class CatalogService : ICatalogService
 
         try
         {
-            await _publishEndpoint.Publish(new ScrapingRequestMessage
+            var endpoint = await _sendEndpointProvider.GetSendEndpoint(new Uri("exchange:ecommerce"));
+            await endpoint.Send(new ScrapingRequestMessage
             {
                 TenantId = tenantId,
                 Sku = sku,
@@ -197,7 +198,7 @@ public sealed class CatalogService : ICatalogService
                     await _tenantRepository.AddCreditsAsync(
                         tenantId,
                         1,
-                        type: "REFUND_SCRAPE_FAIL",
+                        type: "REFUND",
                         description: $"Reembolso automático: Falha no enfileiramento do SKU {sku}",
                         referenceId: sku,
                         cancellationToken: cancellationToken);

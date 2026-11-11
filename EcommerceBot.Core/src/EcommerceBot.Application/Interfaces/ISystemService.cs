@@ -13,5 +13,5 @@ public interface ISystemService
     Task<IEnumerable<RobotActivityDto>> GetRecentActivitiesAsync(Guid tenantId, int limit, int page, CancellationToken cancellationToken = default);
     Task<SystemHealthResponse> CheckSystemHealthAsync(CancellationToken cancellationToken = default);
     Task ProcessDemoRequestAsync(List<string> urls, CancellationToken cancellationToken = default);
-    Task ExportDataToStreamAsync(Guid tenantId, string platform, StreamWriter writer, CancellationToken cancellationToken = default);
+    Task ExportDataToStreamAsync(Guid tenantId, string platform, Stream outputStream, CancellationToken cancellationToken = default);
 }

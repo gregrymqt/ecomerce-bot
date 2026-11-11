@@ -116,12 +116,64 @@ class TestScraperResilienceSuite(unittest.IsolatedAsyncioTestCase):
 
         canonical_url = self.valid_url.strip().lower()
         expected_hash = hashlib.sha256(canonical_url.encode("utf-8")).hexdigest()
-        expected_key = f"worker:idempotency:scraper:{self.tenant_id}:{expected_hash}"
+        expected_key = f"worker:idempotency:scraper:{self.tenant_id}:{self.sku}:{expected_hash}"
         mock_is_processed.assert_called_once_with(expected_key)
 
         # Deve descartar silenciosamente
         parser_mock.parse_and_enrich.assert_not_called()
         channel_mock.default_exchange.publish.assert_not_called()
+
+    async def test_rescrape_same_url_with_new_sku_is_not_dropped(self):
+        """Valida que um novo SKU para a mesma URL/tenant executa normalmente mesmo se outro SKU já foi raspado (LOG-02)."""
+        channel_mock = MagicMock()
+        channel_mock.default_exchange.publish = AsyncMock()
+
+        parser_mock = MagicMock()
+        parser_mock.parse_and_enrich = AsyncMock(return_value={
+            "title": "Produto Re-raspado",
+            "raw_title": "Produto Re-raspado",
+            "description": "Descrição atualizada.",
+            "raw_markdown": "Descrição atualizada.",
+            "price": 199.90,
+            "currency": "BRL",
+            "images": [],
+            "meta_attributes": {}
+        })
+
+        seen_keys = set()
+        new_sku = "SKU-NEW-002"
+
+        async def check_processed(key):
+            return key in seen_keys
+
+        async def record_processed(key, ttl_seconds=86400):
+            seen_keys.add(key)
+
+        # Simula cache prévio apenas do SKU antigo
+        canonical_url = self.valid_url.strip().lower()
+        url_hash = hashlib.sha256(canonical_url.encode("utf-8")).hexdigest()
+        seen_keys.add(f"worker:idempotency:scraper:{self.tenant_id}:{self.sku}:{url_hash}")
+
+        request_payload = {
+            "tenant_id": self.tenant_id,
+            "sku": new_sku,
+            "url": self.valid_url,
+            "prompt_context": "",
+            "is_byok": False
+        }
+        message_mock = MagicMock()
+        message_mock.body = json.dumps(request_payload).encode("utf-8")
+        message_mock.process.return_value.__aenter__ = AsyncMock()
+        message_mock.process.return_value.__aexit__ = AsyncMock()
+
+        with patch("app.scraper.worker.redis_cache.is_already_processed", side_effect=check_processed), \
+             patch("app.scraper.worker.validate_url_safety"), \
+             patch("app.scraper.worker.redis_cache.set_idempotency_key", side_effect=record_processed):
+            await _process_single_message(message_mock, channel_mock, parser_mock)
+
+        parser_mock.parse_and_enrich.assert_called_once()
+        channel_mock.default_exchange.publish.assert_called_once()
+        self.assertIn(f"worker:idempotency:scraper:{self.tenant_id}:{new_sku}:{url_hash}", seen_keys)
 
     # -------------------------------------------------------------------------
     # 3. Tratamento de Payload Malformado / Pydantic Validation
@@ -305,6 +357,7 @@ class TestScraperResilienceSuite(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(published_data["price"], 499.00)
         self.assertEqual(published_data["images"], ["https://cdn.yuool.com/img1.jpg"])
         self.assertEqual(published_data["promptContext"], "Tom persuasivo e elegante")
+        self.assertTrue(published_data["isByok"])
         self.assertIsNone(published_data["errorMessage"])
 
         # Idempotência salva no Redis com o hash SHA-256 da URL canônica

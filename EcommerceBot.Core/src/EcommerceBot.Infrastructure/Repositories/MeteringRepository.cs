@@ -54,7 +54,7 @@ public sealed class MeteringRepository : IMeteringRepository
             DECLARE @CurrentBalance DECIMAL(18,6);
             
             SELECT @CurrentBalance = ManagedCreditBalance
-            FROM dbo.Tenants WITH (UPDLOCK, READPAST)
+            FROM dbo.Tenants WITH (UPDLOCK, ROWLOCK)
             WHERE Id = @TenantId;
 
             IF @CurrentBalance IS NULL OR @CurrentBalance < @EstimatedCost
@@ -120,6 +120,9 @@ public sealed class MeteringRepository : IMeteringRepository
 
     public async Task<(IEnumerable<LlmUsageLog> Items, int TotalCount)> GetUsageLogsPaginatedAsync(Guid tenantId, int page, int limit, DateTimeOffset? startDate, DateTimeOffset? endDate, CancellationToken cancellationToken = default)
     {
+        page = Math.Max(1, page);
+        limit = Math.Clamp(limit, 1, 200);
+
         using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         
         const string countSql = @"

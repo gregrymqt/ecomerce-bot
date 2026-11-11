@@ -19,4 +19,24 @@ public interface ITenantRepository
     Task RecordTransactionAsync(CreditTransaction transaction, CancellationToken cancellationToken = default);
     Task AddManagedBalanceAsync(Guid tenantId, decimal amount, CancellationToken cancellationToken = default);
     Task<Tenant> CreateAsync(Tenant tenant, CancellationToken cancellationToken = default);
+    Task<User> ProvisionTenantWithOwnerAsync(Tenant tenant, CreditTransaction welcomeBonus, User owner, CancellationToken cancellationToken = default);
+    Task<(bool Applied, int NewBalance)> TryCreditOrderOnceAsync(
+        Guid tenantId,
+        Guid orderId,
+        int amount,
+        string type,
+        string description,
+        string? referenceId,
+        string? mpPaymentId,
+        decimal paidAmount,
+        CancellationToken cancellationToken = default);
+    Task<(bool Applied, int NewBalance)> TryReverseOrderCreditsOnceAsync(
+        Guid tenantId,
+        Guid orderId,
+        int amount,
+        string type,
+        string description,
+        string? referenceId,
+        string newOrderStatus,
+        CancellationToken cancellationToken = default);
 }

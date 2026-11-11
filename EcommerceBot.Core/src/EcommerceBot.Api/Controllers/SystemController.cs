@@ -75,13 +75,24 @@ public class SystemController : BaseApiController
         CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
+        if (activeTenantId == Guid.Empty)
+        {
+            Response.StatusCode = StatusCodes.Status400BadRequest;
+            Response.ContentType = "application/problem+json";
+            await Response.WriteAsJsonAsync(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Tenant Inválido",
+                Detail = "X-Tenant-ID é obrigatório para exportação."
+            }, cancellationToken);
+            return;
+        }
 
         Response.Headers.Append("Content-Disposition", $"attachment; filename=export_{platform}_{activeTenantId}.csv");
         Response.Headers.Append("Access-Control-Expose-Headers", "Content-Disposition");
-        Response.ContentType = "text/csv";
+        Response.ContentType = "text/csv; charset=utf-8";
 
-        using var streamWriter = new StreamWriter(Response.Body);
-        await _systemService.ExportDataToStreamAsync(activeTenantId, platform, streamWriter, cancellationToken);
+        await _systemService.ExportDataToStreamAsync(activeTenantId, platform, Response.Body, cancellationToken);
     }
 
     [HttpGet("demo/stream")]
@@ -95,7 +106,7 @@ public class SystemController : BaseApiController
         var channel = "demo_progress";
         var channelBuffer = Channel.CreateUnbounded<string>();
 
-        await _redisService.SubscribeAsync(channel, async message =>
+        await using var subscription = await _redisService.SubscribeAsync(channel, async message =>
         {
             await channelBuffer.Writer.WriteAsync(message, cancellationToken);
         });
@@ -125,7 +136,6 @@ public class SystemController : BaseApiController
         }
         finally
         {
-            await _redisService.UnsubscribeAsync(channel);
             channelBuffer.Writer.TryComplete();
         }
     }

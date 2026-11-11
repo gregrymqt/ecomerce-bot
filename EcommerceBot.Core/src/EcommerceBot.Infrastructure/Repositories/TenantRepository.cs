@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapper;
@@ -303,6 +305,9 @@ public sealed class TenantRepository : ITenantRepository
             OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;
         """;
 
+        limit = Math.Clamp(limit, 1, 200);
+        offset = Math.Max(0, offset);
+
         var cmd = new CommandDefinition(sql, new
         {
             TenantId = tenantId,
@@ -392,5 +397,328 @@ public sealed class TenantRepository : ITenantRepository
         var cmd = new CommandDefinition(sql, tenant, cancellationToken: cancellationToken);
         await connection.ExecuteAsync(cmd);
         return tenant;
+    }
+
+    public async Task<User> ProvisionTenantWithOwnerAsync(
+        Tenant tenant,
+        CreditTransaction welcomeBonus,
+        User owner,
+        CancellationToken cancellationToken = default)
+    {
+        if (tenant.Id == Guid.Empty) tenant.Id = Guid.NewGuid();
+        if (tenant.CreatedAt == default) tenant.CreatedAt = DateTimeOffset.UtcNow;
+        if (tenant.UpdatedAt == default) tenant.UpdatedAt = DateTimeOffset.UtcNow;
+        if (string.IsNullOrWhiteSpace(tenant.Slug)) tenant.Slug = tenant.Name.ToLower().Replace(" ", "-") + "-" + Guid.NewGuid().ToString("N")[..6];
+
+        if (welcomeBonus.Id == Guid.Empty) welcomeBonus.Id = Guid.NewGuid();
+        welcomeBonus.TenantId = tenant.Id;
+        if (welcomeBonus.CreatedAt == default) welcomeBonus.CreatedAt = DateTimeOffset.UtcNow;
+
+        if (owner.Id == Guid.Empty) owner.Id = Guid.NewGuid();
+        owner.TenantId = tenant.Id;
+
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenant.Id, cancellationToken);
+        using var transaction = connection is DbConnection dbConn
+            ? await dbConn.BeginTransactionAsync(cancellationToken)
+            : connection.BeginTransaction();
+
+        const string sqlTenant = """
+            INSERT INTO dbo.Tenants (
+                Id, Name, Slug, PlanTier, CreditsBalance, ManagedCreditBalance, IsActive,
+                FirstUtmSource, FirstUtmMedium, FirstUtmCampaign, FirstAdId, FirstTouchAt,
+                CreatedAt, UpdatedAt
+            ) VALUES (
+                @Id, @Name, @Slug, @PlanTier, @CreditsBalance, @ManagedCreditBalance, @IsActive,
+                @FirstUtmSource, @FirstUtmMedium, @FirstUtmCampaign, @FirstAdId, @FirstTouchAt,
+                @CreatedAt, @UpdatedAt
+            );
+        """;
+
+        const string sqlLedger = """
+            INSERT INTO dbo.CreditTransactions
+            (Id, TenantId, OrderId, Amount, BalanceAfter, Type, Description, ReferenceId, CreatedAt)
+            VALUES
+            (@Id, @TenantId, @OrderId, @Amount, @BalanceAfter, @Type, @Description, @ReferenceId, @CreatedAt);
+        """;
+
+        const string sqlUser = """
+            INSERT INTO dbo.Users (Id, TenantId, RoleId, Email, PasswordHash, FullName, Role, IsActive, CreatedAt, UpdatedAt)
+            OUTPUT INSERTED.*
+            VALUES (
+                @Id,
+                @TenantId,
+                COALESCE(@RoleId, (SELECT TOP 1 Id FROM dbo.Roles WHERE Name = @Role), '44444444-4444-4444-4444-444444444444'),
+                @Email,
+                @PasswordHash,
+                @FullName,
+                @Role,
+                @IsActive,
+                SYSDATETIMEOFFSET(),
+                SYSDATETIMEOFFSET()
+            );
+        """;
+
+        await connection.ExecuteAsync(new CommandDefinition(sqlTenant, tenant, transaction, cancellationToken: cancellationToken));
+        await connection.ExecuteAsync(new CommandDefinition(sqlLedger, welcomeBonus, transaction, cancellationToken: cancellationToken));
+        var createdUser = await connection.QuerySingleAsync<User>(new CommandDefinition(sqlUser, owner, transaction, cancellationToken: cancellationToken));
+
+        if (transaction is DbTransaction dbTx)
+            await dbTx.CommitAsync(cancellationToken);
+        else
+            transaction.Commit();
+
+        return createdUser;
+    }
+
+    public async Task<(bool Applied, int NewBalance)> TryCreditOrderOnceAsync(
+        Guid tenantId,
+        Guid orderId,
+        int amount,
+        string type,
+        string description,
+        string? referenceId,
+        string? mpPaymentId,
+        decimal paidAmount,
+        CancellationToken cancellationToken = default)
+    {
+        if (amount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(amount), "A quantidade de créditos a adicionar deve ser maior que zero.");
+        }
+
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
+        using var transaction = connection is DbConnection dbConn
+            ? await dbConn.BeginTransactionAsync(cancellationToken)
+            : connection.BeginTransaction();
+
+        const string sqlOrderCheck = """
+            SELECT Status, ExternalReference
+            FROM dbo.Orders WITH (UPDLOCK, HOLDLOCK)
+            WHERE Id = @OrderId AND TenantId = @TenantId;
+        """;
+        var orderMeta = await connection.QueryFirstOrDefaultAsync<(string? Status, string? ExternalReference)>(
+            new CommandDefinition(sqlOrderCheck, new { OrderId = orderId, TenantId = tenantId }, transaction, cancellationToken: cancellationToken));
+
+        var currentBalance = await connection.ExecuteScalarAsync<int>(
+            new CommandDefinition("SELECT CreditsBalance FROM dbo.Tenants WITH (UPDLOCK, ROWLOCK) WHERE Id = @TenantId;",
+                new { TenantId = tenantId }, transaction, cancellationToken: cancellationToken));
+
+        if (string.IsNullOrEmpty(orderMeta.Status) ||
+            string.Equals(orderMeta.Status, "refunded", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(orderMeta.Status, "charged_back", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(orderMeta.Status, "cancelled", StringComparison.OrdinalIgnoreCase))
+        {
+            if (transaction is DbTransaction dbTx) await dbTx.RollbackAsync(cancellationToken);
+            else transaction.Rollback();
+            return (false, currentBalance);
+        }
+
+        const string sqlLedgerExists = """
+            SELECT COUNT(1)
+            FROM dbo.CreditTransactions WITH (UPDLOCK, HOLDLOCK)
+            WHERE TenantId = @TenantId AND OrderId = @OrderId AND Type = @Type;
+        """;
+        var existingCount = await connection.ExecuteScalarAsync<int>(
+            new CommandDefinition(sqlLedgerExists, new { TenantId = tenantId, OrderId = orderId, Type = type }, transaction, cancellationToken: cancellationToken));
+
+        if (existingCount > 0)
+        {
+            if (transaction is DbTransaction dbTx) await dbTx.RollbackAsync(cancellationToken);
+            else transaction.Rollback();
+            return (false, currentBalance);
+        }
+
+        const string sqlUpdateOrder = """
+            UPDATE dbo.Orders
+            SET Status = 'approved',
+                PaidAt = COALESCE(PaidAt, SYSDATETIMEOFFSET()),
+                TotalPaidAmount = CASE WHEN @PaidAmount > 0 THEN @PaidAmount ELSE COALESCE(TotalPaidAmount, TotalAmount) END,
+                MpPaymentId = COALESCE(@MpPaymentId, MpPaymentId),
+                UpdatedAt = SYSDATETIMEOFFSET()
+            WHERE Id = @OrderId AND TenantId = @TenantId;
+        """;
+        await connection.ExecuteAsync(new CommandDefinition(
+            sqlUpdateOrder,
+            new { OrderId = orderId, TenantId = tenantId, PaidAmount = paidAmount, MpPaymentId = mpPaymentId },
+            transaction,
+            cancellationToken: cancellationToken));
+
+        const string sqlUpdateTenant = """
+            UPDATE dbo.Tenants
+            SET CreditsBalance = CreditsBalance + @Amount,
+                UpdatedAt = SYSDATETIMEOFFSET()
+            OUTPUT inserted.CreditsBalance
+            WHERE Id = @TenantId AND IsActive = 1;
+        """;
+        var newBalance = await connection.ExecuteScalarAsync<int?>(new CommandDefinition(
+            sqlUpdateTenant,
+            new { TenantId = tenantId, Amount = amount },
+            transaction,
+            cancellationToken: cancellationToken));
+
+        if (!newBalance.HasValue)
+        {
+            throw new InvalidOperationException($"Tenant com Id '{tenantId}' não encontrado ou inativo.");
+        }
+
+        const string sqlInsertLedger = """
+            INSERT INTO dbo.CreditTransactions
+            (Id, TenantId, OrderId, Amount, BalanceAfter, Type, Description, ReferenceId, CreatedAt)
+            VALUES
+            (@Id, @TenantId, @OrderId, @Amount, @BalanceAfter, @Type, @Description, @ReferenceId, SYSDATETIMEOFFSET());
+        """;
+        await connection.ExecuteAsync(new CommandDefinition(sqlInsertLedger, new
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            OrderId = orderId,
+            Amount = amount,
+            BalanceAfter = newBalance.Value,
+            Type = type,
+            Description = description,
+            ReferenceId = referenceId
+        }, transaction, cancellationToken: cancellationToken));
+
+        if (transaction is DbTransaction commitTx) await commitTx.CommitAsync(cancellationToken);
+        else transaction.Commit();
+
+        await _redisService.RemoveAsync(GetTenantCacheKey(tenantId), cancellationToken);
+        await _redisService.RemoveAsync($"order:tenant:{tenantId}:id:{orderId}", cancellationToken);
+        if (!string.IsNullOrWhiteSpace(orderMeta.ExternalReference))
+        {
+            await _redisService.RemoveAsync($"order:tenant:{tenantId}:ref:{orderMeta.ExternalReference}", cancellationToken);
+        }
+
+        return (true, newBalance.Value);
+    }
+
+    public async Task<(bool Applied, int NewBalance)> TryReverseOrderCreditsOnceAsync(
+        Guid tenantId,
+        Guid orderId,
+        int amount,
+        string type,
+        string description,
+        string? referenceId,
+        string newOrderStatus,
+        CancellationToken cancellationToken = default)
+    {
+        if (amount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(amount), "A quantidade de créditos a reverter deve ser maior que zero.");
+        }
+
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
+        using var transaction = connection is DbConnection dbConn
+            ? await dbConn.BeginTransactionAsync(cancellationToken)
+            : connection.BeginTransaction();
+
+        const string sqlOrderCheck = """
+            SELECT Status, PaidAt, ExternalReference
+            FROM dbo.Orders WITH (UPDLOCK, HOLDLOCK)
+            WHERE Id = @OrderId AND TenantId = @TenantId;
+        """;
+        var orderMeta = await connection.QueryFirstOrDefaultAsync<(string? Status, DateTimeOffset? PaidAt, string? ExternalReference)>(
+            new CommandDefinition(sqlOrderCheck, new { OrderId = orderId, TenantId = tenantId }, transaction, cancellationToken: cancellationToken));
+
+        var currentBalance = await connection.ExecuteScalarAsync<int>(
+            new CommandDefinition("SELECT CreditsBalance FROM dbo.Tenants WITH (UPDLOCK, ROWLOCK) WHERE Id = @TenantId;",
+                new { TenantId = tenantId }, transaction, cancellationToken: cancellationToken));
+
+        if (string.IsNullOrEmpty(orderMeta.Status))
+        {
+            if (transaction is DbTransaction dbTx) await dbTx.RollbackAsync(cancellationToken);
+            else transaction.Rollback();
+            return (false, currentBalance);
+        }
+
+        const string sqlUpdateOrder = """
+            UPDATE dbo.Orders
+            SET Status = @NewStatus,
+                UpdatedAt = SYSDATETIMEOFFSET()
+            WHERE Id = @OrderId AND TenantId = @TenantId;
+        """;
+        await connection.ExecuteAsync(new CommandDefinition(
+            sqlUpdateOrder,
+            new { OrderId = orderId, TenantId = tenantId, NewStatus = newOrderStatus },
+            transaction,
+            cancellationToken: cancellationToken));
+
+        var wasPaid = orderMeta.PaidAt.HasValue || string.Equals(orderMeta.Status, "approved", StringComparison.OrdinalIgnoreCase);
+
+        var hasReversal = await connection.ExecuteScalarAsync<int>(new CommandDefinition(
+            "SELECT COUNT(1) FROM dbo.CreditTransactions WITH (UPDLOCK, HOLDLOCK) WHERE TenantId = @TenantId AND OrderId = @OrderId AND Type = @Type;",
+            new { TenantId = tenantId, OrderId = orderId, Type = type },
+            transaction,
+            cancellationToken: cancellationToken)) > 0;
+
+        if (!wasPaid || hasReversal)
+        {
+            if (transaction is DbTransaction commitStatusTx) await commitStatusTx.CommitAsync(cancellationToken);
+            else transaction.Commit();
+
+            await _redisService.RemoveAsync($"order:tenant:{tenantId}:id:{orderId}", cancellationToken);
+            if (!string.IsNullOrWhiteSpace(orderMeta.ExternalReference))
+            {
+                await _redisService.RemoveAsync($"order:tenant:{tenantId}:ref:{orderMeta.ExternalReference}", cancellationToken);
+            }
+            return (false, currentBalance);
+        }
+
+        const string sqlUpdateTenant = """
+            UPDATE dbo.Tenants
+            SET CreditsBalance = CreditsBalance - @Amount,
+                UpdatedAt = SYSDATETIMEOFFSET()
+            OUTPUT inserted.CreditsBalance
+            WHERE Id = @TenantId;
+        """;
+        var newBalance = await connection.ExecuteScalarAsync<int?>(new CommandDefinition(
+            sqlUpdateTenant,
+            new { TenantId = tenantId, Amount = amount },
+            transaction,
+            cancellationToken: cancellationToken));
+
+        if (!newBalance.HasValue)
+        {
+            throw new InvalidOperationException($"Tenant com Id '{tenantId}' não encontrado.");
+        }
+
+        if (newBalance.Value < 0)
+        {
+            await connection.ExecuteAsync(new CommandDefinition(
+                "UPDATE dbo.Tenants SET IsActive = 0, UpdatedAt = SYSDATETIMEOFFSET() WHERE Id = @TenantId;",
+                new { TenantId = tenantId },
+                transaction,
+                cancellationToken: cancellationToken));
+        }
+
+        const string sqlInsertLedger = """
+            INSERT INTO dbo.CreditTransactions
+            (Id, TenantId, OrderId, Amount, BalanceAfter, Type, Description, ReferenceId, CreatedAt)
+            VALUES
+            (@Id, @TenantId, @OrderId, @Amount, @BalanceAfter, @Type, @Description, @ReferenceId, SYSDATETIMEOFFSET());
+        """;
+        await connection.ExecuteAsync(new CommandDefinition(sqlInsertLedger, new
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            OrderId = orderId,
+            Amount = -amount,
+            BalanceAfter = newBalance.Value,
+            Type = type,
+            Description = description,
+            ReferenceId = referenceId
+        }, transaction, cancellationToken: cancellationToken));
+
+        if (transaction is DbTransaction commitTx) await commitTx.CommitAsync(cancellationToken);
+        else transaction.Commit();
+
+        await _redisService.RemoveAsync(GetTenantCacheKey(tenantId), cancellationToken);
+        await _redisService.RemoveAsync($"order:tenant:{tenantId}:id:{orderId}", cancellationToken);
+        if (!string.IsNullOrWhiteSpace(orderMeta.ExternalReference))
+        {
+            await _redisService.RemoveAsync($"order:tenant:{tenantId}:ref:{orderMeta.ExternalReference}", cancellationToken);
+        }
+
+        return (true, newBalance.Value);
     }
 }

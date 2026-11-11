@@ -5,8 +5,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Ai;
 using EcommerceBot.Application.DTOs.OpenRouter;
+using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Application.Interfaces.Gateways;
 using EcommerceBot.Application.Interfaces.Services;
+using EcommerceBot.Domain.Interfaces;
 using EcommerceBot.Domain.Services;
 using EcommerceBot.Infrastructure.Options;
 using Microsoft.Extensions.Logging;
@@ -16,13 +18,16 @@ namespace EcommerceBot.Infrastructure.Gateways;
 
 /// <summary>
 /// Orquestrador de alto nível para enriquecimento persuasivo de produtos via OpenRouter.
-/// Coordena o pipeline de engenharia de prompt, inferência HTTP com resiliência, parsing defensivo e medição de custos.
+/// Coordena o pipeline de engenharia de prompt, resolução de chave BYOK fail-closed,
+/// inferência HTTP com resiliência, parsing defensivo e medição de custos.
 /// </summary>
 public sealed class OpenRouterGateway : IOpenRouterGateway
 {
     private readonly IOpenRouterClient _client;
     private readonly IProductEnrichmentPromptService _promptService;
     private readonly ILlmContentParserService _contentParser;
+    private readonly ITenantAiCredentialRepository? _credentialRepository;
+    private readonly IAesGcmCryptoService? _cryptoService;
     private readonly OpenRouterOptions _options;
     private readonly ILogger<OpenRouterGateway> _logger;
 
@@ -31,13 +36,17 @@ public sealed class OpenRouterGateway : IOpenRouterGateway
         IProductEnrichmentPromptService promptService,
         ILlmContentParserService contentParser,
         IOptions<OpenRouterOptions> options,
-        ILogger<OpenRouterGateway> logger)
+        ILogger<OpenRouterGateway> logger,
+        ITenantAiCredentialRepository? credentialRepository = null,
+        IAesGcmCryptoService? cryptoService = null)
     {
         _client = client;
         _promptService = promptService;
         _contentParser = contentParser;
         _options = options.Value;
         _logger = logger;
+        _credentialRepository = credentialRepository;
+        _cryptoService = cryptoService;
     }
 
     public async Task<ProductEnrichmentLlmResponse> EnrichProductAsync(
@@ -46,18 +55,36 @@ public sealed class OpenRouterGateway : IOpenRouterGateway
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var effectiveApiKey = _options.ApiKey;
-
-        if (string.IsNullOrWhiteSpace(effectiveApiKey))
-        {
-            throw new InvalidOperationException("OpenRouter API key is not configured in OpenRouterOptions.");
-        }
-
         var primaryModel = !string.IsNullOrWhiteSpace(request.CustomModel)
             ? request.CustomModel
             : (!string.IsNullOrWhiteSpace(_options.DefaultModel) ? _options.DefaultModel : "deepseek/deepseek-chat");
 
         var fallbackModel = !string.IsNullOrWhiteSpace(_options.FallbackModel) ? _options.FallbackModel : null;
+
+        string? effectiveApiKey;
+        if (request.UseTenantByok)
+        {
+            effectiveApiKey = await ResolveTenantByokKeyAsync(request.TenantId, cancellationToken);
+            if (string.IsNullOrWhiteSpace(effectiveApiKey))
+            {
+                _logger.LogWarning(
+                    "[OpenRouterGateway] Execução BYOK bloqueada (fail-closed) para Tenant {TenantId}, SKU {Sku}: chave OpenRouter ausente, inativa ou inválida.",
+                    request.TenantId, request.Sku);
+                return BuildFallbackResponse(
+                    request,
+                    "Chave BYOK OpenRouter do lojista ausente, expirada ou inválida. Nenhum fallback para chave da plataforma foi executado.",
+                    primaryModel,
+                    0);
+            }
+        }
+        else
+        {
+            effectiveApiKey = _options.ApiKey;
+            if (string.IsNullOrWhiteSpace(effectiveApiKey))
+            {
+                throw new InvalidOperationException("OpenRouter API key is not configured in OpenRouterOptions.");
+            }
+        }
 
         var stopwatch = Stopwatch.StartNew();
         var modelToUse = primaryModel;
@@ -208,6 +235,38 @@ public sealed class OpenRouterGateway : IOpenRouterGateway
                 stopwatch.ElapsedMilliseconds);
 
             return BuildFallbackResponse(request, ex.Message, modelToUse, stopwatch.ElapsedMilliseconds);
+        }
+    }
+
+    private async Task<string?> ResolveTenantByokKeyAsync(Guid tenantId, CancellationToken cancellationToken)
+    {
+        if (tenantId == Guid.Empty || _credentialRepository == null || _cryptoService == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var credential = await _credentialRepository.GetByProviderAsync(tenantId, "OPENROUTER", cancellationToken);
+            if (credential == null || !credential.IsActive || credential.EncryptedApiKey.Length == 0)
+            {
+                return null;
+            }
+
+            var payload = new EncryptedPayload
+            {
+                CipherText = credential.EncryptedApiKey,
+                Nonce = credential.InitializationVector,
+                Tag = credential.AuthTag
+            };
+
+            var decrypted = _cryptoService.Decrypt(payload);
+            return string.IsNullOrWhiteSpace(decrypted) ? null : decrypted.Trim();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "[OpenRouterGateway] Falha ao descriptografar chave BYOK do Tenant {TenantId}.", tenantId);
+            return null;
         }
     }
 

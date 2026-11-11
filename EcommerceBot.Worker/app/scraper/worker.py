@@ -65,13 +65,13 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
         url = req.url
         prompt_ctx = req.prompt_context
 
-        # 1. Verificação de Idempotência no Redis (TTL 24h) baseada no hash SHA-256 da URL canônica
+        # 1. Verificação de Idempotência no Redis (TTL 24h) escopada por tenant, sku e URL canônica
         canonical_url = str(url).strip().lower()
         url_hash = hashlib.sha256(canonical_url.encode("utf-8")).hexdigest()
-        idempotency_key = f"worker:idempotency:scraper:{tenant_id}:{url_hash}"
+        idempotency_key = f"worker:idempotency:scraper:{tenant_id}:{sku}:{url_hash}"
         if await redis_cache.is_already_processed(idempotency_key):
             logger.info(
-                "Mensagem já processada anteriormente para esta URL (idempotência ativa). Ignorando reexecução redundante.",
+                "Mensagem duplicada para o mesmo SKU (idempotência ativa). Ignorando reexecução redundante.",
                 extra={"tenant_id": str(tenant_id), "sku": str(sku), "url_hash": url_hash}
             )
             return
@@ -94,6 +94,7 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
                 sku=sku,
                 url=str(url),
                 prompt_context=prompt_ctx,
+                is_byok=req.is_byok,
                 success=False,
                 error_message=f"Bloqueio de rede / Anti-SSRF: {ssrf_err}"
             )
@@ -132,6 +133,7 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
                 images=images_list,
                 meta_attributes={str(k): str(v) for k, v in meta_attrs.items()},
                 prompt_context=prompt_ctx,
+                is_byok=req.is_byok,
                 success=True,
                 error_message=None
             )
@@ -147,6 +149,7 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
                 sku=sku,
                 url=url,
                 prompt_context=prompt_ctx,
+                is_byok=req.is_byok,
                 success=False,
                 error_message=str(ex)
             )

@@ -1,4 +1,5 @@
 using System;
+using System.Data.Common;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,6 +32,10 @@ public sealed class OrderRepository : IOrderRepository
         if (order.CreatedAt == default) order.CreatedAt = DateTimeOffset.UtcNow;
         if (order.UpdatedAt == default) order.UpdatedAt = DateTimeOffset.UtcNow;
 
+        using var transaction = connection is DbConnection dbConn
+            ? await dbConn.BeginTransactionAsync(cancellationToken)
+            : connection.BeginTransaction();
+
         const string sqlOrder = @"
             INSERT INTO dbo.Orders 
             (Id, TenantId, UserId, PlanId, ExternalReference, TotalAmount, TotalPaidAmount, Currency, Status, PaymentMethod, 
@@ -43,7 +48,7 @@ public sealed class OrderRepository : IOrderRepository
              @PayerDocumentNumber, @PayerZipCode, @PayerStreetName, @PayerStreetNumber, @PayerComplement, 
              @PayerNeighborhood, @PayerCity, @PayerFederalUnit, @TicketUrl, @CreatedAt, @UpdatedAt);";
 
-        var cmdOrder = new CommandDefinition(sqlOrder, order, cancellationToken: cancellationToken);
+        var cmdOrder = new CommandDefinition(sqlOrder, order, transaction, cancellationToken: cancellationToken);
         await connection.ExecuteAsync(cmdOrder);
 
         if (order.Items.Count > 0)
@@ -57,9 +62,14 @@ public sealed class OrderRepository : IOrderRepository
                 item.OrderId = order.Id;
             }
 
-            var cmdItems = new CommandDefinition(sqlItems, order.Items, cancellationToken: cancellationToken);
+            var cmdItems = new CommandDefinition(sqlItems, order.Items, transaction, cancellationToken: cancellationToken);
             await connection.ExecuteAsync(cmdItems);
         }
+
+        if (transaction is DbTransaction dbTx)
+            await dbTx.CommitAsync(cancellationToken);
+        else
+            transaction.Commit();
 
         await InvalidateOrderCacheAsync(order.TenantId, order.Id, order.ExternalReference, cancellationToken);
 

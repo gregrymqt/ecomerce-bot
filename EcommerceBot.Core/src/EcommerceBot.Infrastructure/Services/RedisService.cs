@@ -18,7 +18,25 @@ public sealed class RedisService : IRedisService
 {
     private readonly IConnectionMultiplexer _redis;
     private readonly ILogger<RedisService> _logger;
-    private static readonly ConcurrentDictionary<string, SemaphoreSlim> _keyedLocks = new();
+    private static readonly ConcurrentDictionary<string, RefCountedSemaphore> _keyedLocks = new();
+    private static readonly object _keyedLocksGuard = new();
+
+    private sealed class RefCountedSemaphore
+    {
+        public SemaphoreSlim Semaphore { get; } = new(1, 1);
+        public int RefCount;
+    }
+
+    private sealed class RedisChannelSubscription(ChannelMessageQueue? queue) : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync()
+        {
+            if (queue != null)
+            {
+                await queue.UnsubscribeAsync();
+            }
+        }
+    }
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -132,12 +150,20 @@ public sealed class RedisService : IRedisService
             return cached;
         }
 
-        // 2. Proteção contra Cache Stampede: semáforo local por chave
-        var semaphore = _keyedLocks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
-        await semaphore.WaitAsync(cancellationToken);
+        // 2. Proteção contra Cache Stampede: semáforo local por chave com liberação por contagem de referências
+        RefCountedSemaphore entry;
+        lock (_keyedLocksGuard)
+        {
+            entry = _keyedLocks.GetOrAdd(key, _ => new RefCountedSemaphore());
+            entry.RefCount++;
+        }
 
+        var lockAcquired = false;
         try
         {
+            await entry.Semaphore.WaitAsync(cancellationToken);
+            lockAcquired = true;
+
             // 3. Double-check após obter o lock
             cached = await GetAsync<T>(key, cancellationToken);
             if (cached != null)
@@ -156,7 +182,20 @@ public sealed class RedisService : IRedisService
         }
         finally
         {
-            semaphore.Release();
+            if (lockAcquired)
+            {
+                entry.Semaphore.Release();
+            }
+
+            lock (_keyedLocksGuard)
+            {
+                entry.RefCount--;
+                if (entry.RefCount <= 0)
+                {
+                    _keyedLocks.TryRemove(key, out _);
+                    entry.Semaphore.Dispose();
+                }
+            }
         }
     }
 
@@ -223,25 +262,35 @@ public sealed class RedisService : IRedisService
         }
     }
 
-    public async Task SubscribeAsync(string channel, Func<string, Task> handler)
+    public async Task<IAsyncDisposable> SubscribeAsync(string channel, Func<string, Task> handler)
     {
-        if (string.IsNullOrWhiteSpace(channel)) return;
+        if (string.IsNullOrWhiteSpace(channel))
+            return new RedisChannelSubscription(null);
 
         try
         {
             var sub = _redis.GetSubscriber();
             var redisChannel = new RedisChannel(channel, RedisChannel.PatternMode.Literal);
-            await sub.SubscribeAsync(redisChannel, async (ch, msg) =>
+            var queue = await sub.SubscribeAsync(redisChannel);
+            queue.OnMessage(async channelMessage =>
             {
-                if (msg.HasValue)
+                if (!channelMessage.Message.HasValue) return;
+                try
                 {
-                    await handler(msg.ToString());
+                    await handler(channelMessage.Message.ToString());
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogWarning(ex, "Erro ao processar mensagem recebida no canal Redis '{Channel}'.", channel);
                 }
             });
+
+            return new RedisChannelSubscription(queue);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Erro ao se inscrever no canal Redis '{Channel}'.", channel);
+            return new RedisChannelSubscription(null);
         }
     }
 

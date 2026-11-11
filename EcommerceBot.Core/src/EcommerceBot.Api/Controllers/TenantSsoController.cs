@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace EcommerceBot.Api.Controllers;
 
 [Route("api/v1/sso")]
-[Authorize(Roles = "ADMIN,TENANT_ADMIN")]
+[Authorize(Roles = "ADMIN,TENANT_ADMIN,OWNER")]
 public class TenantSsoController : BaseApiController
 {
     private readonly ITenantSsoService _tenantSsoService;

@@ -14,6 +14,7 @@ namespace EcommerceBot.Infrastructure.Services;
 public sealed class MeteringService : IMeteringService
 {
     private readonly IMeteringRepository _repository;
+    private readonly ITenantAiCredentialRepository? _credentialRepository;
     private readonly ILogger<MeteringService> _logger;
 
     private static readonly Dictionary<string, (decimal Prompt, decimal Completion)> PricingTable = new()
@@ -26,10 +27,14 @@ public sealed class MeteringService : IMeteringService
         { "default", (0.000200m, 0.000500m) }
     };
 
-    public MeteringService(IMeteringRepository repository, ILogger<MeteringService> logger)
+    public MeteringService(
+        IMeteringRepository repository,
+        ILogger<MeteringService> logger,
+        ITenantAiCredentialRepository? credentialRepository = null)
     {
         _repository = repository;
         _logger = logger;
+        _credentialRepository = credentialRepository;
     }
 
     public decimal CalculateTokenCost(string modelUsed, int promptTokens, int completionTokens)
@@ -48,6 +53,8 @@ public sealed class MeteringService : IMeteringService
         {
             var balance = await _repository.GetManagedCreditBalanceAsync(tenantId, cancellationToken);
             var (monthlyTokens, monthlyCost) = await _repository.GetMonthlyTelemetryAsync(tenantId, cancellationToken);
+            var isByok = _credentialRepository != null &&
+                         await _credentialRepository.HasActiveByokAsync(tenantId, cancellationToken);
 
             return new TenantCreditBalanceResponse
             {
@@ -55,8 +62,8 @@ public sealed class MeteringService : IMeteringService
                 ManagedCreditBalance = balance,
                 MonthlyTotalTokens = monthlyTokens,
                 MonthlyTotalCostUsd = monthlyCost,
-                IsByokEnabled = false, // Em um cenário real, checaríamos as chaves configuradas
-                ActiveMode = "managed"
+                IsByokEnabled = isByok,
+                ActiveMode = isByok ? "byok" : "managed"
             };
         }
         catch (Exception ex)
