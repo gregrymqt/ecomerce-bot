@@ -85,8 +85,14 @@ internal sealed class InMemoryRedisService : IRedisService
     }
 
     public Task<long> PublishAsync(string channel, string message) => Task.FromResult(1L);
-    public Task SubscribeAsync(string channel, Func<string, Task> handler) => Task.CompletedTask;
+    public Task<IAsyncDisposable> SubscribeAsync(string channel, Func<string, Task> handler) => Task.FromResult<IAsyncDisposable>(NoopAsyncDisposable.Instance);
     public Task UnsubscribeAsync(string channel) => Task.CompletedTask;
+
+    private sealed class NoopAsyncDisposable : IAsyncDisposable
+    {
+        public static readonly NoopAsyncDisposable Instance = new();
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
 }
 
 internal sealed class InMemoryUserRepository : IUserRepository
@@ -98,6 +104,9 @@ internal sealed class InMemoryUserRepository : IUserRepository
 
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
         => Task.FromResult(Users.Values.FirstOrDefault(u => u.Email.Equals(email, StringComparison.OrdinalIgnoreCase)));
+
+    public Task<User?> GetByEmailAndTenantAsync(string email, Guid tenantId, CancellationToken cancellationToken = default)
+        => Task.FromResult(Users.Values.FirstOrDefault(u => u.TenantId == tenantId && u.Email.Equals(email, StringComparison.OrdinalIgnoreCase)));
 
     public Task<User> CreateAsync(User user, CancellationToken cancellationToken = default)
     {
@@ -117,8 +126,16 @@ internal sealed class InMemoryUserRepository : IUserRepository
 
 internal sealed class InMemoryTenantRepository : ITenantRepository
 {
+    private readonly InMemoryUserRepository? _userRepository;
+
+    public InMemoryTenantRepository(InMemoryUserRepository? userRepository = null)
+    {
+        _userRepository = userRepository;
+    }
+
     public ConcurrentDictionary<Guid, Tenant> Tenants { get; } = new();
     public ConcurrentBag<CreditTransaction> Transactions { get; } = new();
+    public HashSet<(Guid OrderId, string Type)> ProcessedOrderTransactions { get; } = new();
 
     public Task<Tenant?> GetByIdAsync(Guid tenantId, CancellationToken cancellationToken = default)
         => Task.FromResult(Tenants.TryGetValue(tenantId, out var t) ? t : null);
@@ -130,10 +147,42 @@ internal sealed class InMemoryTenantRepository : ITenantRepository
         => Task.FromResult(Tenants.TryGetValue(tenantId, out var t) && t.IsActive && t.CreditsBalance >= requiredCredits);
 
     public Task<int> DeductCreditsAsync(Guid tenantId, int amount, string type = "PRODUCT_ENRICHMENT", string description = "", string? referenceId = null, Guid? orderId = null, CancellationToken cancellationToken = default)
-        => Task.FromResult(0);
+    {
+        if (!Tenants.TryGetValue(tenantId, out var t)) return Task.FromResult(0);
+        t.CreditsBalance -= amount;
+        Transactions.Add(new CreditTransaction
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            OrderId = orderId,
+            Amount = -amount,
+            BalanceAfter = t.CreditsBalance,
+            Type = type,
+            Description = description,
+            ReferenceId = referenceId,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        return Task.FromResult(t.CreditsBalance);
+    }
 
     public Task<int> AddCreditsAsync(Guid tenantId, int amount, string type = "RECHARGE", string description = "", string? referenceId = null, Guid? orderId = null, CancellationToken cancellationToken = default)
-        => Task.FromResult(amount);
+    {
+        if (!Tenants.TryGetValue(tenantId, out var t)) return Task.FromResult(amount);
+        t.CreditsBalance += amount;
+        Transactions.Add(new CreditTransaction
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            OrderId = orderId,
+            Amount = amount,
+            BalanceAfter = t.CreditsBalance,
+            Type = type,
+            Description = description,
+            ReferenceId = referenceId,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        return Task.FromResult(t.CreditsBalance);
+    }
 
     public Task<int> ReverseCreditsAsync(Guid tenantId, int amount, string type = "CHARGEBACK_REVERSAL", string description = "", string? referenceId = null, Guid? orderId = null, CancellationToken cancellationToken = default)
         => Task.FromResult(0);
@@ -157,6 +206,94 @@ internal sealed class InMemoryTenantRepository : ITenantRepository
     {
         Tenants[tenant.Id] = tenant;
         return Task.FromResult(tenant);
+    }
+
+    public Task<User> ProvisionTenantWithOwnerAsync(Tenant tenant, CreditTransaction welcomeBonus, User owner, CancellationToken cancellationToken = default)
+    {
+        if (tenant.Id == Guid.Empty) tenant.Id = Guid.NewGuid();
+        if (welcomeBonus.Id == Guid.Empty) welcomeBonus.Id = Guid.NewGuid();
+        welcomeBonus.TenantId = tenant.Id;
+        if (owner.Id == Guid.Empty) owner.Id = Guid.NewGuid();
+        owner.TenantId = tenant.Id;
+        owner.CreatedAt = DateTimeOffset.UtcNow;
+        owner.UpdatedAt = DateTimeOffset.UtcNow;
+
+        Tenants[tenant.Id] = tenant;
+        Transactions.Add(welcomeBonus);
+        if (_userRepository != null)
+        {
+            _userRepository.Users[owner.Id] = owner;
+        }
+        return Task.FromResult(owner);
+    }
+
+    public Task<(bool Applied, int NewBalance)> TryCreditOrderOnceAsync(
+        Guid tenantId,
+        Guid orderId,
+        int amount,
+        string type,
+        string description,
+        string? referenceId,
+        string? mpPaymentId,
+        decimal paidAmount,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Tenants.TryGetValue(tenantId, out var tenant))
+            return Task.FromResult((false, 0));
+
+        if (!ProcessedOrderTransactions.Add((orderId, type)))
+            return Task.FromResult((false, tenant.CreditsBalance));
+
+        tenant.CreditsBalance += amount;
+        Transactions.Add(new CreditTransaction
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            OrderId = orderId,
+            Amount = amount,
+            BalanceAfter = tenant.CreditsBalance,
+            Type = type,
+            Description = description,
+            ReferenceId = referenceId,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        return Task.FromResult((true, tenant.CreditsBalance));
+    }
+
+    public Task<(bool Applied, int NewBalance)> TryReverseOrderCreditsOnceAsync(
+        Guid tenantId,
+        Guid orderId,
+        int amount,
+        string type,
+        string description,
+        string? referenceId,
+        string newOrderStatus,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Tenants.TryGetValue(tenantId, out var tenant))
+            return Task.FromResult((false, 0));
+
+        if (!ProcessedOrderTransactions.Contains((orderId, "RECHARGE")) ||
+            !ProcessedOrderTransactions.Add((orderId, type)))
+        {
+            return Task.FromResult((false, tenant.CreditsBalance));
+        }
+
+        tenant.CreditsBalance -= amount;
+        if (tenant.CreditsBalance < 0) tenant.IsActive = false;
+        Transactions.Add(new CreditTransaction
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            OrderId = orderId,
+            Amount = -amount,
+            BalanceAfter = tenant.CreditsBalance,
+            Type = type,
+            Description = description,
+            ReferenceId = referenceId,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        return Task.FromResult((true, tenant.CreditsBalance));
     }
 }
 

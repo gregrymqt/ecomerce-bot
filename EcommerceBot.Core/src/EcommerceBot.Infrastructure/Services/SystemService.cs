@@ -1,18 +1,23 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using EcommerceBot.Application.DTOs.System;
-using EcommerceBot.Application.Interfaces;
-using EcommerceBot.Domain.Interfaces;
-using StackExchange.Redis;
 using CsvHelper;
 using CsvHelper.Configuration;
-using System.Globalization;
 using Dapper;
+using EcommerceBot.Application.DTOs.Messaging;
+using EcommerceBot.Application.DTOs.System;
+using EcommerceBot.Application.Interfaces;
+using EcommerceBot.Application.Security;
+using EcommerceBot.Domain.Interfaces;
+using MassTransit;
 using Microsoft.Extensions.Logging;
+using StackExchange.Redis;
 
 namespace EcommerceBot.Infrastructure.Services;
 
@@ -23,19 +28,22 @@ public sealed class SystemService : ISystemService
     private readonly IDbConnectionFactory _dbConnectionFactory;
     private readonly IConnectionMultiplexer _redis;
     private readonly ILogger<SystemService> _logger;
+    private readonly ISendEndpointProvider? _sendEndpointProvider;
 
     public SystemService(
         IProductRepository productRepository,
         IRobotActivityRepository activityRepository,
         IDbConnectionFactory dbConnectionFactory,
         IConnectionMultiplexer redis,
-        ILogger<SystemService> logger)
+        ILogger<SystemService> logger,
+        ISendEndpointProvider? sendEndpointProvider = null)
     {
         _productRepository = productRepository;
         _activityRepository = activityRepository;
         _dbConnectionFactory = dbConnectionFactory;
         _redis = redis;
         _logger = logger;
+        _sendEndpointProvider = sendEndpointProvider;
     }
 
     public async Task<DashboardTelemetryResponse> GetTelemetryMetricsAsync(Guid tenantId, string timeframe, CancellationToken cancellationToken = default)
@@ -175,39 +183,143 @@ public sealed class SystemService : ISystemService
 
     public async Task ProcessDemoRequestAsync(List<string> urls, CancellationToken cancellationToken = default)
     {
-        // Publica na fila (poderia ser MassTransit IBus, mas simplificando)
-        // O C# processaria isso ou publicaria via RabbitMQ
-        await Task.CompletedTask;
+        if (urls == null || urls.Count == 0)
+            throw new ArgumentException("Ao menos uma URL deve ser informada.", nameof(urls));
+
+        if (urls.Count > 3)
+            throw new ArgumentException("O limite máximo permitido é de 3 URLs para a demonstração.", nameof(urls));
+
+        var validatedUrls = new List<string>(urls.Count);
+        foreach (var rawUrl in urls)
+        {
+            if (string.IsNullOrWhiteSpace(rawUrl) ||
+                !await UrlSecurityValidator.IsSafePublicUrlAsync(rawUrl, cancellationToken: cancellationToken))
+            {
+                throw new ArgumentException($"URL inválida ou bloqueada por política de segurança Anti-SSRF: '{rawUrl}'.", nameof(urls));
+            }
+            validatedUrls.Add(rawUrl.Trim());
+        }
+
+        if (_sendEndpointProvider == null)
+        {
+            throw new InvalidOperationException("ISendEndpointProvider não configurado para enfileiramento de demonstração.");
+        }
+
+        var endpoint = await _sendEndpointProvider.GetSendEndpoint(new Uri("exchange:demo_ecommerce"));
+        foreach (var url in validatedUrls)
+        {
+            var sku = $"demo_{Guid.NewGuid().ToString("N")[..11]}";
+            await endpoint.Send(new ScrapingRequestMessage
+            {
+                TenantId = Guid.Empty,
+                Sku = sku,
+                Url = url,
+                PromptContext = "demo",
+                IsByok = false
+            }, cancellationToken);
+        }
+
+        _logger.LogInformation("Enfileiradas {Count} URLs para demonstração pública em exchange:demo_ecommerce.", validatedUrls.Count);
     }
 
-    public async Task ExportDataToStreamAsync(Guid tenantId, string platform, StreamWriter writer, CancellationToken cancellationToken = default)
+    public async Task ExportDataToStreamAsync(Guid tenantId, string platform, Stream outputStream, CancellationToken cancellationToken = default)
     {
-        // Usamos Dapper unbuffered query stream
+        ArgumentNullException.ThrowIfNull(outputStream);
+
         using var conn = await _dbConnectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
-        var sql = "SELECT Sku, Title, Price, Status, Category, SeoKeywords FROM dbo.Products WHERE TenantId = @TenantId";
-        var products = await conn.QueryAsync<dynamic>(new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken)); // In production use buffered=false or specific reader
-        
+        var normalizedPlatform = platform?.Trim().ToLowerInvariant() ?? "all";
+
+        var platformFilter = normalizedPlatform switch
+        {
+            "shopify" => " AND (ShopifyProductId IS NOT NULL OR LOWER(ISNULL(SourceUrl, '')) LIKE '%shopify%')",
+            "nuvemshop" => " AND (NuvemshopProductId IS NOT NULL OR LOWER(ISNULL(SourceUrl, '')) LIKE '%nuvemshop%' OR LOWER(ISNULL(SourceUrl, '')) LIKE '%tiendanube%')",
+            _ => string.Empty
+        };
+
+        var sql = $@"
+            SELECT Sku, Title, Price, OriginalPrice, Status, Category, Brand, StockQuantity, EnrichmentMetadata
+            FROM dbo.Products
+            WHERE TenantId = @TenantId{platformFilter}
+            ORDER BY CreatedAt DESC;";
+
+        var products = await conn.QueryAsync<dynamic>(new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken));
+
         var config = new CsvConfiguration(CultureInfo.InvariantCulture) { Delimiter = "," };
-        using var csv = new CsvWriter(writer, config);
-        
-        // Write Headers
+        using var stringWriter = new StringWriter(CultureInfo.InvariantCulture);
+        using var csv = new CsvWriter(stringWriter, config);
+
         csv.WriteField("SKU");
         csv.WriteField("Title");
         csv.WriteField("Price");
+        csv.WriteField("OriginalPrice");
         csv.WriteField("Status");
         csv.WriteField("Category");
+        csv.WriteField("Brand");
+        csv.WriteField("StockQuantity");
         csv.WriteField("SeoKeywords");
         await csv.NextRecordAsync();
 
+        var batchCounter = 0;
         foreach (var p in products)
         {
-            csv.WriteField(p.Sku);
-            csv.WriteField(p.Title);
+            csv.WriteField(SanitizeCsvCell((string?)p.Sku));
+            csv.WriteField(SanitizeCsvCell((string?)p.Title));
             csv.WriteField(p.Price);
-            csv.WriteField(p.Status);
-            csv.WriteField(p.Category);
-            csv.WriteField(p.SeoKeywords);
+            csv.WriteField(p.OriginalPrice);
+            csv.WriteField(SanitizeCsvCell((string?)p.Status));
+            csv.WriteField(SanitizeCsvCell((string?)p.Category));
+            csv.WriteField(SanitizeCsvCell((string?)p.Brand));
+            csv.WriteField(p.StockQuantity);
+            csv.WriteField(SanitizeCsvCell(ExtractSeoKeywords((string?)p.EnrichmentMetadata)));
             await csv.NextRecordAsync();
+
+            batchCounter++;
+            if (batchCounter >= 100)
+            {
+                await FlushBufferAsync(stringWriter, outputStream, cancellationToken);
+                batchCounter = 0;
+            }
         }
+
+        await FlushBufferAsync(stringWriter, outputStream, cancellationToken);
+        await outputStream.FlushAsync(cancellationToken);
+    }
+
+    private static async Task FlushBufferAsync(StringWriter stringWriter, Stream outputStream, CancellationToken cancellationToken)
+    {
+        var sb = stringWriter.GetStringBuilder();
+        if (sb.Length == 0) return;
+
+        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+        sb.Clear();
+        await outputStream.WriteAsync(bytes, cancellationToken);
+    }
+
+    private static string ExtractSeoKeywords(string? enrichmentMetadataJson)
+    {
+        if (string.IsNullOrWhiteSpace(enrichmentMetadataJson))
+            return string.Empty;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(enrichmentMetadataJson);
+            if (doc.RootElement.TryGetProperty("seoKeywords", out var kwEl) && kwEl.ValueKind == JsonValueKind.Array)
+            {
+                return string.Join(", ", kwEl.EnumerateArray().Select(e => e.GetString()).Where(s => !string.IsNullOrWhiteSpace(s)));
+            }
+        }
+        catch (JsonException)
+        {
+        }
+
+        return string.Empty;
+    }
+
+    private static string SanitizeCsvCell(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return string.Empty;
+        return value[0] is '=' or '+' or '-' or '@' or '\t' or '\r'
+            ? $"'{value}"
+            : value;
     }
 }

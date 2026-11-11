@@ -137,6 +137,12 @@ class ScrapedRawProductEvent(BaseModel):
         serialization_alias="promptContext",
         description="Contexto adicional ou tom desejado para a LLM.",
     )
+    is_byok: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("isByok", "IsByok", "is_byok"),
+        serialization_alias="isByok",
+        description="Indica se o enriquecimento utiliza chave própria de IA do tenant (BYOK).",
+    )
     success: bool = Field(
         default=True,
         validation_alias=AliasChoices("success", "Success"),

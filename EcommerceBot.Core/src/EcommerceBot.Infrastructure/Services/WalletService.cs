@@ -142,7 +142,7 @@ public sealed class WalletService : IWalletService
         try
         {
             var payerEmail = request.Payer?.Email;
-            var user = await GetUserByEmailAsync(payerEmail, cancellationToken);
+            var user = await GetUserByEmailAsync(payerEmail, tenantId, cancellationToken);
             var billingProfile = await _tenantBillingProfileRepository.GetByTenantIdAsync(tenantId, cancellationToken);
 
             // Se a requisição trouxe dados de documento/endereço, atualiza o perfil fiscal do Tenant
@@ -174,9 +174,22 @@ public sealed class WalletService : IWalletService
 
             var payerRequest = _walletUtils.BuildMercadoPagoPayer(user, request.Payer, billingProfile);
 
-            var plan = !string.IsNullOrEmpty(request.PackageId)
-                ? await ResolvePlanAsync(request.PackageId, cancellationToken)
-                : null;
+            Plan? plan = null;
+            if (!string.IsNullOrWhiteSpace(request.PackageId))
+            {
+                plan = await ResolvePlanAsync(request.PackageId, cancellationToken);
+                if (plan is null)
+                {
+                    throw new ArgumentException($"Pacote '{request.PackageId}' não encontrado ou inativo.", nameof(request));
+                }
+
+                if (request.Amount < plan.Price)
+                {
+                    throw new ArgumentException(
+                        $"Valor da recarga (R$ {request.Amount:F2}) é inferior ao preço do pacote '{plan.Name}' (R$ {plan.Price:F2}).",
+                        nameof(request));
+                }
+            }
 
             Order order = new()
             {
@@ -275,6 +288,26 @@ public sealed class WalletService : IWalletService
             // 1. Salva a Order PRIMEIRO (Garante o ID no banco para satisfazer a Foreign Key)
             var savedOrder = await _orderRepository.CreateOrderAsync(order, cancellationToken);
 
+            // Se aprovado instantaneamente (cartão), concede créditos atomicamente uma única vez (idempotente com webhook futuro)
+            if (string.Equals(savedOrder.Status, "approved", StringComparison.OrdinalIgnoreCase))
+            {
+                var creditsToAdd = plan?.CreditsIncluded > 0
+                    ? plan.CreditsIncluded
+                    : (int)Math.Ceiling(savedOrder.TotalAmount * 10);
+                var packageName = plan?.Name ?? "Recarga de Créditos";
+
+                await _tenantRepository.TryCreditOrderOnceAsync(
+                    tenantId: tenantId,
+                    orderId: savedOrder.Id,
+                    amount: creditsToAdd,
+                    type: "RECHARGE",
+                    description: $"Recarga de IA aprovada: {packageName} (+{creditsToAdd} créditos)",
+                    referenceId: savedOrder.ExternalReference ?? savedOrder.MpPaymentId,
+                    mpPaymentId: savedOrder.MpPaymentId,
+                    paidAmount: savedOrder.TotalPaidAmount > 0 ? savedOrder.TotalPaidAmount : savedOrder.TotalAmount,
+                    cancellationToken: cancellationToken);
+            }
+
             _logger.LogInformation(
                 "Pedido de recarga {OrderId} persistido com status {Status} para o Tenant {TenantId}",
                 savedOrder.Id, savedOrder.Status, tenantId);
@@ -319,10 +352,10 @@ public sealed class WalletService : IWalletService
 
     #region Métodos Privados Auxiliares
 
-    private async Task<User?> GetUserByEmailAsync(string? email, CancellationToken ct)
+    private async Task<User?> GetUserByEmailAsync(string? email, Guid tenantId, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(email)) return null;
-        return await _userRepository.GetByEmailAsync(email, ct);
+        return await _userRepository.GetByEmailAndTenantAsync(email, tenantId, ct);
     }
 
     public async Task CreditTenantAsync(
@@ -358,8 +391,7 @@ public sealed class WalletService : IWalletService
         var allPlans = await _planRepository.GetAllAsync(onlyActive: true, ct);
         return allPlans.FirstOrDefault(p =>
             p.Name.Contains(planIdOrCode, StringComparison.OrdinalIgnoreCase) ||
-            p.Id.ToString().StartsWith(planIdOrCode, StringComparison.OrdinalIgnoreCase))
-            ?? allPlans.FirstOrDefault();
+            p.Id.ToString().StartsWith(planIdOrCode, StringComparison.OrdinalIgnoreCase));
     }
 
     #endregion

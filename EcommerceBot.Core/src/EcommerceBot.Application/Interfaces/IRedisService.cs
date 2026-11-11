@@ -52,12 +52,12 @@ public interface IRedisService
     Task<long> PublishAsync(string channel, string message);
 
     /// <summary>
-    /// Inscreve um handler em um canal do Redis Pub/Sub.
+    /// Inscreve um handler assíncrono em um canal do Redis Pub/Sub retornando handle descartável isolado para esta assinatura.
     /// </summary>
-    Task SubscribeAsync(string channel, Func<string, Task> handler);
+    Task<IAsyncDisposable> SubscribeAsync(string channel, Func<string, Task> handler);
 
     /// <summary>
-    /// Cancela a inscrição em um canal do Redis Pub/Sub.
+    /// Cancela a inscrição global em um canal do Redis Pub/Sub (legado).
     /// </summary>
     Task UnsubscribeAsync(string channel);
 }

@@ -174,12 +174,6 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
 
                 if (order != null)
                 {
-                    order.Status = "approved";
-                    order.PaidAt = DateTimeOffset.UtcNow;
-                    order.TotalPaidAmount = paidAmount > 0 ? paidAmount : order.TotalAmount;
-                    order.MpPaymentId = resourceId;
-                    await _orderRepository.UpdateOrderAsync(order, ct);
-
                     // Concessão de créditos de IA desvinculada de assinaturas
                     if (order.PlanId.HasValue)
                     {
@@ -196,72 +190,87 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                         creditsToAdd = (int)Math.Ceiling(order.TotalAmount * 10);
                     }
 
-                    _logger.LogInformation("Concedendo {Credits} créditos (Pacote: {Package}) para Tenant {TenantId}",
-                        creditsToAdd, packageName, order.TenantId);
-
-                    newBalance = await _tenantRepository.AddCreditsAsync(
+                    var (applied, updatedBalance) = await _tenantRepository.TryCreditOrderOnceAsync(
                         tenantId: order.TenantId,
+                        orderId: order.Id,
                         amount: creditsToAdd,
                         type: "RECHARGE",
                         description: $"Recarga de IA aprovada: {packageName} (+{creditsToAdd} créditos)",
                         referenceId: order.ExternalReference ?? resourceId,
-                        orderId: order.Id,
+                        mpPaymentId: resourceId,
+                        paidAmount: paidAmount > 0 ? paidAmount : order.TotalAmount,
                         cancellationToken: ct
                     );
-
+                    newBalance = updatedBalance;
                     tenantId = order.TenantId;
-                    payerEmail = !string.IsNullOrEmpty(order.PayerEmail) ? order.PayerEmail : payerEmail;
 
-                    var user = await _userRepository.GetByEmailAsync(payerEmail!, ct);
-                    if (user != null && user.Role == "MEMBER")
+                    if (!applied)
                     {
-                        user.Role = "OWNER";
-                        await _userRepository.UpdateAsync(user, ct);
-
-                        _logger.LogInformation("Usuário {UserId} promovido com sucesso para OWNER após confirmação do pedido {OrderId}",
-                                                user.Id, order.Id);
+                        _logger.LogInformation(
+                            "Concessão idempotente ignorada para pedido {OrderId} (ResourceId {ResourceId}): pedido já liquidado ou em estado terminal ({Status}).",
+                            order.Id, resourceId, order.Status);
                     }
-
-                    // 4. Notifica o Frontend via Server-Sent Events (SSE) através do canal Redis
-                    var ssePayload = JsonSerializer.Serialize(new
+                    else
                     {
-                        type = "payment_approved",
-                        order_id = order.Id.ToString(),
-                        status = "approved",
-                        amount = paidAmount,
-                        credits_added = creditsToAdd,
-                        balance_credits = newBalance, 
-                        refresh_required = true,
-                        new_role = "OWNER"
-                    });
-                    await _redisService.PublishAsync($"events:tenant:{tenantId}", ssePayload);
+                        _logger.LogInformation("Concedendo {Credits} créditos (Pacote: {Package}) para Tenant {TenantId}",
+                            creditsToAdd, packageName, order.TenantId);
 
-                    // 5. Envia email transacional de confirmação para o pagador real
-                    var targetEmail = !string.IsNullOrEmpty(payerEmail) ? payerEmail : "financeiro@ecommercebot.local";
-                    await _publishEndpoint.Publish(new EmailEventPayload
-                    {
-                        TenantId = tenantId,
-                        Event = "payment.approved",
-                        RecipientEmail = targetEmail,
-                        RecipientName = "Cliente",
-                        IdempotencyKey = $"email:payment:{resourceId}",
-                        Data = new Dictionary<string, object>
+                        payerEmail = !string.IsNullOrEmpty(order.PayerEmail) ? order.PayerEmail : payerEmail;
+
+                        if (!string.IsNullOrWhiteSpace(payerEmail))
                         {
-                            { "resourceId", resourceId },
-                            { "orderId", order.Id.ToString() },
-                            { "amount", paidAmount },
-                            { "status", "approved" },
-                            { "packageName", packageName },
-                            { "creditsAdded", creditsToAdd },
-                            { "balanceCredits", newBalance },
-                            { "paymentMethod", order.PaymentMethod?.ToUpper() ?? "PIX" }
-                        }
-                    }, ctx =>
-                    {
-                        ctx.SetRoutingKey("email_notifications");
-                    }, ct);
+                            var user = await _userRepository.GetByEmailAndTenantAsync(payerEmail, order.TenantId, ct);
+                            if (user != null && user.Role == "MEMBER")
+                            {
+                                user.Role = "TENANT_ADMIN";
+                                await _userRepository.UpdateAsync(user, ct);
 
-                    _logger.LogInformation("Payment {ResourceId} approved and credited successfully for tenant {TenantId}", resourceId, tenantId);
+                                _logger.LogInformation("Usuário {UserId} promovido com sucesso para TENANT_ADMIN após confirmação do pedido {OrderId}",
+                                    user.Id, order.Id);
+                            }
+                        }
+
+                        // 4. Notifica o Frontend via Server-Sent Events (SSE) através do canal Redis
+                        var ssePayload = JsonSerializer.Serialize(new
+                        {
+                            type = "payment_approved",
+                            order_id = order.Id.ToString(),
+                            status = "approved",
+                            amount = paidAmount > 0 ? paidAmount : order.TotalAmount,
+                            credits_added = creditsToAdd,
+                            balance_credits = newBalance,
+                            refresh_required = true,
+                            new_role = "TENANT_ADMIN"
+                        });
+                        await _redisService.PublishAsync($"events:tenant:{tenantId}", ssePayload);
+
+                        // 5. Envia email transacional de confirmação para o pagador real
+                        var targetEmail = !string.IsNullOrEmpty(payerEmail) ? payerEmail : "financeiro@ecommercebot.local";
+                        await _publishEndpoint.Publish(new EmailEventPayload
+                        {
+                            TenantId = tenantId,
+                            Event = "payment.approved",
+                            RecipientEmail = targetEmail,
+                            RecipientName = "Cliente",
+                            IdempotencyKey = $"email:payment:{resourceId}",
+                            Data = new Dictionary<string, object>
+                            {
+                                { "resourceId", resourceId },
+                                { "orderId", order.Id.ToString() },
+                                { "amount", paidAmount > 0 ? paidAmount : order.TotalAmount },
+                                { "status", "approved" },
+                                { "packageName", packageName },
+                                { "creditsAdded", creditsToAdd },
+                                { "balanceCredits", newBalance },
+                                { "paymentMethod", order.PaymentMethod?.ToUpper() ?? "PIX" }
+                            }
+                        }, ctx =>
+                        {
+                            ctx.SetRoutingKey("email_notifications");
+                        }, ct);
+
+                        _logger.LogInformation("Payment {ResourceId} approved and credited successfully for tenant {TenantId}", resourceId, tenantId);
+                    }
                 }
                 else
                 {
@@ -293,41 +302,37 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
             {
                 if (order != null)
                 {
-                    bool wasPaid = order.PaidAt != null || order.Status == "approved";
-                    bool alreadyReverted = order.Status == "refunded" || order.Status == "charged_back";
-
-                    order.Status = status == "charged_back" ? "charged_back" : "refunded";
-                    await _orderRepository.UpdateOrderAsync(order, ct);
-
-                    if (wasPaid && !alreadyReverted)
+                    var newOrderStatus = status == "charged_back" ? "charged_back" : "refunded";
+                    int creditsToRevert = 0;
+                    if (order.PlanId.HasValue)
                     {
-                        int creditsToRevert = 0;
-                        if (order.PlanId.HasValue)
+                        var plan = await _planRepository.GetByIdAsync(order.PlanId.Value, ct);
+                        if (plan != null)
                         {
-                            var plan = await _planRepository.GetByIdAsync(order.PlanId.Value, ct);
-                            if (plan != null)
-                            {
-                                creditsToRevert = plan.CreditsIncluded;
-                            }
+                            creditsToRevert = plan.CreditsIncluded;
                         }
+                    }
 
-                        if (creditsToRevert <= 0)
-                        {
-                            creditsToRevert = (int)Math.Ceiling(order.TotalAmount * 10);
-                        }
+                    if (creditsToRevert <= 0)
+                    {
+                        creditsToRevert = (int)Math.Ceiling(order.TotalAmount * 10);
+                    }
 
+                    var (reverted, newBalance) = await _tenantRepository.TryReverseOrderCreditsOnceAsync(
+                        tenantId: order.TenantId,
+                        orderId: order.Id,
+                        amount: creditsToRevert,
+                        type: "CHARGEBACK_REVERSAL",
+                        description: $"Estorno / Chargeback Mercado Pago ({status}): -{creditsToRevert} créditos",
+                        referenceId: order.ExternalReference ?? resourceId,
+                        newOrderStatus: newOrderStatus,
+                        cancellationToken: ct
+                    );
+
+                    if (reverted)
+                    {
                         _logger.LogWarning("Revertendo {Credits} créditos por {Status} do pedido {OrderId} do Tenant {TenantId}",
                             creditsToRevert, status, order.Id, order.TenantId);
-
-                        var newBalance = await _tenantRepository.ReverseCreditsAsync(
-                            tenantId: order.TenantId,
-                            amount: creditsToRevert,
-                            type: "CHARGEBACK_REVERSAL",
-                            description: $"Estorno / Chargeback Mercado Pago ({status}): -{creditsToRevert} créditos",
-                            referenceId: order.ExternalReference ?? resourceId,
-                            orderId: order.Id,
-                            cancellationToken: ct
-                        );
 
                         if (newBalance < 0)
                         {
@@ -340,7 +345,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                         {
                             type = "payment_refunded",
                             order_id = order.Id.ToString(),
-                            status = order.Status,
+                            status = newOrderStatus,
                             amount = paidAmount > 0 ? paidAmount : order.TotalAmount,
                             credits_reverted = creditsToRevert,
                             balance_credits = newBalance
@@ -351,15 +356,18 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                 _logger.LogWarning("Payment {ResourceId} refunded, charged back or cancelled.", resourceId);
             }
 
-            // Registra atividade em dbo.RobotActivities
-            await _activityRepository.CreateAsync(new RobotActivity
+            // Registra atividade em dbo.RobotActivities somente quando o TenantId foi resolvido (evita violar RLS/FK com Guid.Empty)
+            if (tenantId != Guid.Empty)
             {
-                TenantId = tenantId,
-                WorkerType = "PAYMENT_PROCESSOR",
-                Status = isApproved ? "PROCESSED" : (status ?? "RECEIVED"),
-                DetailsJson = msg.RawPayload,
-                DurationMs = 150
-            });
+                await _activityRepository.CreateAsync(new RobotActivity
+                {
+                    TenantId = tenantId,
+                    WorkerType = "PAYMENT_PROCESSOR",
+                    Status = isApproved ? "PROCESSED" : (status ?? "RECEIVED"),
+                    DetailsJson = msg.RawPayload,
+                    DurationMs = 150
+                });
+            }
         }
         catch (Exception ex)
         {

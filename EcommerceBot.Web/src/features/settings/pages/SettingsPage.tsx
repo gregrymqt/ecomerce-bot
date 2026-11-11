@@ -54,7 +54,7 @@ export const SettingsPage: React.FC = () => {
   const canManageSso = useMemo(() => {
     if (!user) return false;
     const role = user.role?.toUpperCase() || '';
-    return user.is_admin === true || role === 'ADMIN' || role === 'TENANT_ADMIN';
+    return user.is_admin === true || role === 'ADMIN' || role === 'TENANT_ADMIN' || role === 'OWNER';
   }, [user]);
 
   // Se o usuário não tiver privilégio mas a aba ativa for SSO, redireciona para AI_RULES

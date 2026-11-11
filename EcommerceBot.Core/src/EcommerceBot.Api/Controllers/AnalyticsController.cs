@@ -42,6 +42,17 @@ public class AnalyticsController : BaseApiController
         var jobType = request?.JobType ?? "FULL_ANALYTICS";
         var success = await _mlService.TriggerAnalysisAsync(activeTenantId, jobType, cancellationToken);
 
+        if (!success)
+        {
+            return Ok(new
+            {
+                status = "INSUFFICIENT_DATA",
+                message = "Dados insuficientes: são necessárias pelo menos 5 transações elegíveis para executar a análise preditiva.",
+                tenantId = activeTenantId,
+                jobType = jobType
+            });
+        }
+
         return Ok(new
         {
             status = "ENQUEUED",

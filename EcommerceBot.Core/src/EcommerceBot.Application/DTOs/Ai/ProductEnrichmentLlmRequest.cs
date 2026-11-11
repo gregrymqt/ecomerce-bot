@@ -19,6 +19,7 @@ public sealed record ProductEnrichmentLlmRequest
     public List<string> Images { get; init; } = new();
     public Dictionary<string, string> MetaAttributes { get; init; } = new();
     public string PromptContext { get; init; } = string.Empty;
+    public bool UseTenantByok { get; init; }
     public string? CustomModel { get; init; }
     public CategorySeoGuidelineDto? SeoGuideline { get; init; }
 }

@@ -99,21 +99,23 @@ public sealed partial class MercadoPagoWebhookService : IMercadoPagoWebhookServi
             {
                 if (root.TryGetProperty("data", out var dataObj) && dataObj.TryGetProperty("id", out var idInBody))
                 {
-                    resourceId = idInBody.GetString() ?? idInBody.GetInt64().ToString();
+                    resourceId = ExtractJsonId(idInBody);
                 }
                 else if (root.TryGetProperty("id", out var directId))
                 {
-                    resourceId = directId.GetString() ?? directId.GetInt64().ToString();
+                    resourceId = ExtractJsonId(directId);
                 }
             }
 
             _logger.LogInformation("Processing Mercado Pago webhook action: {Action}, topic: {Topic}, resource_id: {ResourceId}", action, topic, resourceId);
 
+            string? idempotencyKey = null;
+            var idempotencyAcquired = false;
             if (!string.IsNullOrEmpty(resourceId))
             {
-                var idempotencyKey = $"webhook:idempotency:mp:{resourceId}:{action}";
-                var isNew = await _redisService.SetIfNotExistsAsync(idempotencyKey, "processed", TimeSpan.FromHours(24), cancellationToken);
-                if (!isNew)
+                idempotencyKey = $"webhook:idempotency:mp:{resourceId}:{action}";
+                idempotencyAcquired = await _redisService.SetIfNotExistsAsync(idempotencyKey, "processed", TimeSpan.FromHours(24), cancellationToken);
+                if (!idempotencyAcquired)
                 {
                     _logger.LogInformation("Mercado Pago webhook already processed for resource {ResourceId} and action {Action}", resourceId, action);
                     return new WebhookProcessResult
@@ -125,16 +127,27 @@ public sealed partial class MercadoPagoWebhookService : IMercadoPagoWebhookServi
             }
 
             // Publica o evento assíncrono para processamento desacoplado em payments_process_queue
-            await _publishEndpoint.Publish(new PaymentReceivedEvent
+            try
             {
-                ResourceId = resourceId,
-                Action = action,
-                RawPayload = rawBody,
-                ReceivedAt = DateTimeOffset.UtcNow
-            }, ctx =>
+                await _publishEndpoint.Publish(new PaymentReceivedEvent
+                {
+                    ResourceId = resourceId,
+                    Action = action,
+                    RawPayload = rawBody,
+                    ReceivedAt = DateTimeOffset.UtcNow
+                }, ctx =>
+                {
+                    ctx.SetRoutingKey("payments_process_queue");
+                }, cancellationToken);
+            }
+            catch
             {
-                ctx.SetRoutingKey("payments_process_queue");
-            }, cancellationToken);
+                if (idempotencyAcquired && idempotencyKey != null)
+                {
+                    await _redisService.RemoveAsync(idempotencyKey, CancellationToken.None);
+                }
+                throw;
+            }
 
             _logger.LogInformation("Published PaymentReceivedEvent to RabbitMQ queue 'payments_process_queue' for {ResourceId}", resourceId);
 
@@ -153,6 +166,16 @@ public sealed partial class MercadoPagoWebhookService : IMercadoPagoWebhookServi
                 Message = "Processed defensively"
             };
         }
+    }
+
+    private static string ExtractJsonId(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.String => element.GetString() ?? string.Empty,
+            JsonValueKind.Number => element.GetRawText(),
+            _ => string.Empty
+        };
     }
 
     private static bool VerifySignature(string xSignature, string? xRequestId, string dataId, string secret)

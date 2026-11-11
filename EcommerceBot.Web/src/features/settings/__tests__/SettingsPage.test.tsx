@@ -79,4 +79,16 @@ describe('SettingsPage Tab Access Control', () => {
     expect(screen.getByText('Dados Fiscais & Cobrança')).toBeInTheDocument();
     expect(screen.getByText('SSO & Grupos IdP')).toBeInTheDocument();
   });
+
+  it('deve exibir temporariamente a aba SSO para role legado OWNER durante transição LOG-04', async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { email: 'owner@empresa.com', role: 'OWNER' },
+      status: 'authenticated',
+      isLoading: false,
+    } as unknown as AuthHookReturn);
+
+    render(<SettingsPage />);
+
+    expect(screen.getByText('SSO & Grupos IdP')).toBeInTheDocument();
+  });
 });

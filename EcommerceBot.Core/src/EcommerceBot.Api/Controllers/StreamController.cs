@@ -67,7 +67,7 @@ public class StreamController : BaseApiController
         // Channel do C# para transferir mensagens do Redis para a thread da WebAPI
         var channelBuffer = Channel.CreateUnbounded<string>();
 
-        await _redisService.SubscribeAsync(channel, async message =>
+        await using var subscription = await _redisService.SubscribeAsync(channel, async message =>
         {
             await channelBuffer.Writer.WriteAsync(message, cancellationToken);
         });
@@ -106,7 +106,6 @@ public class StreamController : BaseApiController
         }
         finally
         {
-            await _redisService.UnsubscribeAsync(channel);
             channelBuffer.Writer.TryComplete();
         }
     }

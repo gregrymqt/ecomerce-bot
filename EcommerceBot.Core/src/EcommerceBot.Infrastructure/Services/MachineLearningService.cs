@@ -43,8 +43,23 @@ public sealed class MachineLearningService : IMachineLearningService
         _logger = logger;
     }
 
+    private const int MinimumTransactionsRequired = 5;
+
     public async Task<bool> TriggerAnalysisAsync(Guid tenantId, string jobType = "FULL_ANALYTICS", CancellationToken cancellationToken = default)
     {
+        var requiresCustomerTransactions = !string.Equals(jobType, "TOKEN_CAPACITY_FORECAST", StringComparison.OrdinalIgnoreCase);
+        var transactions = requiresCustomerTransactions
+            ? await GetTenantTransactionsAsync(tenantId, cancellationToken)
+            : new List<CustomerTransactionDto>();
+
+        if (requiresCustomerTransactions && transactions.Count < MinimumTransactionsRequired)
+        {
+            _logger.LogInformation(
+                "Análise de ML ({JobType}) não enfileirada para Tenant {TenantId}: apenas {Count} transações qualificadas (mínimo {Min}).",
+                jobType, tenantId, transactions.Count, MinimumTransactionsRequired);
+            return false;
+        }
+
         // 1. Validação de saldo de créditos de IA
         if (!await _tenantRepository.HasCreditsAsync(tenantId, 1, cancellationToken))
         {
@@ -59,8 +74,6 @@ public sealed class MachineLearningService : IMachineLearningService
         }
 
         _logger.LogInformation("Iniciando disparo de análise ML ({JobType}) para Tenant {TenantId}", jobType, tenantId);
-
-        var transactions = await GetTenantTransactionsAsync(tenantId, cancellationToken);
 
         var message = new MlAnalysisRequestMessage
         {
@@ -110,7 +123,20 @@ public sealed class MachineLearningService : IMachineLearningService
 
         if (activity == null)
         {
-            // Se ainda não houver análise processada, tenta disparar uma primeira execução em background
+            var transactions = await GetTenantTransactionsAsync(tenantId, cancellationToken);
+            if (transactions.Count < MinimumTransactionsRequired)
+            {
+                return new MlInsightsResponse
+                {
+                    TenantId = tenantId,
+                    JobType = "FULL_ANALYTICS",
+                    Status = "INSUFFICIENT_DATA",
+                    LastAnalyzedAt = DateTimeOffset.UtcNow,
+                    ErrorMessage = $"Dados insuficientes: são necessárias pelo menos {MinimumTransactionsRequired} transações pagas identificadas (encontradas: {transactions.Count})."
+                };
+            }
+
+            // Se ainda não houver análise processada e houver massa real suficiente, tenta disparar uma primeira execução em background
             try
             {
                 await TriggerAnalysisAsync(tenantId, "FULL_ANALYTICS", cancellationToken);
@@ -149,44 +175,18 @@ public sealed class MachineLearningService : IMachineLearningService
 
     private async Task<List<CustomerTransactionDto>> GetTenantTransactionsAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        // 1. Tenta buscar pedidos reais do tenant no SQL Server
         const string sql = @"
             SELECT PayerEmail AS CustomerId, TotalAmount AS Amount, CreatedAt AS Date
             FROM dbo.Orders
-            WHERE TenantId = @TenantId AND Status IN ('PAID', 'APPROVED', 'COMPLETED')
+            WHERE TenantId = @TenantId
+              AND UPPER(Status) IN ('PAID', 'APPROVED', 'COMPLETED')
+              AND NULLIF(LTRIM(RTRIM(PayerEmail)), '') IS NOT NULL
             ORDER BY CreatedAt ASC";
 
-        try
-        {
-            using var connection = await _dbConnectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
-            var orders = (await connection.QueryAsync<CustomerTransactionDto>(new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken))).ToList();
+        using var connection = await _dbConnectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
+        var orders = (await connection.QueryAsync<CustomerTransactionDto>(
+            new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken))).ToList();
 
-            if (orders.Count >= 5)
-            {
-                return orders;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Aviso ao consultar pedidos para ML do Tenant {TenantId}. Utilizando amostras demonstrativas.", tenantId);
-        }
-
-        // 2. Se a loja ainda não tiver volume suficiente de pedidos, gera massa de demonstração realista
-        var now = DateTimeOffset.UtcNow;
-        return new List<CustomerTransactionDto>
-        {
-            new() { CustomerId = "cliente.vip@empresa.com", Amount = 450.00m, Date = now.AddDays(-5) },
-            new() { CustomerId = "cliente.vip@empresa.com", Amount = 620.00m, Date = now.AddDays(-32) },
-            new() { CustomerId = "cliente.vip@empresa.com", Amount = 380.00m, Date = now.AddDays(-65) },
-            new() { CustomerId = "marcos.silva@gmail.com", Amount = 189.90m, Date = now.AddDays(-12) },
-            new() { CustomerId = "marcos.silva@gmail.com", Amount = 149.90m, Date = now.AddDays(-45) },
-            new() { CustomerId = "juliana.costa@hotmail.com", Amount = 320.00m, Date = now.AddDays(-18) },
-            new() { CustomerId = "roberto.dias@yahoo.com", Amount = 89.90m, Date = now.AddDays(-110) },
-            new() { CustomerId = "fernanda.lima@outlook.com", Amount = 540.00m, Date = now.AddDays(-140) },
-            new() { CustomerId = "camila.souza@bol.com.br", Amount = 129.00m, Date = now.AddDays(-3) },
-            new() { CustomerId = "ricardo.alves@gmail.com", Amount = 270.00m, Date = now.AddDays(-25) },
-            new() { CustomerId = "ricardo.alves@gmail.com", Amount = 310.00m, Date = now.AddDays(-60) },
-            new() { CustomerId = "lucas.mendes@gmail.com", Amount = 99.00m, Date = now.AddDays(-180) }
-        };
+        return orders;
     }
 }

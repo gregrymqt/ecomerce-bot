@@ -21,6 +21,7 @@ public sealed record ScrapedRawProductEvent
     public List<string> Images { get; init; } = new();
     public Dictionary<string, string> MetaAttributes { get; init; } = new();
     public string PromptContext { get; init; } = string.Empty;
+    public bool IsByok { get; init; }
     public bool Success { get; init; } = true;
     public string? ErrorMessage { get; init; }
 }

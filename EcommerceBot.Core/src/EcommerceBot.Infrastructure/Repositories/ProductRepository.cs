@@ -46,6 +46,9 @@ public sealed class ProductRepository : IProductRepository
 
     public async Task<IEnumerable<Product>> GetProductsAsync(Guid tenantId, int page, int pageSize, CancellationToken cancellationToken = default)
     {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 200);
+
         using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         
         const string sql = """
@@ -117,6 +120,9 @@ public sealed class ProductRepository : IProductRepository
     public async Task<(IEnumerable<Product> Products, int TotalCount)> GetPaginatedAsync(
         Guid tenantId, string? statusFilter, string? search, int page, int limit, CancellationToken cancellationToken = default)
     {
+        page = Math.Max(1, page);
+        limit = Math.Clamp(limit, 1, 200);
+
         using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         
         var offset = (page - 1) * limit;

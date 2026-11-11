@@ -86,10 +86,8 @@ public sealed class AuthService : IAuthService
                     CreatedAt = DateTimeOffset.UtcNow,
                     UpdatedAt = DateTimeOffset.UtcNow
                 };
-                await _tenantRepository.CreateAsync(newTenant);
 
-                // Registra o bônus inicial no Ledger de Créditos
-                await _tenantRepository.RecordTransactionAsync(new CreditTransaction
+                var welcomeBonus = new CreditTransaction
                 {
                     Id = Guid.NewGuid(),
                     TenantId = tenantId,
@@ -98,7 +96,7 @@ public sealed class AuthService : IAuthService
                     Type = "WELCOME_BONUS",
                     Description = "Bônus de boas-vindas (20 créditos de IA)",
                     CreatedAt = DateTimeOffset.UtcNow
-                });
+                };
 
                 var isSuperAdmin = IsSuperAdminEmail(request.Email);
                 var newUser = new User
@@ -107,10 +105,12 @@ public sealed class AuthService : IAuthService
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                     FullName = request.Name,
                     Role = isSuperAdmin ? "ADMIN" : "MEMBER", // Auto-promove se constar em SuperAdminEmails, senão força MEMBER
+                    IsActive = true,
                     TenantId = tenantId
                 };
 
-                var created = await _userRepository.CreateAsync(newUser);
+                // Provisionamento atômico em transação SQL única (Tenant + Bônus Ledger + Usuário)
+                var created = await _tenantRepository.ProvisionTenantWithOwnerAsync(newTenant, welcomeBonus, newUser);
                 var jwt = GenerateJwtToken(created, hasActiveCredits: true, creditsBalance: 20);
 
                 var resp = new UserResponse
