@@ -4,36 +4,75 @@ on:
   push:
     branches:
       - main # Dispara o deploy em todo push na branch main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
+  preflight:
+    name: Verify Deploy Secrets
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      - name: Check required SSH secrets
+        id: check
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          if [ -n "$VPS_HOST" ] && [ -n "$VPS_USER" ] && [ -n "$VPS_SSH_KEY" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Secrets VPS_HOST, VPS_USER ou VPS_SSH_KEY não configurados no GitHub. Deploy SSH automático ignorado."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
   deploy:
     name: Deploy to Production
+    needs: preflight
+    if: needs.preflight.outputs.configured == 'true'
     runs-on: ubuntu-latest
 
     steps:
       - name: Deploy via SSH na VPS
-        uses: appleboy/ssh-action@7eaf76671a0d7eec5d684464cf011d8294525af7 # v1.0.3
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            set -e
-            
+            set -euo pipefail
+
             # 1. Navega até a pasta do projeto na VPS
             cd /opt/ecommerce-bot
-            
+
             # 2. Atualiza o código-fonte
+            git fetch origin main
+            git checkout main
             git pull origin main
-            
-            # 3. Atualiza o arquivo .env.prod no caminho correto da infraestrutura
-            echo "${{ secrets.PROD_ENV_FILE }}" > infra/prod/.env.prod
-            
-            # 4. Executa build e sobe os contêineres atualizados
+
+            # 3. Atualiza o arquivo .env.prod caso o secret PROD_ENV_FILE esteja preenchido
+            if [ "${{ secrets.PROD_ENV_FILE != '' }}" = "true" ]; then
+              cat <<'EOF_ENV' > infra/prod/.env.prod
+            ${{ secrets.PROD_ENV_FILE }}
+            EOF_ENV
+            fi
+
+            # 4. Garante serviços base saudáveis (SQL Server, Redis e RabbitMQ) antes das migrações
+            docker compose -f infra/prod/docker-compose.prod.yml --env-file infra/prod/.env.prod up -d mssql redis rabbitmq
+
+            # 5. Aplica as migrações determinísticas do DbUp (.NET) antes do rollout da API
+            docker compose -f infra/prod/docker-compose.prod.yml --env-file infra/prod/.env.prod --profile migration run --rm --build migrations
+
+            # 6. Executa build e sobe todos os contêineres atualizados
             docker compose -f infra/prod/docker-compose.prod.yml --env-file infra/prod/.env.prod up -d --build --remove-orphans
-            
-            # 5. Aplica as migrations do banco de dados (Alembic) no Supabase
-            docker compose -f infra/prod/docker-compose.prod.yml exec -T api alembic upgrade head
-            
-            # 6. Limpa imagens órfãs para economizar espaço de disco na VPS
+
+            # 7. Limpa imagens órfãs para economizar espaço de disco na VPS
             docker image prune -f
