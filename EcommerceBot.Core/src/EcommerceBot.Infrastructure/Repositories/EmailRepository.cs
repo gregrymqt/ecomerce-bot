@@ -19,7 +19,7 @@ public sealed class EmailRepository : IEmailRepository
 
     public async Task CreateEmailLogAsync(EmailLog log, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(log.TenantId, cancellationToken);
         if (log.Id == Guid.Empty) log.Id = Guid.NewGuid();
         if (log.CreatedAt == default) log.CreatedAt = DateTimeOffset.UtcNow;
         if (log.UpdatedAt == default) log.UpdatedAt = DateTimeOffset.UtcNow;
@@ -35,14 +35,14 @@ public sealed class EmailRepository : IEmailRepository
 
     public async Task<EmailLog?> GetEmailLogByResendIdAsync(string resendId, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateSystemConnectionAsync(cancellationToken);
         var sql = "SELECT * FROM dbo.EmailLogs WHERE ResendId = @ResendId";
         return await connection.QueryFirstOrDefaultAsync<EmailLog>(new CommandDefinition(sql, new { ResendId = resendId }, cancellationToken: cancellationToken));
     }
 
     public async Task UpdateEmailStatusByResendIdAsync(string resendId, EmailStatus status, string? error = null, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateSystemConnectionAsync(cancellationToken);
         var sql = @"
             UPDATE dbo.EmailLogs 
             SET Status = @Status, ErrorMessage = @ErrorMessage, UpdatedAt = SYSDATETIMEOFFSET()

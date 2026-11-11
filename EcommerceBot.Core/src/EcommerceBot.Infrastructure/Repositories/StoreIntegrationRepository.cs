@@ -27,7 +27,7 @@ public sealed class StoreIntegrationRepository : IStoreIntegrationRepository
 
     public async Task<StoreIntegration?> GetByTenantAndPlatformAsync(Guid tenantId, string platform, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         const string sql = """
             SELECT * FROM dbo.StoreIntegrations 
             WHERE TenantId = @TenantId AND Platform = @Platform
@@ -38,7 +38,7 @@ public sealed class StoreIntegrationRepository : IStoreIntegrationRepository
 
     public async Task<StoreIntegration?> GetByDomainAsync(string platform, string storeDomain, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateSystemConnectionAsync(cancellationToken);
         const string sql = """
             SELECT * FROM dbo.StoreIntegrations 
             WHERE Platform = @Platform AND StoreDomain = @StoreDomain
@@ -49,7 +49,7 @@ public sealed class StoreIntegrationRepository : IStoreIntegrationRepository
 
     public async Task<IEnumerable<StoreIntegration>> ListByTenantAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         const string sql = """
             SELECT * FROM dbo.StoreIntegrations 
             WHERE TenantId = @TenantId 
@@ -61,7 +61,7 @@ public sealed class StoreIntegrationRepository : IStoreIntegrationRepository
 
     public async Task<int> CountByTenantAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         const string sql = """
             SELECT COUNT(1) FROM dbo.StoreIntegrations 
             WHERE TenantId = @TenantId AND Status = 'CONNECTED'
@@ -72,7 +72,7 @@ public sealed class StoreIntegrationRepository : IStoreIntegrationRepository
 
     public async Task UpsertAsync(StoreIntegration integration, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(integration.TenantId, cancellationToken);
         const string sql = """
             MERGE INTO dbo.StoreIntegrations AS Target
             USING (SELECT @TenantId AS TenantId, @Platform AS Platform, @StoreDomain AS StoreDomain) AS Source
@@ -102,7 +102,7 @@ public sealed class StoreIntegrationRepository : IStoreIntegrationRepository
 
     public async Task<bool> DeleteAsync(Guid tenantId, Guid id, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         const string sql = "DELETE FROM dbo.StoreIntegrations WHERE TenantId = @TenantId AND Id = @Id";
         var cmd = new CommandDefinition(sql, new { TenantId = tenantId, Id = id }, cancellationToken: cancellationToken);
         var rows = await connection.ExecuteAsync(cmd);
@@ -127,7 +127,7 @@ public sealed class StoreIntegrationRepository : IStoreIntegrationRepository
 
     public async Task UpdateStatusAsync(Guid tenantId, string platform, string status, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         const string sql = """
             UPDATE dbo.StoreIntegrations 
             SET Status = @Status,

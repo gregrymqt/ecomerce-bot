@@ -11,6 +11,7 @@ public interface IShopifyIntegrationService
 {
     Task<StoreIntegrationResponseDto> SaveCredentialsAsync(Guid tenantId, ShopifyCredentialsPayloadDto payload, CancellationToken cancellationToken = default);
     Task<string> GetOAuthUrlAsync(Guid tenantId, string shopDomain, CancellationToken cancellationToken = default);
+    Task<(Guid TenantId, string ShopDomain)?> ConsumeOAuthStateAsync(string? state, string shopDomain, CancellationToken cancellationToken = default);
     Task HandleOAuthCallbackAsync(Guid tenantId, string code, string shopDomain, CancellationToken cancellationToken = default);
     Task<ShopifyProductResponseDto> SyncProductAsync(Guid tenantId, ShopifySyncRequestDto request, CancellationToken cancellationToken = default);
     Task<ShopifyBulkSyncResponseDto> TriggerBulkSyncAsync(Guid tenantId, ShopifyBulkSyncRequestDto request, CancellationToken cancellationToken = default);

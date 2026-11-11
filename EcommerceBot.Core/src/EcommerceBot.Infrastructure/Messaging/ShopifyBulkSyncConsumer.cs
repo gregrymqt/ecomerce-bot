@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Shopify;
 using EcommerceBot.Application.Interfaces;
+using EcommerceBot.Application.Security;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Exceptions;
 using EcommerceBot.Domain.Interfaces;
@@ -43,6 +44,7 @@ public sealed class ShopifyBulkSyncConsumer : IConsumer<ShopifyBulkSyncMessage>
     public async Task Consume(ConsumeContext<ShopifyBulkSyncMessage> context)
     {
         var msg = context.Message;
+        using var tenantScope = TenantSessionScope.BeginScope(msg.TenantId);
         _logger.LogInformation("Processing Shopify Bulk Sync for Job {JobId}, SKU '{Sku}', Tenant '{TenantId}'", msg.JobId, msg.Sku, msg.TenantId);
 
         // 1. Controle de Quotas Atômico: Verifica e deduz 1 crédito por SKU a sincronizar

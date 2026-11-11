@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Emails;
 using EcommerceBot.Application.DTOs.Messaging;
 using EcommerceBot.Application.Interfaces;
+using EcommerceBot.Application.Security;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
 using MassTransit;
@@ -159,6 +160,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
             order ??= await _orderRepository.GetOrderByMpPaymentIdAsync(resourceId, ct);
 
             var tenantId = order?.TenantId ?? Guid.Empty;
+            using var tenantScope = tenantId != Guid.Empty ? TenantSessionScope.BeginScope(tenantId) : null;
 
             // 3. Processa aprovação de pagamento
             var isApproved = (status == "processed" && statusDetail == "accredited") ||

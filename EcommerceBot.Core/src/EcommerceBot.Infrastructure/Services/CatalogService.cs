@@ -129,7 +129,8 @@ public sealed class CatalogService : ICatalogService
         ScrapingRequestDto request, 
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(request.Url) || !UrlSecurityValidator.IsSafePublicUrl(request.Url))
+        if (string.IsNullOrWhiteSpace(request.Url) ||
+            !await UrlSecurityValidator.IsSafePublicUrlAsync(request.Url, cancellationToken: cancellationToken))
         {
             throw new ArgumentException("URL inválida ou bloqueada por política de segurança Anti-SSRF.");
         }

@@ -18,7 +18,7 @@ public sealed class TenantAiCredentialRepository : ITenantAiCredentialRepository
 
     public async Task<TenantAiCredential?> GetByProviderAsync(Guid tenantId, string provider, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         const string sql = """
             SELECT * FROM dbo.TenantAiCredentials 
             WHERE TenantId = @TenantId AND Provider = @Provider AND IsActive = 1
@@ -29,7 +29,7 @@ public sealed class TenantAiCredentialRepository : ITenantAiCredentialRepository
 
     public async Task<bool> HasActiveByokAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         const string sql = "SELECT COUNT(1) FROM dbo.TenantAiCredentials WHERE TenantId = @TenantId AND IsActive = 1";
         var cmd = new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken);
         var count = await connection.ExecuteScalarAsync<int>(cmd);
@@ -38,7 +38,7 @@ public sealed class TenantAiCredentialRepository : ITenantAiCredentialRepository
 
     public async Task UpsertAsync(TenantAiCredential credential, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(credential.TenantId, cancellationToken);
         const string sql = """
             MERGE INTO dbo.TenantAiCredentials AS Target
             USING (SELECT @TenantId AS TenantId, @Provider AS Provider) AS Source

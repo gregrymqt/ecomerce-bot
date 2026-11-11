@@ -60,7 +60,7 @@ public sealed class TenantRepository : ITenantRepository
 
     public async Task<bool> HasCreditsAsync(Guid tenantId, int requiredCredits = 1, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         const string sql = "SELECT CreditsBalance FROM dbo.Tenants WHERE Id = @Id AND IsActive = 1";
         var cmd = new CommandDefinition(sql, new { Id = tenantId }, cancellationToken: cancellationToken);
         var balance = await connection.ExecuteScalarAsync<int?>(cmd);
@@ -81,7 +81,7 @@ public sealed class TenantRepository : ITenantRepository
             throw new ArgumentOutOfRangeException(nameof(amount), "A quantidade de créditos a deduzir deve ser maior que zero.");
         }
 
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
 
         // 1. Atualização Atômica Anti-Double-Spending no SQL Server
         const string sqlUpdate = """
@@ -146,7 +146,7 @@ public sealed class TenantRepository : ITenantRepository
             throw new ArgumentOutOfRangeException(nameof(amount), "A quantidade de créditos a adicionar deve ser maior que zero.");
         }
 
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
 
         // 1. Adição Atômica no SQL Server
         const string sqlUpdate = """
@@ -207,7 +207,7 @@ public sealed class TenantRepository : ITenantRepository
             throw new ArgumentOutOfRangeException(nameof(amount), "A quantidade de créditos a reverter deve ser maior que zero.");
         }
 
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
 
         // 1. Dedução Atômica Incondicional no SQL Server
         const string sqlUpdate = """
@@ -274,7 +274,7 @@ public sealed class TenantRepository : ITenantRepository
         string? type = null,
         CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         
         string sql = """
             SELECT Id, TenantId, OrderId, Amount, BalanceAfter, Type, Description, ReferenceId, CreatedAt
@@ -316,7 +316,7 @@ public sealed class TenantRepository : ITenantRepository
 
     public async Task<int> CountCreditTransactionsAsync(Guid tenantId, string? type = null, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         
         string sql = "SELECT COUNT(1) FROM dbo.CreditTransactions WHERE TenantId = @TenantId";
 
@@ -345,7 +345,7 @@ public sealed class TenantRepository : ITenantRepository
         if (transaction.Id == Guid.Empty) transaction.Id = Guid.NewGuid();
         if (transaction.CreatedAt == default) transaction.CreatedAt = DateTimeOffset.UtcNow;
 
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(transaction.TenantId, cancellationToken);
         const string sql = """
             INSERT INTO dbo.CreditTransactions 
             (Id, TenantId, OrderId, Amount, BalanceAfter, Type, Description, ReferenceId, CreatedAt)

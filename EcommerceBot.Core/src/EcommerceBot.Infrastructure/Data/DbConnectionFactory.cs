@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapper;
 using EcommerceBot.Application.Interfaces;
+using EcommerceBot.Application.Security;
 using EcommerceBot.Domain.Interfaces;
 using EcommerceBot.Infrastructure.Options;
 using Microsoft.AspNetCore.Http;
@@ -57,9 +58,6 @@ public sealed class DbConnectionFactory : IDbConnectionFactory
 
     public async Task<IDbConnection> CreateConnectionAsync(Guid? tenantId, CancellationToken cancellationToken = default)
     {
-        var connection = new SqlConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-
         // Resolução de Tenant e Privilégios para RLS
         Guid? effectiveTenantId = tenantId;
         bool isSuperAdmin = false;
@@ -84,7 +82,39 @@ public sealed class DbConnectionFactory : IDbConnectionFactory
             }
         }
 
-        // Se for SuperAdmin, ativa a flag de bypass administrativo global na sessão
+        // 3. Fallback para escopo ambiente AsyncLocal (MassTransit consumers, callbacks e webhooks pós-lookup)
+        if (!effectiveTenantId.HasValue || effectiveTenantId.Value == Guid.Empty)
+        {
+            var ambientTenantId = TenantSessionScope.CurrentTenantId;
+            if (ambientTenantId.HasValue && ambientTenantId.Value != Guid.Empty)
+            {
+                effectiveTenantId = ambientTenantId.Value;
+            }
+        }
+
+        return await OpenConfiguredConnectionAsync(effectiveTenantId, isSuperAdmin, cancellationToken);
+    }
+
+    public Task<IDbConnection> CreateSystemConnectionAsync(CancellationToken cancellationToken = default)
+    {
+        return OpenConfiguredConnectionAsync(effectiveTenantId: null, isSuperAdmin: true, cancellationToken);
+    }
+
+    private async Task<IDbConnection> OpenConfiguredConnectionAsync(
+        Guid? effectiveTenantId,
+        bool isSuperAdmin,
+        CancellationToken cancellationToken)
+    {
+        var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        // Sempre limpa o SESSION_CONTEXT ao reutilizar conexão do pool para evitar vazamento entre tenants
+        const string resetSql = """
+            EXEC sp_set_session_context @key=N'IsSuperAdmin', @value=NULL;
+            EXEC sp_set_session_context @key=N'TenantId', @value=NULL;
+        """;
+        await connection.ExecuteAsync(new CommandDefinition(resetSql, cancellationToken: cancellationToken));
+
         if (isSuperAdmin)
         {
             var adminCmd = new CommandDefinition(
@@ -93,7 +123,6 @@ public sealed class DbConnectionFactory : IDbConnectionFactory
             await connection.ExecuteAsync(adminCmd);
         }
 
-        // Injeta o TenantId na sessão SQL Server para ativação do predicado RLS
         if (effectiveTenantId.HasValue && effectiveTenantId.Value != Guid.Empty)
         {
             var tenantCmd = new CommandDefinition(

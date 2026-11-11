@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Emails;
 using EcommerceBot.Application.Interfaces;
+using EcommerceBot.Application.Security;
 using EcommerceBot.Application.ViewModels.Emails;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Enums;
@@ -37,6 +38,7 @@ public sealed class EmailNotificationConsumer : IConsumer<EmailEventPayload>
         {
             var ct = context.CancellationToken;
             var payload = context.Message;
+            using var tenantScope = TenantSessionScope.BeginScope(payload.TenantId);
             _logger.LogInformation("Processando e-mail transacional para {Event} destinatário {Email}", payload.Event, payload.RecipientEmail);
 
             var (subject, html) = await ResolveEmailContentAsync(payload);

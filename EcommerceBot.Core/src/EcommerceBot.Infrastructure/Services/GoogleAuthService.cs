@@ -1,21 +1,19 @@
 using System;
 using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Auth;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
 using EcommerceBot.Infrastructure.Options;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 
 namespace EcommerceBot.Infrastructure.Services;
 
@@ -23,6 +21,8 @@ public sealed class GoogleAuthService : IGoogleAuthService
 {
         private readonly IUserRepository _userRepository;
         private readonly ITenantRepository _tenantRepository;
+        private readonly IRedisService _redisService;
+        private readonly IHostEnvironment _environment;
         private readonly GoogleAuthOptions _googleOptions;
         private readonly JwtOptions _jwtOptions;
         private readonly SecurityOptions _securityOptions;
@@ -32,6 +32,8 @@ public sealed class GoogleAuthService : IGoogleAuthService
         public GoogleAuthService(
             IUserRepository userRepository,
             ITenantRepository tenantRepository,
+            IRedisService redisService,
+            IHostEnvironment environment,
             IOptions<GoogleAuthOptions> googleOptions,
             IOptions<JwtOptions> jwtOptions,
             IOptions<SecurityOptions> securityOptions,
@@ -40,6 +42,8 @@ public sealed class GoogleAuthService : IGoogleAuthService
         {
             _userRepository = userRepository;
             _tenantRepository = tenantRepository;
+            _redisService = redisService;
+            _environment = environment;
             _googleOptions = googleOptions.Value;
             _jwtOptions = jwtOptions.Value;
             _securityOptions = securityOptions.Value;
@@ -47,22 +51,28 @@ public sealed class GoogleAuthService : IGoogleAuthService
             _logger = logger;
         }
 
-        private bool IsSuperAdminEmail(string? email)
+        private bool IsSuperAdminEmail(string? email) => AuthTokenHelper.IsSuperAdminEmail(email, _securityOptions);
+
+        public async Task<string> GetGoogleAuthUrlAsync(string? state, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrWhiteSpace(_securityOptions.SuperAdminEmails) || string.IsNullOrWhiteSpace(email))
-                return false;
+            var hasPlaceholderCreds = string.IsNullOrWhiteSpace(_googleOptions.ClientId)
+                || _googleOptions.ClientId.Contains("mock_", StringComparison.OrdinalIgnoreCase);
 
-            var adminEmails = _securityOptions.SuperAdminEmails
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (!_environment.IsDevelopment() && hasPlaceholderCreds)
+            {
+                throw new InvalidOperationException("Google OAuth ClientId não configurado para ambiente de produção.");
+            }
 
-            return adminEmails.Any(adminEmail => adminEmail.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase));
-        }
+            var effectiveState = !string.IsNullOrWhiteSpace(state)
+                ? state.Trim()
+                : OAuthSecurityHelper.GenerateNonce();
 
-        public string GetGoogleAuthUrl(string? state)
-        {
-            var clientId = _googleOptions.ClientId;
-            var redirectUri = _googleOptions.RedirectUri;
-            return $"https://accounts.google.com/o/oauth2/v2/auth?client_id={clientId}&redirect_uri={redirectUri}&response_type=code&scope=openid%20email%20profile&access_type=offline&prompt=select_account{(state != null ? "&state=" + state : "")}";
+            await _redisService.SetAsync($"oauth:state:google:{effectiveState}", "1", TimeSpan.FromMinutes(10), cancellationToken);
+
+            var clientId = Uri.EscapeDataString(_googleOptions.ClientId);
+            var redirectUri = Uri.EscapeDataString(_googleOptions.RedirectUri);
+            var escapedState = Uri.EscapeDataString(effectiveState);
+            return $"https://accounts.google.com/o/oauth2/v2/auth?client_id={clientId}&redirect_uri={redirectUri}&response_type=code&scope=openid%20email%20profile&access_type=offline&prompt=select_account&state={escapedState}";
         }
 
         public async Task<AuthTokenResponse> AuthenticateGoogleUserAsync(GoogleCallbackRequest request)
@@ -72,13 +82,33 @@ public sealed class GoogleAuthService : IGoogleAuthService
                 throw new ArgumentException("Código de autorização do Google é obrigatório.");
             }
 
+            var hasMockOrMissingCreds = string.IsNullOrWhiteSpace(_googleOptions.ClientId) ||
+                             _googleOptions.ClientId.Contains("mock_", StringComparison.OrdinalIgnoreCase) ||
+                             string.IsNullOrWhiteSpace(_googleOptions.ClientSecret) ||
+                             _googleOptions.ClientSecret.Contains("mock_", StringComparison.OrdinalIgnoreCase);
+
+            if (hasMockOrMissingCreds && !_environment.IsDevelopment())
+            {
+                throw new InvalidOperationException("Credenciais reais do Google OAuth são obrigatórias fora de Development.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.State))
+            {
+                var consumed = await OAuthSecurityHelper.ConsumeOAuthStateAsync<string>(_redisService, "google", request.State);
+                if (string.IsNullOrEmpty(consumed))
+                {
+                    throw new UnauthorizedAccessException("Estado OAuth do Google inválido ou expirado.");
+                }
+            }
+            else if (!_environment.IsDevelopment())
+            {
+                throw new UnauthorizedAccessException("Parâmetro state OAuth do Google é obrigatório.");
+            }
+
             string email;
             string name;
 
-            var isMockMode = string.IsNullOrWhiteSpace(_googleOptions.ClientId) ||
-                             _googleOptions.ClientId.Contains("mock_") ||
-                             string.IsNullOrWhiteSpace(_googleOptions.ClientSecret) ||
-                             _googleOptions.ClientSecret.Contains("mock_");
+            var isMockMode = _environment.IsDevelopment() && hasMockOrMissingCreds;
 
             if (isMockMode)
             {
@@ -179,18 +209,28 @@ public sealed class GoogleAuthService : IGoogleAuthService
                     user = await _userRepository.CreateAsync(user);
                     _logger.LogInformation("Novo usuário {Email} e Tenant {TenantId} provisionados via Google Auth.", email, tenantId);
                 }
-                else if (isSuperAdmin && !string.Equals(user.Role, "ADMIN", StringComparison.OrdinalIgnoreCase))
+                else
                 {
-                    user.Role = "ADMIN";
-                    await _userRepository.UpdateAsync(user);
-                    _logger.LogInformation("Usuário {Email} promovido para ADMIN via Google Auth.", email);
+                    if (!user.IsActive)
+                    {
+                        throw new UnauthorizedAccessException("Conta de usuário desativada.");
+                    }
+
+                    if (isSuperAdmin && !string.Equals(user.Role, "ADMIN", StringComparison.OrdinalIgnoreCase))
+                    {
+                        user.Role = "ADMIN";
+                        await _userRepository.UpdateAsync(user);
+                        _logger.LogInformation("Usuário {Email} promovido para ADMIN via Google Auth.", email);
+                    }
                 }
 
                 var tenant = await _tenantRepository.GetByIdAsync(user.TenantId);
-                var creditsBalance = tenant?.CreditsBalance ?? 20;
+                AuthTokenHelper.EnsureActiveUserAndTenant(user, tenant);
+
+                var creditsBalance = tenant!.CreditsBalance;
                 var hasActiveCredits = user.Role == "ADMIN" || creditsBalance > 0;
 
-                var token = GenerateJwtToken(user, hasActiveCredits, creditsBalance);
+                var token = AuthTokenHelper.GenerateJwtToken(user, _jwtOptions, hasActiveCredits, creditsBalance);
 
                 return new AuthTokenResponse
                 {
@@ -205,44 +245,14 @@ public sealed class GoogleAuthService : IGoogleAuthService
                     HasActiveCredits = hasActiveCredits
                 };
             }
+            catch (UnauthorizedAccessException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erro ao consultar ou persistir dados do usuário Google {Email}", email);
                 throw;
             }
-        }
-
-        private string GenerateJwtToken(User user, bool hasActiveCredits = false, int creditsBalance = 0)
-        {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var keyStr = _jwtOptions.Key;
-            if (string.IsNullOrWhiteSpace(keyStr))
-            {
-                throw new InvalidOperationException("Jwt:Key is required and must be configured in environment or appsettings.");
-            }
-
-            var key = Encoding.UTF8.GetBytes(keyStr);
-            var expireMinutes = _jwtOptions.ExpireMinutes > 0 ? _jwtOptions.ExpireMinutes : 120;
-            var descriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(new[]
-                {
-                    new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                    new Claim(ClaimTypes.Email, user.Email),
-                    new Claim(ClaimTypes.Name, user.FullName ?? string.Empty),
-                    new Claim("tenantId", user.TenantId.ToString()),
-                    new Claim(ClaimTypes.Role, user.Role),
-                    new Claim("hasActiveCredits", hasActiveCredits.ToString().ToLowerInvariant()),
-                    new Claim("creditsBalance", creditsBalance.ToString())
-                }),
-                Issuer = _jwtOptions.Issuer,
-                Audience = _jwtOptions.Audience,
-                Expires = DateTime.UtcNow.AddMinutes(expireMinutes),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
-            var token = tokenHandler.CreateToken(descriptor);
-            return tokenHandler.WriteToken(token);
         }
     }

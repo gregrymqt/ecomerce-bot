@@ -34,7 +34,7 @@ public sealed class TenantBillingProfileRepository : ITenantBillingProfileReposi
             cacheKey,
             async () =>
             {
-                using var connection = await _connectionFactory.CreateConnectionAsync();
+                using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
 
                 const string sql = @"
                     SELECT 
@@ -56,7 +56,7 @@ public sealed class TenantBillingProfileRepository : ITenantBillingProfileReposi
         ArgumentNullException.ThrowIfNull(profile);
         if (profile.TenantId == Guid.Empty) throw new ArgumentException("TenantId é obrigatório.", nameof(profile));
 
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(profile.TenantId, cancellationToken);
 
         const string sql = @"
             MERGE dbo.TenantBillingProfiles WITH (HOLDLOCK) AS target

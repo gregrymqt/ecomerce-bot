@@ -3,7 +3,7 @@ import asyncio
 import httpx
 from app.core.config.settings import settings
 from app.core.shared.logger import get_logger
-from app.core.shared.security import validate_url_safety
+from app.core.shared.security import async_validate_url_safety, safe_http_get
 
 logger = get_logger("worker.scrapling")
 
@@ -62,7 +62,7 @@ class ScraplingEngineService:
         Tier 1: Requisição TLS stealth ultra-rápida via curl_cffi / Scrapling.
         """
         # Validação preventiva Anti-SSRF antes de abrir socket de rede
-        validate_url_safety(url)
+        await async_validate_url_safety(url)
 
         if self._async_fetcher is not None:
             logger.info(f"Requisitando com TLS impersonate={impersonate}: {url}")
@@ -79,14 +79,21 @@ class ScraplingEngineService:
                     "Sec-Fetch-Dest": "document",
                 }
             )
+            final_url = getattr(response, "url", None)
+            if final_url:
+                await async_validate_url_safety(str(final_url))
             return response
 
-        # Fallback HTTP com httpx e conversão para Adaptor se disponível
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
-            resp = await client.get(url, headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7"
-            })
+        # Fallback HTTP com httpx sem seguir redirecionamentos automaticamente (validação salto-a-salto Anti-SSRF)
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+            resp = await safe_http_get(
+                client,
+                url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+                },
+            )
             if SCRAPLING_AVAILABLE and Adaptor is not None:
                 return Adaptor(resp.text, url=url, status=resp.status_code)
             return resp
@@ -96,7 +103,7 @@ class ScraplingEngineService:
         Tier 2: Stealth Browser para contornar Cloudflare Turnstile e renderizar SPAs JS.
         Protegido por semáforo de concorrência para evitar OOM (Out Of Memory) na VPS.
         """
-        validate_url_safety(url)
+        await async_validate_url_safety(url)
 
         if SCRAPLING_AVAILABLE and StealthFetcher is not None:
             semaphore = get_browser_semaphore()

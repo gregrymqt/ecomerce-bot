@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Messaging;
 using EcommerceBot.Application.Interfaces;
+using EcommerceBot.Application.Security;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
 using MassTransit;
@@ -29,6 +30,7 @@ public sealed class AnalyticsProcessedConsumer : IConsumer<MlAnalysisResultMessa
     public async Task Consume(ConsumeContext<MlAnalysisResultMessage> context)
     {
         var msg = context.Message;
+        using var tenantScope = TenantSessionScope.BeginScope(msg.TenantId);
         _logger.LogInformation("Recebido MlAnalysisResultMessage para Tenant {TenantId}. Status: {Status}",
             msg.TenantId, msg.Status);
 

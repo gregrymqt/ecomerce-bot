@@ -23,6 +23,7 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
     private readonly IProductRepository _productRepository;
     private readonly IAesGcmCryptoService _cryptoService;
     private readonly IEcommerceGatewayFactory _gatewayFactory;
+    private readonly IRedisService _redisService;
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly HttpClient _httpClient;
     private readonly ILogger<ShopifyIntegrationService> _logger;
@@ -30,11 +31,14 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
     private readonly string _clientSecret;
     private readonly string _appUrl;
 
+    private sealed record ShopifyOAuthStatePayload(Guid TenantId, string ShopDomain);
+
     public ShopifyIntegrationService(
         IStoreIntegrationRepository storeIntegrationRepository,
         IProductRepository productRepository,
         IAesGcmCryptoService cryptoService,
         IEcommerceGatewayFactory gatewayFactory,
+        IRedisService redisService,
         IPublishEndpoint publishEndpoint,
         HttpClient httpClient,
         IOptions<ShopifyOptions> shopifyOptions,
@@ -45,6 +49,7 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
         _productRepository = productRepository;
         _cryptoService = cryptoService;
         _gatewayFactory = gatewayFactory;
+        _redisService = redisService;
         _publishEndpoint = publishEndpoint;
         _httpClient = httpClient;
         _logger = logger;
@@ -119,20 +124,60 @@ public sealed class ShopifyIntegrationService : IShopifyIntegrationService
         };
     }
 
-    public Task<string> GetOAuthUrlAsync(Guid tenantId, string shopDomain, CancellationToken cancellationToken = default)
+    public async Task<string> GetOAuthUrlAsync(Guid tenantId, string shopDomain, CancellationToken cancellationToken = default)
     {
-        var cleanShop = shopDomain.Replace("https://", "").Replace("http://", "").Trim().TrimEnd('/').ToLowerInvariant();
-        var scopes = "write_products,read_products,write_inventory,read_inventory,write_orders,read_orders";
-        var redirectUri = Uri.EscapeDataString($"{_appUrl}/api/v1/shopify/oauth/callback");
-        var state = tenantId.ToString("D");
+        if (tenantId == Guid.Empty)
+            throw new ArgumentException("TenantId é obrigatório.", nameof(tenantId));
 
-        var authorizeUrl = $"https://{cleanShop}/admin/oauth/authorize?client_id={_clientId}&scope={scopes}&redirect_uri={redirectUri}&state={state}";
-        return Task.FromResult(authorizeUrl);
+        if (string.IsNullOrWhiteSpace(_clientId) || string.IsNullOrWhiteSpace(_clientSecret))
+            throw new InvalidOperationException("Credenciais OAuth da Shopify (ClientId/ClientSecret) não configuradas.");
+
+        if (!OAuthSecurityHelper.TryNormalizeShopifyDomain(shopDomain, out var cleanShop))
+            throw new ArgumentException("Domínio Shopify inválido. Utilize o formato '<loja>.myshopify.com'.", nameof(shopDomain));
+
+        var scopes = Uri.EscapeDataString("write_products,read_products,write_inventory,read_inventory,write_orders,read_orders");
+        var redirectUri = Uri.EscapeDataString($"{_appUrl.TrimEnd('/')}/api/v1/shopify/oauth/callback");
+        var state = await OAuthSecurityHelper.CreateOAuthStateAsync(
+            _redisService,
+            "shopify",
+            new ShopifyOAuthStatePayload(tenantId, cleanShop),
+            cancellationToken);
+
+        return $"https://{cleanShop}/admin/oauth/authorize?client_id={Uri.EscapeDataString(_clientId)}&scope={scopes}&redirect_uri={redirectUri}&state={Uri.EscapeDataString(state)}";
+    }
+
+    public async Task<(Guid TenantId, string ShopDomain)?> ConsumeOAuthStateAsync(
+        string? state,
+        string shopDomain,
+        CancellationToken cancellationToken = default)
+    {
+        if (!OAuthSecurityHelper.TryNormalizeShopifyDomain(shopDomain, out var cleanShop))
+            return null;
+
+        var payload = await OAuthSecurityHelper.ConsumeOAuthStateAsync<ShopifyOAuthStatePayload>(
+            _redisService,
+            "shopify",
+            state,
+            cancellationToken);
+
+        if (payload == null ||
+            payload.TenantId == Guid.Empty ||
+            !string.Equals(payload.ShopDomain, cleanShop, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return (payload.TenantId, cleanShop);
     }
 
     public async Task HandleOAuthCallbackAsync(Guid tenantId, string code, string shopDomain, CancellationToken cancellationToken = default)
     {
-        var cleanShop = shopDomain.Replace("https://", "").Replace("http://", "").Trim().TrimEnd('/').ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(_clientId) || string.IsNullOrWhiteSpace(_clientSecret))
+            throw new InvalidOperationException("Credenciais OAuth da Shopify (ClientId/ClientSecret) não configuradas.");
+
+        if (!OAuthSecurityHelper.TryNormalizeShopifyDomain(shopDomain, out var cleanShop))
+            throw new ArgumentException("Domínio Shopify inválido. Utilize o formato '<loja>.myshopify.com'.", nameof(shopDomain));
+
         _logger.LogInformation("Exchanging OAuth code for Shopify access token. Shop: {Shop}, Tenant: {TenantId}", cleanShop, tenantId);
 
         var tokenEndpoint = $"https://{cleanShop}/admin/oauth/access_token";

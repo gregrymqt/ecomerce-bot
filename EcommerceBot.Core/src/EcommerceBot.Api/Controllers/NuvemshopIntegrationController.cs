@@ -8,8 +8,10 @@ using System.Threading.Tasks;
 using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.DTOs.Nuvemshop;
 using EcommerceBot.Application.Interfaces;
+using EcommerceBot.Application.Security;
 using EcommerceBot.Domain.Interfaces;
 using EcommerceBot.Infrastructure.Options;
+using EcommerceBot.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -27,6 +29,7 @@ public class NuvemshopIntegrationController : BaseApiController
     private readonly IStoreIntegrationRepository _storeIntegrationRepository;
     private readonly IRedisService _redisService;
     private readonly IWebHostEnvironment _env;
+    private readonly AppOptions _appOptions;
     private readonly ILogger<NuvemshopIntegrationController> _logger;
     private readonly string _clientSecret;
 
@@ -35,6 +38,7 @@ public class NuvemshopIntegrationController : BaseApiController
         IStoreIntegrationRepository storeIntegrationRepository,
         IRedisService redisService,
         IOptions<NuvemshopOptions> nuvemshopOptions,
+        IOptions<AppOptions> appOptions,
         IWebHostEnvironment env,
         ILogger<NuvemshopIntegrationController> logger)
     {
@@ -42,19 +46,27 @@ public class NuvemshopIntegrationController : BaseApiController
         _storeIntegrationRepository = storeIntegrationRepository;
         _redisService = redisService;
         _env = env;
+        _appOptions = appOptions.Value;
         _logger = logger;
         _clientSecret = nuvemshopOptions.Value.ClientSecret ?? string.Empty;
     }
 
     [HttpGet("auth")]
-    public IActionResult GetOAuthUrl([FromHeader(Name = "X-Tenant-ID")] Guid tenantId)
+    public async Task<IActionResult> GetOAuthUrl([FromHeader(Name = "X-Tenant-ID")] Guid tenantId, CancellationToken cancellationToken = default)
     {
         var activeTenantId = tenantId != Guid.Empty ? tenantId : CurrentTenantId;
         if (activeTenantId == Guid.Empty)
             return BadRequestProblem("O header X-Tenant-ID é obrigatório.");
 
-        var url = _nuvemshopService.GetOAuthUrl(activeTenantId);
-        return Ok(new { url });
+        try
+        {
+            var url = await _nuvemshopService.GetOAuthUrlAsync(activeTenantId, cancellationToken);
+            return Ok(new { url });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ProblemResponse(StatusCodes.Status503ServiceUnavailable, "Integração não configurada", ex.Message);
+        }
     }
 
     [HttpPost("credentials")]
@@ -86,22 +98,30 @@ public class NuvemshopIntegrationController : BaseApiController
     [HttpGet("oauth/callback")]
     [AllowAnonymous]
     public async Task<IActionResult> OAuthCallback(
-        [FromQuery] string code,
-        [FromQuery] string state,
+        [FromQuery] string? code,
+        [FromQuery] string? state,
         CancellationToken cancellationToken = default)
     {
-        if (!Guid.TryParse(state, out var tenantId) || string.IsNullOrEmpty(code))
+        if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(state))
         {
             return BadRequestProblem("Parâmetros 'code' e 'state' são obrigatórios.");
         }
 
-        var success = await _nuvemshopService.HandleOAuthCallbackAsync(tenantId, code, cancellationToken);
-        if (!success)
+        var tenantId = await _nuvemshopService.ConsumeOAuthStateAsync(state, cancellationToken);
+        if (!tenantId.HasValue || tenantId.Value == Guid.Empty)
         {
-            return ProblemResponse(StatusCodes.Status500InternalServerError, "Falha de Autorização", "Falha ao autorizar aplicativo na Nuvemshop.");
+            return BadRequestProblem("Parâmetro 'state' OAuth da Nuvemshop inválido ou expirado.");
         }
 
-        return Ok(new { message = "Loja Nuvemshop conectada com sucesso via OAuth 2.0!" });
+        using var tenantScope = TenantSessionScope.BeginScope(tenantId.Value);
+        var frontendBaseUrl = OAuthSecurityHelper.ResolveFrontendBaseUrl(_appOptions, _env);
+        var success = await _nuvemshopService.HandleOAuthCallbackAsync(tenantId.Value, code, cancellationToken);
+        if (!success)
+        {
+            return Redirect($"{frontendBaseUrl}/integrations?oauth=error&platform=nuvemshop");
+        }
+
+        return Redirect($"{frontendBaseUrl}/integrations?oauth=success&platform=nuvemshop");
     }
 
     [HttpPost("webhooks")]
@@ -122,11 +142,11 @@ public class NuvemshopIntegrationController : BaseApiController
             return BadRequestProblem("Corpo da requisição vazio.");
         }
 
-        // 1. Validação Criptográfica de Assinatura HMAC SHA-256 em tempo constante
-        if (!string.IsNullOrEmpty(hmacSignature) && !VerifyNuvemshopSignature(rawBody, hmacSignature))
+        // 1. Validação Criptográfica Obrigatória de Assinatura HMAC SHA-256 em tempo constante
+        if (string.IsNullOrWhiteSpace(hmacSignature) || !VerifyNuvemshopSignature(rawBody, hmacSignature))
         {
-            _logger.LogWarning("Assinatura HMAC da Nuvemshop inválida");
-            return UnauthorizedProblem("Assinatura HMAC da Nuvemshop inválida.");
+            _logger.LogWarning("Assinatura HMAC da Nuvemshop ausente ou inválida.");
+            return UnauthorizedProblem("Assinatura HMAC da Nuvemshop ausente ou inválida.");
         }
 
         // 2. Parsing do Thin Payload Oficial da Nuvemshop (store_id, event, id)
@@ -175,6 +195,7 @@ public class NuvemshopIntegrationController : BaseApiController
 
         try
         {
+            using var tenantScope = TenantSessionScope.BeginScope(integration.TenantId);
             await _nuvemshopService.ProcessWebhookAsync(integration.TenantId, topic, idempotencyId, resourceId, jsonElement, cancellationToken);
             return Ok();
         }

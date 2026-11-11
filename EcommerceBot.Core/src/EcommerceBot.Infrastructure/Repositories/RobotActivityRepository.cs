@@ -30,7 +30,7 @@ public sealed class RobotActivityRepository : IRobotActivityRepository
             OUTPUT INSERTED.Id, INSERTED.CreatedAt
             VALUES (@TenantId, @WorkerType, @Status, @DetailsJson, @DurationMs, SYSDATETIMEOFFSET())";
 
-        using var connection = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _dbConnectionFactory.CreateConnectionAsync(activity.TenantId, cancellationToken);
         var result = await connection.QuerySingleAsync<(Guid Id, DateTimeOffset CreatedAt)>(new CommandDefinition(sql, new
         {
             activity.TenantId,
@@ -55,7 +55,7 @@ public sealed class RobotActivityRepository : IRobotActivityRepository
             OFFSET @Offset ROWS
             FETCH NEXT @Limit ROWS ONLY";
 
-        using var connection = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _dbConnectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         return await connection.QueryAsync<RobotActivity>(new CommandDefinition(sql, new { TenantId = tenantId, Limit = limit, Offset = offset }, cancellationToken: cancellationToken));
     }
 
@@ -69,7 +69,7 @@ public sealed class RobotActivityRepository : IRobotActivityRepository
               AND CreatedAt >= @Cutoff
               AND DurationMs IS NOT NULL";
 
-        using var connection = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _dbConnectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         return await connection.QuerySingleAsync<double>(new CommandDefinition(sql, new { TenantId = tenantId, Cutoff = cutoff }, cancellationToken: cancellationToken));
     }
 }

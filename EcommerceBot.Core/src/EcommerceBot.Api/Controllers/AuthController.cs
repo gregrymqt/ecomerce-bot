@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.DTOs.Auth;
 using EcommerceBot.Application.Interfaces;
+using EcommerceBot.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -68,7 +69,10 @@ public class AuthController : BaseApiController
     [AllowAnonymous]
     public async Task<IActionResult> Logout(CancellationToken cancellationToken = default)
     {
-        var token = Request.Cookies["access_token"];
+        var token = AuthTokenHelper.ExtractBearerOrCookieToken(
+            Request.Headers.Authorization.ToString(),
+            Request.Cookies["access_token"]);
+
         if (!string.IsNullOrEmpty(token))
         {
             await _authService.RevokeTokenAsync(token);
@@ -92,7 +96,7 @@ public class AuthController : BaseApiController
             AppendAuthCookie(token);
             return Ok(user);
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidOperationException)
         {
             return UnauthorizedProblem(ex.Message);
         }
@@ -110,8 +114,8 @@ public class AuthController : BaseApiController
         if (!ModelState.IsValid)
             return BadRequestProblem("Dados de recuperação de senha inválidos.");
 
-        var origin = Request.Headers.Origin.FirstOrDefault() ?? Request.Headers.Referer.FirstOrDefault();
-        await _authService.ForgotPasswordAsync(request.Email, origin);
+        // Ignora cabeçalhos Origin/Referer do cliente para prevenir Password Reset Poisoning
+        await _authService.ForgotPasswordAsync(request.Email);
 
         return Ok(new
         {
@@ -182,9 +186,9 @@ public class AuthController : BaseApiController
 
     [HttpGet("google/login")]
     [AllowAnonymous]
-    public IActionResult GoogleLogin([FromQuery] string? state)
+    public async Task<IActionResult> GoogleLogin([FromQuery] string? state, CancellationToken cancellationToken = default)
     {
-        var url = _googleAuthService.GetGoogleAuthUrl(state);
+        var url = await _googleAuthService.GetGoogleAuthUrlAsync(state, cancellationToken);
         return Ok(new GoogleLoginUrlResponse { Url = url });
     }
 
