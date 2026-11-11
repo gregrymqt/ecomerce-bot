@@ -26,7 +26,7 @@ public sealed class OrderRepository : IOrderRepository
 
     public async Task<Order> CreateOrderAsync(Order order, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(order.TenantId, cancellationToken);
         if (order.Id == Guid.Empty) order.Id = Guid.NewGuid();
         if (order.CreatedAt == default) order.CreatedAt = DateTimeOffset.UtcNow;
         if (order.UpdatedAt == default) order.UpdatedAt = DateTimeOffset.UtcNow;
@@ -74,7 +74,7 @@ public sealed class OrderRepository : IOrderRepository
             cacheKey,
             async () =>
             {
-                using var connection = await _connectionFactory.CreateConnectionAsync();
+                using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
                 const string sql = "SELECT * FROM dbo.Orders WHERE Id = @Id AND TenantId = @TenantId;";
                 var cmd = new CommandDefinition(sql, new { Id = id, TenantId = tenantId }, cancellationToken: cancellationToken);
                 var order = await connection.QueryFirstOrDefaultAsync<Order>(cmd);
@@ -101,7 +101,7 @@ public sealed class OrderRepository : IOrderRepository
             cacheKey,
             async () =>
             {
-                using var connection = await _connectionFactory.CreateConnectionAsync();
+                using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
                 const string sql = "SELECT * FROM dbo.Orders WHERE ExternalReference = @ExternalReference AND TenantId = @TenantId;";
                 var cmd = new CommandDefinition(sql, new { ExternalReference = externalReference, TenantId = tenantId }, cancellationToken: cancellationToken);
                 var order = await connection.QueryFirstOrDefaultAsync<Order>(cmd);
@@ -122,7 +122,7 @@ public sealed class OrderRepository : IOrderRepository
 
     public async Task<Order?> GetOrderByExternalReferenceGlobalAsync(string externalReference, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateSystemConnectionAsync(cancellationToken);
         const string sql = "SELECT * FROM dbo.Orders WHERE ExternalReference = @ExternalReference;";
         var cmd = new CommandDefinition(sql, new { ExternalReference = externalReference }, cancellationToken: cancellationToken);
         var order = await connection.QueryFirstOrDefaultAsync<Order>(cmd);
@@ -140,7 +140,7 @@ public sealed class OrderRepository : IOrderRepository
 
     public async Task<Order?> GetOrderByMpPaymentIdAsync(string mpPaymentId, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateSystemConnectionAsync(cancellationToken);
         const string sql = "SELECT * FROM dbo.Orders WHERE MpPaymentId = @MpPaymentId;";
         var cmd = new CommandDefinition(sql, new { MpPaymentId = mpPaymentId }, cancellationToken: cancellationToken);
         var order = await connection.QueryFirstOrDefaultAsync<Order>(cmd);
@@ -159,7 +159,7 @@ public sealed class OrderRepository : IOrderRepository
     public async Task UpdateOrderAsync(Order order, CancellationToken cancellationToken = default)
     {
         order.UpdatedAt = DateTimeOffset.UtcNow;
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(order.TenantId, cancellationToken);
         const string sql = @"
             UPDATE dbo.Orders 
             SET Status = @Status,

@@ -23,7 +23,7 @@ public sealed class TrafficAttributionRepository : ITrafficAttributionRepository
 
     public async Task<Guid> RecordTenantVisitAsync(TrafficAttribution attribution, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(attribution.TenantId, cancellationToken);
         const string sql = @"
             INSERT INTO dbo.TrafficAttributions (
                 Id, TenantId, OrderId, SessionId, UtmSource, UtmMedium, UtmCampaign,
@@ -42,7 +42,7 @@ public sealed class TrafficAttributionRepository : ITrafficAttributionRepository
 
     public async Task<TenantTrafficOverviewDto> GetTenantTrafficOverviewAsync(Guid tenantId, int days, string? sourceFilter = null, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         var since = DateTimeOffset.UtcNow.AddDays(-days);
 
         // 1. Resumo Geral de Faturamento e Pedidos Atribuídos
@@ -151,7 +151,7 @@ public sealed class TrafficAttributionRepository : ITrafficAttributionRepository
 
     public async Task<int> LinkOrderToTrafficSessionAsync(Guid tenantId, Guid orderId, string sessionId, string? utmSource, string? utmCampaign, string? adId, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         const string sql = @"
             UPDATE dbo.TrafficAttributions
             SET OrderId = @OrderId

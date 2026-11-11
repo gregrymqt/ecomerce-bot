@@ -11,7 +11,8 @@ public sealed class CorsOptions
 
     /// <summary>
     /// Lista de origens permitidas (URLs do Frontend).
-    /// Exemplo: ["http://localhost:5173", "http://localhost:3000", "https://app.ecommercebot.com"]
+    /// Exemplo: ["https://app.ecommercebot.com"]
+    /// Origens localhost de desenvolvimento são adicionadas apenas quando IHostEnvironment.IsDevelopment().
     /// </summary>
-    public List<string> AllowedOrigins { get; set; } = ["http://localhost:5173", "http://localhost:3000"];
+    public List<string> AllowedOrigins { get; set; } = [];
 }

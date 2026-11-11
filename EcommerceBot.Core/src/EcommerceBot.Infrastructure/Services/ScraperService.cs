@@ -28,7 +28,7 @@ public sealed class ScraperService : IScraperService
 
     public async Task<string> EnqueueExtractionTaskAsync(Guid tenantId, string url, string? plan = null)
     {
-        if (string.IsNullOrWhiteSpace(url) || !UrlSecurityValidator.IsSafePublicUrl(url))
+        if (string.IsNullOrWhiteSpace(url) || !await UrlSecurityValidator.IsSafePublicUrlAsync(url))
         {
             throw new ArgumentException("URL inválida ou bloqueada por política de segurança Anti-SSRF.");
         }

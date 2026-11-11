@@ -1,8 +1,12 @@
-import unittest
 import asyncio
-from unittest.mock import AsyncMock, MagicMock
-from app.core.shared.security import validate_url_safety
+import socket
+import unittest
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import httpx
+
 from app.core.config.redis_db import RedisCache
+from app.core.shared.security import safe_http_get, validate_url_safety
 
 class TestSecurityAndSafeCache(unittest.IsolatedAsyncioTestCase):
     def test_validate_url_safety_allows_public_urls(self):
@@ -124,6 +128,40 @@ class TestSecurityAndSafeCache(unittest.IsolatedAsyncioTestCase):
 
         success_dup = await cache.set_idempotency_key(key)
         self.assertFalse(success_dup)
+
+    def test_validate_url_safety_blocks_ipv4_mapped_cgnat_and_ula(self):
+        blocked_urls = [
+            "http://[::ffff:127.0.0.1]/admin",
+            "http://[::ffff:169.254.169.254]/latest/meta-data",
+            "http://100.64.0.1/metrics",
+            "http://[fc00::1]/",
+            "http://[fd12:3456:789a::1]/secret",
+        ]
+        for url in blocked_urls:
+            with self.assertRaises(ValueError, msg=f"Deveria bloquear faixa/IPv6 bypass: {url}"):
+                validate_url_safety(url)
+
+    async def test_safe_http_get_blocks_redirect_to_private_or_metadata(self):
+        request_urls = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            request_urls.append(str(request.url))
+            return httpx.Response(302, headers={"Location": "http://169.254.169.254/latest/meta-data/"})
+
+        def fake_getaddrinfo(host, port, *args, **kwargs):
+            if host == "public-shop.example":
+                return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))]
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 0))]
+
+        transport = httpx.MockTransport(handler)
+
+        with patch("socket.getaddrinfo", side_effect=fake_getaddrinfo):
+            async with httpx.AsyncClient(transport=transport, follow_redirects=False) as client:
+                with self.assertRaises(ValueError):
+                    await safe_http_get(client, "https://public-shop.example/product.json")
+
+        self.assertEqual(len(request_urls), 1, "Redirect para IP privado não deve emitir segunda requisição HTTP.")
+
 
 if __name__ == "__main__":
     unittest.main()

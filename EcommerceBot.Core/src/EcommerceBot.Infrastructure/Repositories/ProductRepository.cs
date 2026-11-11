@@ -30,7 +30,7 @@ public sealed class ProductRepository : IProductRepository
             cacheKey,
             async () =>
             {
-                using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+                using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
                 
                 const string sql = """
                     SELECT * FROM dbo.Products 
@@ -46,7 +46,7 @@ public sealed class ProductRepository : IProductRepository
 
     public async Task<IEnumerable<Product>> GetProductsAsync(Guid tenantId, int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         
         const string sql = """
             SELECT * FROM dbo.Products 
@@ -63,7 +63,7 @@ public sealed class ProductRepository : IProductRepository
 
     public async Task<Guid> AddAsync(Product product, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(product.TenantId, cancellationToken);
         
         const string sql = """
             INSERT INTO dbo.Products (
@@ -97,7 +97,7 @@ public sealed class ProductRepository : IProductRepository
 
     public async Task UpdateStatusAsync(Guid tenantId, string sku, string status, string? metadata = null, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         
         const string sql = """
             UPDATE dbo.Products 
@@ -117,7 +117,7 @@ public sealed class ProductRepository : IProductRepository
     public async Task<(IEnumerable<Product> Products, int TotalCount)> GetPaginatedAsync(
         Guid tenantId, string? statusFilter, string? search, int page, int limit, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         
         var offset = (page - 1) * limit;
         
@@ -154,7 +154,7 @@ public sealed class ProductRepository : IProductRepository
 
     public async Task UpdateAsync(Product product, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(product.TenantId, cancellationToken);
         
         const string sql = """
             UPDATE dbo.Products 
@@ -187,7 +187,7 @@ public sealed class ProductRepository : IProductRepository
 
     public async Task DeleteAsync(Guid tenantId, string sku, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         const string sql = "DELETE FROM dbo.Products WHERE TenantId = @TenantId AND Sku = @Sku";
         
         var cmd = new CommandDefinition(sql, new { TenantId = tenantId, Sku = sku }, cancellationToken: cancellationToken);

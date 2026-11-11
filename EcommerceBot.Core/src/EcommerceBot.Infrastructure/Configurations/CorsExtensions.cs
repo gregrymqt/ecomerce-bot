@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using EcommerceBot.Infrastructure.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace EcommerceBot.Infrastructure.Configurations;
 
@@ -14,20 +14,33 @@ public static class CorsExtensions
 {
     public static IServiceCollection AddCorsConfiguration(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
         var corsOptions = configuration.GetSection(CorsOptions.SectionName).Get<CorsOptions>() ?? new CorsOptions();
-        var allowedOrigins = new HashSet<string>(corsOptions.AllowedOrigins ?? [], StringComparer.OrdinalIgnoreCase)
-        {
-            // Fallbacks seguros de desenvolvimento
-            "http://localhost:5173",
-            "https://localhost:5173",
-            "http://localhost:3000"
-        };
+        var allowedOrigins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // Inclui App:FrontendUrl se configurado no appsettings/ambiente
+        if (corsOptions.AllowedOrigins is { Count: > 0 })
+        {
+            foreach (var origin in corsOptions.AllowedOrigins)
+            {
+                if (!string.IsNullOrWhiteSpace(origin) && (environment.IsDevelopment() || !IsLoopbackOrigin(origin)))
+                {
+                    allowedOrigins.Add(origin.TrimEnd('/'));
+                }
+            }
+        }
+
+        if (environment.IsDevelopment())
+        {
+            allowedOrigins.Add("http://localhost:5173");
+            allowedOrigins.Add("https://localhost:5173");
+            allowedOrigins.Add("http://localhost:3000");
+        }
+
+        // Inclui App:FrontendUrl quando configurado e seguro para o ambiente
         var frontendUrl = configuration["App:FrontendUrl"];
-        if (!string.IsNullOrWhiteSpace(frontendUrl))
+        if (!string.IsNullOrWhiteSpace(frontendUrl) && (environment.IsDevelopment() || !IsLoopbackOrigin(frontendUrl)))
         {
             allowedOrigins.Add(frontendUrl.TrimEnd('/'));
         }
@@ -45,5 +58,10 @@ public static class CorsExtensions
         });
 
         return services;
+    }
+
+    private static bool IsLoopbackOrigin(string origin)
+    {
+        return Uri.TryCreate(origin, UriKind.Absolute, out var uri) && uri.IsLoopback;
     }
 }

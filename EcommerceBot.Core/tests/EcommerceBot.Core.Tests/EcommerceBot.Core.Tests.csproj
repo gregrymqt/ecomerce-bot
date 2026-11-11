@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\EcommerceBot.Domain\EcommerceBot.Domain.csproj" />
     <ProjectReference Include="..\..\src\EcommerceBot.Application\EcommerceBot.Application.csproj" />
     <ProjectReference Include="..\..\src\EcommerceBot.Infrastructure\EcommerceBot.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\EcommerceBot.Api\EcommerceBot.Api.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -51,7 +51,7 @@ public sealed class SystemService : ISystemService
         try
         {
             // 1. LlmUsageLogs aggregation instead of TokenTelemetryModel!
-            using var conn = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+            using var conn = await _dbConnectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
             var cutoff = DateTimeOffset.UtcNow.Subtract(timeSpan);
             var tokenSql = @"
                 SELECT Provider, 
@@ -183,7 +183,7 @@ public sealed class SystemService : ISystemService
     public async Task ExportDataToStreamAsync(Guid tenantId, string platform, StreamWriter writer, CancellationToken cancellationToken = default)
     {
         // Usamos Dapper unbuffered query stream
-        using var conn = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+        using var conn = await _dbConnectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         var sql = "SELECT Sku, Title, Price, Status, Category, SeoKeywords FROM dbo.Products WHERE TenantId = @TenantId";
         var products = await conn.QueryAsync<dynamic>(new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken)); // In production use buffered=false or specific reader
         

@@ -61,18 +61,17 @@ class ScraperParser:
         """
         try:
             import httpx
-            from app.core.shared.security import validate_url_safety
+            from app.core.shared.security import safe_http_get
 
-            validate_url_safety(url)
-
-            async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
-                resp = await client.get(
+            async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
+                resp = await safe_http_get(
+                    client,
                     url,
                     headers={
                         "Accept": "application/json, text/plain, */*",
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                         "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-                    }
+                    },
                 )
                 if resp.status_code != 200:
                     logger.warning(f"Endpoint JSON retornou status {resp.status_code} para {url}")

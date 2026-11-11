@@ -16,7 +16,8 @@ public class NuvemshopBulkSyncResponse
 
 public interface INuvemshopIntegrationService
 {
-    string GetOAuthUrl(Guid tenantId);
+    Task<string> GetOAuthUrlAsync(Guid tenantId, CancellationToken cancellationToken = default);
+    Task<Guid?> ConsumeOAuthStateAsync(string? state, CancellationToken cancellationToken = default);
     Task<bool> HandleOAuthCallbackAsync(Guid tenantId, string code, CancellationToken cancellationToken = default);
     Task<bool> SaveCredentialsAsync(Guid tenantId, NuvemshopCredentialsPayloadDto payload, CancellationToken cancellationToken = default);
     Task<bool> RegisterWebhooksAsync(Guid tenantId, CancellationToken cancellationToken = default);

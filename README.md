@@ -6,15 +6,9 @@ Plataforma SaaS escalável para extração inteligente de produtos, enriquecimen
 
 ## 📚 Documentação Técnica de Engenharia (`/docs`)
 
-Para guias aprofundados, diagramas conceituais, contratos de API e procedimentos operacionais, consulte a pasta [`/docs`](docs/):
+Para a descrição consolidada de arquitetura, topologia de filas, banco de dados, segurança e operação local, consulte:
 
-| Manual | Descrição |
-|---|---|
-| 🏛️ [**Arquitetura do Sistema**](docs/architecture.md) | Visão geral dos 4 pilares, Clean Architecture DDD no .NET 9, persistência Dapper e modelo SQL Server 2022. |
-| 🐇 [**Mensageria, Pipelines de IA & Workers**](docs/messaging-and-workers.md) | Topologia RabbitMQ, contratos JSON, pipeline anti-bloqueio Scrapling (Tier 1 & Tier 2) e modelos de ML. |
-| 🔒 [**Segurança, Multi-Tenancy & BYOK**](docs/security-and-multitenancy.md) | Isolamento de tenants (`X-Tenant-ID`), criptografia AES-256 GCM para chaves de API e proteção Anti-SSRF. |
-| 🔌 [**Webhooks, Integrações & Notificações**](docs/webhooks-and-integrations.md) | Validação HMAC de Webhooks (MP, Shopify, Nuvemshop, Resend), e-mails Razor (`.cshtml`) e alertas Discord. |
-| 🚀 [**Guia de Deploy, Infra & Operações**](docs/deployment-and-operations.md) | Orquestração Docker Compose, rotinas de backup comprimido no Cloudflare R2 e testes de Disaster Recovery. |
+- 🏛️ [**Documentação Descritiva e Arquitetura do Sistema**](docs/architecture.md)
 
 ---
 
@@ -25,7 +19,7 @@ O projeto é dividido em 4 pilares principais:
 * ⚡ **`EcommerceBot.Core/`**: API Central em **.NET 9 (C#)** seguindo Clean Architecture / DDD, responsável por autenticação JWT, isolamento multi-tenant estrito, persistência com Dapper, pagamentos e orquestração MassTransit.
 * 🐍 **`EcommerceBot.Worker/`**: Microsserviço **Python 3.13** assíncrono (FastAPI + aio-pika) focado estritamente em inferência LLM, Web Scraping inteligente anti-bot (Scrapling + Camoufox) e Machine Learning preditivo (Scikit-Learn). **Sem acesso direto ao banco de dados.**
 * 🔷 **`Database.Migrations/`**: Runner de migrações determinísticas em **.NET 8** com DbUp para **Microsoft SQL Server 2022**.
-* 🔵 **`EcommerceBot.Web/`**: Portal Web Frontend SPA em **React 18**, TypeScript, Vite e Tailwind CSS.
+* 🔵 **`EcommerceBot.Web/`**: Portal Web Frontend SPA em **React 19**, TypeScript, **Vite 8** e Tailwind CSS v4.
 * 🛠️ **`infra/`**: Configurações de infraestrutura isoladas para **Desenvolvimento** (`infra/dev`) e **Produção VPS** (`infra/prod`).
 
 ---
@@ -34,7 +28,7 @@ O projeto é dividido em 4 pilares principais:
 
 ```mermaid
 flowchart TD
-    SPA["EcommerceBot.Web (React 18 + Vite)"] -->|HTTP / SSE / Cookie JWT| API["EcommerceBot.Core (API .NET 9)"]
+    SPA["EcommerceBot.Web (React 19 + Vite 8)"] -->|HTTP / SSE / Cookie JWT| API["EcommerceBot.Core (API .NET 9)"]
     API -->|Dapper Queries| SQLServer[("Microsoft SQL Server 2022")]
     API -->|Cache / Rate Limit / PubSub| Redis[("Redis 7")]
     API -->|MassTransit Events| RabbitMQ[("RabbitMQ 3.13")]
@@ -46,7 +40,7 @@ flowchart TD
 
 ## 🚀 Como Rodar o Projeto Localmente
 
-Consulte o passo a passo completo no [Guia de Deploy e Operações](docs/deployment-and-operations.md).
+Consulte o passo a passo completo na [Documentação do Sistema](docs/architecture.md).
 
 ### 1. Subir a Infraestrutura (SQL Server 2022, Redis, RabbitMQ):
 ```bash
@@ -70,7 +64,7 @@ cd EcommerceBot.Worker
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 5. Iniciar o Frontend Web (React 18):
+### 5. Iniciar o Frontend Web (React 19):
 ```bash
 cd EcommerceBot.Web
 npm install

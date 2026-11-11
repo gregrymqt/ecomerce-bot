@@ -105,7 +105,7 @@ public sealed class MachineLearningService : IMachineLearningService
             WHERE TenantId = @TenantId AND WorkerType = 'ANALYTICS_ML'
             ORDER BY CreatedAt DESC";
 
-        using var connection = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _dbConnectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         var activity = await connection.QueryFirstOrDefaultAsync<dynamic>(new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken));
 
         if (activity == null)
@@ -158,7 +158,7 @@ public sealed class MachineLearningService : IMachineLearningService
 
         try
         {
-            using var connection = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+            using var connection = await _dbConnectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
             var orders = (await connection.QueryAsync<CustomerTransactionDto>(new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken))).ToList();
 
             if (orders.Count >= 5)

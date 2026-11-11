@@ -20,7 +20,7 @@ public sealed class MeteringRepository : IMeteringRepository
 
     public async Task<decimal> GetManagedCreditBalanceAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         const string sql = "SELECT ManagedCreditBalance FROM dbo.Tenants WHERE Id = @TenantId";
         var cmd = new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken);
         return await connection.QueryFirstOrDefaultAsync<decimal>(cmd);
@@ -28,7 +28,7 @@ public sealed class MeteringRepository : IMeteringRepository
 
     public async Task<LlmUsageLog> CreateUsageLogAsync(LlmUsageLog log, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(log.TenantId, cancellationToken);
         const string sql = @"
             INSERT INTO dbo.LLMUsageLogs 
             (Id, TenantId, ProductId, Provider, ModelUsed, PromptTokens, CompletionTokens, TotalTokens, EstimatedCostUsd, IsByok, ExecutionTimeMs, CreatedAt)
@@ -47,7 +47,7 @@ public sealed class MeteringRepository : IMeteringRepository
 
     public async Task<bool> AtomicReserveCreditsAsync(Guid tenantId, decimal estimatedCost, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         // Using UPDLOCK for pessimistic locking in SQL Server
         const string sql = @"
             BEGIN TRAN;
@@ -78,7 +78,7 @@ public sealed class MeteringRepository : IMeteringRepository
 
     public async Task AtomicRefundCreditsAsync(Guid tenantId, decimal amount, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         const string sql = @"
             UPDATE dbo.Tenants 
             SET ManagedCreditBalance = ManagedCreditBalance + @Amount
@@ -93,7 +93,7 @@ public sealed class MeteringRepository : IMeteringRepository
         var delta = reservedCost - actualCost;
         if (delta == 0) return;
 
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         const string sql = @"
             UPDATE dbo.Tenants 
             SET ManagedCreditBalance = ManagedCreditBalance + @Delta
@@ -105,7 +105,7 @@ public sealed class MeteringRepository : IMeteringRepository
 
     public async Task<(int TotalTokens, decimal TotalCost)> GetMonthlyTelemetryAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         const string sql = @"
             SELECT 
                 COALESCE(SUM(TotalTokens), 0) AS TotalTokens,
@@ -120,7 +120,7 @@ public sealed class MeteringRepository : IMeteringRepository
 
     public async Task<(IEnumerable<LlmUsageLog> Items, int TotalCount)> GetUsageLogsPaginatedAsync(Guid tenantId, int page, int limit, DateTimeOffset? startDate, DateTimeOffset? endDate, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
+        using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
         
         const string countSql = @"
             SELECT COUNT(*) FROM dbo.LLMUsageLogs 

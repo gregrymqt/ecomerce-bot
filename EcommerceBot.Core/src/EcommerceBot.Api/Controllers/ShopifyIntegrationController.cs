@@ -8,8 +8,10 @@ using System.Threading.Tasks;
 using EcommerceBot.Api.Filters;
 using EcommerceBot.Application.DTOs.Shopify;
 using EcommerceBot.Application.Interfaces;
+using EcommerceBot.Application.Security;
 using EcommerceBot.Domain.Interfaces;
 using EcommerceBot.Infrastructure.Options;
+using EcommerceBot.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -27,6 +29,7 @@ public class ShopifyIntegrationController : BaseApiController
     private readonly IStoreIntegrationRepository _storeIntegrationRepository;
     private readonly IRedisService _redisService;
     private readonly IWebHostEnvironment _env;
+    private readonly AppOptions _appOptions;
     private readonly ILogger<ShopifyIntegrationController> _logger;
     private readonly string _clientSecret;
 
@@ -35,6 +38,7 @@ public class ShopifyIntegrationController : BaseApiController
         IStoreIntegrationRepository storeIntegrationRepository,
         IRedisService redisService,
         IOptions<ShopifyOptions> shopifyOptions,
+        IOptions<AppOptions> appOptions,
         IWebHostEnvironment env,
         ILogger<ShopifyIntegrationController> logger)
     {
@@ -42,6 +46,7 @@ public class ShopifyIntegrationController : BaseApiController
         _storeIntegrationRepository = storeIntegrationRepository;
         _redisService = redisService;
         _env = env;
+        _appOptions = appOptions.Value;
         _logger = logger;
         _clientSecret = shopifyOptions.Value.ClientSecret ?? string.Empty;
     }
@@ -85,38 +90,72 @@ public class ShopifyIntegrationController : BaseApiController
         if (string.IsNullOrWhiteSpace(shop))
             return BadRequestProblem("O parâmetro 'shop' é obrigatório.");
 
-        var authorizeUrl = await _shopifyService.GetOAuthUrlAsync(activeTenantId, shop, cancellationToken);
-        return Ok(new { authorize_url = authorizeUrl });
+        try
+        {
+            var authorizeUrl = await _shopifyService.GetOAuthUrlAsync(activeTenantId, shop, cancellationToken);
+            return Ok(new { authorize_url = authorizeUrl });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequestProblem(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ProblemResponse(StatusCodes.Status503ServiceUnavailable, "Integração não configurada", ex.Message);
+        }
     }
 
     [HttpGet("oauth/callback")]
     [AllowAnonymous]
     public async Task<IActionResult> OAuthCallback(
-        [FromQuery] string code,
-        [FromQuery] string shop,
+        [FromQuery] string? code,
+        [FromQuery] string? shop,
         [FromQuery] string? state,
         [FromQuery] string? hmac,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(shop))
+        if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(shop) || string.IsNullOrWhiteSpace(state))
         {
-            return BadRequestProblem("Parâmetros 'code' e 'shop' são obrigatórios.");
+            return BadRequestProblem("Parâmetros 'code', 'shop' e 'state' são obrigatórios.");
         }
 
-        if (!Guid.TryParse(state, out var tenantId) || tenantId == Guid.Empty)
+        if (!OAuthSecurityHelper.TryNormalizeShopifyDomain(shop, out var cleanShop))
         {
-            return BadRequestProblem("Parâmetro 'state/tenantId' inválido.");
+            return BadRequestProblem("Domínio Shopify inválido.");
         }
 
+        if (!_env.IsDevelopment() && string.IsNullOrWhiteSpace(_clientSecret))
+        {
+            _logger.LogError("Shopify:ClientSecret não configurado em ambiente de produção (Fail-Closed).");
+            return UnauthorizedProblem("Credenciais da Shopify não configuradas.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(_clientSecret) || !_env.IsDevelopment())
+        {
+            if (string.IsNullOrWhiteSpace(hmac) || !OAuthSecurityHelper.VerifyShopifyQueryHmac(Request.Query, _clientSecret, hmac))
+            {
+                _logger.LogWarning("Assinatura HMAC do callback OAuth Shopify inválida para loja {Shop}.", cleanShop);
+                return UnauthorizedProblem("Assinatura HMAC da Shopify ausente ou inválida.");
+            }
+        }
+
+        var consumed = await _shopifyService.ConsumeOAuthStateAsync(state, cleanShop, cancellationToken);
+        if (!consumed.HasValue)
+        {
+            return BadRequestProblem("Parâmetro 'state' OAuth inválido, expirado ou incompatível com a loja.");
+        }
+
+        using var tenantScope = TenantSessionScope.BeginScope(consumed.Value.TenantId);
+        var frontendBaseUrl = OAuthSecurityHelper.ResolveFrontendBaseUrl(_appOptions, _env);
         try
         {
-            await _shopifyService.HandleOAuthCallbackAsync(tenantId, code, shop, cancellationToken);
-            return Ok(new { message = "OAuth concluído com sucesso!", shop, tenantId });
+            await _shopifyService.HandleOAuthCallbackAsync(consumed.Value.TenantId, code, consumed.Value.ShopDomain, cancellationToken);
+            return Redirect($"{frontendBaseUrl}/integrations?oauth=success&platform=shopify");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro no callback OAuth da Shopify para a loja {Shop}", shop);
-            return ProblemResponse(StatusCodes.Status500InternalServerError, "Falha de Autorização", "Falha ao concluir autorização OAuth da Shopify.");
+            _logger.LogError(ex, "Erro no callback OAuth da Shopify para a loja {Shop}", cleanShop);
+            return Redirect($"{frontendBaseUrl}/integrations?oauth=error&platform=shopify");
         }
     }
 
@@ -246,6 +285,7 @@ public class ShopifyIntegrationController : BaseApiController
 
         try
         {
+            using var tenantScope = TenantSessionScope.BeginScope(integration.TenantId);
             var jsonPayload = JsonSerializer.Deserialize<JsonElement>(rawBody);
             await _shopifyService.ProcessWebhookAsync(integration.TenantId, topic, cleanDomain, jsonPayload, cancellationToken);
             return Ok();

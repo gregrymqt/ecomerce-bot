@@ -7,6 +7,7 @@ using EcommerceBot.Application.DTOs.Ai;
 using EcommerceBot.Application.DTOs.Messaging;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Application.Interfaces.Gateways;
+using EcommerceBot.Application.Security;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
 using MassTransit;
@@ -52,6 +53,7 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
     public async Task Consume(ConsumeContext<ScrapedRawProductEvent> context)
     {
         var message = context.Message;
+        using var tenantScope = TenantSessionScope.BeginScope(message.TenantId);
         _logger.LogInformation("Recebido ScrapedRawProductEvent para Tenant {TenantId}, SKU {Sku}. Success: {Success}",
             message.TenantId, message.Sku, message.Success);
 

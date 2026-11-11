@@ -1,115 +1,83 @@
-# 🏛️ Arquitetura do Sistema — E-commerce Bot
+# 🏛️ Arquitetura e Descrição do Sistema — E-commerce Bot
 
-Este documento descreve a visão geral da arquitetura, os quatro pilares do ecossistema, os fluxos de dados ponta a ponta e as convenções de design adotadas no **E-commerce Bot**.
+Documento descritivo único do ecossistema **E-commerce Bot**, consolidando arquitetura, fluxos principais, persistência, mensageria, integrações, segurança e operação local.
 
 ---
 
-## 📐 1. Visão Geral dos 4 Pilares
+## 1. Visão Geral & Topologia (Monorepo)
 
-O **E-commerce Bot** é uma plataforma SaaS escalável e orientada a eventos (*Event-Driven Architecture - EDA*), organizada em um monorepo com quatro componentes principais:
+Plataforma SaaS multi-tenant para extração de produtos de e-commerce, enriquecimento de catálogo por IA (OpenRouter), previsão/segmentação analítica com Machine Learning local (Scikit-Learn), checkout de créditos (Mercado Pago) e sincronização com **Shopify** e **Nuvemshop**.
 
 ```mermaid
 flowchart TD
-    subgraph Client ["🖥️ Camada de Apresentação"]
-        SPA["EcommerceBot.Web<br/>(React 18 + Vite + Tailwind)"]
-    end
-
-    subgraph CoreBackend ["⚡ Core API (.NET 9)"]
-        API["EcommerceBot.Api<br/>(Controllers, Middlewares)"]
-        APP["EcommerceBot.Application<br/>(Use Cases, DTOs, ViewModels)"]
-        INFRA["EcommerceBot.Infrastructure<br/>(Dapper, MassTransit, LLM Gateways)"]
-        DOMAIN["EcommerceBot.Domain<br/>(Entidades, Enums, Interfaces)"]
-    end
-
-    subgraph DataTier ["🗄️ Persistência & Cache"]
-        MSSQL[("Microsoft SQL Server 2022<br/>(Multi-Tenant B-Tree)")]
-        REDIS[("Redis 7<br/>(Cache, Rate Limit, SSE Pub/Sub)")]
-        MIGRATIONS["Database.Migrations<br/>(DbUp Runner .NET 8)"]
-    end
-
-    subgraph MessagingTier ["🐇 Mensageria"]
-        RABBIT[("RabbitMQ 3.13<br/>(Raw JSON + DLQs 7d)")]
-    end
-
-    subgraph AIEngine ["🐍 Scraping & ML Worker (Python 3.13)"]
-        WORKER["EcommerceBot.Worker<br/>(Scrapling + Camoufox + Scikit-Learn)"]
-    end
-
-    SPA -->|HTTP / SSE / Cookie JWT| API
-    API --> APP
-    APP --> INFRA
-    INFRA --> DOMAIN
-    INFRA -->|Dapper Queries| MSSQL
-    INFRA -->|Pub/Sub & SET NX| REDIS
-    INFRA -->|MassTransit Producer/Consumer| RABBIT
-    MIGRATIONS -.->|DDL Versionado 001-011| MSSQL
-    RABBIT <-->|aio-pika Async Workers| WORKER
-    WORKER -->|Cache de Scraping| REDIS
+    SPA["EcommerceBot.Web<br/>(React 19 + TypeScript + Vite 8 + Tailwind v4)"] -->|HTTP / SSE / Cookie JWT + X-Tenant-ID| API["EcommerceBot.Core<br/>(ASP.NET Core .NET 9 · Clean Architecture)"]
+    API -->|Dapper + RCSI + RLS| MSSQL[("SQL Server 2022")]
+    API -->|Cache / Rate Limit / Idempotência / PubSub SSE| Redis[("Redis 7")]
+    API -->|MassTransit Raw JSON| Rabbit[("RabbitMQ 3.13")]
+    Rabbit <-->|aio-pika Async| Worker["EcommerceBot.Worker<br/>(Python 3.13 · FastAPI · Scrapling · Scikit-Learn)"]
+    Worker -->|Idempotência / Cache| Redis
+    Migrations["Database.Migrations (.NET 8 + DbUp)"] -.->|DDL 001–017| MSSQL
 ```
 
-### Resumo dos Componentes
+### Pilares do Repositório
 
-| Componente | Tecnologia | Responsabilidade Principal |
+| Pilar | Stack | Responsabilidade Principal |
 |---|---|---|
-| **`EcommerceBot.Web`** | React 18, TypeScript, Vite, Tailwind CSS | SPA responsiva (Mobile-First, A11y), autenticação JWT via Cookie `HttpOnly`, SSE em tempo real. |
-| **`EcommerceBot.Core`** | .NET 9, C#, ASP.NET Core Web API | Clean Architecture / DDD, autenticação, multi-tenancy estrito, Dapper ORM, Gateways (Mercado Pago, Resend, Shopify, Nuvemshop, OpenRouter LLM), orquestração MassTransit e enriquecimento semântico com IA. |
-| **`EcommerceBot.Worker`** | Python 3.13, FastAPI, aio-pika, Scrapling, Scikit-Learn | Web Scraping evasivo multi-tier (Scrapling + Camoufox + JSON-LD) e modelos preditivos locais de Machine Learning (RFM, Churn, LTV). **Zero chamadas externas de LLM e zero acesso direto ao banco de dados.** |
-| **`Database.Migrations`** | .NET 8, C#, DbUp | Execução determinística e idempotente de migrações T-SQL no Microsoft SQL Server 2022. |
+| **`EcommerceBot.Web`** | React 19, TypeScript, Vite 8, Tailwind CSS v4 | Portal SPA estático (servido via Nginx em produção, sem Node SSR). Camadas estritas `Types -> Services -> Hooks -> Components/Pages`, autenticação JWT via cookie/storage e cliente SSE (`events:tenant:{tenantId}`). |
+| **`EcommerceBot.Core`** | .NET 9 (C#), ASP.NET Core, Dapper, MassTransit | Core API transacional em Clean Architecture / DDD (`Domain`, `Application`, `Infrastructure`, `Api`) + servidor de observabilidade `EcommerceBot.Diagnostics.Mcp` (`stdio`). Orquestra auth JWT, multi-tenancy, LLM (OpenRouter), pagamentos (Mercado Pago), e-mails Razor (`.cshtml` via Resend) e gateways Shopify/Nuvemshop. |
+| **`EcommerceBot.Worker`** | Python 3.13, FastAPI, `aio-pika`, Scrapling, Camoufox, Scikit-Learn | Microsserviço assíncrono isolado de banco relacional e de LLMs externas. Executa web scraping evasivo multi-tier (JSON `.json`, Tier 1 TLS HTTP, Tier 2 browser stealth + JSON-LD/Markdown) e inferência local de ML (RFM, Churn, LTV, Capacity). |
+| **`Database.Migrations`** | .NET 8 (C#), DbUp | Runner determinístico de scripts T-SQL (`001`–`017`) com `RCSI`, `ALLOW_SNAPSHOT_ISOLATION ON` e políticas de segurança no SQL Server 2022. |
+| **`infra/`** | Docker Compose, Nginx, Bash | Topologia local (`infra/dev`) e produção VPS (`infra/prod` com Nginx edge, TLS e scripts de backup/restore SQL Server no Cloudflare R2). |
 
 ---
 
-## ⚡ 2. Clean Architecture no Core (.NET 9)
+## 2. Fluxos Principais Ponta a Ponta
 
-O backend central adota os princípios de Clean Architecture e Domain-Driven Design (DDD):
+1. **Extração & Enriquecimento de Produtos:**
+   - Lojista envia URL via SPA → Core valida Anti-SSRF (`UrlSecurityValidator`), reserva/debita crédito e despacha `ScrapingRequestMessage` via RabbitMQ (`ecommerce` / `demo_ecommerce`).
+   - Worker Python valida `validate_url_safety`, extrai HTML/JSON-LD/Markdown via Scrapling e publica `ScrapedRawProductEvent` em `ecommerce_scraped_queue`.
+   - `ScrapedProductConsumer` (Core .NET) consulta diretrizes de SEO (`CategorySeoGuidelines`), aciona OpenRouter (`OpenRouterGateway`), persiste em `dbo.Products`, registra telemetria em `dbo.LLMUsageLogs` e publica evento em `events:tenant:{tenantId}` (SSE).
+2. **Wallet, Checkout & Ledger de Créditos:**
+   - SPA tokeniza cartão via `@mercadopago/sdk-react` ou solicita QR PIX (`POST /api/v1/wallet/recharge`) → `MercadoPagoGateway` cria ordem na API v1 do Mercado Pago e persiste `dbo.Orders` / `dbo.OrderItems`.
+   - Webhook `POST /api/v1/webhooks/mercadopago` valida HMAC `x-signature`, aplica idempotência no Redis e publica na fila `payments_process_queue`.
+   - `PaymentProcessingConsumer` reconcilia o pagamento, registra entrada/estorno no ledger append-only (`dbo.CreditTransactions`), notifica via SSE e dispara e-mail de confirmação (`email_notifications`).
+3. **Integrações Shopify & Nuvemshop:**
+   - Conexão via OAuth 2.0 ou token direto cifrado com **AES-256 GCM** em `dbo.StoreIntegrations`.
+   - Sincronização individual ou em lote (`shopify_bulk_sync`, `nuvemshop_bulk_sync`) via GraphQL Admin (`2024-01+`) ou Nuvemshop REST v1, além de webhooks reativos com validação HMAC.
+4. **Analytics Preditivo (ML) & Tráfego:**
+   - Core publica jobs em `analytics_ml_queue` → Worker executa `RFMSegmentation`, `ChurnPredictor`, `LTVForecaster` e `TokenCapacityForecaster` (com suporte a artefatos `.joblib`) em `asyncio.to_thread` e devolve em `analytics_processed_queue` → `AnalyticsProcessedConsumer` grava em `dbo.RobotActivities` e emite via SSE.
 
+---
+
+## 3. Banco de Dados & Segurança
+
+- **SQL Server 2022 (`Database.Migrations/Scripts/001`–`017`):** Chaves `UNIQUEIDENTIFIER DEFAULT NEWSEQUENTIALID()`, timestamps `DATETIMEOFFSET`, RCSI habilitado, RLS (`Security.TenantSecurityPolicy` via `SESSION_CONTEXT`), segregação de usuários (`usr_ecommerce_deployer` vs `usr_ecommerce_api`) e tabelas principais (`Tenants`, `Users`, `Roles`, `Products`, `Orders`, `OrderItems`, `Plans`, `CreditTransactions`, `AiProviderCredits`, `LLMUsageLogs`, `StoreIntegrations`, `TenantConfigs`, `TenantAiCredentials`, `TenantBillingProfiles`, `TenantSsoMappings`, `TrafficAttributions`, `EnterpriseLeads`, `AuditLogs`, `EmailLogs`, `RobotActivities`, `CategorySeoGuidelines`, `SaasAdSpends`).
+- **Controles de Segurança:** Autenticação JWT (cookie `HttpOnly` + Bearer), isolamento multi-tenant via `TenantHeaderMiddleware` (`X-Tenant-ID`), criptografia BYOK AES-256 GCM (`AesGcmCryptoService`), comparação de HMAC em tempo constante (`CryptographicOperations.FixedTimeEquals`), proteção Anti-SSRF e rate limiting por endpoint/borda.
+
+---
+
+## 4. Execução Local & Checagens
+
+```bash
+# 1. Infraestrutura (SQL Server 2022, Redis, RabbitMQ)
+cd infra/dev && docker compose -f docker-compose.dev.yml up -d
+
+# 2. Migrações SQL Server
+dotnet run --project Database.Migrations/Database.Migrations.csproj
+
+# 3. Core API (.NET 9)
+dotnet run --project EcommerceBot.Core/src/EcommerceBot.Api/EcommerceBot.Api.csproj
+
+# 4. Worker Python (FastAPI + aio-pika)
+cd EcommerceBot.Worker && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+# 5. Frontend SPA (React 19 + Vite 8)
+cd EcommerceBot.Web && npm install && npm run dev
 ```
-EcommerceBot.Core/
-├── src/
-│   ├── EcommerceBot.Domain/         # Camada Central (Zero dependências externas)
-│   │   ├── Entities/                # Tenant, User, Product, Order, Plan, EmailLog, RobotActivity
-│   │   ├── Enums/                   # EmailStatus, ProductStatus, SubscriptionStatus
-│   │   └── Interfaces/              # IUserRepository, IProductRepository, IEmailRepository, etc.
-│   │
-│   ├── EcommerceBot.Application/    # Casos de Uso & Contratos
-│   │   ├── DTOs/                    # Contratos de entrada/saída (Auth, Products, Checkout, Scraper)
-│   │   ├── ViewModels/              # ViewModels para templates de email (Welcome, PaymentApproved)
-│   │   ├── Interfaces/              # IAuthService, IScraperService, IDiscordAlertService, IRazorTemplateRenderer
-│   │   └── Security/                # UrlSecurityValidator (Prevenção de SSRF)
-│   │
-│   ├── EcommerceBot.Infrastructure/ # Implementações Técnicas & Gateways
-│   │   ├── Data/                    # DbConnectionFactory (SqlConnection)
-│   │   ├── Repositories/            # Implementações Dapper de I*Repository
-│   │   ├── Services/                # AuthService, AesGcmCryptoService, RazorViewToStringRenderer, DiscordAlertService
-│   │   ├── Gateways/                # ShopifyGateway, NuvemshopGateway, MercadoPagoGateway, ResendGateway
-│   │   ├── Messaging/               # MassTransit Consumers (EmailNotificationConsumer, ProcessedProductConsumer, etc.)
-│   │   └── Options/                 # Classes tipadas de configuração (IOptions<T>)
-│   │
-│   └── EcommerceBot.Api/            # Ponto de Entrada HTTP
-│       ├── Controllers/             # BaseApiController, AuthController, ProductsController, etc.
-│       ├── Middlewares/             # TenantHeaderMiddleware, Global Exception Handler
-│       ├── Views/Emails/            # Templates Razor (.cshtml) para e-mails transacionais
-│       └── Program.cs               # Composição DI, rotas, segurança e inicialização
-```
 
----
-
-## 🗄️ 3. Persistência de Dados & SQL Server 2022
-
-### Regras Canônicas de Modelagem T-SQL:
-1. **Identificadores (IDs):** `UNIQUEIDENTIFIER NOT NULL DEFAULT NEWSEQUENTIALID()` para eliminar a fragmentação de índices clustered B-Tree.
-2. **Isolamento Multi-Tenant:** Toda tabela com dados de clientes contém `TenantId UNIQUEIDENTIFIER NOT NULL` com chave estrangeira `FK_Table_Tenants` com `ON DELETE CASCADE`.
-3. **Precisão Temporal:** Colunas temporais utilizam `DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET()` para manter carimbos UTC com precisão de nanossegundos.
-4. **Modelo Dual de Saldos no SaaS (`dbo.Tenants`):**
-   - `CreditsBalance INT`: Cota de produtos a enriquecer (ex: 500 produtos/mês).
-   - `ManagedCreditBalance DECIMAL(18,6)`: Saldo em reais para consumo de tokens de LLM gerenciados pela plataforma.
-   - `IsByok BIT`: Quando ativado (`1`), as requisições de IA utilizam a chave própria do cliente e não debitam o saldo financeiro gerenciado.
-
----
-
-## 🐍 4. Princípio de Isolamento do Worker (Python)
-
-O `EcommerceBot.Worker` foi desenhado seguindo a filosofia de microsserviço especializado:
-- **Sem Conexão com Banco de Dados:** O Worker não possui drivers relacionais (`asyncpg`, `pyodbc`, `psycopg2`). Qualquer necessidade de persistência ou leitura é solicitada e confirmada via eventos AMQP no RabbitMQ.
-- **Zero Chamadas Externas de LLM:** O Worker não orquestra nem executa chamadas a APIs de LLMs externas (OpenRouter, DeepSeek). Sua responsabilidade no fluxo de produtos restringe-se a raspar o HTML e metadados brutos e despachar o evento `ScrapedRawProductEvent` para a fila `ecommerce_scraped_queue` consumida pelo Core API C#.
-- **Processamento Assíncrono Não-Bloqueante:** Mensagens de scraping I/O-bound utilizam `asyncio` e bibliotecas assíncronas (`aio-pika`, `httpx`, `curl_cffi`). Modelos de ML CPU-bound (Scikit-Learn) são executados via `asyncio.to_thread` para não travar o loop de consumo.
-- **Fail-Safe & Dead-Lettering:** Erros de scraping transitórios ou definitivos publicam eventos de falha e, em caso de erro irrecuperável do worker, a mensagem é roteada para a DLQ `dlq_ecommerce`.
+### Validações de Build e Testes
+- **Backend .NET:** `dotnet build EcommerceBot.Core/EcommerceBot.Core.sln` e `dotnet test EcommerceBot.Core/EcommerceBot.Core.sln`
+- **Migrações:** `dotnet build Database.Migrations/Database.Migrations.csproj`
+- **Frontend Web:** `npm run lint && npm run build && npm test` (em `EcommerceBot.Web/`)
+- **Worker Python:** `EcommerceBot.Worker\.venv\Scripts\pytest.exe -q` (em `EcommerceBot.Worker/`)
+- **Grafo de Código (Graft):** `graft check` / `graft build`

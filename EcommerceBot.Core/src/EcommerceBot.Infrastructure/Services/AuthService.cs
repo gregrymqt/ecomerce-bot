@@ -31,6 +31,7 @@ public sealed class AuthService : IAuthService
         private readonly ILogger<AuthService> _logger;
         private readonly JwtOptions _jwtOptions;
         private readonly SecurityOptions _securityOptions;
+        private readonly AppOptions _appOptions;
 
         public AuthService(
             IUserRepository userRepository, 
@@ -40,7 +41,8 @@ public sealed class AuthService : IAuthService
             IWebHostEnvironment env,
             ILogger<AuthService> logger,
             IOptions<JwtOptions> jwtOptions,
-            IOptions<SecurityOptions> securityOptions)
+            IOptions<SecurityOptions> securityOptions,
+            IOptions<AppOptions> appOptions)
         {
             _userRepository = userRepository;
             _tenantRepository = tenantRepository;
@@ -50,18 +52,10 @@ public sealed class AuthService : IAuthService
             _logger = logger;
             _jwtOptions = jwtOptions.Value;
             _securityOptions = securityOptions.Value;
+            _appOptions = appOptions.Value;
         }
 
-        private bool IsSuperAdminEmail(string? email)
-        {
-            if (string.IsNullOrWhiteSpace(_securityOptions.SuperAdminEmails) || string.IsNullOrWhiteSpace(email))
-                return false;
-
-            var adminEmails = _securityOptions.SuperAdminEmails
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            return adminEmails.Any(adminEmail => adminEmail.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase));
-        }
+        private bool IsSuperAdminEmail(string? email) => AuthTokenHelper.IsSuperAdminEmail(email, _securityOptions);
 
         public async Task<(UserResponse User, string AccessToken)> RegisterUserAsync(CreateUserRequest request)
         {
@@ -71,44 +65,40 @@ public sealed class AuthService : IAuthService
                 if (existing != null)
                     throw new InvalidOperationException("Email já cadastrado.");
 
+                // Registro público sempre provisiona um Tenant próprio e isolado (previne Tenant Hijack)
                 var tenantId = Guid.NewGuid();
-                if (Guid.TryParse(request.TenantId, out Guid parsedId))
-                {
-                    tenantId = parsedId;
-                }
-                else
-                {
-                    // Cria o Tenant para a nova conta com atribuição de primeiro toque
-                    var tenantName = !string.IsNullOrWhiteSpace(request.Name) ? $"Loja de {request.Name}" : "Minha Loja";
-                    var newTenant = new Tenant
-                    {
-                        Id = tenantId,
-                        Name = tenantName,
-                        PlanTier = "FREE",
-                        CreditsBalance = 20, // 20 créditos bônus de boas-vindas
-                        IsActive = true,
-                        FirstUtmSource = request.UtmSource,
-                        FirstUtmMedium = request.UtmMedium,
-                        FirstUtmCampaign = request.UtmCampaign,
-                        FirstAdId = request.AdId,
-                        FirstTouchAt = DateTimeOffset.UtcNow,
-                        CreatedAt = DateTimeOffset.UtcNow,
-                        UpdatedAt = DateTimeOffset.UtcNow
-                    };
-                    await _tenantRepository.CreateAsync(newTenant);
+                var tenantName = !string.IsNullOrWhiteSpace(request.TenantName)
+                    ? request.TenantName.Trim()
+                    : (!string.IsNullOrWhiteSpace(request.Name) ? $"Loja de {request.Name.Trim()}" : "Minha Loja");
 
-                    // Registra o bônus inicial no Ledger de Créditos
-                    await _tenantRepository.RecordTransactionAsync(new CreditTransaction
-                    {
-                        Id = Guid.NewGuid(),
-                        TenantId = tenantId,
-                        Amount = 20,
-                        BalanceAfter = 20,
-                        Type = "WELCOME_BONUS",
-                        Description = "Bônus de boas-vindas (20 créditos de IA)",
-                        CreatedAt = DateTimeOffset.UtcNow
-                    });
-                }
+                var newTenant = new Tenant
+                {
+                    Id = tenantId,
+                    Name = tenantName,
+                    PlanTier = "FREE",
+                    CreditsBalance = 20, // 20 créditos bônus de boas-vindas
+                    IsActive = true,
+                    FirstUtmSource = request.UtmSource,
+                    FirstUtmMedium = request.UtmMedium,
+                    FirstUtmCampaign = request.UtmCampaign,
+                    FirstAdId = request.AdId,
+                    FirstTouchAt = DateTimeOffset.UtcNow,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow
+                };
+                await _tenantRepository.CreateAsync(newTenant);
+
+                // Registra o bônus inicial no Ledger de Créditos
+                await _tenantRepository.RecordTransactionAsync(new CreditTransaction
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    Amount = 20,
+                    BalanceAfter = 20,
+                    Type = "WELCOME_BONUS",
+                    Description = "Bônus de boas-vindas (20 créditos de IA)",
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
 
                 var isSuperAdmin = IsSuperAdminEmail(request.Email);
                 var newUser = new User
@@ -137,6 +127,10 @@ public sealed class AuthService : IAuthService
 
                 return (resp, jwt);
             }
+            catch (UnauthorizedAccessException)
+            {
+                throw;
+            }
             catch (InvalidOperationException)
             {
                 throw;
@@ -158,6 +152,9 @@ public sealed class AuthService : IAuthService
                     throw new UnauthorizedAccessException("Credenciais inválidas.");
                 }
 
+                var tenant = await _tenantRepository.GetByIdAsync(user.TenantId);
+                AuthTokenHelper.EnsureActiveUserAndTenant(user, tenant);
+
                 // Sincroniza promoção automática caso o e-mail conste na variável de ambiente Security:SuperAdminEmails
                 if (IsSuperAdminEmail(user.Email) && !string.Equals(user.Role, "ADMIN", StringComparison.OrdinalIgnoreCase))
                 {
@@ -165,8 +162,7 @@ public sealed class AuthService : IAuthService
                     await _userRepository.UpdateAsync(user);
                 }
 
-                var tenant = await _tenantRepository.GetByIdAsync(user.TenantId);
-                var creditsBalance = tenant?.CreditsBalance ?? 0;
+                var creditsBalance = tenant!.CreditsBalance;
                 var hasActiveCredits = user.Role == "ADMIN" || creditsBalance > 0;
 
                 var jwt = GenerateJwtToken(user, hasActiveCredits, creditsBalance);
@@ -197,38 +193,7 @@ public sealed class AuthService : IAuthService
         }
 
         private string GenerateJwtToken(User user, bool hasActiveCredits = false, int creditsBalance = 0)
-        {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var keyStr = _jwtOptions.Key;
-            if (string.IsNullOrWhiteSpace(keyStr))
-            {
-                throw new InvalidOperationException("Jwt:Key is required and must be configured in environment or appsettings.");
-            }
-
-            var key = Encoding.UTF8.GetBytes(keyStr);
-            var expireMinutes = _jwtOptions.ExpireMinutes > 0 ? _jwtOptions.ExpireMinutes : 120;
-            var descriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(new[]
-                {
-                    new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                    new Claim(ClaimTypes.Email, user.Email),
-                    new Claim(ClaimTypes.Name, user.FullName ?? string.Empty),
-                    new Claim("tenantId", user.TenantId.ToString()),
-                    new Claim(ClaimTypes.Role, user.Role),
-                    new Claim("hasActiveCredits", hasActiveCredits.ToString().ToLowerInvariant()),
-                    new Claim("creditsBalance", creditsBalance.ToString())
-                }),
-                Issuer = _jwtOptions.Issuer,
-                Audience = _jwtOptions.Audience,
-                Expires = DateTime.UtcNow.AddMinutes(expireMinutes),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
-            var token = tokenHandler.CreateToken(descriptor);
-            return tokenHandler.WriteToken(token);
-        }
+            => AuthTokenHelper.GenerateJwtToken(user, _jwtOptions, hasActiveCredits, creditsBalance);
 
         public async Task<UserResponse> UpdateProfileAsync(Guid userId, UpdateUserRequest request)
         {
@@ -244,7 +209,9 @@ public sealed class AuthService : IAuthService
                 await _userRepository.UpdateAsync(user);
 
                 var tenant = await _tenantRepository.GetByIdAsync(user.TenantId);
-                var creditsBalance = tenant?.CreditsBalance ?? 0;
+                AuthTokenHelper.EnsureActiveUserAndTenant(user, tenant);
+
+                var creditsBalance = tenant!.CreditsBalance;
                 var hasActiveCredits = user.Role == "ADMIN" || creditsBalance > 0;
 
                 return new UserResponse
@@ -259,6 +226,10 @@ public sealed class AuthService : IAuthService
                     HasActiveCredits = hasActiveCredits
                 };
             }
+            catch (UnauthorizedAccessException)
+            {
+                throw;
+            }
             catch (InvalidOperationException)
             {
                 throw;
@@ -270,10 +241,12 @@ public sealed class AuthService : IAuthService
             }
         }
 
-        public Task RevokeTokenAsync(string token)
+        public async Task RevokeTokenAsync(string token)
         {
-            // Revogação de Token geralmente envolve Redis blacklist
-            return Task.CompletedTask;
+            if (string.IsNullOrWhiteSpace(token)) return;
+
+            var (redisKey, ttl) = AuthTokenHelper.BuildRevocationEntry(token);
+            await _redisService.SetAsync(redisKey, "revoked", ttl);
         }
 
         public async Task<AuthenticatedUser> ResolveUserActivePlanAsync(AuthenticatedUser currentUser, string? tenantId)
@@ -376,8 +349,11 @@ public sealed class AuthService : IAuthService
                 // TTL de 15 minutos estrito no Redis
                 await _redisService.SetAsync(redisKey, session, TimeSpan.FromMinutes(15));
 
-                var baseUrl = !string.IsNullOrWhiteSpace(clientOrigin)
-                    ? clientOrigin.TrimEnd('/')
+                // Fixa a URL base em App:FrontendUrl configurado no servidor (previne Password Reset Poisoning via headers)
+                var configuredUrl = _appOptions.FrontendUrl?.Trim();
+                var isLoopback = Uri.TryCreate(configuredUrl, UriKind.Absolute, out var feUri) && feUri.IsLoopback;
+                var baseUrl = (!string.IsNullOrWhiteSpace(configuredUrl) && (_env.IsDevelopment() || !isLoopback))
+                    ? configuredUrl.TrimEnd('/')
                     : (_env.IsDevelopment() ? "http://localhost:5173" : "https://app.ecommercebot.com");
 
                 var resetUrl = $"{baseUrl}/auth/reset-password?token={token}";
@@ -448,6 +424,10 @@ public sealed class AuthService : IAuthService
             {
                 throw;
             }
+            catch (UnauthorizedAccessException)
+            {
+                throw;
+            }
             catch (InvalidOperationException)
             {
                 throw;
@@ -476,7 +456,9 @@ public sealed class AuthService : IAuthService
                 }
 
                 var tenant = await _tenantRepository.GetByIdAsync(user.TenantId);
-                var creditsBalance = tenant?.CreditsBalance ?? 0;
+                AuthTokenHelper.EnsureActiveUserAndTenant(user, tenant);
+
+                var creditsBalance = tenant!.CreditsBalance;
                 var hasActiveCredits = user.Role == "ADMIN" || creditsBalance > 0;
 
                 var jwt = GenerateJwtToken(user, hasActiveCredits, creditsBalance);
@@ -494,6 +476,10 @@ public sealed class AuthService : IAuthService
                 };
 
                 return (resp, jwt);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                throw;
             }
             catch (InvalidOperationException)
             {

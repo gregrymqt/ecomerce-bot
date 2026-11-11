@@ -54,19 +54,38 @@ public sealed class NuvemshopIntegrationService : INuvemshopIntegrationService
         _logger = logger;
 
         var options = nuvemshopOptions.Value;
-        _clientId = !string.IsNullOrWhiteSpace(options.ClientId) ? options.ClientId : "default_client_id";
-        _clientSecret = !string.IsNullOrWhiteSpace(options.ClientSecret) ? options.ClientSecret : "default_client_secret";
+        _clientId = options.ClientId?.Trim() ?? string.Empty;
+        _clientSecret = options.ClientSecret?.Trim() ?? string.Empty;
         _redirectUri = !string.IsNullOrWhiteSpace(options.RedirectUri) ? options.RedirectUri : "https://app.ecommercebot.com/api/v1/nuvemshop/oauth/callback";
         _webhookCallbackUrl = !string.IsNullOrWhiteSpace(options.WebhookCallbackUrl) ? options.WebhookCallbackUrl : "https://app.ecommercebot.com/api/v1/nuvemshop/webhooks";
     }
 
-    public string GetOAuthUrl(Guid tenantId)
+    public async Task<string> GetOAuthUrlAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        return $"https://www.nuvemshop.com.br/apps/authorize/token?client_id={_clientId}&redirect_uri={Uri.EscapeDataString(_redirectUri)}&response_type=code&state={tenantId}";
+        if (tenantId == Guid.Empty)
+            throw new ArgumentException("TenantId é obrigatório.", nameof(tenantId));
+
+        if (string.IsNullOrWhiteSpace(_clientId) || string.IsNullOrWhiteSpace(_clientSecret))
+            throw new InvalidOperationException("Credenciais OAuth da Nuvemshop (ClientId/ClientSecret) não configuradas.");
+
+        var state = await OAuthSecurityHelper.CreateOAuthStateAsync(_redisService, "nuvemshop", tenantId.ToString("D"), cancellationToken);
+        return $"https://www.nuvemshop.com.br/apps/authorize/token?client_id={Uri.EscapeDataString(_clientId)}&redirect_uri={Uri.EscapeDataString(_redirectUri)}&response_type=code&state={Uri.EscapeDataString(state)}";
+    }
+
+    public async Task<Guid?> ConsumeOAuthStateAsync(string? state, CancellationToken cancellationToken = default)
+    {
+        var rawTenantId = await OAuthSecurityHelper.ConsumeOAuthStateAsync<string>(_redisService, "nuvemshop", state, cancellationToken);
+        return Guid.TryParse(rawTenantId, out var tenantId) && tenantId != Guid.Empty ? tenantId : null;
     }
 
     public async Task<bool> HandleOAuthCallbackAsync(Guid tenantId, string code, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(_clientId) || string.IsNullOrWhiteSpace(_clientSecret))
+        {
+            _logger.LogError("Nuvemshop OAuth credentials are not configured (fail-closed).");
+            return false;
+        }
+
         _logger.LogInformation("Exchanging OAuth code for Tenant {TenantId}", tenantId);
 
         var tokenUrl = "https://www.nuvemshop.com.br/apps/authorize/token";

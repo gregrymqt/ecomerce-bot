@@ -1,7 +1,9 @@
 using System;
 using System.Text;
 using System.Threading.Tasks;
+using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Infrastructure.Options;
+using EcommerceBot.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,7 +13,7 @@ using Microsoft.IdentityModel.Tokens;
 namespace EcommerceBot.Infrastructure.Configurations;
 
 /// <summary>
-/// Configuração de autenticação JWT Bearer com suporte a cookies HttpOnly e modo Fail-Closed.
+/// Configuração de autenticação JWT Bearer com suporte a cookies HttpOnly, blacklist no Redis e modo Fail-Closed.
 /// </summary>
 public static class JwtAuthExtensions
 {
@@ -48,24 +50,49 @@ public static class JwtAuthExtensions
             {
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-                ValidateIssuer = false,
-                ValidateAudience = false,
+                ValidateIssuer = true,
+                ValidIssuer = jwtOptions.Issuer,
+                ValidateAudience = true,
+                ValidAudience = jwtOptions.Audience,
                 ClockSkew = TimeSpan.Zero
             };
             options.Events = new JwtBearerEvents
             {
                 OnMessageReceived = context =>
                 {
-                    var token = context.Request.Cookies["access_token"];
-                    if (string.IsNullOrEmpty(token) && context.Request.Query.TryGetValue("access_token", out var queryToken))
+                    if (string.IsNullOrWhiteSpace(context.Token))
                     {
-                        token = queryToken.ToString();
+                        var cookieToken = context.Request.Cookies["access_token"];
+                        if (!string.IsNullOrWhiteSpace(cookieToken))
+                        {
+                            context.Token = cookieToken;
+                        }
                     }
-                    if (!string.IsNullOrEmpty(token))
-                    {
-                        context.Token = token;
-                    }
+
                     return Task.CompletedTask;
+                },
+                OnTokenValidated = async context =>
+                {
+                    var redisService = context.HttpContext.RequestServices.GetService<IRedisService>();
+                    if (redisService == null)
+                    {
+                        return;
+                    }
+
+                    var rawFallback = AuthTokenHelper.ExtractBearerOrCookieToken(
+                        context.Request.Headers.Authorization.ToString(),
+                        context.Request.Cookies["access_token"]);
+
+                    var revocationKey = AuthTokenHelper.ResolveValidationRevocationKey(
+                        context.Principal,
+                        context.SecurityToken,
+                        rawFallback);
+
+                    if (!string.IsNullOrEmpty(revocationKey) &&
+                        await redisService.KeyExistsAsync(revocationKey, context.HttpContext.RequestAborted))
+                    {
+                        context.Fail("Token de acesso revogado.");
+                    }
                 }
             };
         });

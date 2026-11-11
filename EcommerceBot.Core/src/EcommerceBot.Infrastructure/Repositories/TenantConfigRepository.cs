@@ -29,7 +29,7 @@ public sealed class TenantConfigRepository : ITenantConfigRepository
             cacheKey,
             async () =>
             {
-                using var connection = await _connectionFactory.CreateConnectionAsync();
+                using var connection = await _connectionFactory.CreateConnectionAsync(tenantId, cancellationToken);
                 
                 const string sql = """
                     SELECT * FROM dbo.TenantConfigs 
@@ -45,7 +45,7 @@ public sealed class TenantConfigRepository : ITenantConfigRepository
 
     public async Task UpsertAsync(TenantConfig config, CancellationToken cancellationToken = default)
     {
-        using var connection = await _connectionFactory.CreateConnectionAsync();
+        using var connection = await _connectionFactory.CreateConnectionAsync(config.TenantId, cancellationToken);
         
         const string sql = """
             IF EXISTS (SELECT 1 FROM dbo.TenantConfigs WHERE TenantId = @TenantId)
