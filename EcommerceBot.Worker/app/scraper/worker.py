@@ -7,7 +7,7 @@ from .parser import ScraperParser, ScraperAndLLMParser
 from .schemas import ScrapingRequest, ScrapedRawProductEvent
 from app.core.config.settings import settings
 from app.core.shared.logger import get_logger
-from app.core.shared.security import validate_url_safety
+from app.core.shared.security import async_validate_url_safety
 from app.core.config.redis_db import redis_cache
 from app.core.config.rabbitmq import (
     QUEUE_ECOMMERCE,
@@ -83,7 +83,7 @@ async def _process_single_message(message: aio_pika.IncomingMessage, channel: ai
 
         # 2. Defesa em Profundidade Anti-SSRF antes do acionamento do scraper
         try:
-            validate_url_safety(url)
+            await async_validate_url_safety(url)
         except ValueError as ssrf_err:
             logger.warning(
                 f"Bloqueio de segurança Anti-SSRF/Rede para URL {url}: {ssrf_err}",
@@ -177,31 +177,57 @@ async def start_scraper_worker():
     logger.info(f"Inicializando ScraperWorker conectado a {settings.RABBITMQ_URL}...")
     parser = ScraperParser()
 
+    concurrency = max(1, int(getattr(settings, "WORKER_CONCURRENCY", 5)))
+    semaphore = asyncio.Semaphore(concurrency)
+
     while True:
+        in_flight: set[asyncio.Task] = set()
         try:
             connection = await aio_pika.connect_robust(settings.RABBITMQ_URL)
             async with connection:
                 channel = await connection.channel()
-                await channel.set_qos(prefetch_count=5)
+                await channel.set_qos(prefetch_count=concurrency)
 
                 # Declaração das filas de entrada com argumentos canônicos
                 queue_prod = await channel.declare_queue(QUEUE_ECOMMERCE, durable=True, arguments=ECOMMERCE_QUEUE_ARGS)
                 queue_demo = await channel.declare_queue(QUEUE_DEMO_ECOMMERCE, durable=True, arguments=DEMO_ECOMMERCE_QUEUE_ARGS)
                 await channel.declare_queue(QUEUE_OUTPUT, durable=True)
 
-                logger.info(f"ScraperWorker pronto e escutando nas filas '{QUEUE_ECOMMERCE}' e '{QUEUE_DEMO_ECOMMERCE}'...")
+                logger.info(
+                    f"ScraperWorker pronto e escutando nas filas '{QUEUE_ECOMMERCE}' e '{QUEUE_DEMO_ECOMMERCE}' (concorrência={concurrency})..."
+                )
+
+                async def run_bounded(msg: aio_pika.IncomingMessage) -> None:
+                    try:
+                        await _process_single_message(msg, channel, parser)
+                    except Exception as task_err:
+                        logger.error(f"Erro não tratado na tarefa do ScraperWorker: {task_err}", exc_info=True)
+                    finally:
+                        semaphore.release()
 
                 async def consume_queue(q: aio_pika.Queue, name: str):
                     logger.info(f"Escuta iniciada na fila: {name}")
                     async for msg in q:
-                        await _process_single_message(msg, channel, parser)
+                        await semaphore.acquire()
+                        task = asyncio.create_task(run_bounded(msg))
+                        in_flight.add(task)
+                        task.add_done_callback(in_flight.discard)
 
-                await asyncio.gather(
-                    consume_queue(queue_prod, QUEUE_ECOMMERCE),
-                    consume_queue(queue_demo, QUEUE_DEMO_ECOMMERCE)
-                )
+                try:
+                    await asyncio.gather(
+                        consume_queue(queue_prod, QUEUE_ECOMMERCE),
+                        consume_queue(queue_demo, QUEUE_DEMO_ECOMMERCE)
+                    )
+                finally:
+                    if in_flight:
+                        pending = list(in_flight)
+                        await asyncio.gather(*pending, return_exceptions=True)
 
         except asyncio.CancelledError:
+            for task in list(in_flight):
+                task.cancel()
+            if in_flight:
+                await asyncio.gather(*list(in_flight), return_exceptions=True)
             logger.info("ScraperWorker cancelado graciosamente.")
             break
         except Exception as e:

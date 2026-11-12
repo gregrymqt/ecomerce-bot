@@ -115,7 +115,7 @@ class RFMSegmentation:
             rfm['segment'] = rfm.apply(self._assign_rule_based_segment, axis=1)
         else:
             # Escalonamento logarítmico para estabilização de assimetria
-            features = rfm[['recency', 'frequency', 'monetary']].copy()
+            features = rfm[['recency', 'frequency', 'monetary']].clip(lower=0).copy()
             features['recency_log'] = np.log1p(features['recency'])
             features['frequency_log'] = np.log1p(features['frequency'])
             features['monetary_log'] = np.log1p(features['monetary'])
@@ -125,7 +125,13 @@ class RFMSegmentation:
                 scaler = self.precalibrated["scaler"]
                 kmeans = self.precalibrated["kmeans"]
                 cluster_labels = self.precalibrated.get("cluster_labels", {})
-                scaled_features = scaler.transform(features[feature_cols])
+                expected_cols = list(getattr(scaler, "feature_names_in_", feature_cols))
+                model_input = (
+                    features[expected_cols]
+                    if all(col in features.columns for col in expected_cols)
+                    else features[feature_cols]
+                )
+                scaled_features = scaler.transform(model_input)
                 clusters = kmeans.predict(scaled_features)
                 rfm['cluster'] = clusters
                 rfm['segment'] = [cluster_labels.get(c, "Segmento RFM") for c in clusters]

@@ -53,11 +53,12 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
     public async Task Consume(ConsumeContext<ScrapedRawProductEvent> context)
     {
         var message = context.Message;
-        using var tenantScope = TenantSessionScope.BeginScope(message.TenantId);
-        _logger.LogInformation("Recebido ScrapedRawProductEvent para Tenant {TenantId}, SKU {Sku}. Success: {Success}",
-            message.TenantId, message.Sku, message.Success);
+        var isDemoRequest = IsDemoRequest(message.TenantId, message.PromptContext);
+        using var tenantScope = !isDemoRequest ? TenantSessionScope.BeginScope(message.TenantId) : null;
+        _logger.LogInformation("Recebido ScrapedRawProductEvent para Tenant {TenantId}, SKU {Sku} (IsDemo={IsDemo}). Success: {Success}",
+            message.TenantId, message.Sku, isDemoRequest, message.Success);
 
-        var channel = $"events:tenant:{message.TenantId}";
+        var channel = isDemoRequest ? "demo_progress" : $"events:tenant:{message.TenantId}";
 
         // 1. Tratamento de falha no scraping perimetral (Success == false)
         if (!message.Success)
@@ -66,7 +67,7 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
                 ? message.ErrorMessage
                 : "Falha na extração de scraping perimetral de produto.";
 
-            await HandleFailureAsync(message.TenantId, message.Sku, message.IsByok, errorMessage, channel, context.CancellationToken);
+            await HandleFailureAsync(message.TenantId, message.Sku, message.Url, message.IsByok, isDemoRequest, errorMessage, channel, context.CancellationToken);
             return;
         }
 
@@ -78,31 +79,34 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
                 ?? "Geral";
 
             CategorySeoGuidelineDto? seoGuideline = null;
-            try
+            if (!isDemoRequest)
             {
-                var guideline = await _categorySeoRepository.GetGuidelineByCategoryAsync(
-                    message.TenantId,
-                    category,
-                    context.CancellationToken);
-
-                if (guideline != null)
+                try
                 {
-                    seoGuideline = new CategorySeoGuidelineDto
+                    var guideline = await _categorySeoRepository.GetGuidelineByCategoryAsync(
+                        message.TenantId,
+                        category,
+                        context.CancellationToken);
+
+                    if (guideline != null)
                     {
-                        Id = guideline.Id,
-                        TenantId = guideline.TenantId,
-                        CategoryPattern = guideline.CategoryPattern,
-                        MandatoryKeywords = guideline.MandatoryKeywords,
-                        RecommendedTone = guideline.RecommendedTone,
-                        FewShotExampleTitle = guideline.FewShotExampleTitle,
-                        FewShotExampleDescription = guideline.FewShotExampleDescription
-                    };
+                        seoGuideline = new CategorySeoGuidelineDto
+                        {
+                            Id = guideline.Id,
+                            TenantId = guideline.TenantId,
+                            CategoryPattern = guideline.CategoryPattern,
+                            MandatoryKeywords = guideline.MandatoryKeywords,
+                            RecommendedTone = guideline.RecommendedTone,
+                            FewShotExampleTitle = guideline.FewShotExampleTitle,
+                            FewShotExampleDescription = guideline.FewShotExampleDescription
+                        };
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Falha ao buscar diretriz de SEO para Tenant {TenantId} e Categoria {Category}. Prosseguindo sem diretriz customizada.",
-                    message.TenantId, category);
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Falha ao buscar diretriz de SEO para Tenant {TenantId} e Categoria {Category}. Prosseguindo sem diretriz customizada.",
+                        message.TenantId, category);
+                }
             }
 
             var llmRequest = new ProductEnrichmentLlmRequest
@@ -118,7 +122,7 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
                 Images = message.Images,
                 MetaAttributes = message.MetaAttributes,
                 PromptContext = message.PromptContext,
-                UseTenantByok = message.IsByok,
+                UseTenantByok = !isDemoRequest && message.IsByok,
                 SeoGuideline = seoGuideline
             };
 
@@ -130,11 +134,11 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
                 _logger.LogWarning("OpenRouter Gateway retornou fallback com erro para Tenant {TenantId}, SKU {Sku}: {Error}",
                     message.TenantId, message.Sku, enrichmentResult.ErrorMessage);
 
-                await HandleFailureAsync(message.TenantId, message.Sku, message.IsByok, enrichmentResult.ErrorMessage, channel, context.CancellationToken);
+                await HandleFailureAsync(message.TenantId, message.Sku, message.Url, message.IsByok, isDemoRequest, enrichmentResult.ErrorMessage, channel, context.CancellationToken);
                 return;
             }
 
-            // 3. Sucesso na geração de IA: Persistência no SQL Server via Dapper
+            // 3. Sucesso na geração de IA: Persistência no SQL Server via Dapper (ignorada no modo demo anônimo)
             var titleFinal = !string.IsNullOrWhiteSpace(enrichmentResult.Title) ? enrichmentResult.Title : message.RawTitle;
             var descriptionFinal = !string.IsNullOrWhiteSpace(enrichmentResult.Description) ? enrichmentResult.Description : message.RawMarkdown;
 
@@ -152,77 +156,80 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
                 metaAttributes = message.MetaAttributes
             });
 
-            var imagesJson = message.Images.Count > 0 ? JsonSerializer.Serialize(message.Images) : null;
-            var brand = message.MetaAttributes.GetValueOrDefault("brand");
-
-            var existingProduct = await _productRepository.GetBySkuAsync(message.TenantId, message.Sku, context.CancellationToken);
-            if (existingProduct != null)
+            if (!isDemoRequest)
             {
-                existingProduct.Title = titleFinal;
-                existingProduct.Description = descriptionFinal;
-                existingProduct.Price = message.Price ?? existingProduct.Price;
-                existingProduct.OriginalPrice = existingProduct.OriginalPrice ?? message.Price;
-                existingProduct.Category = !string.IsNullOrWhiteSpace(category) ? category : existingProduct.Category;
-                existingProduct.Brand = !string.IsNullOrWhiteSpace(brand) ? brand : existingProduct.Brand;
-                existingProduct.Status = "ENRICHED";
-                existingProduct.SourceUrl = !string.IsNullOrWhiteSpace(existingProduct.SourceUrl) ? existingProduct.SourceUrl : message.Url;
-                existingProduct.ImagesJson = imagesJson ?? existingProduct.ImagesJson;
-                existingProduct.EnrichmentMetadata = enrichmentMetadataJson;
-                existingProduct.ErrorMessage = null;
+                var imagesJson = message.Images.Count > 0 ? JsonSerializer.Serialize(message.Images) : null;
+                var brand = message.MetaAttributes.GetValueOrDefault("brand");
 
-                await _productRepository.UpdateAsync(existingProduct, context.CancellationToken);
-            }
-            else
-            {
-                var newProduct = new Product
+                var existingProduct = await _productRepository.GetBySkuAsync(message.TenantId, message.Sku, context.CancellationToken);
+                if (existingProduct != null)
                 {
-                    Id = Guid.NewGuid(),
-                    TenantId = message.TenantId,
-                    Sku = message.Sku,
-                    Title = titleFinal,
-                    Description = descriptionFinal,
-                    Price = message.Price ?? 0m,
-                    OriginalPrice = message.Price,
-                    Category = category,
-                    Brand = brand,
-                    StockQuantity = 0,
-                    Status = "ENRICHED",
-                    SourceUrl = message.Url,
-                    ImagesJson = imagesJson,
-                    EnrichmentMetadata = enrichmentMetadataJson,
-                    ErrorMessage = null
-                };
+                    existingProduct.Title = titleFinal;
+                    existingProduct.Description = descriptionFinal;
+                    existingProduct.Price = message.Price ?? existingProduct.Price;
+                    existingProduct.OriginalPrice = existingProduct.OriginalPrice ?? message.Price;
+                    existingProduct.Category = !string.IsNullOrWhiteSpace(category) ? category : existingProduct.Category;
+                    existingProduct.Brand = !string.IsNullOrWhiteSpace(brand) ? brand : existingProduct.Brand;
+                    existingProduct.Status = "ENRICHED";
+                    existingProduct.SourceUrl = !string.IsNullOrWhiteSpace(existingProduct.SourceUrl) ? existingProduct.SourceUrl : message.Url;
+                    existingProduct.ImagesJson = imagesJson ?? existingProduct.ImagesJson;
+                    existingProduct.EnrichmentMetadata = enrichmentMetadataJson;
+                    existingProduct.ErrorMessage = null;
 
-                await _productRepository.AddAsync(newProduct, context.CancellationToken);
-            }
-
-            // 4. Gravar telemetria atômica de consumo em dbo.LlmUsageLogs
-            try
-            {
-                var usageLog = new LlmUsageLog
+                    await _productRepository.UpdateAsync(existingProduct, context.CancellationToken);
+                }
+                else
                 {
-                    Id = Guid.NewGuid(),
-                    TenantId = message.TenantId,
-                    ProductId = message.Sku,
-                    Provider = "OPENROUTER",
-                    ModelUsed = !string.IsNullOrWhiteSpace(enrichmentResult.ModelUsed) ? enrichmentResult.ModelUsed : "openrouter/auto",
-                    PromptTokens = enrichmentResult.PromptTokens,
-                    CompletionTokens = enrichmentResult.CompletionTokens,
-                    TotalTokens = enrichmentResult.TotalTokens,
-                    EstimatedCostUsd = enrichmentResult.TotalCostEstimated,
-                    IsByok = message.IsByok,
-                    ExecutionTimeMs = enrichmentResult.ExecutionTimeMs.HasValue
-                        ? (int)Math.Min(enrichmentResult.ExecutionTimeMs.Value, int.MaxValue)
-                        : null,
-                    CreatedAt = DateTimeOffset.UtcNow
-                };
+                    var newProduct = new Product
+                    {
+                        Id = Guid.NewGuid(),
+                        TenantId = message.TenantId,
+                        Sku = message.Sku,
+                        Title = titleFinal,
+                        Description = descriptionFinal,
+                        Price = message.Price ?? 0m,
+                        OriginalPrice = message.Price,
+                        Category = category,
+                        Brand = brand,
+                        StockQuantity = 0,
+                        Status = "ENRICHED",
+                        SourceUrl = message.Url,
+                        ImagesJson = imagesJson,
+                        EnrichmentMetadata = enrichmentMetadataJson,
+                        ErrorMessage = null
+                    };
 
-                await _meteringRepository.CreateUsageLogAsync(usageLog, context.CancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Falha ao persistir telemetria em LlmUsageLogs para Tenant {TenantId}, SKU {Sku}",
-                    message.TenantId, message.Sku);
+                    await _productRepository.AddAsync(newProduct, context.CancellationToken);
+                }
+
+                // 4. Gravar telemetria atômica de consumo em dbo.LlmUsageLogs
+                try
+                {
+                    var usageLog = new LlmUsageLog
+                    {
+                        Id = Guid.NewGuid(),
+                        TenantId = message.TenantId,
+                        ProductId = message.Sku,
+                        Provider = "OPENROUTER",
+                        ModelUsed = !string.IsNullOrWhiteSpace(enrichmentResult.ModelUsed) ? enrichmentResult.ModelUsed : "openrouter/auto",
+                        PromptTokens = enrichmentResult.PromptTokens,
+                        CompletionTokens = enrichmentResult.CompletionTokens,
+                        TotalTokens = enrichmentResult.TotalTokens,
+                        EstimatedCostUsd = enrichmentResult.TotalCostEstimated,
+                        IsByok = message.IsByok,
+                        ExecutionTimeMs = enrichmentResult.ExecutionTimeMs.HasValue
+                            ? (int)Math.Min(enrichmentResult.ExecutionTimeMs.Value, int.MaxValue)
+                            : null,
+                        CreatedAt = DateTimeOffset.UtcNow
+                    };
+
+                    await _meteringRepository.CreateUsageLogAsync(usageLog, context.CancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Falha ao persistir telemetria em LlmUsageLogs para Tenant {TenantId}, SKU {Sku}",
+                        message.TenantId, message.Sku);
+                }
             }
 
             // 5. Transmitir evento SSE via Redis Pub/Sub para o Frontend React
@@ -232,6 +239,7 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
             var ssePayload = JsonSerializer.Serialize(new
             {
                 type = "product_processed",
+                url = message.Url,
                 sku = message.Sku,
                 status = "PROCESSED",
                 isFallback = false,
@@ -276,53 +284,67 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
             _logger.LogError(ex, "Exceção inesperada durante o enriquecimento de produto para Tenant {TenantId}, SKU {Sku}",
                 message.TenantId, message.Sku);
 
-            await HandleFailureAsync(message.TenantId, message.Sku, message.IsByok, ex.Message, channel, context.CancellationToken);
+            await HandleFailureAsync(message.TenantId, message.Sku, message.Url, message.IsByok, isDemoRequest, ex.Message, channel, context.CancellationToken);
         }
     }
 
-    private async Task HandleFailureAsync(Guid tenantId, string sku, bool isByok, string errorMessage, string channel, CancellationToken cancellationToken)
+    private static bool IsDemoRequest(Guid tenantId, string? promptContext)
+        => tenantId == Guid.Empty || string.Equals(promptContext, "demo", StringComparison.OrdinalIgnoreCase);
+
+    private async Task HandleFailureAsync(
+        Guid tenantId,
+        string sku,
+        string url,
+        bool isByok,
+        bool isDemoRequest,
+        string errorMessage,
+        string channel,
+        CancellationToken cancellationToken)
     {
-        _logger.LogWarning("Falha no enriquecimento de produto para Tenant {TenantId}, SKU {Sku} (IsByok={IsByok}): {Error}. Atualizando status para FAILED.",
-            tenantId, sku, isByok, errorMessage);
+        _logger.LogWarning("Falha no enriquecimento de produto para Tenant {TenantId}, SKU {Sku} (IsDemo={IsDemo}, IsByok={IsByok}): {Error}. Atualizando status para FAILED.",
+            tenantId, sku, isDemoRequest, isByok, errorMessage);
 
-        // Atualizar status no banco de dados
-        try
+        if (!isDemoRequest)
         {
-            await _productRepository.UpdateStatusAsync(tenantId, sku, "FAILED", null, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Falha ao atualizar status de falha do produto para Tenant {TenantId}, SKU {Sku}", tenantId, sku);
-        }
-
-        // Estorno atômico de 1 crédito no Ledger apenas quando houve débito prévio (não-BYOK)
-        if (!isByok)
-        {
+            // Atualizar status no banco de dados
             try
             {
-                var newBalance = await _tenantRepository.AddCreditsAsync(
-                    tenantId: tenantId,
-                    amount: 1,
-                    type: "REFUND",
-                    description: $"Estorno automático por falha no processamento (SKU: {sku})",
-                    referenceId: sku,
-                    cancellationToken: cancellationToken
-                );
-
-                var refundPayload = JsonSerializer.Serialize(new
-                {
-                    type = "credits_refunded",
-                    sku,
-                    amount = 1,
-                    balance_credits = newBalance,
-                    timestamp = DateTimeOffset.UtcNow
-                });
-
-                await _redisService.PublishAsync(channel, refundPayload);
+                await _productRepository.UpdateStatusAsync(tenantId, sku, "FAILED", null, cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Falha ao estornar crédito no Ledger para Tenant {TenantId}, SKU {Sku}", tenantId, sku);
+                _logger.LogError(ex, "Falha ao atualizar status de falha do produto para Tenant {TenantId}, SKU {Sku}", tenantId, sku);
+            }
+
+            // Estorno atômico de 1 crédito no Ledger apenas quando houve débito prévio (não-BYOK)
+            if (!isByok)
+            {
+                try
+                {
+                    var newBalance = await _tenantRepository.AddCreditsAsync(
+                        tenantId: tenantId,
+                        amount: 1,
+                        type: "REFUND",
+                        description: $"Estorno automático por falha no processamento (SKU: {sku})",
+                        referenceId: sku,
+                        cancellationToken: cancellationToken
+                    );
+
+                    var refundPayload = JsonSerializer.Serialize(new
+                    {
+                        type = "credits_refunded",
+                        sku,
+                        amount = 1,
+                        balance_credits = newBalance,
+                        timestamp = DateTimeOffset.UtcNow
+                    });
+
+                    await _redisService.PublishAsync(channel, refundPayload);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Falha ao estornar crédito no Ledger para Tenant {TenantId}, SKU {Sku}", tenantId, sku);
+                }
             }
         }
 
@@ -330,6 +352,7 @@ public sealed class ScrapedProductConsumer : IConsumer<ScrapedRawProductEvent>
         var failedPayload = JsonSerializer.Serialize(new
         {
             type = "product_processed",
+            url,
             sku,
             status = "FAILED",
             isFallback = true,

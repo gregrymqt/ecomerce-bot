@@ -140,7 +140,7 @@ class ScraplingEngineService:
         """
         Orquestra a busca inteligente com escalonamento automático de Tier 1 para Tier 2.
         """
-        validate_url_safety(url)
+        await async_validate_url_safety(url)
 
         page = None
         try:

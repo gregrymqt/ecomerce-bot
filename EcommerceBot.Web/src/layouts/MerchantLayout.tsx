@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { apiClient } from '@/lib/apiClient';
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -20,38 +19,14 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/feedback/Badge';
 import { GlobalCreditBalanceBadge } from '@/features/wallet/components/badges';
 import { useRoleLayout } from './hooks/useRoleLayout';
+import { useTenantProfile } from './hooks/useTenantProfile';
 
 export const MerchantLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, currentTenant, logout } = useAuth();
   const { setAdminViewMode } = useRoleLayout();
-  const [tenantProfile, setTenantProfile] = useState<{ tenantId: string; name: string } | null>(null);
-
-  useEffect(() => {
-    if (!currentTenant) {
-      return;
-    }
-
-    let isMounted = true;
-    apiClient
-      .get<{ name?: string }>('/api/v1/tenant/me')
-      .then((res) => {
-        if (isMounted && res.data?.name) {
-          setTenantProfile({ tenantId: currentTenant, name: res.data.name });
-        }
-      })
-      .catch(() => {
-        // Mantém fallback amigável se o perfil do tenant não estiver acessível no momento
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [currentTenant]);
-
-  const tenantName = tenantProfile?.tenantId === currentTenant ? tenantProfile.name : null;
-  const storeLabel = tenantName || 'Loja Ativa';
+  const { storeLabel } = useTenantProfile(currentTenant);
 
   const isAdmin = Boolean(user && (user.is_admin === true || user.role === 'admin' || user.role === 'ADMIN'));
 

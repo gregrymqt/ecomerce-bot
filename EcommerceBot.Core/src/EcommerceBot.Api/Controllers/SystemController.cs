@@ -97,18 +97,25 @@ public class SystemController : BaseApiController
 
     [HttpGet("demo/stream")]
     [AllowAnonymous]
-    public async Task DemoStream(CancellationToken cancellationToken)
+    public async Task DemoStream([FromQuery] string? url = null, CancellationToken cancellationToken = default)
     {
         Response.Headers.Append("Content-Type", "text/event-stream");
         Response.Headers.Append("Cache-Control", "no-cache");
         Response.Headers.Append("Connection", "keep-alive");
+        Response.Headers.Append("X-Accel-Buffering", "no");
+
+        await Response.WriteAsync("data: {\"type\":\"connected\"}\n\n", cancellationToken);
+        await Response.Body.FlushAsync(cancellationToken);
 
         var channel = "demo_progress";
         var channelBuffer = Channel.CreateUnbounded<string>();
 
         await using var subscription = await _redisService.SubscribeAsync(channel, async message =>
         {
-            await channelBuffer.Writer.WriteAsync(message, cancellationToken);
+            if (MatchesDemoTargetUrl(message, url))
+            {
+                await channelBuffer.Writer.WriteAsync(message, cancellationToken);
+            }
         });
 
         try
@@ -137,6 +144,38 @@ public class SystemController : BaseApiController
         finally
         {
             channelBuffer.Writer.TryComplete();
+        }
+    }
+
+    private static bool MatchesDemoTargetUrl(string message, string? requestedUrl)
+    {
+        if (string.IsNullOrWhiteSpace(requestedUrl))
+        {
+            return true;
+        }
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(message);
+            if (!doc.RootElement.TryGetProperty("url", out var urlElement) || urlElement.ValueKind != System.Text.Json.JsonValueKind.String)
+            {
+                return true;
+            }
+
+            var eventUrl = urlElement.GetString();
+            if (string.IsNullOrWhiteSpace(eventUrl))
+            {
+                return true;
+            }
+
+            return string.Equals(
+                eventUrl.Trim().TrimEnd('/'),
+                requestedUrl.Trim().TrimEnd('/'),
+                StringComparison.OrdinalIgnoreCase);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return true;
         }
     }
 }

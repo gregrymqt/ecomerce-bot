@@ -19,6 +19,22 @@ class TestMLModule(unittest.TestCase):
         self.assertEqual(result["summary"]["total_revenue"], 1170.0)
         self.assertEqual(len(result["customers"]), 3)
 
+    def test_rfm_segmentation_handles_negative_amounts_and_future_dates(self):
+        import math
+        rfm = RFMSegmentation()
+        transactions = [
+            {"customerId": "refund_user", "orderDate": "2099-01-01T10:00:00Z", "amount": -120.0},
+            {"customerId": "positive_user", "orderDate": "2026-08-20T10:00:00Z", "amount": 250.0},
+            {"customerId": "steady_user", "orderDate": "2026-06-15T10:00:00Z", "amount": 100.0},
+            {"customerId": "older_user", "orderDate": "2026-01-10T10:00:00Z", "amount": 80.0},
+        ]
+
+        result = rfm.segment_customers(transactions)
+        self.assertEqual(result["summary"]["total_customers"], 4)
+        for customer in result["customers"]:
+            self.assertFalse(math.isnan(customer["recencyDays"]))
+            self.assertFalse(math.isnan(customer["totalSpent"]))
+
     def test_churn_predictor(self):
         churn = ChurnPredictor()
         transactions = [

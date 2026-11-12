@@ -1,29 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { E2E_TENANT_ID, setupAuthenticatedSession } from './helpers/authMock.js';
 
-test.describe('Fluxo E2E: Central de Catálogo & Exportação CSV', () => {
+test.describe('Fluxo E2E: Central de Catálogo & Exportação em Lote', () => {
   test.beforeEach(async ({ page }) => {
-    // Configura localStorage com token e tenant autenticado
-    await page.addInitScript(() => {
-      localStorage.setItem('auth_token', 'test_e2e_jwt_token_123');
-      localStorage.setItem('tenant_id', 'tenant_test_qa');
-    });
+    await setupAuthenticatedSession(page);
 
-    // Intercepta rota de verificação da sessão (/auth/me)
-    await page.route('**/api/v1/auth/me', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          id: 'usr_e2e_qa_123',
-          email: 'admin@ecommerce.com',
-          name: 'Engenheiro QA E2E',
-          tenants: ['tenant_test_qa'],
-          is_admin: true,
-        }),
-      });
-    });
-
-    // Intercepta e simula a busca paginada de produtos no catálogo
     await page.route('**/api/v1/products*', async (route) => {
       await route.fulfill({
         status: 200,
@@ -32,7 +13,7 @@ test.describe('Fluxo E2E: Central de Catálogo & Exportação CSV', () => {
           items: [
             {
               id: 'prod-001',
-              tenant_id: 'tenant_test_qa',
+              tenant_id: E2E_TENANT_ID,
               sku: 'SKU-E2E-PROCESSED-01',
               title: 'Camisa Polo Slim Fit Enriquecida IA',
               status: 'PROCESSED',
@@ -46,7 +27,7 @@ test.describe('Fluxo E2E: Central de Catálogo & Exportação CSV', () => {
             },
             {
               id: 'prod-002',
-              tenant_id: 'tenant_test_qa',
+              tenant_id: E2E_TENANT_ID,
               sku: 'SKU-E2E-PROCESSED-02',
               title: 'Tênis Esportivo Performance Pro',
               status: 'PROCESSED',
@@ -65,37 +46,19 @@ test.describe('Fluxo E2E: Central de Catálogo & Exportação CSV', () => {
         }),
       });
     });
-
-    // Intercepta e simula requisição de exportação de relatório em CSV
-    await page.route('**/api/v1/products/export*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'text/csv',
-        headers: {
-          'Content-Disposition': 'attachment; filename="catalogo_produtos_processed.csv"',
-        },
-        body: 'sku,title,status,price\nSKU-E2E-PROCESSED-01,"Camisa Polo Slim Fit",PROCESSED,129.90\nSKU-E2E-PROCESSED-02,"Tênis Esportivo Performance",PROCESSED,299.90',
-      });
-    });
   });
 
-  test('Deve acessar /catalog, aplicar filtro PROCESSED, validar renderização da tabela e disparar download do arquivo CSV', async ({
+  test('Deve acessar /catalog, aplicar filtro Processados, validar tabela e baixar exportação em lote', async ({
     page,
   }) => {
-    // 1. Acessa a Central de Catálogo
     await page.goto('/catalog');
 
-    // Valida o título principal da página
-    const catalogHeading = page.getByRole('heading', {
-      name: /Central de Catálogo|Catálogo de Produtos/i,
-    }).first();
+    const catalogHeading = page.getByRole('heading', { name: /Central de Catálogo/i }).first();
     await expect(catalogHeading).toBeVisible();
 
-    // 2. Localiza e ativa o filtro por status "Processados"
     const processedFilterBtn = page.getByRole('button', { name: /Processados/i }).first();
     await expect(processedFilterBtn).toBeVisible();
 
-    // Valida dimensão do botão min-h-[44px] para acessibilidade de toque
     const filterBox = await processedFilterBtn.boundingBox();
     if (filterBox) {
       expect(filterBox.height).toBeGreaterThanOrEqual(44);
@@ -103,33 +66,22 @@ test.describe('Fluxo E2E: Central de Catálogo & Exportação CSV', () => {
 
     await processedFilterBtn.click();
 
-    // 3. Garante que a tabela renderiza pelo menos um produto no estado PROCESSED
-    const productItem = page.getByText(/SKU-E2E-PROCESSED-01|Camisa Polo Slim Fit/i).first();
-    await expect(productItem).toBeVisible();
+    await expect(page.getByText(/SKU-E2E-PROCESSED-01|Camisa Polo Slim Fit/i).first()).toBeVisible();
 
-    // 4. Localiza o botão "Exportar Lote" / "Exportar CSV"
-    const exportButton = page.getByRole('button', {
-      name: /Exportar Lote|Exportar CSV|Baixar Relatório/i,
-    }).first();
+    const exportButton = page.getByRole('button', { name: /Exportar Lote/i }).first();
     await expect(exportButton).toBeVisible();
 
-    // 5. Escuta o evento de download do relatório CSV ao clicar no botão
-    const downloadPromise = page.waitForEvent('download').catch(() => null);
+    const downloadPromise = page.waitForEvent('download');
     await exportButton.click();
 
     const download = await downloadPromise;
-    if (download) {
-      const suggestedFilename = download.suggestedFilename();
-      expect(suggestedFilename).toMatch(/csv|catalogo/i);
+    expect(download.suggestedFilename()).toMatch(/catalogo-export-.*\.json/i);
 
-      // Salva o stream de download e confirma que o arquivo baixado não está vazio
-      const path = await download.path();
-      if (path) {
-        const fs = await import('node:fs');
-        const content = fs.readFileSync(path, 'utf-8');
-        expect(content.length).toBeGreaterThan(0);
-        expect(content).toContain('SKU-E2E-PROCESSED-01');
-      }
+    const downloadPath = await download.path();
+    if (downloadPath) {
+      const fs = await import('node:fs');
+      const content = fs.readFileSync(downloadPath, 'utf-8');
+      expect(content).toContain('SKU-E2E-PROCESSED-01');
     }
   });
 });

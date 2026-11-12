@@ -7,6 +7,7 @@ services:
   mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: prod-mssql-bot
+    user: "0:0"
     restart: unless-stopped
     environment:
       ACCEPT_EULA: "Y"
@@ -256,6 +257,8 @@ services:
     image: nginx:alpine
     container_name: prod-nginx-bot
     restart: unless-stopped
+    environment:
+      SSL_DOMAIN: ${SSL_DOMAIN:-}
     ports:
       - "80:80"
       - "443:443"
@@ -269,6 +272,22 @@ services:
       - certbot-etc:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
       - certbot-www:/var/www/certbot
+    command:
+      - /bin/sh
+      - -c
+      - |
+        mkdir -p /etc/nginx/ssl
+        if [ -n "$${SSL_DOMAIN:-}" ] && [ -s "/etc/letsencrypt/live/$${SSL_DOMAIN}/fullchain.pem" ]; then
+          ln -sf "/etc/letsencrypt/live/$${SSL_DOMAIN}/fullchain.pem" /etc/nginx/ssl/fullchain.pem
+          ln -sf "/etc/letsencrypt/live/$${SSL_DOMAIN}/privkey.pem" /etc/nginx/ssl/privkey.pem
+        elif [ ! -s /etc/nginx/ssl/fullchain.pem ]; then
+          apk add --no-cache openssl >/dev/null
+          openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -subj "/CN=$${SSL_DOMAIN:-localhost}" \
+            -keyout /etc/nginx/ssl/privkey.pem \
+            -out /etc/nginx/ssl/fullchain.pem >/dev/null 2>&1
+        fi
+        exec nginx -g "daemon off;"
     depends_on:
       - api
       - web
