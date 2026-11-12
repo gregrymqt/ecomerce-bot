@@ -167,7 +167,7 @@ class TestScraperResilienceSuite(unittest.IsolatedAsyncioTestCase):
         message_mock.process.return_value.__aexit__ = AsyncMock()
 
         with patch("app.scraper.worker.redis_cache.is_already_processed", side_effect=check_processed), \
-             patch("app.scraper.worker.validate_url_safety"), \
+             patch("app.scraper.worker.async_validate_url_safety", new=AsyncMock()), \
              patch("app.scraper.worker.redis_cache.set_idempotency_key", side_effect=record_processed):
             await _process_single_message(message_mock, channel_mock, parser_mock)
 
@@ -288,7 +288,7 @@ class TestScraperResilienceSuite(unittest.IsolatedAsyncioTestCase):
         message_mock.process.return_value.__aexit__ = AsyncMock()
 
         with patch("app.scraper.worker.redis_cache.is_already_processed", new=AsyncMock(return_value=False)), \
-             patch("app.scraper.worker.validate_url_safety"):
+             patch("app.scraper.worker.async_validate_url_safety", new=AsyncMock()):
             await _process_single_message(message_mock, channel_mock, parser_mock)
 
         # Deve publicar na fila de scraping intermediária com success=False
@@ -339,7 +339,7 @@ class TestScraperResilienceSuite(unittest.IsolatedAsyncioTestCase):
 
         mock_set_idempotency = AsyncMock()
         with patch("app.scraper.worker.redis_cache.is_already_processed", new=AsyncMock(return_value=False)), \
-             patch("app.scraper.worker.validate_url_safety"), \
+             patch("app.scraper.worker.async_validate_url_safety", new=AsyncMock()), \
              patch("app.scraper.worker.redis_cache.set_idempotency_key", new=mock_set_idempotency):
             await _process_single_message(message_mock, channel_mock, parser_mock)
 
@@ -413,7 +413,7 @@ class TestScraperResilienceSuite(unittest.IsolatedAsyncioTestCase):
         message_mock.process.return_value.__aexit__ = AsyncMock()
 
         with patch("app.scraper.worker.redis_cache.is_already_processed", new=AsyncMock(return_value=False)), \
-             patch("app.scraper.worker.validate_url_safety"):
+             patch("app.scraper.worker.async_validate_url_safety", new=AsyncMock()):
             await _process_single_message(message_mock, channel_mock, parser_mock)
 
         channel_mock.default_exchange.publish.assert_called_once()

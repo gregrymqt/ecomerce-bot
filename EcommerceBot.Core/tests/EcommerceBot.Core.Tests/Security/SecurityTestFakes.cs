@@ -23,6 +23,7 @@ namespace EcommerceBot.Core.Tests.Security;
 internal sealed class InMemoryRedisService : IRedisService
 {
     private readonly ConcurrentDictionary<string, (string Json, DateTimeOffset? ExpiresAt)> _store = new();
+    public ConcurrentBag<(string Channel, string Message)> PublishedMessages { get; } = new();
 
     public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
@@ -84,7 +85,11 @@ internal sealed class InMemoryRedisService : IRedisService
         return Task.FromResult(_store.TryAdd(key, entry));
     }
 
-    public Task<long> PublishAsync(string channel, string message) => Task.FromResult(1L);
+    public Task<long> PublishAsync(string channel, string message)
+    {
+        PublishedMessages.Add((channel, message));
+        return Task.FromResult(1L);
+    }
     public Task<IAsyncDisposable> SubscribeAsync(string channel, Func<string, Task> handler) => Task.FromResult<IAsyncDisposable>(NoopAsyncDisposable.Instance);
     public Task UnsubscribeAsync(string channel) => Task.CompletedTask;
 

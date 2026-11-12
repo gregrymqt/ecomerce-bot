@@ -14,16 +14,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  esbuild: {
-    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
-  },
   build: {
     // Alvo de compilação ES moderno para melhor performance e menor tamanho de bundle
     target: 'esnext',
     // Não expõe código-fonte original no navegador em produção
     sourcemap: false,
-    // Garante minificação agressiva via ESBuild
-    minify: 'esbuild',
+    // Utiliza minificador nativo Oxc do Vite 8 sem conflito com esbuild
+    minify: 'oxc',
     // Limpa a pasta dist antes da build
     emptyOutDir: true,
     chunkSizeWarningLimit: 600,

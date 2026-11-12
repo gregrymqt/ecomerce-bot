@@ -1,115 +1,123 @@
 import { test, expect } from '@playwright/test';
+import { E2E_TENANT_ID, setupAuthenticatedSession } from './helpers/authMock.js';
 
-test.describe('Fluxo E2E: Planos & Checkout Transparente Mercado Pago', () => {
+test.describe('Fluxo E2E: Carteira & Checkout Transparente Mercado Pago', () => {
   test.beforeEach(async ({ page }) => {
-    // Configura localStorage com token e tenant autenticado
-    await page.addInitScript(() => {
-      localStorage.setItem('auth_token', 'test_e2e_jwt_token_123');
-      localStorage.setItem('tenant_id', 'tenant_test_qa');
+    await setupAuthenticatedSession(page);
+
+    await page.route('**/api/v1/wallet/credit-packages', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 'pkg-pro-500',
+            name: 'Pacote Crescimento 500',
+            description: '500 créditos perpétuos de enriquecimento IA',
+            credits: 500,
+            price_brl: 149,
+            is_popular: true,
+            discount_badge: 'Mais Popular',
+          },
+        ]),
+      });
     });
 
-    // Intercepta rota de verificação da sessão (/auth/me)
-    await page.route('**/api/v1/auth/me', async (route) => {
+    await page.route('**/api/v1/wallet/statement*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ items: [], total_count: 0, page: 1, page_size: 20 }),
+      });
+    });
+
+    await page.route('**/api/v1/billing/profile', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          id: 'usr_e2e_qa_123',
+          id: 'bill-001',
+          tenant_id: E2E_TENANT_ID,
+          document_type: 'CPF',
+          document_number: '52998224725',
+          legal_name: 'Rodrigo Teste E2E',
           email: 'admin@ecommerce.com',
-          name: 'Engenheiro QA E2E',
-          tenants: ['tenant_test_qa'],
-          is_admin: true,
+          zip_code: '01310100',
+          street_name: 'Av Paulista',
+          street_number: '1000',
+          neighborhood: 'Bela Vista',
+          city: 'São Paulo',
+          federal_unit: 'SP',
         }),
       });
     });
 
-    // Intercepta requisições de checkout (/checkout/pix e /checkout/card)
-    await page.route('**/api/v1/checkout/*', async (route) => {
-      const url = route.request().url();
-      if (url.includes('pix')) {
+    await page.route('**/api/v1/wallet/recharge', async (route) => {
+      const payload = route.request().postDataJSON() as { payment_method?: string } | null;
+      if (payload?.payment_method === 'pix') {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            qr_code_copy_paste:
+            order_id: 'ord-pix-123',
+            payment_id: 'pay-pix-123',
+            status: 'pending',
+            pix_qr_code:
               '00020126580014br.gov.bcb.pix0136ecom-autobot-mp-pix-key-99182305204000053039865405149.005802BR5916ECOM AUTOBOT SAO PAULO6009SAO PAULO62070503***6304E8A2',
-            qr_code_base64:
+            pix_qr_code_base64:
               'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-            expiration_date: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-            status: 'PENDING',
           }),
         });
-      } else {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            id: 'pay_cc_123456789',
-            status: 'approved',
-            detail: 'Pagamento de teste aprovado com sucesso!',
-          }),
-        });
+        return;
       }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          order_id: 'ord-cc-123',
+          payment_id: 'pay-cc-123',
+          status: 'approved',
+          detail: 'Pagamento aprovado com sucesso.',
+        }),
+      });
     });
   });
 
-  test('Deve acessar /plans, selecionar plano Pro, validar redirecionamento e realizar checkout transparente (PIX e Cartão)', async ({
+  test('Deve acessar /wallet, abrir checkout do pacote e validar abas PIX e Cartão de Crédito', async ({
     page,
     context,
   }) => {
-    // Permite leitura e escrita no clipboard para navegadores suportados (Chromium/Chrome)
     await context.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
 
-    await page.goto('/plans');
+    await page.goto('/wallet');
+    await expect(page.getByRole('heading', { name: /Carteira & Créditos de IA/i })).toBeVisible();
 
-    // Clica no botão de contratação do plano Pro se visível ou navega diretamente para /checkout
-    const proPlanBtn = page
-      .getByRole('button', { name: /Selecionar Plano Pro|Contratar|Assinar|Escolher/i })
-      .first();
+    const buyButton = page.getByRole('button', { name: /Comprar Pacote/i }).first();
+    await expect(buyButton).toBeVisible();
 
-    if (await proPlanBtn.isVisible()) {
-      await proPlanBtn.click();
-    } else {
-      await page.goto('/checkout?plan=pro');
+    const buyBox = await buyButton.boundingBox();
+    if (buyBox) {
+      expect(buyBox.height).toBeGreaterThanOrEqual(44);
     }
 
-    await expect(page).toHaveURL(/\/checkout/);
+    const pixRechargePromise = page.waitForRequest(
+      (req) => req.url().includes('/api/v1/wallet/recharge') && req.method() === 'POST'
+    );
+    await buyButton.click();
+    await pixRechargePromise;
 
-    // ----------------------------------------------------
-    // Aba 1: PIX Instantâneo
-    // ----------------------------------------------------
-    const pixTabButton = page.getByRole('button', { name: /PIX Instantâneo|PIX/i }).first();
-    await expect(pixTabButton).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Checkout Seguro Mercado Pago/i })).toBeVisible();
 
-    // Valida dimensão mínima WCAG touch target height >= 44px
-    const pixBox = await pixTabButton.boundingBox();
-    if (pixBox) {
-      expect(pixBox.height).toBeGreaterThanOrEqual(44);
-    }
-
-    await pixTabButton.click();
-
-    // Confirma a exibição da imagem do QR Code em Base64 e da chave "Copia e Cola"
-    const qrCodeImage = page.getByAltText(/QR Code PIX/i).or(page.getByText(/QR CODE PIX|Código PIX/i)).first();
-    await expect(qrCodeImage).toBeVisible();
-
-    const pixInput = page.getByLabel(/Código PIX Copia e Cola/i).or(page.locator('#pix-copia-cola'));
+    const pixInput = page.locator('#pix-copia-cola').or(page.getByLabel(/Código PIX/i)).first();
     await expect(pixInput).toBeVisible();
 
-    // Clica no botão "Copiar Código Pix" e verifica a alteração do texto para "Copiado!"
-    const copyPixButton = page.getByRole('button', { name: /Copiar Código Pix|Copiado!/i }).first();
+    const copyPixButton = page.getByRole('button', { name: /Copiar/i }).first();
     await expect(copyPixButton).toBeVisible();
     await copyPixButton.click();
 
-    const copiedFeedback = page.getByText(/Copiado!/i).first();
-    await expect(copiedFeedback).toBeVisible();
-
-    // ----------------------------------------------------
-    // Aba 2: Cartão de Crédito
-    // ----------------------------------------------------
     const ccTabButton = page.getByRole('button', { name: /Cartão de Crédito/i }).first();
     await expect(ccTabButton).toBeVisible();
-
     const ccBox = await ccTabButton.boundingBox();
     if (ccBox) {
       expect(ccBox.height).toBeGreaterThanOrEqual(44);
@@ -117,32 +125,21 @@ test.describe('Fluxo E2E: Planos & Checkout Transparente Mercado Pago', () => {
 
     await ccTabButton.click();
 
-    // Preenche os campos do formulário de Cartão de Crédito
-    const cardNumberInput = page.getByLabel(/Número do Cartão/i).or(page.locator('#card-number'));
+    const cardNumberInput = page.locator('#card-number');
     await expect(cardNumberInput).toBeVisible();
     await cardNumberInput.fill('4532111122223333');
-
-    // Valida o mascaramento automático do número do cartão (0000 0000 0000 0000)
     await expect(cardNumberInput).toHaveValue('4532 1111 2222 3333');
 
-    const cardHolderInput = page.getByLabel(/Nome Impresso/i).or(page.locator('#cardholder-name'));
-    await cardHolderInput.fill('QA TESTER CLIENTE');
+    await page.locator('#cardholder-name').fill('QA TESTER CLIENTE');
+    await page.locator('#card-expiry').fill('12/28');
+    await page.locator('#card-cvv').fill('123');
+    await page.locator('#doc-number').fill('52998224725');
 
-    const expiryInput = page.getByLabel(/Validade/i).or(page.locator('#card-expiry'));
-    await expiryInput.fill('12/28');
-
-    const cvvInput = page.getByLabel(/CVV/i).or(page.locator('#card-cvv'));
-    await cvvInput.fill('123');
-
-    const docInput = page.getByLabel(/CPF ou CNPJ/i).or(page.locator('#doc-number'));
-    await docInput.fill('12345678909');
-
-    // Submete o formulário de pagamento e intercepta a requisição do endpoint de checkout
-    const submitCcButton = page.getByRole('button', { name: /Finalizar Assinatura|Processando|Pagar/i }).first();
+    const submitCcButton = page.getByRole('button', { name: /Pagar R\$|Finalizar/i }).first();
     await expect(submitCcButton).toBeEnabled();
 
     const ccRequestPromise = page.waitForRequest(
-      (req) => req.url().includes('/checkout/card') || req.url().includes('/checkout/credit-card')
+      (req) => req.url().includes('/api/v1/wallet/recharge') && req.method() === 'POST'
     );
     await submitCcButton.click();
     await ccRequestPromise;

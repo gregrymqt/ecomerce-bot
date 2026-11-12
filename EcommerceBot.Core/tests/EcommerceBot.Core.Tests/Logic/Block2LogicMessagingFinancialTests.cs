@@ -393,6 +393,89 @@ public sealed class Block2LogicMessagingFinancialTests
         tenantRepo.Transactions.Should().ContainSingle(t => t.Type == "REFUND" && t.ReferenceId == "SKU-PAID-1" && t.Amount == 1);
     }
 
+    [Fact]
+    public async Task ScrapedProductConsumer_WhenDemoSuccess_PublishesToDemoProgressWithoutDbPersistence()
+    {
+        var userRepo = new InMemoryUserRepository();
+        var tenantRepo = new InMemoryTenantRepository(userRepo);
+        var productRepo = new RecordingProductRepository();
+        var meteringRepo = new RecordingMeteringRepository();
+        var redis = new InMemoryRedisService();
+
+        var consumer = new ScrapedProductConsumer(
+            new FakeSuccessOpenRouterGateway(),
+            productRepo,
+            tenantRepo,
+            meteringRepo,
+            new EmptySeoGuidelineRepository(),
+            redis,
+            NullLogger<ScrapedProductConsumer>.Instance);
+
+        await consumer.Consume(CreateConsumeContext(new ScrapedRawProductEvent
+        {
+            TenantId = Guid.Empty,
+            Sku = "demo_abc123",
+            Url = "https://example.com/produto-demo",
+            RawTitle = "Camiseta Básica",
+            RawMarkdown = "Descrição original",
+            Price = 99.90m,
+            PromptContext = "demo",
+            IsByok = false,
+            Success = true
+        }));
+
+        redis.PublishedMessages.Should().ContainSingle(m => m.Channel == "demo_progress");
+        var published = redis.PublishedMessages.Single(m => m.Channel == "demo_progress");
+        using var doc = JsonDocument.Parse(published.Message);
+        doc.RootElement.GetProperty("status").GetString().Should().Be("PROCESSED");
+        doc.RootElement.GetProperty("url").GetString().Should().Be("https://example.com/produto-demo");
+        doc.RootElement.GetProperty("result").GetProperty("titleMagnetic").GetString().Should().Be("Título Magnético Demo");
+
+        productRepo.AddedProductsCount.Should().Be(0);
+        meteringRepo.CreatedLogsCount.Should().Be(0);
+        tenantRepo.Transactions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ScrapedProductConsumer_WhenDemoFails_PublishesFailureToDemoProgressWithoutRefundOrDbWrite()
+    {
+        var userRepo = new InMemoryUserRepository();
+        var tenantRepo = new InMemoryTenantRepository(userRepo);
+        var productRepo = new RecordingProductRepository();
+        var meteringRepo = new RecordingMeteringRepository();
+        var redis = new InMemoryRedisService();
+
+        var consumer = new ScrapedProductConsumer(
+            new FakeFailingOpenRouterGateway(),
+            productRepo,
+            tenantRepo,
+            meteringRepo,
+            new EmptySeoGuidelineRepository(),
+            redis,
+            NullLogger<ScrapedProductConsumer>.Instance);
+
+        await consumer.Consume(CreateConsumeContext(new ScrapedRawProductEvent
+        {
+            TenantId = Guid.Empty,
+            Sku = "demo_fail_1",
+            Url = "https://example.com/inexistente",
+            PromptContext = "demo",
+            IsByok = false,
+            Success = false,
+            ErrorMessage = "Falha simulada no scraping demo"
+        }));
+
+        redis.PublishedMessages.Should().ContainSingle(m => m.Channel == "demo_progress");
+        var published = redis.PublishedMessages.Single(m => m.Channel == "demo_progress");
+        published.Message.Should().Contain("\"status\":\"FAILED\"");
+        published.Message.Should().Contain("Falha simulada no scraping demo");
+
+        productRepo.StatusUpdates.Should().BeEmpty();
+        productRepo.AddedProductsCount.Should().Be(0);
+        meteringRepo.CreatedLogsCount.Should().Be(0);
+        tenantRepo.Transactions.Should().BeEmpty();
+    }
+
     // =========================================================================
     // LOG-07: ProcessDemoRequestAsync (SSRF + exchange:demo_ecommerce) & ExportData async
     // =========================================================================
@@ -681,9 +764,10 @@ public sealed class Block2LogicMessagingFinancialTests
     private sealed class RecordingProductRepository : IProductRepository
     {
         public List<(string Sku, string Status)> StatusUpdates { get; } = new();
+        public int AddedProductsCount { get; private set; }
         public Task<Product?> GetBySkuAsync(Guid tenantId, string sku, CancellationToken cancellationToken = default) => Task.FromResult<Product?>(null);
         public Task<IEnumerable<Product>> GetProductsAsync(Guid tenantId, int page, int pageSize, CancellationToken cancellationToken = default) => Task.FromResult(Enumerable.Empty<Product>());
-        public Task<Guid> AddAsync(Product product, CancellationToken cancellationToken = default) => Task.FromResult(Guid.NewGuid());
+        public Task<Guid> AddAsync(Product product, CancellationToken cancellationToken = default) { AddedProductsCount++; return Task.FromResult(Guid.NewGuid()); }
         public Task UpdateStatusAsync(Guid tenantId, string sku, string status, string? metadata = null, CancellationToken cancellationToken = default) { StatusUpdates.Add((sku, status)); return Task.CompletedTask; }
         public Task<(IEnumerable<Product> Products, int TotalCount)> GetPaginatedAsync(Guid tenantId, string? statusFilter, string? search, int page, int limit, CancellationToken cancellationToken = default) => Task.FromResult((Enumerable.Empty<Product>(), 0));
         public Task UpdateAsync(Product product, CancellationToken cancellationToken = default) => Task.CompletedTask;
@@ -728,10 +812,25 @@ public sealed class Block2LogicMessagingFinancialTests
             => Task.FromResult(new ProductEnrichmentLlmResponse { IsFallback = true, ErrorMessage = "BYOK failed", ModelUsed = "none" });
     }
 
+    private sealed class FakeSuccessOpenRouterGateway : IOpenRouterGateway
+    {
+        public Task<ProductEnrichmentLlmResponse> EnrichProductAsync(ProductEnrichmentLlmRequest request, CancellationToken cancellationToken = default)
+            => Task.FromResult(new ProductEnrichmentLlmResponse
+            {
+                Title = "Título Magnético Demo",
+                Description = "Descrição otimizada para conversão.",
+                BulletPoints = ["Ponto 1", "Ponto 2"],
+                SeoKeywords = ["demo", "seo"],
+                ModelUsed = "test-model",
+                IsFallback = false
+            });
+    }
+
     private sealed class RecordingMeteringRepository : IMeteringRepository
     {
+        public int CreatedLogsCount { get; private set; }
         public Task<decimal> GetManagedCreditBalanceAsync(Guid tenantId, CancellationToken cancellationToken = default) => Task.FromResult(0m);
-        public Task<LlmUsageLog> CreateUsageLogAsync(LlmUsageLog log, CancellationToken cancellationToken = default) => Task.FromResult(log);
+        public Task<LlmUsageLog> CreateUsageLogAsync(LlmUsageLog log, CancellationToken cancellationToken = default) { CreatedLogsCount++; return Task.FromResult(log); }
         public Task<bool> AtomicReserveCreditsAsync(Guid tenantId, decimal estimatedCost, CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task AtomicRefundCreditsAsync(Guid tenantId, decimal amount, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task AtomicSettleCreditsAsync(Guid tenantId, decimal reservedCost, decimal actualCost, CancellationToken cancellationToken = default) => Task.CompletedTask;

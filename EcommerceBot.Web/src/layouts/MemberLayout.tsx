@@ -14,11 +14,13 @@ import { Sidebar, type SidebarNavItem } from '@/components/ui/navigation/Sidebar
 import { useAuth } from '@/features/auth';
 import { Button } from '@/components/ui/Button';
 import { GlobalCreditBalanceBadge } from '@/features/wallet/components/badges';
+import { useTenantProfile } from './hooks/useTenantProfile';
 
 export const MemberLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, currentTenant, logout } = useAuth();
+  const { storeLabel } = useTenantProfile(currentTenant);
 
   const navItems: SidebarNavItem[] = [
     {
@@ -140,8 +142,8 @@ export const MemberLayout: React.FC = () => {
           <div className="flex items-center gap-3">
             <GlobalCreditBalanceBadge />
             {currentTenant && (
-              <span className="hidden sm:inline text-xs text-slate-400 font-mono">
-                Tenant: {currentTenant}
+              <span className="hidden sm:inline text-xs text-slate-300 font-medium truncate max-w-[200px]">
+                Loja: {storeLabel}
               </span>
             )}
           </div>

@@ -1,29 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { E2E_TENANT_ID, setupAuthenticatedSession } from './helpers/authMock.js';
 
-test.describe('Fluxo E2E: Autenticação & Gestão de Credenciais de IA (BYOK)', () => {
+test.describe('Fluxo E2E: Autenticação & Configurações de IA do Tenant', () => {
   test.beforeEach(async ({ page }) => {
-    // Configura localStorage com token e tenant autenticado antes dos testes
-    await page.addInitScript(() => {
-      localStorage.setItem('auth_token', 'test_e2e_jwt_token_123');
-      localStorage.setItem('tenant_id', 'tenant_qa_test');
-    });
+    await setupAuthenticatedSession(page);
 
-    // Intercepta rota de verificação de autenticação (/auth/me)
-    await page.route('**/api/v1/auth/me', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          id: 'usr_e2e_qa_123',
-          email: 'admin@ecommerce.com',
-          name: 'Engenheiro QA E2E',
-          tenants: ['tenant_qa_test'],
-          is_admin: true,
-        }),
-      });
-    });
-
-    // Intercepta requisição de login (/auth/login)
     await page.route('**/api/v1/auth/login', async (route) => {
       await route.fulfill({
         status: 200,
@@ -32,100 +13,108 @@ test.describe('Fluxo E2E: Autenticação & Gestão de Credenciais de IA (BYOK)',
           id: 'usr_e2e_qa_123',
           email: 'admin@ecommerce.com',
           name: 'Engenheiro QA E2E',
+          role: 'owner',
           access_token: 'jwt_mock_token_e2e_pass_123',
-          tenant_id: 'tenant_qa_test',
+          tenant_id: E2E_TENANT_ID,
+          tenants: [E2E_TENANT_ID],
         }),
       });
     });
 
-    // Intercepta listagem de chaves (/ai-keys) inicialmente sem chave configurada
-    await page.route('**/api/v1/ai-keys', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          keys: {
-            openrouter: {
-              apiKey: '',
-              isValidated: false,
+    await page.route('**/api/v1/settings', async (route) => {
+      const method = route.request().method();
+      if (method === 'PUT') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ai_settings: {
+              target_language: 'pt-BR',
+              tone_of_voice: 'technical',
+              custom_tags: ['seo', 'alta-conversao'],
             },
-          },
-          active_provider: 'openrouter',
-        }),
-      });
-    });
+            pricing_settings: {
+              markup_percentage: 25,
+              rounding_rule: 'ENDING_99',
+            },
+            store_profile: {
+              store_name: 'Loja Teste E2E',
+              admin_email: 'admin@ecommerce.com',
+            },
+          }),
+        });
+        return;
+      }
 
-    // Intercepta teste de conexão de chave de IA (/ai-keys/test)
-    await page.route('**/api/v1/ai-keys/test', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          status: 'success',
-          provider: 'openrouter',
-          message: 'Chave do OpenRouter autenticada com sucesso.',
+          ai_settings: {
+            target_language: 'pt-BR',
+            tone_of_voice: 'persuasive',
+            custom_tags: ['seo'],
+          },
+          pricing_settings: {
+            markup_percentage: 15,
+            rounding_rule: 'ENDING_99',
+          },
+          store_profile: {
+            store_name: 'Loja Teste E2E',
+            admin_email: 'admin@ecommerce.com',
+          },
         }),
       });
     });
   });
 
-  test('Deve efetuar login em /auth, navegar para configurações e testar chave OpenRouter com indicação de loading e sucesso', async ({
+  test('Deve autenticar em /auth, navegar para /settings e salvar regras de IA via PUT /api/v1/settings', async ({
     page,
   }) => {
-    // 1. Acessa a página de autenticação
     await page.goto('/auth');
 
-    // Preenche credenciais no formulário de login usando seletores acessíveis e precisos
     const emailInput = page.locator('input[name="email"]');
     const passwordInput = page.locator('input[name="password"]');
-    const loginButton = page.getByRole('button', { name: /Entrar/i }).first();
+    const loginButton = page.getByRole('button', { name: /Entrar na Plataforma|Entrar/i }).first();
 
     await expect(emailInput).toBeVisible();
     await emailInput.fill('admin@ecommerce.com');
-    await passwordInput.fill('admin123');
-
+    await passwordInput.fill('SenhaForte@2026!');
     await expect(loginButton).toBeEnabled();
 
-    // Valida dimensão do botão min-h-[44px] para acessibilidade de toque
     const loginBox = await loginButton.boundingBox();
     if (loginBox) {
       expect(loginBox.height).toBeGreaterThanOrEqual(44);
     }
 
+    const loginPromise = page.waitForRequest((req) => req.url().includes('/api/v1/auth/login'));
     await loginButton.click();
+    await loginPromise;
 
-    // 2. Navega para as configurações (/settings)
     await page.goto('/settings');
 
-    // Clica no botão "Chaves IA (BYOK)" do header ou "Gerenciar Chaves" para abrir o modal BYOK
-    const byokButton = page
-      .getByRole('button', { name: /Chaves IA \(BYOK\)|Chaves de IA|Gerenciar Chaves/i })
-      .first();
-    await expect(byokButton).toBeVisible();
-    await byokButton.click();
+    const settingsHeading = page.getByRole('heading', { name: /Configurações & Preferências/i }).first();
+    await expect(settingsHeading).toBeVisible();
 
-    // 3. Verifica título do modal BYOK
-    const modalTitle = page.getByRole('heading', { name: /Gerenciar Chaves de IA \(BYOK\)/i }).first();
-    await expect(modalTitle).toBeVisible();
+    const technicalToneBtn = page.getByRole('button', { name: /Técnico & Factual/i }).first();
+    if (await technicalToneBtn.isVisible().catch(() => false)) {
+      await technicalToneBtn.click();
+    }
 
-    // 4. Localiza input específico do provedor OpenRouter pelo placeholder único
-    const openRouterInput = page.getByPlaceholder('sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxx');
-    await expect(openRouterInput).toBeVisible();
-    await openRouterInput.fill('sk-or-v1-1234567890abcdef');
+    const saveButton = page.getByRole('button', { name: /Salvar Configurações/i }).first();
+    await expect(saveButton).toBeEnabled();
 
-    // 5. Localiza o formulário específico do OpenRouter e o botão de ação correspondente
-    const openRouterForm = page.locator('form').filter({ has: openRouterInput });
-    const actionBtn = openRouterForm.getByRole('button', { name: /Salvar Chave|Testar Conexão|Testando Conexão.../i });
-    await expect(actionBtn).toBeEnabled();
+    const saveBox = await saveButton.boundingBox();
+    if (saveBox) {
+      expect(saveBox.height).toBeGreaterThanOrEqual(44);
+    }
 
-    const testRequestPromise = page.waitForRequest('**/api/v1/ai-keys*');
-    await actionBtn.click();
-    await testRequestPromise;
+    const savePromise = page.waitForRequest(
+      (req) => req.url().includes('/api/v1/settings') && req.method() === 'PUT'
+    );
+    await saveButton.click();
+    await savePromise;
 
-    // 6. Assertar feedback visual de validação/sucesso na UI (Badge "Validada" ou Toast)
-    const successFeedback = page
-      .getByText(/Validada|autenticada com sucesso|Chave salva/i)
-      .first();
-    await expect(successFeedback).toBeVisible();
+    await expect(page.getByText(/sucesso|atualizadas|salvas/i).first()).toBeVisible();
   });
 });
