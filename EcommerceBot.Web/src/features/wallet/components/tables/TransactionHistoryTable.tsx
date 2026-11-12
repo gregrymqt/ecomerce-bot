@@ -226,7 +226,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
             role="tab"
             aria-selected={activeFilter === 'ALL'}
             onClick={() => onFilterChange('ALL')}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all min-h-[44px] sm:min-h-[36px] flex items-center justify-center cursor-pointer focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none ${
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all min-h-[44px] flex items-center justify-center cursor-pointer focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none ${
               activeFilter === 'ALL'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
@@ -239,7 +239,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
             role="tab"
             aria-selected={activeFilter === 'RECHARGE'}
             onClick={() => onFilterChange('RECHARGE')}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all min-h-[44px] sm:min-h-[36px] flex items-center justify-center cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none ${
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all min-h-[44px] flex items-center justify-center cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none ${
               activeFilter === 'RECHARGE'
                 ? 'bg-emerald-600 text-white shadow-xs'
                 : 'text-slate-400 hover:text-emerald-400 hover:bg-slate-800/60'
@@ -252,7 +252,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
             role="tab"
             aria-selected={activeFilter === 'USAGE'}
             onClick={() => onFilterChange('USAGE')}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all min-h-[44px] sm:min-h-[36px] flex items-center justify-center cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none ${
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all min-h-[44px] flex items-center justify-center cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none ${
               activeFilter === 'USAGE'
                 ? 'bg-rose-600 text-white shadow-xs'
                 : 'text-slate-400 hover:text-rose-400 hover:bg-slate-800/60'

@@ -11,4 +11,5 @@ public interface ICatalogService
     Task<ProductResponseDto?> UpdateProductAsync(Guid tenantId, string sku, ProductUpdateDto dto, CancellationToken cancellationToken = default);
     Task<bool> DeleteProductAsync(Guid tenantId, string sku, CancellationToken cancellationToken = default);
     Task<ScrapingResponseDto> RequestScrapingAsync(Guid tenantId, ScrapingRequestDto request, CancellationToken cancellationToken = default);
+    Task<ProductResponseDto?> RegenerateProductCopyAsync(Guid tenantId, string sku, CancellationToken cancellationToken = default);
 }

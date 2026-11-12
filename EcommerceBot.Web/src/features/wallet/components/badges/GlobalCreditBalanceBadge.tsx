@@ -31,7 +31,8 @@ export const GlobalCreditBalanceBadge: React.FC<GlobalCreditBalanceBadgeProps> =
   const { balance, isLoading, refresh } = useRealtimeWalletBalance();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const formattedBalance = balance !== null ? balance.toLocaleString('pt-BR') : '...';
+  const safeBalance = typeof balance === 'number' && Number.isFinite(balance) ? balance : null;
+  const formattedBalance = safeBalance !== null ? safeBalance.toLocaleString('pt-BR') : '...';
 
   const handleOpenModal = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -61,7 +62,7 @@ export const GlobalCreditBalanceBadge: React.FC<GlobalCreditBalanceBadgeProps> =
         <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400/40 shrink-0 animate-pulse" />
 
         <span className="font-mono font-bold tracking-tight">
-          {isLoading && balance === null ? (
+          {isLoading && safeBalance === null ? (
             <Skeleton className="h-4 w-16 inline-block align-middle rounded" />
           ) : (
             <span>{formattedBalance} créditos</span>
@@ -73,7 +74,7 @@ export const GlobalCreditBalanceBadge: React.FC<GlobalCreditBalanceBadgeProps> =
           onClick={handleOpenModal}
           title="Recarregar créditos de IA"
           aria-label="Recarregar créditos de IA"
-          className="ml-1 p-1 rounded-full bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 transition-colors flex items-center justify-center shrink-0 min-w-[24px] min-h-[24px] cursor-pointer"
+          className="ml-1 -mr-1.5 p-2 rounded-full bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 transition-colors flex items-center justify-center shrink-0 min-w-[44px] min-h-[44px] cursor-pointer"
         >
           <Plus className="w-3 h-3" />
         </button>

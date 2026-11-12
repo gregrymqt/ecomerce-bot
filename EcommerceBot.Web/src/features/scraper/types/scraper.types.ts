@@ -56,7 +56,7 @@ export interface UseScraperReturn {
   isLoading: boolean;
   error: string | null;
   taskId: string | null;
-  submitUrl: () => Promise<void>;
+  submitUrl: () => Promise<boolean>;
   reset: () => void;
 }
 
@@ -82,10 +82,12 @@ export interface UseScraperStreamReturn {
 
 export interface ScraperFormProps {
   className?: string;
+  onSuccess?: () => void;
 }
 
 export interface ScraperBatchFormProps {
   className?: string;
+  onSuccess?: () => void;
 }
 
 export interface ScraperStreamTerminalProps {

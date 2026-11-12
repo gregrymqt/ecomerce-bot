@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { useScraperBatch } from '../hooks/useScraperBatch';
 import type { ScraperBatchFormProps } from '../types';
 
-export const ScraperBatchForm: React.FC<ScraperBatchFormProps> = ({ className }) => {
+export const ScraperBatchForm: React.FC<ScraperBatchFormProps> = ({ className, onSuccess }) => {
   const {
     batchRawText,
     setBatchRawText,
@@ -13,7 +13,7 @@ export const ScraperBatchForm: React.FC<ScraperBatchFormProps> = ({ className })
     isBatchProcessing,
     batchProgress,
     handleStartBatch,
-  } = useScraperBatch();
+  } = useScraperBatch(onSuccess);
 
   return (
     <div

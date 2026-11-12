@@ -36,7 +36,8 @@ public class TenantHeaderMiddleware
         "/api/v1/admin",
         "/api/v1/plans",
         "/api/v1/wallet/credit-packages",
-        "/api/v1/analytics/traffic/visit"
+        "/api/v1/analytics/traffic/visit",
+        "/api/v1/system/demo"
     };
 
     public async Task InvokeAsync(HttpContext context, ITenantContext tenantContext, ITenantRepository tenantRepository)
@@ -57,13 +58,15 @@ public class TenantHeaderMiddleware
             return;
         }
 
-        // Tratamento especial estritamente para a rota SSE /api/v1/demo/stream:
+        // Tratamento especial para rotas SSE de tenant (/api/v1/stream e alias /api/v1/demo/stream):
         // O EventSource do navegador não suporta envio de headers customizados como X-Tenant-ID.
         // Permitimos a leitura via query string ('tenant_id' ou 'tenantId') com validação anti-spoofing estrita.
-        var isDemoStream = path.StartsWith("/api/v1/demo/stream", StringComparison.OrdinalIgnoreCase);
+        var isTenantSseStream =
+            path.StartsWith("/api/v1/stream", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/v1/demo/stream", StringComparison.OrdinalIgnoreCase);
         string? rawTenantId = null;
 
-        if (isDemoStream)
+        if (isTenantSseStream)
         {
             if (context.Request.Headers.TryGetValue("X-Tenant-ID", out var headerVal))
             {

@@ -1,5 +1,5 @@
 import { getTenantId, getAuthToken } from '@/utils/storage';
-import { env } from '@/config/env';
+import { env, isNgrokApiUrl } from '@/config/env';
 
 export interface SSEClientOptions<T> {
   /** Caminho relativo da rota (ex: '/demo/stream') */
@@ -34,20 +34,24 @@ export class SSEClient<T = unknown> {
     const authToken = getAuthToken();
     const hasQuery = endpoint.includes('?');
     const queryParams: string[] = [];
+    const useNgrokBypass = isNgrokApiUrl(this.baseUrl);
 
     if (tenantId) {
       queryParams.push(`tenant_id=${encodeURIComponent(tenantId)}`);
     }
-    queryParams.push('ngrok-skip-browser-warning=true');
+    if (useNgrokBypass) {
+      queryParams.push('ngrok-skip-browser-warning=true');
+    }
 
     const connector = hasQuery ? '&' : '?';
-    const url = `${this.baseUrl}${endpoint}${connector}${queryParams.join('&')}`;
+    const querySuffix = queryParams.length > 0 ? `${connector}${queryParams.join('&')}` : '';
+    const url = `${this.baseUrl}${endpoint}${querySuffix}`;
 
     console.info(`[SSEClient] Iniciando conexão SSE via Fetch Stream em: ${url}`);
 
     const headers: Record<string, string> = {
       Accept: 'text/event-stream',
-      'ngrok-skip-browser-warning': 'true',
+      ...(useNgrokBypass ? { 'ngrok-skip-browser-warning': 'true' } : {}),
     };
 
     if (tenantId) {

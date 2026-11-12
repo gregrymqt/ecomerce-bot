@@ -1,10 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using EcommerceBot.Application.DTOs.Ai;
 using EcommerceBot.Application.DTOs.Messaging;
 using EcommerceBot.Application.DTOs.Products;
 using EcommerceBot.Application.Interfaces;
+using EcommerceBot.Application.Interfaces.Gateways;
 using EcommerceBot.Application.Security;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
@@ -20,19 +24,28 @@ public sealed class CatalogService : ICatalogService
     private readonly ITenantAiCredentialRepository _tenantAiCredentialRepository;
     private readonly ISendEndpointProvider _sendEndpointProvider;
     private readonly ILogger<CatalogService> _logger;
+    private readonly IOpenRouterGateway? _openRouterGateway;
+    private readonly ICategorySeoGuidelinesRepository? _categorySeoRepository;
+    private readonly IMeteringRepository? _meteringRepository;
 
     public CatalogService(
         IProductRepository productRepository,
         ITenantRepository tenantRepository,
         ITenantAiCredentialRepository tenantAiCredentialRepository,
         ISendEndpointProvider sendEndpointProvider,
-        ILogger<CatalogService> logger)
+        ILogger<CatalogService> logger,
+        IOpenRouterGateway? openRouterGateway = null,
+        ICategorySeoGuidelinesRepository? categorySeoRepository = null,
+        IMeteringRepository? meteringRepository = null)
     {
         _productRepository = productRepository;
         _tenantRepository = tenantRepository;
         _tenantAiCredentialRepository = tenantAiCredentialRepository;
         _sendEndpointProvider = sendEndpointProvider;
         _logger = logger;
+        _openRouterGateway = openRouterGateway;
+        _categorySeoRepository = categorySeoRepository;
+        _meteringRepository = meteringRepository;
     }
 
     private static ProductResponseDto MapToResponse(Product product)
@@ -219,6 +232,197 @@ public sealed class CatalogService : ICatalogService
             catch (Exception updateEx)
             {
                 _logger.LogWarning(updateEx, "Aviso: Falha ao atualizar status do produto {Sku} para FAILED.", sku);
+            }
+
+            throw;
+        }
+    }
+
+    public async Task<ProductResponseDto?> RegenerateProductCopyAsync(
+        Guid tenantId,
+        string sku,
+        CancellationToken cancellationToken = default)
+    {
+        if (_openRouterGateway == null)
+        {
+            throw new InvalidOperationException("Gateway de IA não configurado no container da API.");
+        }
+
+        var product = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
+        if (product == null)
+        {
+            return null;
+        }
+
+        var hasByok = await _tenantAiCredentialRepository.HasActiveByokAsync(tenantId, cancellationToken);
+        if (!hasByok)
+        {
+            await _tenantRepository.DeductCreditsAsync(
+                tenantId,
+                1,
+                type: "PRODUCT_ENRICHMENT",
+                description: $"Regeneração de copywriting IA (SKU: {sku})",
+                referenceId: sku,
+                cancellationToken: cancellationToken);
+        }
+
+        try
+        {
+            var category = string.IsNullOrWhiteSpace(product.Category) ? "Geral" : product.Category;
+            CategorySeoGuidelineDto? seoGuideline = null;
+
+            if (_categorySeoRepository != null)
+            {
+                try
+                {
+                    var guideline = await _categorySeoRepository.GetGuidelineByCategoryAsync(
+                        tenantId,
+                        category,
+                        cancellationToken);
+
+                    if (guideline != null)
+                    {
+                        seoGuideline = new CategorySeoGuidelineDto
+                        {
+                            Id = guideline.Id,
+                            TenantId = guideline.TenantId,
+                            CategoryPattern = guideline.CategoryPattern,
+                            MandatoryKeywords = guideline.MandatoryKeywords,
+                            RecommendedTone = guideline.RecommendedTone,
+                            FewShotExampleTitle = guideline.FewShotExampleTitle,
+                            FewShotExampleDescription = guideline.FewShotExampleDescription
+                        };
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Falha ao buscar diretriz de SEO na regeneração do SKU {Sku}. Prosseguindo sem diretriz customizada.", sku);
+                }
+            }
+
+            var images = new List<string>();
+            if (!string.IsNullOrWhiteSpace(product.ImagesJson))
+            {
+                try
+                {
+                    var parsedImages = JsonSerializer.Deserialize<List<string>>(product.ImagesJson);
+                    if (parsedImages != null)
+                    {
+                        images = parsedImages;
+                    }
+                }
+                catch
+                {
+                    // Ignora JSON legado malformado de imagens ao montar contexto da LLM
+                }
+            }
+
+            var metaAttributes = new Dictionary<string, string>();
+            if (!string.IsNullOrWhiteSpace(product.Category))
+            {
+                metaAttributes["category"] = product.Category;
+            }
+            if (!string.IsNullOrWhiteSpace(product.Brand))
+            {
+                metaAttributes["brand"] = product.Brand;
+            }
+
+            var llmRequest = new ProductEnrichmentLlmRequest
+            {
+                TenantId = tenantId,
+                Sku = product.Sku,
+                Url = product.SourceUrl ?? string.Empty,
+                RawTitle = product.Title,
+                RawDescriptionHtml = product.Description ?? string.Empty,
+                RawMarkdown = !string.IsNullOrWhiteSpace(product.Description) ? product.Description : product.Title,
+                Price = product.Price,
+                Currency = "BRL",
+                Images = images,
+                MetaAttributes = metaAttributes,
+                PromptContext = "Regenerar copywriting de produto com foco em SEO e conversão mantendo veracidade técnica.",
+                UseTenantByok = hasByok,
+                SeoGuideline = seoGuideline
+            };
+
+            var enrichmentResult = await _openRouterGateway.EnrichProductAsync(llmRequest, cancellationToken);
+            if (enrichmentResult.IsFallback && !string.IsNullOrWhiteSpace(enrichmentResult.ErrorMessage))
+            {
+                throw new InvalidOperationException(enrichmentResult.ErrorMessage);
+            }
+
+            product.Title = !string.IsNullOrWhiteSpace(enrichmentResult.Title) ? enrichmentResult.Title : product.Title;
+            product.Description = !string.IsNullOrWhiteSpace(enrichmentResult.Description) ? enrichmentResult.Description : product.Description;
+            product.Status = "PROCESSED";
+            product.ErrorMessage = null;
+            product.EnrichmentMetadata = JsonSerializer.Serialize(new
+            {
+                bulletPoints = enrichmentResult.BulletPoints,
+                seoKeywords = enrichmentResult.SeoKeywords,
+                faqs = enrichmentResult.Faqs,
+                modelUsed = enrichmentResult.ModelUsed,
+                promptTokens = enrichmentResult.PromptTokens,
+                completionTokens = enrichmentResult.CompletionTokens,
+                totalTokens = enrichmentResult.TotalTokens,
+                executionTimeMs = enrichmentResult.ExecutionTimeMs,
+                costUsd = enrichmentResult.TotalCostEstimated,
+                regeneratedAt = DateTimeOffset.UtcNow
+            });
+
+            await _productRepository.UpdateAsync(product, cancellationToken);
+
+            if (_meteringRepository != null)
+            {
+                try
+                {
+                    var usageLog = new LlmUsageLog
+                    {
+                        Id = Guid.NewGuid(),
+                        TenantId = tenantId,
+                        ProductId = product.Sku,
+                        Provider = "OPENROUTER",
+                        ModelUsed = !string.IsNullOrWhiteSpace(enrichmentResult.ModelUsed) ? enrichmentResult.ModelUsed : "openrouter/auto",
+                        PromptTokens = enrichmentResult.PromptTokens,
+                        CompletionTokens = enrichmentResult.CompletionTokens,
+                        TotalTokens = enrichmentResult.TotalTokens,
+                        EstimatedCostUsd = enrichmentResult.TotalCostEstimated,
+                        IsByok = hasByok,
+                        ExecutionTimeMs = enrichmentResult.ExecutionTimeMs.HasValue
+                            ? (int)Math.Min(enrichmentResult.ExecutionTimeMs.Value, int.MaxValue)
+                            : null,
+                        CreatedAt = DateTimeOffset.UtcNow
+                    };
+
+                    await _meteringRepository.CreateUsageLogAsync(usageLog, cancellationToken);
+                }
+                catch (Exception logEx)
+                {
+                    _logger.LogError(logEx, "Falha ao persistir telemetria em LlmUsageLogs na regeneração do SKU {Sku}", sku);
+                }
+            }
+
+            var updated = await _productRepository.GetBySkuAsync(tenantId, sku, cancellationToken);
+            return MapToResponse(updated ?? product);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha na regeneração com IA para o SKU '{Sku}', Tenant '{TenantId}'.", sku, tenantId);
+
+            if (!hasByok)
+            {
+                try
+                {
+                    await _tenantRepository.AddCreditsAsync(
+                        tenantId,
+                        1,
+                        type: "REFUND",
+                        description: $"Reembolso automático: Falha na regeneração de copywriting do SKU {sku}",
+                        referenceId: sku,
+                        cancellationToken: cancellationToken);
+                }
+                catch (Exception refundEx)
+                {
+                    _logger.LogCritical(refundEx, "ERRO CRÍTICO: Falha ao estornar crédito na regeneração do SKU '{Sku}', Tenant '{TenantId}'.", sku, tenantId);
+                }
             }
 
             throw;

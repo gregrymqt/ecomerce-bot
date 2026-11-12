@@ -38,11 +38,7 @@ export const AdminPlansPage: React.FC = () => {
   const activePlansCount = plans.filter((p) => p.isActive ?? p.status === 'active').length;
 
   return (
-    <div
-      role="main"
-      aria-label="Gestão de Pacotes de Recarga (Quotas de IA)"
-      className="min-h-screen p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto animate-fade-in pb-12"
-    >
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto animate-fade-in pb-12">
       {/* Alerta de Feedback Customizado */}
       {alertInfo && (
         <Alert

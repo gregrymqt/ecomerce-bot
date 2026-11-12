@@ -51,6 +51,7 @@ export const CatalogPage: React.FC = () => {
     handleSyncProduct,
     handleSaveDrawer,
     handleExportBatch,
+    refetchCatalog,
   } = useCatalogPage();
 
   return (
@@ -132,7 +133,12 @@ export const CatalogPage: React.FC = () => {
         description="Informe a URL da página de produto para extração e enriquecimento automático por IA."
         size="lg"
       >
-        <ScraperForm />
+        <ScraperForm
+          onSuccess={() => {
+            closeIngestionModal();
+            void refetchCatalog();
+          }}
+        />
       </Modal>
     </div>
   );

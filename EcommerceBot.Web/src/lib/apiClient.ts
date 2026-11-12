@@ -1,19 +1,19 @@
 // src/lib/apiClient.ts
 import { getTenantId, clearTenantId, getAuthToken, clearAuthToken } from '@/utils/storage';
-import { env } from '@/config/env';
+import { env, isNgrokApiUrl } from '@/config/env';
 import axios from 'axios';
 
 export const apiClient = axios.create({
   baseURL: env.apiUrl,
   headers: {
     'Content-Type': 'application/json',
-    'ngrok-skip-browser-warning': 'true',
+    ...(isNgrokApiUrl() ? { 'ngrok-skip-browser-warning': 'true' } : {}),
   },
   timeout: 10000, // 10s
   withCredentials: true,
 });
 
-// Interceptor de Requisição: Injeção do Bearer Token, Tenant ID e Bypass da tela de aviso do ngrok
+// Interceptor de Requisição: Injeção do Bearer Token, Tenant ID e bypass condicional do ngrok
 apiClient.interceptors.request.use((config) => {
   const token = getAuthToken();
   if (token) {
@@ -24,7 +24,10 @@ apiClient.interceptors.request.use((config) => {
   if (tenantId) {
     config.headers['X-Tenant-ID'] = tenantId;
   }
-  config.headers['ngrok-skip-browser-warning'] = 'true';
+
+  if (isNgrokApiUrl()) {
+    config.headers['ngrok-skip-browser-warning'] = 'true';
+  }
 
   return config;
 });

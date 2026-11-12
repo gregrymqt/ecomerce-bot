@@ -32,4 +32,8 @@ export const env: AppEnvConfig = Object.freeze({
   isProd: Boolean(import.meta.env.PROD ?? false),
 });
 
+export function isNgrokApiUrl(url: string = env.apiUrl): boolean {
+  return /ngrok(-free)?\.(app|io|dev)/i.test(url);
+}
+
 export default env;

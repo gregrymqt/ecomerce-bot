@@ -17,56 +17,13 @@ export interface RecentActivityTableProps {
   className?: string;
 }
 
-const DEFAULT_ACTIVITIES: RobotActivity[] = [
-  {
-    id: 'job-1',
-    product_title: 'Smartphone Galaxy S24 Ultra 512GB',
-    domain: 'amazon.com.br',
-    ai_provider: 'DeepSeek V3',
-    status: 'SUCCESS',
-    created_at_relative: 'Há 2 min',
-  },
-  {
-    id: 'job-2',
-    product_title: 'Fone de Ouvido Bluetooth Noise Cancelling',
-    domain: 'kabum.com.br',
-    ai_provider: 'Groq Llama 3',
-    status: 'SUCCESS',
-    created_at_relative: 'Há 5 min',
-  },
-  {
-    id: 'job-3',
-    product_title: 'Notebook Gamer RTX 4060 16GB',
-    domain: 'mercadolivre.com.br',
-    ai_provider: 'OpenAI GPT-4o',
-    status: 'PROCESSING',
-    created_at_relative: 'Há 8 min',
-  },
-  {
-    id: 'job-4',
-    product_title: 'Cadeira Ergonômica Mesh Premium',
-    domain: 'magazineluiza.com.br',
-    ai_provider: 'DeepSeek V3',
-    status: 'SUCCESS',
-    created_at_relative: 'Há 12 min',
-  },
-  {
-    id: 'job-5',
-    product_title: 'Monitor Ultrawide 34" 144Hz',
-    domain: 'terabyteshop.com.br',
-    ai_provider: 'Groq Llama 3',
-    status: 'FAILED',
-    created_at_relative: 'Há 20 min',
-  },
-];
-
 export const RecentActivityTable: React.FC<RecentActivityTableProps> = ({
-  activities = DEFAULT_ACTIVITIES,
+  activities = [],
   loading = false,
   onRefresh,
   className,
 }) => {
-  const items = activities && activities.length > 0 ? activities.slice(0, 5) : DEFAULT_ACTIVITIES;
+  const items = (activities ?? []).slice(0, 5);
 
   return (
     <div
@@ -114,40 +71,48 @@ export const RecentActivityTable: React.FC<RecentActivityTableProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-[#1E293B]/50">
-            {items.map((act) => (
-              <tr key={act.id} className="hover:bg-[#090D16]/50 transition-colors">
-                <td className="py-3 px-2 font-medium text-white max-w-[200px] truncate">
-                  {act.product_title}
-                </td>
-                <td className="py-3 px-2 font-mono text-slate-400 text-xs">{act.domain}</td>
-                <td className="py-3 px-2">
-                  <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 text-xs text-purple-300 font-mono">
-                    <Cpu className="h-3 w-3" />
-                    {act.ai_provider}
-                  </span>
-                </td>
-                <td className="py-3 px-2">
-                  {act.status === 'SUCCESS' && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-400">
-                      <CheckCircle className="h-3 w-3" /> Sucesso
-                    </span>
-                  )}
-                  {act.status === 'PROCESSING' && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 border border-violet-500/20 px-2.5 py-0.5 text-xs font-bold text-violet-400">
-                      <Clock className="h-3 w-3 animate-spin" /> Em Fila
-                    </span>
-                  )}
-                  {act.status === 'FAILED' && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 border border-red-500/20 px-2.5 py-0.5 text-xs font-bold text-red-400">
-                      <AlertTriangle className="h-3 w-3" /> Falhou
-                    </span>
-                  )}
-                </td>
-                <td className="py-3 px-2 text-right text-slate-400 font-mono text-xs">
-                  {act.created_at_relative}
+            {items.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-8 text-center text-xs sm:text-sm text-slate-400">
+                  {loading ? 'Carregando atividades recentes...' : 'Nenhuma atividade de robô registrada neste período.'}
                 </td>
               </tr>
-            ))}
+            ) : (
+              items.map((act) => (
+                <tr key={act.id} className="hover:bg-[#090D16]/50 transition-colors">
+                  <td className="py-3 px-2 font-medium text-white max-w-[200px] truncate">
+                    {act.product_title}
+                  </td>
+                  <td className="py-3 px-2 font-mono text-slate-400 text-xs">{act.domain}</td>
+                  <td className="py-3 px-2">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 text-xs text-purple-300 font-mono">
+                      <Cpu className="h-3 w-3" />
+                      {act.ai_provider}
+                    </span>
+                  </td>
+                  <td className="py-3 px-2">
+                    {act.status === 'SUCCESS' && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-400">
+                        <CheckCircle className="h-3 w-3" /> Sucesso
+                      </span>
+                    )}
+                    {act.status === 'PROCESSING' && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 border border-violet-500/20 px-2.5 py-0.5 text-xs font-bold text-violet-400">
+                        <Clock className="h-3 w-3 animate-spin" /> Em Fila
+                      </span>
+                    )}
+                    {act.status === 'FAILED' && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 border border-red-500/20 px-2.5 py-0.5 text-xs font-bold text-red-400">
+                        <AlertTriangle className="h-3 w-3" /> Falhou
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-3 px-2 text-right text-slate-400 font-mono text-xs">
+                    {act.created_at_relative}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

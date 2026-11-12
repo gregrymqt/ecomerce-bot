@@ -25,6 +25,7 @@ import {
   UnifiedPaymentModal,
 } from '../components';
 import { Button, Alert } from '@/components/ui';
+import { SEO } from '@/components/common/SEO';
 import type { RechargePackage, CheckoutTarget } from '../types';
 
 export const WalletPage: React.FC = () => {
@@ -127,11 +128,11 @@ export const WalletPage: React.FC = () => {
   const combinedError = walletError || packagesError;
 
   return (
-    <div
-      role="main"
-      aria-label="Hub Financeiro, Carteira e Pacotes de Créditos"
-      className="space-y-8 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 animate-fade-in text-slate-100"
-    >
+    <div className="space-y-8 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 animate-fade-in text-slate-100">
+      <SEO
+        title="Carteira & Créditos"
+        description="Gerencie seu saldo de créditos, adquira recargas e acompanhe seu extrato no ledger."
+      />
       {/* Cabeçalho da Página */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
         <div className="space-y-1">
@@ -188,7 +189,7 @@ export const WalletPage: React.FC = () => {
               newParams.delete('reason');
               setSearchParams(newParams, { replace: true });
             }}
-            className="text-amber-300 hover:text-white min-h-[36px]"
+            className="text-amber-300 hover:text-white min-h-[44px]"
           >
             Dispensar
           </Button>
@@ -206,7 +207,7 @@ export const WalletPage: React.FC = () => {
                 variant="ghost"
                 size="sm"
                 onClick={handleRefetchAll}
-                className="text-rose-300 hover:text-white min-h-[36px] px-3"
+                className="text-rose-300 hover:text-white min-h-[44px] px-3"
               >
                 Tentar Novamente
               </Button>

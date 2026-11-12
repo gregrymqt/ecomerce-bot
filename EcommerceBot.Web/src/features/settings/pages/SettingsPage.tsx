@@ -28,6 +28,7 @@ import {
 } from '../components';
 import type { SettingsTab } from '../types';
 import { Button, Alert } from '@/components/ui';
+import { SEO } from '@/components/common/SEO';
 
 export const SettingsPage: React.FC = () => {
   const { user } = useAuth();
@@ -95,11 +96,11 @@ export const SettingsPage: React.FC = () => {
   }, [canManageSso]);
 
   return (
-    <div
-      role="main"
-      aria-label="Configurações e Preferências do Tenant"
-      className="space-y-8 max-w-7xl mx-auto pb-16 px-4 sm:px-6 text-slate-100 animate-fade-in"
-    >
+    <div className="space-y-8 max-w-7xl mx-auto pb-16 px-4 sm:px-6 text-slate-100 animate-fade-in">
+      <SEO
+        title="Configurações"
+        description="Gerencie regras da IA, dados da loja, informações fiscais e mapeamento SSO."
+      />
       {/* Cabeçalho da Página */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>

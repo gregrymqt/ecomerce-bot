@@ -10,7 +10,7 @@ import { scraperService } from '../services/scraper.service';
 import type { BatchQueueItem, UseScraperBatchReturn } from '../types';
 import { getErrorMessage } from '@/utils/errors';
 
-export function useScraperBatch(): UseScraperBatchReturn {
+export function useScraperBatch(onSuccess?: () => void): UseScraperBatchReturn {
   const [batchRawText, setBatchRawText] = useState<string>('');
   const [batchQueue, setBatchQueue] = useState<BatchQueueItem[]>([]);
   const [isBatchProcessing, setIsBatchProcessing] = useState<boolean>(false);
@@ -39,6 +39,8 @@ export function useScraperBatch(): UseScraperBatchReturn {
       setIsBatchProcessing(true);
       setBatchProgress(0);
 
+      let successCount = 0;
+
       for (let i = 0; i < initialQueue.length; i++) {
         setBatchQueue((prev) =>
           prev.map((item, idx) => (idx === i ? { ...item, status: 'sending' } : item))
@@ -46,6 +48,7 @@ export function useScraperBatch(): UseScraperBatchReturn {
 
         try {
           await scraperService.extractUrl({ url: initialQueue[i].url });
+          successCount += 1;
           setBatchQueue((prev) =>
             prev.map((item, idx) => (idx === i ? { ...item, status: 'completed' } : item))
           );
@@ -63,8 +66,11 @@ export function useScraperBatch(): UseScraperBatchReturn {
       }
 
       setIsBatchProcessing(false);
+      if (successCount > 0) {
+        onSuccess?.();
+      }
     },
-    [batchRawText]
+    [batchRawText, onSuccess]
   );
 
   const resetBatch = useCallback(() => {

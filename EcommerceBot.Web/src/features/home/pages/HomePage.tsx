@@ -33,8 +33,7 @@ export const HomePage: React.FC = () => {
   } = useHome();
 
   return (
-    <div
-      role="main"
+    <main
       aria-label="Dashboard Principal da Plataforma"
       className="min-h-screen bg-[#090D16] text-slate-100 p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 max-w-7xl mx-auto"
     >
@@ -88,7 +87,7 @@ export const HomePage: React.FC = () => {
           />
         </aside>
       </div>
-    </div>
+    </main>
   );
 };
 

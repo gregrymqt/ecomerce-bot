@@ -21,13 +21,13 @@ export const DashboardKpiGrid: React.FC<DashboardKpiGridProps> = ({
   loading = false,
   className,
 }) => {
-  const totalExtracted = metrics?.total_extracted ?? 1284;
-  const growth = metrics?.growth_percentage ?? 14.2;
-  const successRate = metrics?.success_rate_percentage ?? 98.5;
-  const hoursSaved = metrics?.estimated_hours_saved ?? 48;
-  const creditsUsed = metrics?.credits_used ?? 8500;
-  const creditsTotal = metrics?.credits_total ?? 10000;
-  const creditPercent = Math.round((creditsUsed / (creditsTotal || 1)) * 100);
+  const totalExtracted = metrics?.total_extracted ?? 0;
+  const growth = metrics?.growth_percentage ?? 0;
+  const successRate = metrics?.success_rate_percentage ?? 0;
+  const hoursSaved = metrics?.estimated_hours_saved ?? 0;
+  const creditsRemaining = metrics?.credits_remaining ?? 0;
+  const creditsTotal = metrics?.credits_total ?? 0;
+  const creditPercent = creditsTotal > 0 ? Math.round((creditsRemaining / creditsTotal) * 100) : 0;
 
   return (
     <div className={cn('grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-slate-100', className)}>
@@ -46,10 +46,12 @@ export const DashboardKpiGrid: React.FC<DashboardKpiGridProps> = ({
             <span className="text-2xl sm:text-3xl font-black text-white">
               {loading ? '...' : totalExtracted.toLocaleString('pt-BR')}
             </span>
-            <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-              <TrendingUp className="h-3 w-3" />
-              +{growth}%
-            </span>
+            {growth > 0 && (
+              <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                <TrendingUp className="h-3 w-3" />
+                +{growth}%
+              </span>
+            )}
           </div>
           <span className="text-xs text-slate-400 mt-1 block">Produtos ingeridos no período</span>
         </div>
@@ -104,7 +106,7 @@ export const DashboardKpiGrid: React.FC<DashboardKpiGridProps> = ({
         <div className="space-y-2">
           <div className="flex items-baseline justify-between">
             <span className="text-xl sm:text-2xl font-black text-white">
-              {loading ? '...' : creditsUsed.toLocaleString('pt-BR')}
+              {loading ? '...' : creditsRemaining.toLocaleString('pt-BR')}
             </span>
             <span className="text-xs font-mono text-slate-400">
               / {creditsTotal.toLocaleString('pt-BR')}

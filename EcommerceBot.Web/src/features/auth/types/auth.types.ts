@@ -90,7 +90,7 @@ export interface RegisterPayload {
   email: string;
   password: string;
   name: string;
-  tenants?: string[];
+  tenantName?: string;
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;

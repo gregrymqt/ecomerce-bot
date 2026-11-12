@@ -15,23 +15,23 @@ export const useScraper = (): UseScraperReturn => {
   const [error, setError] = useState<string | null>(null);
   const [taskId, setTaskId] = useState<string | null>(null);
 
-  const submitUrl = useCallback(async () => {
+  const submitUrl = useCallback(async (): Promise<boolean> => {
     const trimmed = url.trim();
 
     if (!trimmed) {
       setError('Por favor, insira a URL do produto.');
-      return;
+      return false;
     }
 
     try {
       const parsed = new URL(trimmed);
       if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
         setError('Apenas links HTTP ou HTTPS são suportados.');
-        return;
+        return false;
       }
     } catch {
       setError('URL inválida. Ex: https://sualoja.com.br/produto');
-      return;
+      return false;
     }
 
     setIsLoading(true);
@@ -41,9 +41,11 @@ export const useScraper = (): UseScraperReturn => {
     try {
       const response = await scraperService.extractUrl({ url: trimmed });
       setTaskId(response.task_id);
+      return true;
     } catch (err: unknown) {
       const detail = getErrorMessage(err, 'Falha ao iniciar a extração.');
       setError(detail);
+      return false;
     } finally {
       setIsLoading(false);
     }

@@ -18,25 +18,15 @@ export interface VolumePerformanceChartProps {
   className?: string;
 }
 
-const DEFAULT_CHART_DATA: VolumeChartItem[] = [
-  { label: 'Seg', raw_count: 140, processed_count: 135 },
-  { label: 'Ter', raw_count: 210, processed_count: 205 },
-  { label: 'Qua', raw_count: 180, processed_count: 178 },
-  { label: 'Qui', raw_count: 260, processed_count: 254 },
-  { label: 'Sex', raw_count: 310, processed_count: 300 },
-  { label: 'Sáb', raw_count: 150, processed_count: 148 },
-  { label: 'Dom', raw_count: 90, processed_count: 88 },
-];
-
 export const VolumePerformanceChart: React.FC<VolumePerformanceChartProps> = ({
-  items = DEFAULT_CHART_DATA,
+  items = [],
   period,
   onPeriodChange,
   loading = false,
   className,
 }) => {
-  const chartData = items && items.length > 0 ? items : DEFAULT_CHART_DATA;
-  const maxVal = Math.max(...chartData.map((d) => Math.max(d.raw_count, d.processed_count)), 350);
+  const chartData = items ?? [];
+  const maxVal = Math.max(...chartData.map((d) => Math.max(d.raw_count, d.processed_count)), 1);
 
   return (
     <div
@@ -77,43 +67,53 @@ export const VolumePerformanceChart: React.FC<VolumePerformanceChartProps> = ({
         </div>
       </div>
 
-      {/* Área das Barras Pareadas */}
-      <div className="h-64 pt-4 flex items-end justify-between gap-2 sm:gap-6 px-2">
-        {chartData.map((item, idx) => {
-          const rawHeightPercent = Math.round((item.raw_count / maxVal) * 100);
-          const processedHeightPercent = Math.round((item.processed_count / maxVal) * 100);
+      {/* Área das Barras Pareadas ou Estado Vazio */}
+      {chartData.length === 0 && !loading ? (
+        <div className="h-64 flex flex-col items-center justify-center text-center border border-dashed border-[#1E293B] rounded-xl bg-[#090D16]/40 px-4">
+          <BarChart2 className="h-8 w-8 text-slate-600 mb-2" aria-hidden="true" />
+          <p className="text-sm font-medium text-slate-300">Nenhum volume registrado neste período</p>
+          <p className="text-xs text-slate-500 mt-1">
+            Assim que produtos forem extraídos ou enriquecidos, o gráfico será atualizado aqui.
+          </p>
+        </div>
+      ) : (
+        <div className="h-64 pt-4 flex items-end justify-between gap-2 sm:gap-6 px-2">
+          {chartData.map((item, idx) => {
+            const rawHeightPercent = Math.round((item.raw_count / maxVal) * 100);
+            const processedHeightPercent = Math.round((item.processed_count / maxVal) * 100);
 
-          return (
-            <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
-              <div className="w-full flex items-end justify-center gap-1 sm:gap-2 h-full">
-                {/* Barra RAW (Bruto) */}
-                <div
-                  className="w-3 sm:w-5 bg-indigo-600/70 hover:bg-indigo-500 rounded-t-md transition-all duration-300 relative"
-                  style={{ height: loading ? '10%' : `${rawHeightPercent}%` }}
-                >
-                  <span className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-7 left-1/2 -translate-x-1/2 bg-[#090D16] text-slate-200 text-[10px] font-mono px-1.5 py-0.5 rounded border border-[#1E293B] pointer-events-none z-10">
-                    {item.raw_count}
-                  </span>
+            return (
+              <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
+                <div className="w-full flex items-end justify-center gap-1 sm:gap-2 h-full">
+                  {/* Barra RAW (Bruto) */}
+                  <div
+                    className="w-3 sm:w-5 bg-indigo-600/70 hover:bg-indigo-500 rounded-t-md transition-all duration-300 relative"
+                    style={{ height: loading ? '10%' : `${rawHeightPercent}%` }}
+                  >
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-7 left-1/2 -translate-x-1/2 bg-[#090D16] text-slate-200 text-[10px] font-mono px-1.5 py-0.5 rounded border border-[#1E293B] pointer-events-none z-10">
+                      {item.raw_count}
+                    </span>
+                  </div>
+
+                  {/* Barra PROCESSED (IA Neon) */}
+                  <div
+                    className="w-3 sm:w-5 bg-violet-500 shadow-[0_0_12px_rgba(139,92,246,0.6)] hover:bg-violet-400 rounded-t-md transition-all duration-300 relative"
+                    style={{ height: loading ? '10%' : `${processedHeightPercent}%` }}
+                  >
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-7 left-1/2 -translate-x-1/2 bg-[#090D16] text-emerald-400 text-[10px] font-mono px-1.5 py-0.5 rounded border border-[#1E293B] pointer-events-none z-10">
+                      {item.processed_count}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Barra PROCESSED (IA Neon) */}
-                <div
-                  className="w-3 sm:w-5 bg-violet-500 shadow-[0_0_12px_rgba(139,92,246,0.6)] hover:bg-violet-400 rounded-t-md transition-all duration-300 relative"
-                  style={{ height: loading ? '10%' : `${processedHeightPercent}%` }}
-                >
-                  <span className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-7 left-1/2 -translate-x-1/2 bg-[#090D16] text-emerald-400 text-[10px] font-mono px-1.5 py-0.5 rounded border border-[#1E293B] pointer-events-none z-10">
-                    {item.processed_count}
-                  </span>
-                </div>
+                <span className="text-[11px] font-mono text-slate-400 group-hover:text-white transition-colors">
+                  {item.label}
+                </span>
               </div>
-
-              <span className="text-[11px] font-mono text-slate-400 group-hover:text-white transition-colors">
-                {item.label}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Legenda do Gráfico */}
       <div className="pt-4 border-t border-[#1E293B] flex items-center justify-between text-xs text-slate-400">

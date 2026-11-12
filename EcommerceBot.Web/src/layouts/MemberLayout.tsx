@@ -104,7 +104,7 @@ export const MemberLayout: React.FC = () => {
                   size="sm"
                   onClick={() => logout()}
                   title="Sair da conta"
-                  className="min-h-[36px] px-2 text-rose-400 hover:bg-rose-950/30"
+                  className="min-h-[44px] min-w-[44px] px-2 text-rose-400 hover:bg-rose-950/30"
                 >
                   <LogOut className="w-4 h-4" />
                 </Button>
@@ -128,7 +128,7 @@ export const MemberLayout: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/wallet')}
-            className="hidden sm:inline-flex items-center gap-1 font-bold text-white hover:text-indigo-300 underline underline-offset-2 ml-4 shrink-0 cursor-pointer"
+            className="hidden sm:inline-flex items-center gap-1 font-bold text-white hover:text-indigo-300 underline underline-offset-2 ml-4 shrink-0 min-h-[44px] cursor-pointer"
           >
             <span>Fazer Upgrade</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -153,7 +153,7 @@ export const MemberLayout: React.FC = () => {
               size="sm"
               onClick={() => navigate('/wallet')}
               iconLeft={<Sparkles className="w-4 h-4 text-amber-300" />}
-              className="min-h-[38px] text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20 cursor-pointer"
+              className="min-h-[44px] text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20 cursor-pointer"
             >
               🚀 Upgrade para Pro
             </Button>

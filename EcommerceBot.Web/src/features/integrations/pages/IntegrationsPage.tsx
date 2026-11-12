@@ -6,13 +6,15 @@
  * banner de segurança e modais de credenciais.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Link as LinkIcon,
   Plus,
   ShieldCheck,
   Sparkles,
   ArrowRight,
+  Store,
+  ShoppingBag,
 } from 'lucide-react';
 import { useIntegrations } from '../hooks';
 import {
@@ -22,9 +24,11 @@ import {
   ShopifyCredentialsModal,
   NuvemshopCredentialsModal,
 } from '../components';
-import { Button, Alert } from '@/components/ui';
+import { Button, Alert, Modal } from '@/components/ui';
+import { SEO } from '@/components/common/SEO';
 
 export const IntegrationsPage: React.FC = () => {
+  const [isPlatformChooserOpen, setIsPlatformChooserOpen] = useState(false);
   const {
     summary,
     integrations,
@@ -50,11 +54,11 @@ export const IntegrationsPage: React.FC = () => {
   const hasConnectedStore = Boolean(shopifyIntegration || nuvemshopIntegration);
 
   return (
-    <div
-      role="main"
-      aria-label="Central de Integrações de E-commerce"
-      className="space-y-8 max-w-7xl mx-auto pb-16 px-4 sm:px-6"
-    >
+    <div className="space-y-8 max-w-7xl mx-auto pb-16 px-4 sm:px-6">
+      <SEO
+        title="Integrações"
+        description="Conecte e sincronize suas lojas Shopify e Nuvemshop com o E-Commerce AutoBot."
+      />
       {/* Cabeçalho da Página */}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
@@ -75,7 +79,7 @@ export const IntegrationsPage: React.FC = () => {
             type="button"
             variant="primary"
             size="md"
-            onClick={() => setIsShopifyModalOpen(true)}
+            onClick={() => setIsPlatformChooserOpen(true)}
             aria-label="Adicionar Nova Loja"
             iconLeft={<Plus className="h-4 w-4" />}
             className="min-h-[44px] bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-600/25"
@@ -182,6 +186,51 @@ export const IntegrationsPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Modal Seletor de Plataforma para Nova Loja */}
+      <Modal
+        isOpen={isPlatformChooserOpen}
+        onClose={() => setIsPlatformChooserOpen(false)}
+        title="Escolher Plataforma de E-commerce"
+        description="Selecione qual loja virtual deseja conectar ao seu painel multi-store."
+        size="md"
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <button
+            type="button"
+            onClick={() => {
+              setIsPlatformChooserOpen(false);
+              setIsShopifyModalOpen(true);
+            }}
+            className="min-h-[44px] p-4 rounded-xl border border-slate-700 bg-slate-900/80 hover:border-emerald-500/60 hover:bg-slate-800/80 text-left flex flex-col gap-2 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+              <ShoppingBag className="w-5 h-5" aria-hidden="true" />
+              <span>Shopify</span>
+            </div>
+            <p className="text-xs text-slate-400">
+              Conecte via Admin API / Token Custom App da sua loja Shopify.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsPlatformChooserOpen(false);
+              setIsNuvemshopModalOpen(true);
+            }}
+            className="min-h-[44px] p-4 rounded-xl border border-slate-700 bg-slate-900/80 hover:border-indigo-500/60 hover:bg-slate-800/80 text-left flex flex-col gap-2 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-2 text-indigo-400 font-bold text-sm">
+              <Store className="w-5 h-5" aria-hidden="true" />
+              <span>Nuvemshop</span>
+            </div>
+            <p className="text-xs text-slate-400">
+              Conecte via OAuth automático ou Token de Acesso Nuvemshop.
+            </p>
+          </button>
+        </div>
+      </Modal>
 
       {/* Modal de Credenciais da Shopify */}
       <ShopifyCredentialsModal
