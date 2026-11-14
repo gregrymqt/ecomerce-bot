@@ -10,7 +10,6 @@ using EcommerceBot.Application.Interfaces.Gateways;
 using EcommerceBot.Application.Security;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
-using MassTransit;
 using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Messaging;

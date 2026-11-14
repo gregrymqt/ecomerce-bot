@@ -12,7 +12,7 @@ using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
 using EcommerceBot.Infrastructure.Gateways;
 using EcommerceBot.Infrastructure.Options;
-using MassTransit;
+using EcommerceBot.Infrastructure.Messaging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 

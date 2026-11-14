@@ -50,31 +50,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Broker de Mensageria RabbitMQ
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    container_name: prod-rabbitmq-bot
-    restart: unless-stopped
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-prod_rabbitmq_password_secure}
-    ports:
-      - "127.0.0.1:15672:15672" # Painel Web de Gestão protegido no localhost da VPS
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 384M
-    volumes:
-      - rabbitmq-prod-data:/var/lib/rabbitmq
-    networks:
-      - internal-net
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   # ==============================================================================
   # 2. RUNNER DE MIGRAÇÕES DETERMINÍSTICAS (DbUp .NET 9)
   # ==============================================================================
@@ -126,10 +101,6 @@ services:
       - ConnectionStrings__Redis=${ConnectionStrings__Redis:-${Redis__ConnectionString:-redis:6379,password=${REDIS_PASSWORD:-prod_redis_password_secure},abortConnect=false}}
       - Redis__ConnectionString=${Redis__ConnectionString:-${ConnectionStrings__Redis:-redis:6379,password=${REDIS_PASSWORD:-prod_redis_password_secure},abortConnect=false}}
       - Redis__Password=${REDIS_PASSWORD:-prod_redis_password_secure}
-      - RabbitMQ__Host=${RabbitMQ__Host:-rabbitmq}
-      - RabbitMQ__Username=${RabbitMQ__Username:-${RABBITMQ_USER:-guest}}
-      - RabbitMQ__Password=${RabbitMQ__Password:-${RABBITMQ_PASS:-prod_rabbitmq_password_secure}}
-      - RabbitMQ__Port=5672
       - Jwt__Key=${Jwt__Key:-${JWT_SECRET_KEY}}
       - Jwt__Issuer=${Jwt__Issuer:-EcommerceBotApi}
       - Jwt__Audience=${Jwt__Audience:-EcommerceBotClient}
@@ -162,8 +133,6 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
     networks:
       - internal-net
@@ -214,8 +183,6 @@ services:
       - worker-prod-artifacts:/app/app/ml/models/artifacts
     depends_on:
       redis:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
     networks:
       - internal-net
@@ -307,7 +274,6 @@ networks:
 volumes:
   postgres-prod-data:
   redis-prod-data:
-  rabbitmq-prod-data:
   certbot-etc:
   certbot-var:
   certbot-www:

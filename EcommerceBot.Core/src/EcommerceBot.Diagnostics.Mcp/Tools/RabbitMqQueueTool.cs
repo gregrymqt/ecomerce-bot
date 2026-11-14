@@ -1,221 +1,136 @@
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Net.Sockets;
-using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Diagnostics.Mcp.Protocol;
-using EcommerceBot.Infrastructure.Options;
-using Microsoft.Extensions.Options;
+using EcommerceBot.Infrastructure.Messaging;
+using StackExchange.Redis;
 
 namespace EcommerceBot.Diagnostics.Mcp.Tools;
 
 /// <summary>
-/// Ferramenta de inspeção de profundidade de filas e Dead Letter Queues (DLQs) no RabbitMQ 3.13.
-/// Consulta a RabbitMQ Management API (HTTP 15672) ou valida conectividade TCP no broker (AMQP 5672).
+/// Ferramenta de inspeção de profundidade de streams e Dead Letter Queues (DLQs) no Redis Streams.
 /// Totalmente Read-Only e com suporte a cancelamento cooperativo.
 /// </summary>
 public sealed class RabbitMqQueueTool : ISystemDiagnosticTool
 {
-    private readonly RabbitMqOptions _options;
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IConnectionMultiplexer? _redis;
 
-    private static readonly string[] CriticalQueues =
+    private static readonly string[] CriticalStreams =
     [
-        "queue:ecommerce",
-        "queue:analytics_ml",
-        "ecommerce_scraped_queue",
-        "email_notifications",
-        "nuvemshop_bulk_sync",
-        "queue:ecommerce_error",
-        "analytics_ml_error"
+        RedisStreamNames.ScrapingProd,
+        RedisStreamNames.ScrapingDemo,
+        RedisStreamNames.AnalyticsMl,
+        RedisStreamNames.ScrapedResults,
+        RedisStreamNames.EmailNotifications,
+        RedisStreamNames.PaymentsProcess,
+        RedisStreamNames.ShopifyBulkSync,
+        RedisStreamNames.NuvemshopBulkSync,
+        RedisStreamNames.DlqEcommerce
     ];
 
-    public RabbitMqQueueTool(IOptions<RabbitMqOptions> options, IHttpClientFactory httpClientFactory)
+    public RabbitMqQueueTool(IConnectionMultiplexer? redis = null)
     {
-        _options = options.Value;
-        _httpClientFactory = httpClientFactory;
+        _redis = redis;
     }
 
-    public string Name => "inspect_rabbitmq_queues";
+    public string Name => "inspect_redis_streams";
 
-    public string Description => "Inspeciona o backlog de mensagens, consumidores ativos e taxas nas filas críticas e DLQs do RabbitMQ.";
+    public string Description => "Inspeciona o backlog de mensagens, comprimento dos streams e DLQs no Redis Streams.";
 
     public object InputSchema => new
     {
         type = "object",
         properties = new
         {
-            queueName = new
+            streamName = new
             {
                 type = "string",
-                description = "Nome de uma fila específica para inspecionar. Se omitido, inspeciona todas as filas canônicas."
+                description = "Nome de um stream específico para inspecionar. Se omitido, inspeciona todos os streams canônicos."
             }
         }
     };
 
     public async Task<McpToolCallResult> ExecuteAsync(JsonElement? arguments, CancellationToken cancellationToken = default)
     {
-        string? targetQueue = null;
-        if (arguments.HasValue && arguments.Value.TryGetProperty("queueName", out var qProp))
+        if (_redis == null)
         {
-            targetQueue = qProp.GetString();
+            return new McpToolCallResult
+            {
+                IsError = true,
+                Content = [new McpContentItem { Text = "Redis não conectado ou serviço indisponível." }]
+            };
         }
 
-        var queuesToCheck = string.IsNullOrWhiteSpace(targetQueue)
-            ? CriticalQueues
-            : [targetQueue];
+        var db = _redis.GetDatabase();
+        var streamsToInspect = new List<string>();
 
-        try
+        if (arguments.HasValue && arguments.Value.TryGetProperty("streamName", out var streamProp) && streamProp.ValueKind == JsonValueKind.String)
         {
-            // Consulta via RabbitMQ Management API reutilizando HttpClient configurado
-            var httpClient = _httpClientFactory.CreateClient("RabbitMqManagement");
-            var authBytes = Encoding.ASCII.GetBytes($"{_options.Username}:{_options.Password}");
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
-
-            var queueReports = new List<object>();
-            bool managementApiAvailable = true;
-
-            foreach (var q in queuesToCheck)
+            var specificStream = streamProp.GetString();
+            if (!string.IsNullOrWhiteSpace(specificStream))
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                streamsToInspect.Add(RedisStreamNames.ResolveStream(specificStream));
+            }
+        }
 
-                var encodedVhost = Uri.EscapeDataString(_options.VirtualHost);
-                var encodedQueue = Uri.EscapeDataString(q);
-                var managementUrl = $"http://{_options.Host}:15672/api/queues/{encodedVhost}/{encodedQueue}";
+        if (streamsToInspect.Count == 0)
+        {
+            streamsToInspect.AddRange(CriticalStreams);
+        }
+
+        var results = new List<object>();
+
+        foreach (var stream in streamsToInspect)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                var length = await db.StreamLengthAsync(stream);
+                var groupInfoList = new List<object>();
 
                 try
                 {
-                    using var response = await httpClient.GetAsync(managementUrl, cancellationToken);
-                    if (response.IsSuccessStatusCode)
+                    var groups = await db.StreamGroupInfoAsync(stream);
+                    foreach (var g in groups)
                     {
-                        var json = await response.Content.ReadAsStringAsync(cancellationToken);
-                        using var doc = JsonDocument.Parse(json);
-                        var root = doc.RootElement;
-
-                        long messages = root.TryGetProperty("messages", out var m) ? m.GetInt64() : 0;
-                        long ready = root.TryGetProperty("messages_ready", out var mr) ? mr.GetInt64() : 0;
-                        long unacked = root.TryGetProperty("messages_unacknowledged", out var mu) ? mu.GetInt64() : 0;
-                        int consumers = root.TryGetProperty("consumers", out var c) ? c.GetInt32() : 0;
-
-                        queueReports.Add(new
+                        groupInfoList.Add(new
                         {
-                            queue = q,
-                            status = messages > 1000 ? "WARNING_BACKLOG" : (q.EndsWith("_error") && messages > 0 ? "WARNING_DEAD_LETTERS" : "HEALTHY"),
-                            totalMessages = messages,
-                            readyMessages = ready,
-                            unacknowledgedMessages = unacked,
-                            activeConsumers = consumers
+                            name = g.Name,
+                            consumers = g.ConsumerCount,
+                            pending = g.PendingMessageCount,
+                            lastDeliveredId = g.LastDeliveredId?.ToString() ?? string.Empty
                         });
                     }
-                    else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                    {
-                        queueReports.Add(new
-                        {
-                            queue = q,
-                            status = "QUEUE_NOT_YET_DECLARED",
-                            notice = "A fila ainda não recebeu tráfego ou não foi declarada pelo MassTransit/Worker."
-                        });
-                    }
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    throw;
                 }
                 catch
                 {
-                    managementApiAvailable = false;
-                    break;
+                    // Stream pode não ter consumer group criado ainda
                 }
-            }
 
-            if (managementApiAvailable && queueReports.Count > 0)
-            {
-                var report = new
+                results.Add(new
                 {
-                    host = _options.Host,
-                    virtualHost = _options.VirtualHost,
-                    managementApi = "CONNECTED",
-                    queues = queueReports
-                };
-
-                return new McpToolCallResult
-                {
-                    IsError = false,
-                    Content =
-                    [
-                        new()
-                        {
-                            Type = "text",
-                            Text = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true })
-                        }
-                    ]
-                };
+                    stream = stream,
+                    length = length,
+                    groups = groupInfoList
+                });
             }
-
-            // Fallback: Teste de conectividade TCP na porta AMQP 5672
-            using var tcpClient = new TcpClient();
-            var connectTask = tcpClient.ConnectAsync(_options.Host, _options.Port, cancellationToken).AsTask();
-            var completedTask = await Task.WhenAny(connectTask, Task.Delay(2000, cancellationToken));
-
-            bool tcpConnected = completedTask == connectTask && tcpClient.Connected;
-
-            var fallbackReport = new
+            catch (Exception ex)
             {
-                host = _options.Host,
-                amqpPort = _options.Port,
-                tcpConnected,
-                managementApi = "UNAVAILABLE_OR_PORT_CLOSED",
-                notice = tcpConnected
-                    ? $"Broker AMQP em {_options.Host}:{_options.Port} está online. A API de Management HTTP (porta 15672) não respondeu."
-                    : $"Não foi possível conectar ao RabbitMQ em {_options.Host}:{_options.Port} via TCP."
-            };
-
-            return new McpToolCallResult
-            {
-                IsError = !tcpConnected,
-                Content =
-                [
-                    new()
-                    {
-                        Type = "text",
-                        Text = JsonSerializer.Serialize(fallbackReport, new JsonSerializerOptions { WriteIndented = true })
-                    }
-                ]
-            };
+                results.Add(new
+                {
+                    stream = stream,
+                    error = ex.Message
+                });
+            }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+
+        var json = JsonSerializer.Serialize(results, new JsonSerializerOptions { WriteIndented = true });
+        return new McpToolCallResult
         {
-            return new McpToolCallResult
-            {
-                IsError = true,
-                Content =
-                [
-                    new()
-                    {
-                        Type = "text",
-                        Text = "Operação de inspeção do RabbitMQ cancelada."
-                    }
-                ]
-            };
-        }
-        catch (Exception ex)
-        {
-            return new McpToolCallResult
-            {
-                IsError = true,
-                Content =
-                [
-                    new()
-                    {
-                        Type = "text",
-                        Text = $"Erro ao inspecionar RabbitMQ: {ex.Message}"
-                    }
-                ]
-            };
-        }
+            Content = [new McpContentItem { Text = json }]
+        };
     }
 }

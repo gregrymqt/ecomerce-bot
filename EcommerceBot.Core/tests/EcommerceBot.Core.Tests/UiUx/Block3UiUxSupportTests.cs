@@ -19,7 +19,7 @@ using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
 using EcommerceBot.Infrastructure.Services;
 using FluentAssertions;
-using MassTransit;
+using EcommerceBot.Infrastructure.Messaging;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using StackExchange.Redis;
@@ -404,7 +404,6 @@ public sealed class Block3UiUxSupportTests
 
     private sealed class NoopSendEndpointProvider : ISendEndpointProvider
     {
-        public ConnectHandle ConnectSendObserver(ISendObserver observer) => throw new NotImplementedException();
         public Task<ISendEndpoint> GetSendEndpoint(Uri address) => throw new NotImplementedException();
     }
 

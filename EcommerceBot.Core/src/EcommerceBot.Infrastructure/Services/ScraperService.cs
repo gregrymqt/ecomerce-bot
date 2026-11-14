@@ -5,7 +5,7 @@ using EcommerceBot.Application.DTOs.Scraper;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Application.Security;
 using EcommerceBot.Domain.Interfaces;
-using MassTransit;
+using EcommerceBot.Infrastructure.Messaging;
 using Microsoft.Extensions.Logging;
 
 namespace EcommerceBot.Infrastructure.Services;
