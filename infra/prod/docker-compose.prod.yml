@@ -3,44 +3,31 @@ services:
   # 1. BANCO DE DADOS & INFRAESTRUTURA BASE
   # ==============================================================================
 
-  # Banco de Dados Microsoft SQL Server 2022 em Docker/Linux
-  mssql:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: prod-mssql-bot
-    user: "0:0"
+  # Banco de Dados Relacional PostgreSQL 16
+  postgres:
+    image: postgres:16-alpine
+    container_name: prod-postgres-bot
     restart: unless-stopped
     environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-prod_mssql_password_secure}
-      MSSQL_PID: ${MSSQL_PID:-Developer}
-      MSSQL_AGENT_ENABLED: "true"
-      MSSQL_MEMORY_LIMIT_MB: "2200"
-    ulimits:
-      nofile:
-        soft: 65536
-        hard: 65536
-    ports:
-      - "127.0.0.1:1433:1433" # Acesso seguro restrito ao localhost (Túnel SSH / DBeaver / Azure Data Studio)
+      POSTGRES_DB: ${POSTGRES_DB:-ecommerce_bot_db}
+      POSTGRES_USER: ${POSTGRES_USER:-usr_ecommerce_api}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-prod_postgres_password_secure}
     deploy:
       resources:
         limits:
-          cpus: '2.0'
-          memory: 2800M
+          cpus: '1.0'
+          memory: 384M
         reservations:
-          memory: 1536M
+          memory: 192M
     volumes:
-      - mssql-prod-data:/var/opt/mssql/data
-      - mssql-prod-log:/var/opt/mssql/log
-      - mssql-prod-tempdb:/var/opt/mssql/tempdb
-      - mssql-prod-backup:/var/opt/mssql/backup
+      - postgres-prod-data:/var/lib/postgresql/data
     networks:
       - internal-net
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD:-prod_mssql_password_secure}\" -C -Q \"SELECT 1\" || exit 1"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-usr_ecommerce_api} -d $${POSTGRES_DB:-ecommerce_bot_db}"]
+      interval: 5s
       timeout: 5s
       retries: 5
-      start_period: 20s
 
   # Redis de Alta Performance (Cache & SSE Pub/Sub)
   redis:
@@ -102,10 +89,10 @@ services:
       - path: ../../.env
         required: false
     environment:
-      - MSSQL_CONNECTION_STRING=${MSSQL_DEPLOYER_CONNECTION_STRING:-Server=mssql,1433;Database=EcommerceBotDb;User Id=usr_ecommerce_deployer;Password=${MSSQL_DEPLOYER_PASSWORD:-Deployer@Secure_Passw0rd_Prod2026!};TrustServerCertificate=True;Encrypt=False;}
-      - ConnectionStrings__DefaultConnection=${MSSQL_DEPLOYER_CONNECTION_STRING:-Server=mssql,1433;Database=EcommerceBotDb;User Id=usr_ecommerce_deployer;Password=${MSSQL_DEPLOYER_PASSWORD:-Deployer@Secure_Passw0rd_Prod2026!};TrustServerCertificate=True;Encrypt=False;}
+      - POSTGRES_CONNECTION_STRING=${POSTGRES_CONNECTION_STRING:-Host=postgres;Port=5432;Database=ecommerce_bot_db;Username=usr_ecommerce_api;Password=prod_postgres_password_secure;}
+      - ConnectionStrings__DefaultConnection=${POSTGRES_CONNECTION_STRING:-Host=postgres;Port=5432;Database=ecommerce_bot_db;Username=usr_ecommerce_api;Password=prod_postgres_password_secure;}
     depends_on:
-      mssql:
+      postgres:
         condition: service_healthy
     networks:
       - internal-net
@@ -134,8 +121,8 @@ services:
       - DOTNET_ServerGarbageCollection=0
       - DOTNET_GCHeapHardLimit=0x10000000
       - DOTNET_GCTrimCommit=1
-      - ConnectionStrings__DefaultConnection=${ConnectionStrings__DefaultConnection:-${MSSQL_CONNECTION_STRING:-Server=mssql,1433;Database=EcommerceBotDb;User Id=usr_ecommerce_api;Password=${MSSQL_API_PASSWORD:-Api@Secure_Passw0rd_Prod2026!};TrustServerCertificate=True;Encrypt=False;}}
-      - MSSQL_CONNECTION_STRING=${MSSQL_CONNECTION_STRING:-${ConnectionStrings__DefaultConnection:-Server=mssql,1433;Database=EcommerceBotDb;User Id=usr_ecommerce_api;Password=${MSSQL_API_PASSWORD:-Api@Secure_Passw0rd_Prod2026!};TrustServerCertificate=True;Encrypt=False;}}
+      - ConnectionStrings__DefaultConnection=${ConnectionStrings__DefaultConnection:-${POSTGRES_CONNECTION_STRING:-Host=postgres;Port=5432;Database=ecommerce_bot_db;Username=usr_ecommerce_api;Password=${POSTGRES_API_PASSWORD:-prod_postgres_password_secure};}}
+      - POSTGRES_CONNECTION_STRING=${POSTGRES_CONNECTION_STRING:-${ConnectionStrings__DefaultConnection:-Host=postgres;Port=5432;Database=ecommerce_bot_db;Username=usr_ecommerce_api;Password=${POSTGRES_API_PASSWORD:-prod_postgres_password_secure};}}
       - ConnectionStrings__Redis=${ConnectionStrings__Redis:-${Redis__ConnectionString:-redis:6379,password=${REDIS_PASSWORD:-prod_redis_password_secure},abortConnect=false}}
       - Redis__ConnectionString=${Redis__ConnectionString:-${ConnectionStrings__Redis:-redis:6379,password=${REDIS_PASSWORD:-prod_redis_password_secure},abortConnect=false}}
       - Redis__Password=${REDIS_PASSWORD:-prod_redis_password_secure}
@@ -172,7 +159,7 @@ services:
           cpus: '1.5'
           memory: 768M
     depends_on:
-      mssql:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -318,10 +305,7 @@ networks:
     driver: bridge
 
 volumes:
-  mssql-prod-data:
-  mssql-prod-log:
-  mssql-prod-tempdb:
-  mssql-prod-backup:
+  postgres-prod-data:
   redis-prod-data:
   rabbitmq-prod-data:
   certbot-etc:

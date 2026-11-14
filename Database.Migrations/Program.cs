@@ -10,7 +10,7 @@ public class Program
     {
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("====================================================================");
-        Console.WriteLine("  🚀 E-commerce Bot — DbUp SQL Server Migration Engine (.NET 8)");
+        Console.WriteLine("  🚀 E-commerce Bot — DbUp PostgreSQL Migration Engine (.NET 9)");
         Console.WriteLine("====================================================================");
         Console.ResetColor();
 
@@ -31,33 +31,28 @@ public class Program
         }
         else
         {
-            connectionString = configuration["connectionString"] 
-                               ?? configuration["MSSQL_CONNECTION_STRING"] 
-                               ?? configuration["ConnectionStrings:DefaultConnection"];
+            connectionString = configuration["POSTGRES_CONNECTION_STRING"] 
+                               ?? configuration["connectionString"]
+                               ?? configuration["DATABASE_URL"];
+
+            var fallback = configuration["ConnectionStrings:DefaultConnection"];
+            if (string.IsNullOrWhiteSpace(connectionString) && !string.IsNullOrWhiteSpace(fallback))
+            {
+                // Verifica se não é formato legado do SQL Server
+                if (!fallback.Contains("Server=", StringComparison.OrdinalIgnoreCase) &&
+                    !fallback.Contains("Encrypt=", StringComparison.OrdinalIgnoreCase))
+                {
+                    connectionString = fallback;
+                }
+            }
         }
 
         if (string.IsNullOrWhiteSpace(connectionString))
         {
-            connectionString = "Server=127.0.0.1,1433;Database=EcommerceBotDb;User Id=sa;Password=YourStrong@Passw0rdDev;TrustServerCertificate=True;Encrypt=True;";
+            connectionString = "Host=127.0.0.1;Port=5432;Database=ecommerce_bot_db;Username=postgres;Password=postgres;";
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"⚠️ Nenhuma connection string informada. Utilizando padrão local de desenvolvimento: {connectionString}");
+            Console.WriteLine($"⚠️ Nenhuma connection string PostgreSQL informada. Utilizando padrão local de desenvolvimento: {connectionString}");
             Console.ResetColor();
-        }
-        else
-        {
-            // Sanitização para ambientes Windows + Docker Desktop:
-            // 'localhost' em Windows resolve para IPv6 (::1) prioritariamente. O proxy do WSL2/Docker
-            // pode derrubar a conexão durante o handshake de pré-logon TDS TLS. Normalizar para 127.0.0.1
-            // e garantir Encrypt=True / TrustServerCertificate=True elimina o erro de aperto de mão.
-            if (connectionString.Contains("localhost", StringComparison.OrdinalIgnoreCase))
-            {
-                connectionString = connectionString.Replace("localhost", "127.0.0.1", StringComparison.OrdinalIgnoreCase);
-            }
-
-            if (connectionString.Contains("Encrypt=False", StringComparison.OrdinalIgnoreCase))
-            {
-                connectionString = connectionString.Replace("Encrypt=False", "Encrypt=True", StringComparison.OrdinalIgnoreCase);
-            }
         }
 
         try
@@ -66,7 +61,7 @@ public class Program
             Console.WriteLine("🔍 Verificando/Criando banco de dados de destino...");
             try
             {
-                EnsureDatabase.For.SqlDatabase(connectionString);
+                EnsureDatabase.For.PostgresqlDatabase(connectionString);
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine("✅ Banco de dados pronto.");
                 Console.ResetColor();
@@ -74,17 +69,17 @@ public class Program
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"ℹ️ EnsureDatabase: {ex.Message} (Prosseguindo caso o banco já tenha sido provisionado por usuário de deploy).");
+                Console.WriteLine($"ℹ️ EnsureDatabase: {ex.Message} (Prosseguindo caso o banco já tenha sido provisionado).");
                 Console.ResetColor();
             }
 
-            // 3.1 Configure Concurrency & Query Store (RCSI + Observability)
+            // 3.1 Configure Extensions & Observability
             DatabaseConfigurationHelper.ConfigureDatabaseOptions(connectionString);
 
             // 4. Configure DbUp Upgrade Engine
             Console.WriteLine("📦 Descobrindo scripts versionados embutidos no assembly...");
             var upgrader = DeployChanges.To
-                .SqlDatabase(connectionString)
+                .PostgresqlDatabase(connectionString)
                 .WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly())
                 .WithVariablesDisabled()
                 .LogToConsole()
@@ -109,7 +104,7 @@ public class Program
             }
 
             // 6. Execute Upgrade
-            Console.WriteLine("\n🚀 Executando migrações T-SQL...");
+            Console.WriteLine("\n🚀 Executando migrações SQL (PostgreSQL)...");
             var result = upgrader.PerformUpgrade();
 
             if (!result.Successful)

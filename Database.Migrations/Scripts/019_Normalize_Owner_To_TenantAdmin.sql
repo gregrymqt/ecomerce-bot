@@ -1,20 +1,24 @@
 -- ==============================================================================
--- Script 019: Normalização de Role legado 'OWNER' para 'TENANT_ADMIN' (LOG-04)
+-- Script 019: Normalização de Role legado 'OWNER' para 'TENANT_ADMIN' (PostgreSQL 16)
 -- Idempotente: pode ser reexecutado com segurança via DbUp.
 -- ==============================================================================
 
-DECLARE @TenantAdminRoleId UNIQUEIDENTIFIER = (
-    SELECT TOP 1 Id FROM dbo.Roles WHERE Name = 'TENANT_ADMIN'
-);
-
-IF @TenantAdminRoleId IS NOT NULL AND EXISTS (
-    SELECT 1 FROM dbo.Users WHERE UPPER(Role) = 'OWNER'
-)
+DO $$
+DECLARE
+    v_tenant_admin_role_id UUID;
 BEGIN
-    UPDATE dbo.Users
-    SET Role = 'TENANT_ADMIN',
-        RoleId = @TenantAdminRoleId,
-        UpdatedAt = SYSDATETIMEOFFSET()
-    WHERE UPPER(Role) = 'OWNER';
-END
-GO
+    SELECT Id INTO v_tenant_admin_role_id 
+    FROM dbo.Roles 
+    WHERE Name = 'TENANT_ADMIN' 
+    LIMIT 1;
+
+    IF v_tenant_admin_role_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM dbo.Users WHERE UPPER(Role) = 'OWNER'
+    ) THEN
+        UPDATE dbo.Users
+        SET Role = 'TENANT_ADMIN',
+            RoleId = v_tenant_admin_role_id,
+            UpdatedAt = NOW()
+        WHERE UPPER(Role) = 'OWNER';
+    END IF;
+END $$;
