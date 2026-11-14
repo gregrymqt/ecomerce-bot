@@ -81,3 +81,36 @@ cd EcommerceBot.Web && npm install && npm run dev
 - **Frontend Web:** `npm run lint && npm run build && npm test` (em `EcommerceBot.Web/`)
 - **Worker Python:** `EcommerceBot.Worker\.venv\Scripts\pytest.exe -q` (em `EcommerceBot.Worker/`)
 - **Grafo de Código (Graft):** `graft check` / `graft build`
+
+---
+
+## 5. Navegação de Código & Invariantes Fail-Closed
+
+### Navegação obrigatória (Graft)
+
+O repositório é indexado em `graft/` (nós markdown com spans `file:line` sincronizados via git). Antes de qualquer `grep` manual ou leitura de arquivo:
+
+- `graft map` — orientação inicial (clusters de diretórios, hubs, hotspots).
+- `graft ask "<pergunta>" --source` — nó ranqueado com o trecho relevante inline (`--full` para definições inteiras).
+- `graft grep "<literal>"` — busca exaustiva agrupada por símbolo (para "todas as ocorrências").
+- `graft skeleton <file>` — assinaturas + spans, ~10x mais barato que ler o arquivo.
+- `graft callers <symbol>` — arestas exatas de chamada (`--direction out`, `--depth N` para raio de impacto).
+- Após mudanças estruturais, rodar `graft build` para manter o grafo fresco.
+
+### Invariantes (violação = bloqueio de merge)
+
+1. **Isolamento multi-tenant em SQL:** toda query/comando Dapper em tabela tenant-scoped deve conter `WHERE TenantId = @TenantId` com parâmetros tipados e respeitar a RLS via `SESSION_CONTEXT(N'TenantId')`.
+2. **Isolamento do Worker (`EcommerceBot.Worker`):** proibido importar drivers relacionais (`sqlalchemy`, `pyodbc`, `psycopg*`, `asyncpg`, `pymssql`, `tortoise-orm`) ou SDKs de LLM externos (`openai`, `anthropic`, `openrouter`, `langchain`). Comunicação apenas por RabbitMQ (`aio-pika`) e Redis; orquestração de LLM vive exclusivamente no `EcommerceBot.Core`.
+3. **Zero fallback estático de secret:** nunca usar `?? "default_secret"` para JWT, AES, chave interna de serviço ou webhook. Lançar `InvalidOperationException` ou retornar `401` (fail-closed).
+4. **Sem escalação de privilégio:** endpoints de perfil (`UpdateProfileAsync`) não podem aceitar nem mutar `Role`. Registros padrão nascem como `MEMBER` e nunca aceitam `TenantId` arbitrário sem autorização/convite.
+5. **Sem colisão de rotas HTTP:** proibido declarar o mesmo caminho de rota em controllers/actions distintos (`AmbiguousMatchException`).
+6. **Verificação de webhook em tempo constante:** Mercado Pago, Shopify, Nuvemshop e Svix/Resend somente via `CryptographicOperations.FixedTimeEquals` + idempotência `SET NX` no Redis por 24h (só após processamento durável/enfileiramento).
+7. **Anti-SSRF:** permitir apenas `http://` e `https://`; bloquear loopback, faixas privadas RFC 1918, link-local/metadata (`169.254.169.254`), `0.0.0.0`, ULA IPv6/loopback mapeado; validar DNS e redirects HTTP.
+8. **Sem HTML inline em e-mails:** no Core, Razor `.cshtml` em `src/EcommerceBot.Api/Views/Emails/` + ViewModel em `src/EcommerceBot.Application/ViewModels/Emails/` via `IRazorTemplateRenderer`; no Worker, Jinja2 `.html` em `app/templates/` com `autoescape=True`.
+9. **Bootstrapping limpo:** `Program.cs` é apenas orquestração de pipeline; DI/options/middleware ficam em `Configurations/` e `Middlewares/`. Em produção, Workstation GC (`DOTNET_ServerGarbageCollection=0`, `DOTNET_GCHeapHardLimit=0x10000000`, `DOTNET_GCTrimCommit=1`) para proteger o VPS de 6 GB.
+10. **MCP de diagnóstico read-only (`EcommerceBot.Diagnostics.Mcp`):** expor somente DMVs (`WITH (NOLOCK)`), Redis, RabbitMQ e logs; nunca vazar secrets nem executar DML/DDL dinâmico.
+
+### Regras do Frontend SPA
+
+- Isolamento estrito em 4 camadas (`Types -> Services -> Hooks -> Components/Pages`): componentes e páginas nunca importam `services/` nem `apiClient` diretamente.
+- Configuração via `@/config/env` (sem `import.meta.env` espalhado), WCAG 2.1 AA (`min-h-[44px]`, inputs `>= 16px`) e teto de **350 linhas por arquivo** (ESLint `max-lines`, sem `eslint-disable`).
