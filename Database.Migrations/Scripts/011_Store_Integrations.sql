@@ -1,50 +1,38 @@
 -- ==============================================================================
--- Script 011: Integrações de Lojas Multi-Tenant (Shopify, Nuvemshop, WooCommerce)
+-- Script 011: Integrações de Lojas Multi-Tenant (PostgreSQL 16)
 -- E-commerce Bot SaaS
--- Padrão: Idempotente com IF NOT EXISTS, UNIQUEIDENTIFIER (NEWSEQUENTIALID()),
---         DATETIMEOFFSET (SYSDATETIMEOFFSET()), Criptografia AES-256 GCM BYOK e FKs ON DELETE CASCADE
 -- ==============================================================================
 
+CREATE SCHEMA IF NOT EXISTS dbo;
+
 -- 1. Tabela: StoreIntegrations (Gestão de Conexões e Credenciais Criptografadas AES-256 GCM)
-IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'StoreIntegrations' AND schema_id = SCHEMA_ID('dbo'))
-BEGIN
-    CREATE TABLE dbo.StoreIntegrations (
-        Id UNIQUEIDENTIFIER NOT NULL DEFAULT NEWSEQUENTIALID(),
-        TenantId UNIQUEIDENTIFIER NOT NULL,
-        Platform NVARCHAR(50) NOT NULL, -- 'SHOPIFY', 'NUVEMSHOP', 'WOOCOMMERCE'
-        StoreDomain NVARCHAR(255) NOT NULL, -- ex: "minhaloja.myshopify.com"
-        EncryptedAccessToken VARBINARY(MAX) NOT NULL,
-        EncryptedClientSecret VARBINARY(MAX) NULL,
-        InitializationVector VARBINARY(32) NOT NULL, -- Nonce / IV para AES-256 GCM
-        AuthTag VARBINARY(32) NOT NULL, -- Tag de Autenticação GCM
-        Status NVARCHAR(30) NOT NULL DEFAULT 'CONNECTED', -- 'CONNECTED', 'DISCONNECTED', 'ERROR'
-        HealthCheckStatus NVARCHAR(200) NULL,
-        HealthCheckLatencyMs INT NULL,
-        LastHealthCheckAt DATETIMEOFFSET NULL,
-        CreatedAt DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-        UpdatedAt DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-        CONSTRAINT PK_StoreIntegrations PRIMARY KEY CLUSTERED (Id),
-        CONSTRAINT FK_StoreIntegrations_Tenants FOREIGN KEY (TenantId) 
-            REFERENCES dbo.Tenants(Id) ON DELETE CASCADE,
-        CONSTRAINT UQ_StoreIntegrations_Tenant_Platform_Domain UNIQUE NONCLUSTERED (TenantId, Platform, StoreDomain)
-    );
-END
-GO
+CREATE TABLE IF NOT EXISTS dbo.StoreIntegrations (
+    Id UUID NOT NULL DEFAULT gen_random_uuid(),
+    TenantId UUID NOT NULL,
+    Platform VARCHAR(50) NOT NULL,
+    StoreDomain VARCHAR(255) NOT NULL,
+    EncryptedAccessToken BYTEA NOT NULL,
+    EncryptedClientSecret BYTEA NULL,
+    InitializationVector BYTEA NOT NULL,
+    AuthTag BYTEA NOT NULL,
+    Status VARCHAR(30) NOT NULL DEFAULT 'CONNECTED',
+    HealthCheckStatus VARCHAR(200) NULL,
+    HealthCheckLatencyMs INT NULL,
+    LastHealthCheckAt TIMESTAMPTZ NULL,
+    CreatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UpdatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT PK_StoreIntegrations PRIMARY KEY (Id),
+    CONSTRAINT FK_StoreIntegrations_Tenants FOREIGN KEY (TenantId) 
+        REFERENCES dbo.Tenants(Id) ON DELETE CASCADE,
+    CONSTRAINT UQ_StoreIntegrations_Tenant_Platform_Domain UNIQUE (TenantId, Platform, StoreDomain)
+);
 
 -- 2. Índice de Cobertura para Resolução Rápida de Webhooks por Domínio e Plataforma
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_StoreIntegrations_Platform_Domain' AND object_id = OBJECT_ID('dbo.StoreIntegrations'))
-BEGIN
-    CREATE NONCLUSTERED INDEX IX_StoreIntegrations_Platform_Domain
-    ON dbo.StoreIntegrations (Platform, StoreDomain)
-    INCLUDE (TenantId, Status, EncryptedAccessToken, InitializationVector, AuthTag);
-END
-GO
+CREATE INDEX IF NOT EXISTS IX_StoreIntegrations_Platform_Domain
+ON dbo.StoreIntegrations (Platform, StoreDomain)
+INCLUDE (TenantId, Status, EncryptedAccessToken, InitializationVector, AuthTag);
 
 -- 3. Índice para Listagem de Integrações do Tenant no Dashboard
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_StoreIntegrations_Tenant_Status' AND object_id = OBJECT_ID('dbo.StoreIntegrations'))
-BEGIN
-    CREATE NONCLUSTERED INDEX IX_StoreIntegrations_Tenant_Status
-    ON dbo.StoreIntegrations (TenantId, Status)
-    INCLUDE (Platform, StoreDomain, HealthCheckStatus, HealthCheckLatencyMs, LastHealthCheckAt);
-END
-GO
+CREATE INDEX IF NOT EXISTS IX_StoreIntegrations_Tenant_Status
+ON dbo.StoreIntegrations (TenantId, Status)
+INCLUDE (Platform, StoreDomain, HealthCheckStatus, HealthCheckLatencyMs, LastHealthCheckAt);

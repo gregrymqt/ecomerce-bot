@@ -1,31 +1,23 @@
 -- ==============================================================================
--- Script 010: Atividades de Robôs e Workers Assíncronos (RobotActivities)
+-- Script 010: Atividades de Robôs e Workers Assíncronos (RobotActivities) (PostgreSQL 16)
 -- E-commerce Bot SaaS
--- Padrão: Idempotente com IF NOT EXISTS, UNIQUEIDENTIFIER (NEWSEQUENTIALID()),
---         DATETIMEOFFSET (SYSDATETIMEOFFSET()) e FKs ON DELETE CASCADE
 -- ==============================================================================
 
-IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'RobotActivities' AND schema_id = SCHEMA_ID('dbo'))
-BEGIN
-    CREATE TABLE dbo.RobotActivities (
-        Id UNIQUEIDENTIFIER NOT NULL DEFAULT NEWSEQUENTIALID(),
-        TenantId UNIQUEIDENTIFIER NOT NULL,
-        WorkerType NVARCHAR(100) NOT NULL, -- Ex: ScraperWorker, ProcessorWorker
-        Status NVARCHAR(50) NOT NULL,      -- Ex: success, error
-        DetailsJson NVARCHAR(MAX) NULL,
-        DurationMs INT NULL,
-        CreatedAt DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-        CONSTRAINT PK_RobotActivities PRIMARY KEY CLUSTERED (Id),
-        CONSTRAINT FK_RobotActivities_Tenants FOREIGN KEY (TenantId)
-            REFERENCES dbo.Tenants(Id) ON DELETE CASCADE
-    );
-END
-GO
+CREATE SCHEMA IF NOT EXISTS dbo;
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_RobotActivities_TenantId_CreatedAt' AND object_id = OBJECT_ID('dbo.RobotActivities'))
-BEGIN
-    CREATE NONCLUSTERED INDEX IX_RobotActivities_TenantId_CreatedAt 
-    ON dbo.RobotActivities (TenantId, CreatedAt DESC)
-    INCLUDE (WorkerType, Status, DurationMs);
-END
-GO
+CREATE TABLE IF NOT EXISTS dbo.RobotActivities (
+    Id UUID NOT NULL DEFAULT gen_random_uuid(),
+    TenantId UUID NOT NULL,
+    WorkerType VARCHAR(100) NOT NULL,
+    Status VARCHAR(50) NOT NULL,
+    DetailsJson TEXT NULL,
+    DurationMs INT NULL,
+    CreatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT PK_RobotActivities PRIMARY KEY (Id),
+    CONSTRAINT FK_RobotActivities_Tenants FOREIGN KEY (TenantId)
+        REFERENCES dbo.Tenants(Id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS IX_RobotActivities_TenantId_CreatedAt 
+ON dbo.RobotActivities (TenantId, CreatedAt DESC)
+INCLUDE (WorkerType, Status, DurationMs);

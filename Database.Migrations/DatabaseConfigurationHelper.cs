@@ -1,179 +1,42 @@
 using System;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 
 namespace Database.Migrations;
 
 /// <summary>
-/// Helper para configuração determinística de concorrência e observabilidade no SQL Server 2022.
-/// Aplica RCSI (Read Committed Snapshot Isolation) e Query Store fora de transações de scripts do DbUp.
+/// Helper para configuração determinística de extensões e observabilidade no PostgreSQL 16.
+/// PostgreSQL usa MVCC por padrão (equivalente a RCSI/Snapshot Isolation nativo).
 /// </summary>
 public static class DatabaseConfigurationHelper
 {
     public static void ConfigureDatabaseOptions(string connectionString)
     {
-        var builder = new SqlConnectionStringBuilder(connectionString);
-        var targetDatabase = string.IsNullOrWhiteSpace(builder.InitialCatalog) ? "EcommerceBotDb" : builder.InitialCatalog;
-
-        Console.WriteLine($"⚙️ [Hardening] Verificando concorrência (RCSI) e Query Store para [{targetDatabase}]...");
+        Console.WriteLine("⚙️ [Hardening] Verificando extensões e observabilidade no PostgreSQL...");
 
         try
         {
-            EnsureRcsiAndSnapshotIsolation(builder, targetDatabase);
-            EnsureQueryStore(connectionString, targetDatabase);
+            using var connection = new NpgsqlConnection(connectionString);
+            connection.Open();
+
+            // Garante extensões essenciais para UUIDs, criptografia e métricas
+            const string sql = """
+                CREATE EXTENSION IF NOT EXISTS pgcrypto;
+                CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+                CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+            """;
+
+            using var cmd = new NpgsqlCommand(sql, connection);
+            cmd.ExecuteNonQuery();
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("   • Extensões PostgreSQL (pgcrypto, uuid-ossp, pg_stat_statements) ativas.");
+            Console.ResetColor();
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"⚠️ Aviso durante configuração de concorrência/Query Store: {ex.Message}");
+            Console.WriteLine($"ℹ️ Aviso durante ativação de extensões: {ex.Message}");
             Console.ResetColor();
         }
-    }
-
-    private const string AlterIsolationSql = """
-        DECLARE @sql NVARCHAR(MAX) = N'
-            ALTER DATABASE ' + QUOTENAME(@db) + N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-            ALTER DATABASE ' + QUOTENAME(@db) + N' SET READ_COMMITTED_SNAPSHOT ON;
-            ALTER DATABASE ' + QUOTENAME(@db) + N' SET ALLOW_SNAPSHOT_ISOLATION ON;
-            ALTER DATABASE ' + QUOTENAME(@db) + N' SET MULTI_USER;';
-        EXEC sp_executesql @sql;
-        """;
-
-    private const string AlterQueryStoreSql = """
-        DECLARE @sql NVARCHAR(MAX) = N'
-            ALTER DATABASE ' + QUOTENAME(@db) + N' SET QUERY_STORE = ON (
-                OPERATION_MODE = READ_WRITE,
-                CLEANUP_POLICY = (STALE_QUERY_THRESHOLD_DAYS = 30),
-                DATA_FLUSH_INTERVAL_SECONDS = 900,
-                MAX_STORAGE_SIZE_MB = 1024,
-                QUERY_CAPTURE_MODE = AUTO,
-                SIZE_BASED_CLEANUP_MODE = AUTO
-            );';
-        EXEC sp_executesql @sql;
-        """;
-
-    private static void EnsureRcsiAndSnapshotIsolation(SqlConnectionStringBuilder originalBuilder, string targetDatabase)
-    {
-        bool rcsiEnabled = false;
-        bool snapshotEnabled = false;
-
-        // 1. Inspeciona o estado atual do banco
-        using (var checkConnection = new SqlConnection(originalBuilder.ConnectionString))
-        {
-            checkConnection.Open();
-            const string checkSql = """
-                SELECT is_read_committed_snapshot_on, snapshot_isolation_state 
-                FROM sys.databases 
-                WHERE name = @DbName;
-                """;
-
-            using var cmd = new SqlCommand(checkSql, checkConnection);
-            cmd.Parameters.AddWithValue("@DbName", targetDatabase);
-            using var reader = cmd.ExecuteReader();
-            if (reader.Read())
-            {
-                rcsiEnabled = reader.GetBoolean(0);
-                snapshotEnabled = reader.GetByte(1) == 1;
-            }
-        }
-
-        if (rcsiEnabled && snapshotEnabled)
-        {
-            Console.ForegroundColor = ConsoleColor.DarkGreen;
-            Console.WriteLine("   • Concorrência: RCSI e Snapshot Isolation já estão ativos (Anti-Locking OK).");
-            Console.ResetColor();
-            return;
-        }
-
-        Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine("   • Concorrência: Ativando READ_COMMITTED_SNAPSHOT e ALLOW_SNAPSHOT_ISOLATION...");
-        Console.ResetColor();
-
-        // 2. Conecta ao master para alternar o isolamento com segurança (evitando auto-lock de sessão)
-        var masterBuilder = new SqlConnectionStringBuilder(originalBuilder.ConnectionString)
-        {
-            InitialCatalog = "master"
-        };
-
-        try
-        {
-            using var masterConn = new SqlConnection(masterBuilder.ConnectionString);
-            masterConn.Open();
-
-            // nosemgrep: csharp.lang.security.sqli.csharp-sqli.csharp-sqli
-            using var alterCmd = new SqlCommand(AlterIsolationSql, masterConn);
-            alterCmd.Parameters.AddWithValue("@db", targetDatabase);
-            alterCmd.CommandTimeout = 30;
-            alterCmd.ExecuteNonQuery();
-
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("   • Concorrência: ✅ RCSI e Snapshot Isolation habilitados com sucesso!");
-            Console.ResetColor();
-        }
-        catch (Exception)
-        {
-            // Fallback: tenta executar diretamente no contexto do próprio banco
-            using var fallbackConn = new SqlConnection(originalBuilder.ConnectionString);
-            fallbackConn.Open();
-
-            // nosemgrep: csharp.lang.security.sqli.csharp-sqli.csharp-sqli
-            using var fallbackCmd = new SqlCommand(AlterIsolationSql, fallbackConn);
-            fallbackCmd.Parameters.AddWithValue("@db", targetDatabase);
-            fallbackCmd.CommandTimeout = 30;
-            fallbackCmd.ExecuteNonQuery();
-
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("   • Concorrência: ✅ RCSI habilitado via conexão direta.");
-            Console.ResetColor();
-        }
-    }
-
-    private static void EnsureQueryStore(string connectionString, string targetDatabase)
-    {
-        short queryStoreState = 0;
-
-        using var connection = new SqlConnection(connectionString);
-        connection.Open();
-
-        const string checkQueryStoreSql = """
-                SELECT actual_state 
-                FROM sys.database_query_store_options;
-                """;
-
-        try
-        {
-            using var cmd = new SqlCommand(checkQueryStoreSql, connection);
-            var result = cmd.ExecuteScalar();
-            if (result != null && result != DBNull.Value)
-            {
-                queryStoreState = Convert.ToInt16(result);
-            }
-        }
-        catch
-        {
-            // sys.database_query_store_options pode não existir se versão antiga
-        }
-
-        // actual_state == 2 indica READ_WRITE
-        if (queryStoreState == 2)
-        {
-            Console.ForegroundColor = ConsoleColor.DarkGreen;
-            Console.WriteLine("   • Observabilidade: Query Store já está ativo em modo READ_WRITE.");
-            Console.ResetColor();
-            return;
-        }
-
-        Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine("   • Observabilidade: Ativando Query Store (Auto-Capture & 30 dias retenção)...");
-        Console.ResetColor();
-
-        // nosemgrep: csharp.lang.security.sqli.csharp-sqli.csharp-sqli
-        using var alterCmd = new SqlCommand(AlterQueryStoreSql, connection);
-        alterCmd.Parameters.AddWithValue("@db", targetDatabase);
-        alterCmd.CommandTimeout = 30;
-        alterCmd.ExecuteNonQuery();
-
-        Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine("   • Observabilidade: ✅ Query Store habilitado com sucesso!");
-        Console.ResetColor();
     }
 }

@@ -1,47 +1,31 @@
 -- ==============================================================================
--- Script 008: Auditoria e Logs Transacionais de E-mail (Resend)
+-- Script 008: Auditoria e Logs Transacionais de E-mail (Resend) (PostgreSQL 16)
 -- E-commerce Bot SaaS
--- Padrão: Idempotente com IF NOT EXISTS, UNIQUEIDENTIFIER (NEWSEQUENTIALID()),
---         DATETIMEOFFSET (SYSDATETIMEOFFSET()) e Índices Non-Clustered
 -- ==============================================================================
 
-IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'EmailLogs' AND schema_id = SCHEMA_ID('dbo'))
-BEGIN
-    CREATE TABLE dbo.EmailLogs (
-        Id UNIQUEIDENTIFIER NOT NULL DEFAULT NEWSEQUENTIALID(),
-        TenantId UNIQUEIDENTIFIER NOT NULL,
-        ResendId NVARCHAR(128) NULL,
-        Recipient NVARCHAR(255) NOT NULL,
-        EventType NVARCHAR(64) NOT NULL,
-        Status NVARCHAR(50) NOT NULL DEFAULT 'PENDING',
-        Subject NVARCHAR(255) NOT NULL,
-        IdempotencyKey NVARCHAR(256) NULL,
-        ErrorMessage NVARCHAR(MAX) NULL,
-        MetadataInfo NVARCHAR(MAX) NOT NULL DEFAULT '{}',
-        CreatedAt DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-        UpdatedAt DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-        CONSTRAINT PK_EmailLogs PRIMARY KEY CLUSTERED (Id)
-    );
-END
-GO
+CREATE SCHEMA IF NOT EXISTS dbo;
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_EmailLogs_TenantId_Status' AND object_id = OBJECT_ID('dbo.EmailLogs'))
-BEGIN
-    CREATE NONCLUSTERED INDEX IX_EmailLogs_TenantId_Status 
-    ON dbo.EmailLogs (TenantId, Status);
-END
-GO
+CREATE TABLE IF NOT EXISTS dbo.EmailLogs (
+    Id UUID NOT NULL DEFAULT gen_random_uuid(),
+    TenantId UUID NOT NULL,
+    ResendId VARCHAR(128) NULL,
+    Recipient VARCHAR(255) NOT NULL,
+    EventType VARCHAR(64) NOT NULL,
+    Status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    Subject VARCHAR(255) NOT NULL,
+    IdempotencyKey VARCHAR(256) NULL,
+    ErrorMessage TEXT NULL,
+    MetadataInfo TEXT NOT NULL DEFAULT '{}',
+    CreatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UpdatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT PK_EmailLogs PRIMARY KEY (Id)
+);
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_EmailLogs_TenantId_EventType' AND object_id = OBJECT_ID('dbo.EmailLogs'))
-BEGIN
-    CREATE NONCLUSTERED INDEX IX_EmailLogs_TenantId_EventType 
-    ON dbo.EmailLogs (TenantId, EventType);
-END
-GO
+CREATE INDEX IF NOT EXISTS IX_EmailLogs_TenantId_Status 
+ON dbo.EmailLogs (TenantId, Status);
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_EmailLogs_ResendId' AND object_id = OBJECT_ID('dbo.EmailLogs'))
-BEGIN
-    CREATE NONCLUSTERED INDEX IX_EmailLogs_ResendId 
-    ON dbo.EmailLogs (ResendId);
-END
-GO
+CREATE INDEX IF NOT EXISTS IX_EmailLogs_TenantId_EventType 
+ON dbo.EmailLogs (TenantId, EventType);
+
+CREATE INDEX IF NOT EXISTS IX_EmailLogs_ResendId 
+ON dbo.EmailLogs (ResendId);

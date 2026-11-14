@@ -37,32 +37,27 @@ services:
       timeout: 5s
       retries: 5
 
-  mssql:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: dev-mssql-bot
-    user: root
+  postgres:
+    image: postgres:16-alpine
+    container_name: dev-postgres-bot
+    restart: unless-stopped
     env_file:
       - ../../.env
     environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-YourStrong@Passw0rdDev}"
-      MSSQL_PID: "${MSSQL_PID:-Developer}"
-      MSSQL_AGENT_ENABLED: "true"
+      POSTGRES_DB: ${POSTGRES_DB:-ecommerce_bot_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      - "1433:1433"
-    restart: unless-stopped
+      - "5432:5432"
     volumes:
-      - mssql-dev-data:/var/opt/mssql/data
-      - mssql-dev-backup:/var/opt/mssql/backup
+      - postgres-dev-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD:-YourStrong@Passw0rdDev}\" -C -Q \"SELECT 1\" || exit 1"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ecommerce_bot_db}"]
+      interval: 5s
       timeout: 5s
       retries: 5
-      start_period: 15s
 
 volumes:
   redis-dev-data:
   rabbitmq-dev-data:
-  mssql-dev-data:
-  mssql-dev-backup:
+  postgres-dev-data:

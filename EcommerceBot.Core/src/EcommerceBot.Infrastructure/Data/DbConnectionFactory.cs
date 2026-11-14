@@ -9,15 +9,16 @@ using EcommerceBot.Application.Security;
 using EcommerceBot.Domain.Interfaces;
 using EcommerceBot.Infrastructure.Options;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace EcommerceBot.Infrastructure.Data;
 
 /// <summary>
-/// Fábrica de conexões ADO.NET / Microsoft.Data.SqlClient para consultas de alta performance via Dapper.
-/// Aplica injeção de contexto de sessão (sp_set_session_context) para Row-Level Security (RLS) nativo do SQL Server.
+/// Fábrica de conexões ADO.NET / Npgsql para consultas de alta performance via Dapper.
+/// Aplica injeção de contexto de sessão (SET app.tenant_id e SET app.is_super_admin)
+/// para Row-Level Security (RLS) nativo do PostgreSQL 16.
 /// </summary>
 public sealed class DbConnectionFactory : IDbConnectionFactory
 {
@@ -36,18 +37,6 @@ public sealed class DbConnectionFactory : IDbConnectionFactory
             throw new ArgumentNullException(nameof(databaseOptions), "Connection string 'DefaultConnection' not found in configuration.");
         }
 
-        // Sanitização defensiva para conexões locais via Docker Desktop (WSL2):
-        // 'localhost' resolve para IPv6 (::1) no Windows, provocando reset de conexão (error: 0) no handshake TDS.
-        if (_connectionString.Contains("localhost", StringComparison.OrdinalIgnoreCase))
-        {
-            _connectionString = _connectionString.Replace("localhost", "127.0.0.1", StringComparison.OrdinalIgnoreCase);
-        }
-
-        if (_connectionString.Contains("Encrypt=False", StringComparison.OrdinalIgnoreCase))
-        {
-            _connectionString = _connectionString.Replace("Encrypt=False", "Encrypt=True", StringComparison.OrdinalIgnoreCase);
-        }
-
         _httpContextAccessor = httpContextAccessor;
     }
 
@@ -58,7 +47,6 @@ public sealed class DbConnectionFactory : IDbConnectionFactory
 
     public async Task<IDbConnection> CreateConnectionAsync(Guid? tenantId, CancellationToken cancellationToken = default)
     {
-        // Resolução de Tenant e Privilégios para RLS
         Guid? effectiveTenantId = tenantId;
         bool isSuperAdmin = false;
 
@@ -82,7 +70,7 @@ public sealed class DbConnectionFactory : IDbConnectionFactory
             }
         }
 
-        // 3. Fallback para escopo ambiente AsyncLocal (MassTransit consumers, callbacks e webhooks pós-lookup)
+        // 3. Fallback para escopo ambiente AsyncLocal
         if (!effectiveTenantId.HasValue || effectiveTenantId.Value == Guid.Empty)
         {
             var ambientTenantId = TenantSessionScope.CurrentTenantId;
@@ -105,20 +93,17 @@ public sealed class DbConnectionFactory : IDbConnectionFactory
         bool isSuperAdmin,
         CancellationToken cancellationToken)
     {
-        var connection = new SqlConnection(_connectionString);
+        var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
 
-        // Sempre limpa o SESSION_CONTEXT ao reutilizar conexão do pool para evitar vazamento entre tenants
-        const string resetSql = """
-            EXEC sp_set_session_context @key=N'IsSuperAdmin', @value=NULL;
-            EXEC sp_set_session_context @key=N'TenantId', @value=NULL;
-        """;
+        // Sempre reseta as variáveis de sessão RLS da conexão para evitar vazamento entre tenants do pool
+        const string resetSql = "RESET app.is_super_admin; RESET app.tenant_id;";
         await connection.ExecuteAsync(new CommandDefinition(resetSql, cancellationToken: cancellationToken));
 
         if (isSuperAdmin)
         {
             var adminCmd = new CommandDefinition(
-                "EXEC sp_set_session_context @key=N'IsSuperAdmin', @value=1;",
+                "SET app.is_super_admin = '1';",
                 cancellationToken: cancellationToken);
             await connection.ExecuteAsync(adminCmd);
         }
@@ -126,8 +111,7 @@ public sealed class DbConnectionFactory : IDbConnectionFactory
         if (effectiveTenantId.HasValue && effectiveTenantId.Value != Guid.Empty)
         {
             var tenantCmd = new CommandDefinition(
-                "EXEC sp_set_session_context @key=N'TenantId', @value=@TenantId;",
-                new { TenantId = effectiveTenantId.Value },
+                $"SET app.tenant_id = '{effectiveTenantId.Value}';",
                 cancellationToken: cancellationToken);
             await connection.ExecuteAsync(tenantCmd);
         }
