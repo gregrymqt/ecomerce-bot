@@ -29,7 +29,6 @@ using EcommerceBot.Infrastructure.Options;
 using EcommerceBot.Infrastructure.Services;
 using EcommerceBot.Infrastructure.Utils;
 using FluentAssertions;
-using MassTransit;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
@@ -627,8 +626,6 @@ public sealed class Block2LogicMessagingFinancialTests
         public List<(Uri Address, object Message)> SentMessages { get; } = new();
         public Exception? ThrowOnSend { get; set; }
 
-        public ConnectHandle ConnectSendObserver(ISendObserver observer) => throw new NotImplementedException();
-
         public Task<ISendEndpoint> GetSendEndpoint(Uri address)
         {
             var endpointProxy = DispatchProxy.Create<ISendEndpoint, RecordingSendEndpointProxy>();
@@ -664,27 +661,18 @@ public sealed class Block2LogicMessagingFinancialTests
         public ConcurrentBag<object> PublishedMessages { get; } = new();
         private int _calls;
 
-        public ConnectHandle ConnectPublishObserver(IPublishObserver observer) => throw new NotImplementedException();
-
         private Task HandlePublish(object msg)
         {
             if (Interlocked.Increment(ref _calls) <= FailCount)
-                throw new InvalidOperationException("Simulated RabbitMQ outage");
+                throw new InvalidOperationException("Simulated Redis outage");
 
             PublishedMessages.Add(msg);
             return Task.CompletedTask;
         }
 
         public Task Publish<T>(T message, CancellationToken cancellationToken = default) where T : class => HandlePublish(message);
-        public Task Publish<T>(T message, IPipe<PublishContext<T>> publishPipe, CancellationToken cancellationToken = default) where T : class => HandlePublish(message);
-        public Task Publish<T>(T message, IPipe<PublishContext> publishPipe, CancellationToken cancellationToken = default) where T : class => HandlePublish(message);
-        public Task Publish(object message, CancellationToken cancellationToken = default) => HandlePublish(message);
-        public Task Publish(object message, IPipe<PublishContext> publishPipe, CancellationToken cancellationToken = default) => HandlePublish(message);
-        public Task Publish(object message, Type messageType, CancellationToken cancellationToken = default) => HandlePublish(message);
-        public Task Publish(object message, Type messageType, IPipe<PublishContext> publishPipe, CancellationToken cancellationToken = default) => HandlePublish(message);
-        public Task Publish<T>(object values, CancellationToken cancellationToken = default) where T : class => Task.CompletedTask;
-        public Task Publish<T>(object values, IPipe<PublishContext<T>> publishPipe, CancellationToken cancellationToken = default) where T : class => Task.CompletedTask;
-        public Task Publish<T>(object values, IPipe<PublishContext> publishPipe, CancellationToken cancellationToken = default) where T : class => Task.CompletedTask;
+        public Task Publish<T>(T message, Action<PublishContext<T>> callback, CancellationToken cancellationToken = default) where T : class => HandlePublish(message);
+        public Task Publish<T>(T message, Action<PublishContext> callback, CancellationToken cancellationToken = default) where T : class => HandlePublish(message);
     }
 
     private sealed class InMemoryTenantAiCredentialRepository : ITenantAiCredentialRepository

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Messaging;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Infrastructure.Options;
-using MassTransit;
+using EcommerceBot.Infrastructure.Messaging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 

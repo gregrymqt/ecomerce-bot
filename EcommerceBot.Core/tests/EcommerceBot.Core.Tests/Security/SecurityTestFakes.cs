@@ -14,7 +14,7 @@ using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Application.Interfaces.Gateways;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
-using MassTransit;
+using EcommerceBot.Infrastructure.Messaging;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.FileProviders;
 
@@ -306,50 +306,22 @@ internal sealed class FakePublishEndpoint : IPublishEndpoint
 {
     public ConcurrentBag<object> PublishedMessages { get; } = new();
 
-    public ConnectHandle ConnectPublishObserver(IPublishObserver observer) => new DummyHandle();
     public Task Publish<T>(T message, CancellationToken cancellationToken = default) where T : class
     {
         PublishedMessages.Add(message);
         return Task.CompletedTask;
     }
-    public Task Publish<T>(T message, IPipe<PublishContext<T>> publishPipe, CancellationToken cancellationToken = default) where T : class
-    {
-        PublishedMessages.Add(message);
-        return Task.CompletedTask;
-    }
-    public Task Publish<T>(T message, IPipe<PublishContext> publishPipe, CancellationToken cancellationToken = default) where T : class
-    {
-        PublishedMessages.Add(message);
-        return Task.CompletedTask;
-    }
-    public Task Publish(object message, CancellationToken cancellationToken = default)
-    {
-        PublishedMessages.Add(message);
-        return Task.CompletedTask;
-    }
-    public Task Publish(object message, IPipe<PublishContext> publishPipe, CancellationToken cancellationToken = default)
-    {
-        PublishedMessages.Add(message);
-        return Task.CompletedTask;
-    }
-    public Task Publish(object message, Type messageType, CancellationToken cancellationToken = default)
-    {
-        PublishedMessages.Add(message);
-        return Task.CompletedTask;
-    }
-    public Task Publish(object message, Type messageType, IPipe<PublishContext> publishPipe, CancellationToken cancellationToken = default)
-    {
-        PublishedMessages.Add(message);
-        return Task.CompletedTask;
-    }
-    public Task Publish<T>(object values, CancellationToken cancellationToken = default) where T : class => Task.CompletedTask;
-    public Task Publish<T>(object values, IPipe<PublishContext<T>> publishPipe, CancellationToken cancellationToken = default) where T : class => Task.CompletedTask;
-    public Task Publish<T>(object values, IPipe<PublishContext> publishPipe, CancellationToken cancellationToken = default) where T : class => Task.CompletedTask;
 
-    private sealed class DummyHandle : ConnectHandle
+    public Task Publish<T>(T message, Action<PublishContext<T>> callback, CancellationToken cancellationToken = default) where T : class
     {
-        public void Disconnect() { }
-        public void Dispose() { }
+        PublishedMessages.Add(message);
+        return Task.CompletedTask;
+    }
+
+    public Task Publish<T>(T message, Action<PublishContext> callback, CancellationToken cancellationToken = default) where T : class
+    {
+        PublishedMessages.Add(message);
+        return Task.CompletedTask;
     }
 }
 
