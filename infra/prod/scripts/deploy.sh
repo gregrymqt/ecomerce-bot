@@ -2,7 +2,7 @@
 
 # ==============================================================================
 # Script de Deploy Automatizado para Produção (VPS InterServer) - E-commerce Bot
-# Ecossistema: SQL Server 2022 + DbUp (.NET 9) + React 18 + RabbitMQ + Redis
+# Ecossistema: PostgreSQL 16 + DbUp (.NET 9) + React 19 + Redis Streams + Go Worker + ML Sidecar
 # ==============================================================================
 
 set -eo pipefail
@@ -45,12 +45,12 @@ if [ ! -f "${ENV_PROD_PATH}" ]; then
     fi
 fi
 
-# 4. Inicializa os serviços de infraestrutura base (MSSQL, Redis, RabbitMQ)
+# 4. Inicializa os serviços de infraestrutura base (PostgreSQL, Redis)
 echo -e "\n${YELLOW}🏗️ [1/3] Inicializando banco de dados e mensageria base...${NC}"
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_PROD_PATH}" up -d mssql redis rabbitmq
+docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_PROD_PATH}" up -d postgres redis
 
 # 5. Executa as migrações determinísticas do banco de dados (DbUp .NET)
-echo -e "\n${YELLOW}🔄 [2/3] Executando migrações SQL Server 2022 (Database.Migrations com DbUp)...${NC}"
+echo -e "\n${YELLOW}🔄 [2/3] Executando migrações PostgreSQL 16 (Database.Migrations com DbUp)...${NC}"
 docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_PROD_PATH}" run --rm migrations || {
     echo -e "${RED}❌ ERRO: Falha ao executar as migrações do banco de dados.${NC}"
     exit 1
