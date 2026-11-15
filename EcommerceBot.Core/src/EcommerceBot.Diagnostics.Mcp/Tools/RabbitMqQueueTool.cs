@@ -21,7 +21,6 @@ public sealed class RabbitMqQueueTool : ISystemDiagnosticTool
     [
         RedisStreamNames.ScrapingProd,
         RedisStreamNames.ScrapingDemo,
-        RedisStreamNames.AnalyticsMl,
         RedisStreamNames.ScrapedResults,
         RedisStreamNames.EmailNotifications,
         RedisStreamNames.PaymentsProcess,

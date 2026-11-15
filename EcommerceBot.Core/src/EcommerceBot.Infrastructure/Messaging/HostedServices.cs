@@ -56,18 +56,6 @@ public sealed class ShopifyBulkSyncStreamHostedService
     }
 }
 
-public sealed class AnalyticsProcessedStreamHostedService 
-    : RedisStreamConsumerBackgroundService<MlAnalysisResultMessage, AnalyticsProcessedConsumer>
-{
-    public AnalyticsProcessedStreamHostedService(
-        IConnectionMultiplexer redis,
-        IServiceProvider serviceProvider,
-        ILogger<AnalyticsProcessedStreamHostedService> logger)
-        : base(redis, serviceProvider, logger, RedisStreamNames.AnalyticsProcessed, RedisStreamNames.GroupApiAnalytics)
-    {
-    }
-}
-
 public sealed class PaymentProcessingStreamHostedService 
     : RedisStreamConsumerBackgroundService<PaymentReceivedEvent, PaymentProcessingConsumer>
 {

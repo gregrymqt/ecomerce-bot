@@ -10,9 +10,7 @@ public static class RedisStreamNames
     // Streams Canônicos
     public const string ScrapingProd = "stream:scraping:prod";
     public const string ScrapingDemo = "stream:scraping:demo";
-    public const string AnalyticsMl = "stream:analytics:ml";
     public const string ScrapedResults = "stream:scraped:results";
-    public const string AnalyticsProcessed = "stream:analytics:processed";
     public const string EmailNotifications = "stream:notifications:email";
     public const string PaymentsProcess = "stream:payments:process";
     public const string ShopifyBulkSync = "stream:sync:shopify";
@@ -21,9 +19,7 @@ public static class RedisStreamNames
 
     // Consumer Groups Canônicos
     public const string GroupGoWorkerScraper = "go-worker-scraper";
-    public const string GroupGoWorkerMl = "go-worker-ml";
     public const string GroupApiScraped = "api-scraped-consumer";
-    public const string GroupApiAnalytics = "api-analytics-consumer";
     public const string GroupApiEmail = "api-email-consumer";
     public const string GroupApiPayments = "api-payments-consumer";
     public const string GroupApiShopify = "api-shopify-consumer";
@@ -44,7 +40,6 @@ public static class RedisStreamNames
                 if (name.Contains("Email", StringComparison.OrdinalIgnoreCase)) return EmailNotifications;
                 if (name.Contains("Shopify", StringComparison.OrdinalIgnoreCase)) return ShopifyBulkSync;
                 if (name.Contains("Nuvemshop", StringComparison.OrdinalIgnoreCase)) return NuvemshopBulkSync;
-                if (name.Contains("Analytics", StringComparison.OrdinalIgnoreCase)) return AnalyticsMl;
             }
             return ScrapingProd;
         }
@@ -57,9 +52,7 @@ public static class RedisStreamNames
         {
             "ecommerce" or "stream:scraping:prod" => ScrapingProd,
             "demo_ecommerce" or "stream:scraping:demo" => ScrapingDemo,
-            "analytics_ml_queue" or "stream:analytics:ml" => AnalyticsMl,
             "ecommerce_scraped_queue" or "stream:scraped:results" => ScrapedResults,
-            "analytics_processed_queue" or "stream:analytics:processed" => AnalyticsProcessed,
             "email_notifications" or "stream:notifications:email" => EmailNotifications,
             "payments_process_queue" or "stream:payments:process" => PaymentsProcess,
             "shopify_bulk_sync" or "stream:sync:shopify" => ShopifyBulkSync,
