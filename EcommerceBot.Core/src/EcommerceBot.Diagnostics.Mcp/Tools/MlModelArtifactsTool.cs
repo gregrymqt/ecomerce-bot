@@ -62,7 +62,7 @@ public sealed class MlModelArtifactsTool : ISystemDiagnosticTool
             };
         }
 
-        var artifactsDir = Path.Combine(rootDir, "EcommerceBot.Worker", "app", "ml", "models", "artifacts");
+        var artifactsDir = Path.Combine(rootDir, "ml-sidecar", "app", "ml", "models", "artifacts");
         var joblibFile = Path.Combine(artifactsDir, $"{modelName}.joblib");
         var metadataFile = Path.Combine(artifactsDir, $"{modelName}_metadata.json");
 
@@ -82,9 +82,9 @@ public sealed class MlModelArtifactsTool : ISystemDiagnosticTool
         if (!joblibExists && !metadataExists)
         {
             sb.AppendLine($"⚠️ **Nenhum artefato calibrado encontrado para '{modelName}'.**");
-            sb.AppendLine("O Worker Python utilizará o fallback heurístico em tempo real até que o primeiro job Spark seja executado.");
+            sb.AppendLine("O ML Sidecar utilizará o fallback heurístico em tempo real até que o primeiro job seja executado.");
             sb.AppendLine();
-            sb.AppendLine("💡 **Como gerar:** Execute `python -m app.ml.spark.run_batch` no `EcommerceBot.Worker`.");
+            sb.AppendLine("💡 **Como gerar:** Execute os scripts de calibração em `ml-sidecar`.");
             return CreateResult(sb.ToString(), false);
         }
 

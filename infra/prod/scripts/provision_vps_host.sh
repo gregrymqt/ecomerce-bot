@@ -27,18 +27,18 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# 1. Ajustes de Kernel Linux para SQL Server 2022 (/etc/sysctl.d/99-mssql.conf)
+# 1. Ajustes de Kernel Linux (/etc/sysctl.d/99-ecommerce-bot.conf)
 echo -e "\n${YELLOW}⚙️ [1/6] Aplicando parâmetros de Kernel Linux...${NC}"
-cat <<'EOF' > /etc/sysctl.d/99-mssql.conf
-# E-commerce Bot — Otimização de Kernel para SQL Server em VPS de 6 GB
-# Reduz propensão de paginação para Swap (prioriza Buffer Pool na RAM)
+cat <<'EOF' > /etc/sysctl.d/99-ecommerce-bot.conf
+# E-commerce Bot — Otimização de Kernel para PostgreSQL e .NET em VPS
+# Reduz propensão de paginação para Swap
 vm.swappiness = 1
 
 # Gravações assíncronas em disco começam cedo para mitigar picos de I/O
 vm.dirty_background_ratio = 3
 vm.dirty_ratio = 80
 
-# Granularidade do scheduler de CPU para threads do SQL Server e .NET
+# Granularidade do scheduler de CPU para threads da API e Workers
 kernel.sched_min_granularity_ns = 15000000
 kernel.sched_wakeup_granularity_ns = 2000000
 
@@ -49,10 +49,10 @@ EOF
 sysctl --system > /dev/null 2>&1
 echo -e "${GREEN}✅ Parâmetros de Kernel aplicados com sucesso!${NC}"
 
-# 2. Limites de Recursos e Descritores (/etc/security/limits.d/99-mssql.conf)
+# 2. Limites de Recursos e Descritores (/etc/security/limits.d/99-ecommerce-bot.conf)
 echo -e "\n${YELLOW}🔒 [2/6] Configurando limites de descritores de arquivos (nofile 65536)...${NC}"
-cat <<'EOF' > /etc/security/limits.d/99-mssql.conf
-# Limites de descritores de arquivos abertos para SQL Server e Containers
+cat <<'EOF' > /etc/security/limits.d/99-ecommerce-bot.conf
+# Limites de descritores de arquivos abertos para PostgreSQL e Containers
 *          soft    nofile     65536
 *          hard    nofile     65536
 root       soft    nofile     65536

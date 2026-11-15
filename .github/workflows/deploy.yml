@@ -65,10 +65,10 @@ jobs:
             EOF_ENV
             fi
 
-            # 4. Garante serviços base saudáveis (SQL Server, Redis e RabbitMQ) antes das migrações
-            docker compose -f infra/prod/docker-compose.prod.yml --env-file infra/prod/.env.prod up -d mssql redis rabbitmq
+            # 4. Garante serviços base saudáveis (PostgreSQL e Redis) antes das migrações
+            docker compose -f infra/prod/docker-compose.prod.yml --env-file infra/prod/.env.prod up -d postgres redis
 
-            # 5. Aplica as migrações determinísticas do DbUp (.NET) antes do rollout da API
+            # 5. Aplica as migrações determinísticas do DbUp (.NET) no PostgreSQL antes do rollout da API
             docker compose -f infra/prod/docker-compose.prod.yml --env-file infra/prod/.env.prod --profile migration run --rm --build migrations
 
             # 6. Executa build e sobe todos os contêineres atualizados
