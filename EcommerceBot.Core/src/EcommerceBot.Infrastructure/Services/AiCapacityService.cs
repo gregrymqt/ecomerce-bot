@@ -134,43 +134,6 @@ public sealed class AiCapacityService : IAiCapacityService
         }
     }
 
-    public async Task<bool> TriggerForecastRecalculationAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var balances = await _aiCapacityRepository.GetLatestBalancesAsync(cancellationToken);
-            var history = await _aiCapacityRepository.GetDailyUsageHistoryAsync(90, cancellationToken);
-
-            var message = new
-            {
-                tenantId = Guid.Empty,
-                jobType = "TOKEN_CAPACITY_FORECAST",
-                usageHistory = history.Select(h => new
-                {
-                    date = h.Date,
-                    provider = h.Provider,
-                    tokens = h.Tokens,
-                    cost_usd = h.CostUsd
-                }),
-                currentBalances = balances,
-                forecastDays = 30
-            };
-
-            await _publishEndpoint.Publish(message, ctx =>
-            {
-                ctx.SetRoutingKey("analytics_ml_queue");
-            }, cancellationToken);
-
-            _logger.LogInformation("Job de TOKEN_CAPACITY_FORECAST enfileirado no RabbitMQ.");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao disparar recálculo assíncrono de capacidade de IA.");
-            return false;
-        }
-    }
-
     private ProviderCapacityDetailDto CalculateProviderMetrics(
         string provider,
         List<DailyTokenUsageSummary> pHistory,

@@ -69,13 +69,12 @@ public class AdminAiCapacityController : BaseApiController
     }
 
     /// <summary>
-    /// Dispara o recálculo preditivo assíncrono via RabbitMQ no worker de Machine Learning.
+    /// Dispara o recálculo preditivo assíncrono (desativado após remoção do ML sidecar).
     /// </summary>
     [HttpPost("trigger")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> TriggerRecalculation(CancellationToken cancellationToken = default)
+    public IActionResult TriggerRecalculation()
     {
-        var queued = await _aiCapacityService.TriggerForecastRecalculationAsync(cancellationToken);
-        return Ok(new { success = queued, message = "Recálculo de capacidade de IA enfileirado com sucesso." });
+        return Ok(new { success = false, message = "Recálculo preditivo de capacidade de IA desativado." });
     }
 }

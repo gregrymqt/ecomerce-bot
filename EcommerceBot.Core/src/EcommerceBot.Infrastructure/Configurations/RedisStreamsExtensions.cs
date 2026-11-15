@@ -17,7 +17,6 @@ public static class RedisStreamsExtensions
         services.AddScoped<EmailNotificationConsumer>();
         services.AddScoped<NuvemshopBulkSyncConsumer>();
         services.AddScoped<ShopifyBulkSyncConsumer>();
-        services.AddScoped<AnalyticsProcessedConsumer>();
         services.AddScoped<PaymentProcessingConsumer>();
 
         // 2. Registra o Publicador Singleton de Redis Streams
@@ -31,7 +30,6 @@ public static class RedisStreamsExtensions
         services.AddHostedService<EmailNotificationStreamHostedService>();
         services.AddHostedService<NuvemshopBulkSyncStreamHostedService>();
         services.AddHostedService<ShopifyBulkSyncStreamHostedService>();
-        services.AddHostedService<AnalyticsProcessedStreamHostedService>();
         services.AddHostedService<PaymentProcessingStreamHostedService>();
 
         return services;

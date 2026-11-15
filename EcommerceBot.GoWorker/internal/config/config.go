@@ -12,7 +12,6 @@ type Config struct {
 	LogLevel             string
 	RedisURL             string
 	RedisPassword        string
-	MLSidecarURL         string
 	HealthPort           string
 	ScraperConcurrency   int
 	ScraperTimeout       time.Duration
@@ -24,7 +23,6 @@ func Load() *Config {
 	logLevel := getEnv("LOG_LEVEL", "INFO")
 	redisURL := getEnv("REDIS_URL", "redis://localhost:6379/0")
 	redisPassword := getEnv("REDIS_PASSWORD", "")
-	mlSidecarURL := getEnv("ML_SIDECAR_URL", "http://localhost:8001")
 	healthPort := getEnv("HEALTH_PORT", "8000")
 
 	concurrencyStr := getEnv("SCRAPER_CONCURRENCY", "5")
@@ -44,7 +42,6 @@ func Load() *Config {
 		LogLevel:             strings.ToUpper(logLevel),
 		RedisURL:             redisURL,
 		RedisPassword:        redisPassword,
-		MLSidecarURL:         strings.TrimRight(mlSidecarURL, "/"),
 		HealthPort:           healthPort,
 		ScraperConcurrency:   concurrency,
 		ScraperTimeout:       time.Duration(timeoutSec) * time.Second,

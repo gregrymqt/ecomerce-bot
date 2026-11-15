@@ -58,7 +58,6 @@ public static class McpServiceExtensions
         services.AddSingleton<ISystemDiagnosticTool, RedisMetricsTool>();
         services.AddSingleton<ISystemDiagnosticTool, RabbitMqQueueTool>();
         services.AddSingleton<ISystemDiagnosticTool, ErrorLogReaderTool>();
-        services.AddSingleton<ISystemDiagnosticTool, MlModelArtifactsTool>();
         services.AddSingleton<ISystemDiagnosticTool, SparkPipelineStatusTool>();
 
         // 6. Provedor de Recursos e Servidor MCP

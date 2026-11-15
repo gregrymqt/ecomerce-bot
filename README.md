@@ -1,12 +1,12 @@
 # E-commerce Bot 🛒🤖
 
-Plataforma SaaS escalável para extração inteligente de produtos, enriquecimento de catálogo via Modelos de Linguagem (DeepSeek / Llama 3.3 / Gemini via OpenRouter), precificação e previsão de vendas com Machine Learning, além de integrações nativas com **Shopify**, **Nuvemshop** e **Mercado Pago**.
+Plataforma SaaS escalável para extração inteligente de produtos, enriquecimento de catálogo via Modelos de Linguagem, precificação e previsão de vendas com Machine Learning, além de integrações nativas com **Shopify**, **Nuvemshop** e **Mercado Pago**.
 
 ---
 
 ## 📚 Documentação Técnica de Engenharia (`/docs`)
 
-Para a descrição consolidada de arquitetura, topologia de filas, banco de dados, segurança e operação local, consulte:
+Para a descrição consolidada de arquitetura, topologia de mensageria em Redis Streams, banco de dados PostgreSQL com RLS, segurança e operação local, consulte:
 
 - 🏛️ [**Documentação Descritiva e Arquitetura do Sistema**](docs/architecture.md)
 
@@ -16,9 +16,9 @@ Para a descrição consolidada de arquitetura, topologia de filas, banco de dado
 
 O projeto é dividido em 4 pilares principais:
 
-* ⚡ **`EcommerceBot.Core/`**: API Central em **.NET 9 (C#)** seguindo Clean Architecture / DDD, responsável por autenticação JWT, isolamento multi-tenant estrito, persistência com Dapper, pagamentos e orquestração MassTransit.
-* 🐍 **`EcommerceBot.Worker/`**: Microsserviço **Python 3.13** assíncrono (FastAPI + aio-pika) focado estritamente em inferência LLM, Web Scraping inteligente anti-bot (Scrapling + Camoufox) e Machine Learning preditivo (Scikit-Learn). **Sem acesso direto ao banco de dados.**
-* 🔷 **`Database.Migrations/`**: Runner de migrações determinísticas em **.NET 8** com DbUp para **Microsoft SQL Server 2022**.
+* ⚡ **`EcommerceBot.Core/`**: API Central em **.NET 9 (C#)** seguindo Clean Architecture / DDD, responsável por autenticação JWT, isolamento multi-tenant estrito com PostgreSQL 16 (RLS via Npgsql), persistência com Dapper, mensageria via **Redis Streams** e integrações de pagamentos.
+* 🚀 **`EcommerceBot.GoWorker/`**: Microsserviço de alta performance em **Go 1.23** (Chi, Chromedp, GoQuery, go-redis) para Web Scraping evasivo e consumo assíncrono de **Redis Streams**. **Sem acesso direto ao banco de dados.**
+* 🔷 **`Database.Migrations/`**: Runner de migrações determinísticas em **.NET 9** com DbUp para **PostgreSQL 16**.
 * 🔵 **`EcommerceBot.Web/`**: Portal Web Frontend SPA em **React 19**, TypeScript, **Vite 8** e Tailwind CSS v4.
 * 🛠️ **`infra/`**: Configurações de infraestrutura isoladas para **Desenvolvimento** (`infra/dev`) e **Produção VPS** (`infra/prod`).
 
@@ -28,12 +28,12 @@ O projeto é dividido em 4 pilares principais:
 
 ```mermaid
 flowchart TD
-    SPA["EcommerceBot.Web (React 19 + Vite 8)"] -->|HTTP / SSE / Cookie JWT| API["EcommerceBot.Core (API .NET 9)"]
-    API -->|Dapper Queries| SQLServer[("Microsoft SQL Server 2022")]
-    API -->|Cache / Rate Limit / PubSub| Redis[("Redis 7")]
-    API -->|MassTransit Events| RabbitMQ[("RabbitMQ 3.13")]
-    RabbitMQ <-->|aio-pika Async Workers| Worker["EcommerceBot.Worker (Python AI Engine)"]
-    Worker -->|Scraping Cache| Redis
+    SPA["EcommerceBot.Web<br/>(React 19 + Vite 8)"] -->|HTTP / SSE / Cookie JWT| API["EcommerceBot.Core<br/>(.NET 9 · Clean Architecture)"]
+    API -->|Npgsql + RLS SET LOCAL| Postgres[("PostgreSQL 16")]
+    API -->|Cache / Rate Limit / PubSub SSE| Redis[("Redis 7")]
+    API -->|Redis Streams XADD / XREADGROUP| Redis
+    Redis <-->|XREADGROUP / XADD| GoWorker["EcommerceBot.GoWorker<br/>(Go 1.23 · Chromedp · GoQuery)"]
+    Migrations["Database.Migrations (.NET 9 + DbUp)"] -.->|DDL 001–019| Postgres
 ```
 
 ---
@@ -42,7 +42,7 @@ flowchart TD
 
 Consulte o passo a passo completo na [Documentação do Sistema](docs/architecture.md).
 
-### 1. Subir a Infraestrutura (SQL Server 2022, Redis, RabbitMQ):
+### 1. Subir a Infraestrutura (PostgreSQL 16, Redis 7):
 ```bash
 cd infra/dev
 docker compose -f docker-compose.dev.yml up -d
@@ -58,10 +58,10 @@ dotnet run --project Database.Migrations/Database.Migrations.csproj
 dotnet run --project EcommerceBot.Core/src/EcommerceBot.Api/EcommerceBot.Api.csproj
 ```
 
-### 4. Iniciar o AI/ML Worker (Python 3.13):
+### 4. Iniciar o Go Worker (Go 1.23):
 ```bash
-cd EcommerceBot.Worker
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+cd EcommerceBot.GoWorker
+go run cmd/worker/main.go
 ```
 
 ### 5. Iniciar o Frontend Web (React 19):
@@ -76,7 +76,8 @@ npm run dev
 ## 🛡️ Segurança & Conformidade
 
 - **Autenticação:** JWT com Cookies `HttpOnly` e rotação de Refresh Tokens.
-- **Isolamento Multi-Tenant:** `X-Tenant-ID` validado contra claims JWT em todas as requisições autenticadas.
+- **Isolamento Multi-Tenant:** `X-Tenant-ID` validado contra claims JWT em todas as requisições autenticadas e políticas RLS no PostgreSQL 16 fail-closed via `SET LOCAL`.
 - **Criptografia BYOK:** Chaves de IA de clientes cifradas com AES-256 GCM.
 - **Webhooks Seguros:** Assinaturas validadas com tempo constante (`FixedTimeEquals`) e idempotência de 24 horas via Redis `SET NX`.
+- **Anti-SSRF Duplo:** Proteção defensiva com `.NET UrlSecurityValidator` e `Go net.Dialer.Control` (bloqueio de loopback, redes RFC 1918 e metadados de nuvem `169.254.169.254`).
 - **Análise Estática:** 100% aprovado no scanner de segurança Semgrep.

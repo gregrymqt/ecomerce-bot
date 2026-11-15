@@ -534,57 +534,7 @@ public sealed class Block2LogicMessagingFinancialTests
     }
 
     // =========================================================================
-    // LOG-07: MachineLearningService sem clientes fictícios quando < 5 pedidos reais
-    // =========================================================================
-
-    [Fact]
-    public async Task MachineLearningService_WhenLessThanFiveOrders_ReturnsInsufficientData_WithoutCooldownOrPublish()
-    {
-        var tenantId = Guid.NewGuid();
-        var ordersTable = new DataTable();
-        ordersTable.Columns.Add("CustomerId", typeof(string));
-        ordersTable.Columns.Add("Amount", typeof(decimal));
-        ordersTable.Columns.Add("Date", typeof(DateTimeOffset));
-        // Apenas 2 pedidos qualificados (< 5)
-        ordersTable.Rows.Add("real1@loja.com", 100m, DateTimeOffset.UtcNow.AddDays(-2));
-        ordersTable.Rows.Add("real2@loja.com", 150m, DateTimeOffset.UtcNow.AddDays(-1));
-
-        var emptyActivitiesTable = new DataTable();
-        emptyActivitiesTable.Columns.Add("Id", typeof(Guid));
-        emptyActivitiesTable.Columns.Add("TenantId", typeof(Guid));
-        emptyActivitiesTable.Columns.Add("WorkerType", typeof(string));
-        emptyActivitiesTable.Columns.Add("Status", typeof(string));
-        emptyActivitiesTable.Columns.Add("DetailsJson", typeof(string));
-        emptyActivitiesTable.Columns.Add("CreatedAt", typeof(DateTimeOffset));
-
-        var dbFactory = new FakeTabularDbConnectionFactory(sql =>
-            sql.Contains("RobotActivities", StringComparison.OrdinalIgnoreCase)
-                ? emptyActivitiesTable.CreateDataReader()
-                : ordersTable.CreateDataReader());
-        var tenantRepo = new InMemoryTenantRepository();
-        tenantRepo.Tenants[tenantId] = new Tenant { Id = tenantId, Name = "Loja ML", IsActive = true, CreditsBalance = 10 };
-        var redis = new InMemoryRedisService();
-        var publish = new FakePublishEndpoint();
-
-        var mlService = new MachineLearningService(
-            publish,
-            dbFactory,
-            new RecordingRobotActivityRepository(),
-            tenantRepo,
-            redis,
-            NullLogger<MachineLearningService>.Instance);
-
-        var triggered = await mlService.TriggerAnalysisAsync(tenantId);
-        triggered.Should().BeFalse();
-        publish.PublishedMessages.Should().BeEmpty();
-        (await redis.KeyExistsAsync($"cooldown:ml:{tenantId}")).Should().BeFalse();
-
-        // GetLatestInsightsAsync sem RobotActivity existente deve retornar INSUFFICIENT_DATA em vez de massa falsa
-        var emptyInsights = await mlService.GetLatestInsightsAsync(tenantId);
-        emptyInsights.Should().NotBeNull();
-        emptyInsights!.Status.Should().Be("INSUFFICIENT_DATA");
-    }
-
+    // Helpers & Test Doubles locais do Bloco 2
     // =========================================================================
     // Helpers & Test Doubles locais do Bloco 2
     // =========================================================================

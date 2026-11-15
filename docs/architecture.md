@@ -6,7 +6,7 @@ Documento descritivo único do ecossistema **E-commerce Bot**, consolidando arqu
 
 ## 1. Visão Geral & Topologia (Monorepo)
 
-Plataforma SaaS multi-tenant para extração de produtos de e-commerce, enriquecimento de catálogo por IA (OpenRouter), previsão/segmentação analítica com Machine Learning local (Scikit-Learn), checkout de créditos (Mercado Pago) e sincronização com **Shopify** e **Nuvemshop**.
+Plataforma SaaS multi-tenant para extração de produtos de e-commerce, enriquecimento de catálogo por IA (OpenRouter), checkout de créditos (Mercado Pago) e sincronização com **Shopify** e **Nuvemshop**.
 
 ```mermaid
 flowchart TD
@@ -15,7 +15,6 @@ flowchart TD
     API -->|Cache / Rate Limit / Idempotência / PubSub SSE| Redis[("Redis 7")]
     API -->|Redis Streams XADD / XREADGROUP| Redis
     Redis <-->|XREADGROUP / XADD| GoWorker["EcommerceBot.GoWorker<br/>(Go 1.23 · Chi · Chromedp · GoQuery)"]
-    GoWorker -->|HTTP /api/ml/analyze| MLSidecar["ML Sidecar<br/>(FastAPI · Scikit-Learn · Joblib)"]
     Migrations["Database.Migrations (.NET 9 + DbUp)"] -.->|DDL 001–019| Postgres
 ```
 
@@ -25,8 +24,7 @@ flowchart TD
 |---|---|---|
 | **`EcommerceBot.Web`** | React 19, TypeScript, Vite 8, Tailwind CSS v4 | Portal SPA estático (servido via Nginx em produção, sem Node SSR). Camadas estritas `Types -> Services -> Hooks -> Components/Pages`, autenticação JWT via cookie/storage e cliente SSE (`events:tenant:{tenantId}`). |
 | **`EcommerceBot.Core`** | .NET 9 (C#), ASP.NET Core, Dapper, Npgsql, Redis Streams | Core API transacional em Clean Architecture / DDD (`Domain`, `Application`, `Infrastructure`, `Api`) + servidor de observabilidade `EcommerceBot.Diagnostics.Mcp` (`stdio`). Orquestra auth JWT, multi-tenancy com RLS via Npgsql, mensageria via Redis Streams (BackgroundServices), LLM (OpenRouter), pagamentos (Mercado Pago), e-mails Razor (`.cshtml` via Resend) e gateways Shopify/Nuvemshop. |
-| **`EcommerceBot.GoWorker`** | Go 1.23, Chi, Chromedp, GoQuery, go-redis | Microsserviço assíncrono de alta performance para web scraping evasivo multi-tier (Tier 1 HTTP seguro + Anti-SSRF em `net.Dialer.Control`, Tier 2 browser stealth + JSON-LD) e consumo de Redis Streams (`stream:scraping:*`, `stream:analytics:ml`). |
-| **`ml-sidecar`** | Python 3.12, FastAPI, Scikit-Learn, Joblib, Pandas | Sidecar analítico mínimo e isolado para inferência local de Machine Learning (RFM, Churn, LTV, Capacity) sob demanda via HTTP local (`POST /api/ml/analyze`). |
+| **`EcommerceBot.GoWorker`** | Go 1.23, Chi, Chromedp, GoQuery, go-redis | Microsserviço assíncrono de alta performance para web scraping evasivo multi-tier (Tier 1 HTTP seguro + Anti-SSRF em `net.Dialer.Control`, Tier 2 browser stealth + JSON-LD) e consumo de Redis Streams (`stream:scraping:*`). |
 | **`Database.Migrations`** | .NET 9 (C#), DbUp.PostgreSQL, Npgsql | Runner determinístico de scripts PL/pgSQL (`001`–`019`) com Row Level Security (`CREATE POLICY` com `security.fn_tenant_access`), funções de auditoria e bootstrap de SuperAdmin no PostgreSQL 16. |
 | **`infra/`** | Docker Compose, Nginx, Bash | Topologia local (`infra/dev`) e produção VPS (`infra/prod` com Nginx edge, TLS, Workstation GC e scripts de backup/restore PostgreSQL no Cloudflare R2). |
 
@@ -45,8 +43,6 @@ flowchart TD
 3. **Integrações Shopify & Nuvemshop:**
    - Conexão via OAuth 2.0 ou token direto cifrado com **AES-256 GCM** em `dbo.store_integrations`.
    - Sincronização individual ou em lote via Redis Streams (`stream:sync:shopify`, `stream:sync:nuvemshop`) consumidos por `ShopifyBulkSyncStreamConsumer` e `NuvemshopBulkSyncStreamConsumer` via GraphQL Admin (`2024-01+`) ou Nuvemshop REST v1, além de webhooks reativos com validação HMAC.
-4. **Analytics Preditivo (ML) & Tráfego:**
-   - Core publica jobs no stream `stream:analytics:ml` → Go Worker repassa ao `ml-sidecar` (`POST /api/ml/analyze`) que executa `RFMSegmentation`, `ChurnPredictor`, `LTVForecaster` e `TokenCapacityForecaster` (com suporte a artefatos `.joblib`), devolvendo resultado em `stream:analytics:processed` → `AnalyticsProcessedStreamConsumer` grava em `dbo.robot_activities` e emite via SSE.
 
 ---
 
@@ -72,10 +68,7 @@ dotnet run --project EcommerceBot.Core/src/EcommerceBot.Api/EcommerceBot.Api.csp
 # 4. Go Worker (Web Scraping & Redis Streams)
 cd EcommerceBot.GoWorker && go run cmd/worker/main.go
 
-# 5. ML Sidecar (Inferência Local FastAPI)
-cd ml-sidecar && uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
-
-# 6. Frontend SPA (React 19 + Vite 8)
+# 5. Frontend SPA (React 19 + Vite 8)
 cd EcommerceBot.Web && npm install && npm run dev
 ```
 
@@ -84,7 +77,6 @@ cd EcommerceBot.Web && npm install && npm run dev
 - **Migrações:** `dotnet build Database.Migrations/Database.Migrations.csproj`
 - **Frontend Web:** `npm run lint && npm run build && npm test` (em `EcommerceBot.Web/`)
 - **Go Worker:** `go build ./cmd/worker/...` e `go test ./...` (em `EcommerceBot.GoWorker/`)
-- **ML Sidecar:** `pytest tests` (em `ml-sidecar/`)
 - **Grafo de Código (Graft):** `graft check` / `graft build`
 
 ---
@@ -105,7 +97,7 @@ O repositório é indexado em `graft/` (nós markdown com spans `file:line` sinc
 ### Invariantes (violação = bloqueio de merge)
 
 1. **Isolamento multi-tenant em SQL (PostgreSQL RLS):** toda query/comando Dapper em tabela tenant-scoped deve executar dentro de transação explícita com `SET LOCAL app.tenant_id = '...'` e `SET LOCAL app.is_super_admin = '...'` (aplicado via `DbConnectionFactory`), mantendo as policies `tenant_isolation` ativas como fail-closed.
-2. **Isolamento do Go Worker e ML Sidecar:** proibido conectar diretamente ao banco relacional PostgreSQL ou importar SDKs de LLM externos (`openai`, `anthropic`, `openrouter`). Comunicação apenas por Redis Streams e HTTP interno (`/api/ml/analyze`); orquestração de LLM vive exclusivamente no `EcommerceBot.Core`.
+2. **Isolamento do Go Worker:** proibido conectar diretamente ao banco relacional PostgreSQL ou importar SDKs de LLM externos (`openai`, `anthropic`, `openrouter`). Comunicação apenas por Redis Streams; orquestração de LLM vive exclusivamente no `EcommerceBot.Core`.
 3. **Zero fallback estático de secret:** nunca usar `?? "default_secret"` para JWT, AES, chave interna de serviço ou webhook. Lançar `InvalidOperationException` ou retornar `401` (fail-closed).
 4. **Sem escalação de privilégio:** endpoints de perfil (`UpdateProfileAsync`) não podem aceitar nem mutar `Role`. Registros padrão nascem como `MEMBER` e nunca aceitam `TenantId` arbitrário sem autorização/convite.
 5. **Sem colisão de rotas HTTP:** proibido declarar o mesmo caminho de rota em controllers/actions distintos (`AmbiguousMatchException`).

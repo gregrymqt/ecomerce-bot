@@ -11,7 +11,6 @@ import (
 
 	"ecommercebot/goworker/internal/config"
 	"ecommercebot/goworker/internal/health"
-	"ecommercebot/goworker/internal/ml"
 	"ecommercebot/goworker/internal/redis"
 	"ecommercebot/goworker/internal/scraper"
 	"ecommercebot/goworker/internal/streams"
@@ -59,7 +58,6 @@ func main() {
 	logger.Info("Iniciando EcommerceBot.GoWorker",
 		zap.String("environment", cfg.Environment),
 		zap.String("logLevel", cfg.LogLevel),
-		zap.String("mlSidecarUrl", cfg.MLSidecarURL),
 		zap.Int("scraperConcurrency", cfg.ScraperConcurrency),
 	)
 
@@ -82,7 +80,6 @@ func main() {
 	// Parser e Workers
 	parser := scraper.NewParser(cfg.ScraperTimeout)
 	scraperWorker := scraper.NewScraperWorker(parser, redisCli, publisher, logger)
-	mlWorker := ml.NewMLWorker(cfg.MLSidecarURL, redisCli, publisher, logger)
 
 	hostname, _ := os.Hostname()
 	if hostname == "" {
@@ -124,24 +121,6 @@ func main() {
 			2*time.Second,
 		); err != nil {
 			logger.Error("Erro no consumidor stream:scraping:demo", zap.Error(err))
-		}
-	}()
-
-	// Consumidor 3: stream:analytics:ml
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		consumerName := fmt.Sprintf("%s-ml-%d", hostname, os.Getpid())
-		if err := consumerMgr.StartConsuming(
-			ctx,
-			streams.StreamAnalyticsML,
-			streams.GroupML,
-			consumerName,
-			mlWorker.ProcessMessage,
-			2,
-			2*time.Second,
-		); err != nil {
-			logger.Error("Erro no consumidor stream:analytics:ml", zap.Error(err))
 		}
 	}()
 

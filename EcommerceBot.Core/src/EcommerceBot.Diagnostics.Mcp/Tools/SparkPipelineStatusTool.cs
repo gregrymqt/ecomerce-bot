@@ -82,8 +82,6 @@ public sealed class SparkPipelineStatusTool : ISystemDiagnosticTool
         {
             sb.AppendLine("⚠️ **Nenhum relatório Spark encontrado em `docs/notebooklm/reports/`.**");
             sb.AppendLine("O pipeline agendado ainda não concluiu seu primeiro ciclo de calibração.");
-            sb.AppendLine();
-            sb.AppendLine("💡 **Como executar:** Execute o pipeline de calibração na pasta `ml-sidecar`.");
             return CreateResult(sb.ToString(), false);
         }
 
