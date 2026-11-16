@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
-using EcommerceBot.Application.DTOs.MercadoPago;
+using EcommerceBot.Application.DTOs.Stripe;
 using EcommerceBot.Application.DTOs.Wallet;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Domain.Entities;
@@ -19,7 +19,7 @@ public sealed class WalletService : IWalletService
     private readonly ITenantRepository _tenantRepository;
     private readonly IPlanRepository _planRepository;
     private readonly IOrderRepository _orderRepository;
-    private readonly IMercadoPagoGateway _mercadoPagoGateway;
+    private readonly IStripeGateway _stripeGateway;
     private readonly ITenantBillingProfileRepository _tenantBillingProfileRepository;
     private readonly ILogger<WalletService> _logger;
     private readonly IWalletUtils _walletUtils;
@@ -29,7 +29,7 @@ public sealed class WalletService : IWalletService
         ITenantRepository tenantRepository,
         IPlanRepository planRepository,
         IOrderRepository orderRepository,
-        IMercadoPagoGateway mercadoPagoGateway,
+        IStripeGateway stripeGateway,
         ITenantBillingProfileRepository tenantBillingProfileRepository,
         ILogger<WalletService> logger,
         IWalletUtils walletUtils,
@@ -39,7 +39,7 @@ public sealed class WalletService : IWalletService
         _tenantRepository = tenantRepository;
         _planRepository = planRepository;
         _orderRepository = orderRepository;
-        _mercadoPagoGateway = mercadoPagoGateway;
+        _stripeGateway = stripeGateway;
         _tenantBillingProfileRepository = tenantBillingProfileRepository;
         _logger = logger;
         _walletUtils = walletUtils;
@@ -141,16 +141,16 @@ public sealed class WalletService : IWalletService
 
         try
         {
-            var payerEmail = request.Payer?.Email;
-            var user = await GetUserByEmailAsync(payerEmail, tenantId, cancellationToken);
+            var initialPayerEmail = request.Payer?.Email;
+            var user = await GetUserByEmailAsync(initialPayerEmail, tenantId, cancellationToken);
             var billingProfile = await _tenantBillingProfileRepository.GetByTenantIdAsync(tenantId, cancellationToken);
 
             // Se a requisição trouxe dados de documento/endereço, atualiza o perfil fiscal do Tenant
             if (request.Payer?.IdentificationNumber is { Length: >= 11 } &&
                 request.Payer?.Address is { ZipCode.Length: >= 8, StreetName.Length: > 0 })
             {
-                var cleanDoc = _walletUtils.CleanDocumentSpan(request.Payer.IdentificationNumber.AsSpan());
-                var docType = request.Payer.IdentificationType ?? (cleanDoc.Length == 14 ? "CNPJ" : "CPF");
+                var profCleanDoc = _walletUtils.CleanDocumentSpan(request.Payer.IdentificationNumber.AsSpan());
+                var profDocType = request.Payer.IdentificationType ?? (profCleanDoc.Length == 14 ? "CNPJ" : "CPF");
                 var cleanZip = _walletUtils.CleanDocumentSpan(request.Payer.Address.ZipCode.AsSpan());
                 var fullName = $"{request.Payer.FirstName} {request.Payer.LastName}".Trim();
                 if (string.IsNullOrWhiteSpace(fullName)) fullName = user?.FullName ?? "Lojista";
@@ -159,8 +159,8 @@ public sealed class WalletService : IWalletService
                 {
                     TenantId = tenantId,
                     LegalName = fullName,
-                    DocumentType = docType,
-                    DocumentNumber = cleanDoc,
+                    DocumentType = profDocType,
+                    DocumentNumber = profCleanDoc,
                     Email = request.Payer.Email ?? user?.Email,
                     ZipCode = cleanZip,
                     StreetName = request.Payer.Address.StreetName ?? string.Empty,
@@ -172,7 +172,12 @@ public sealed class WalletService : IWalletService
                 }, cancellationToken);
             }
 
-            var payerRequest = _walletUtils.BuildMercadoPagoPayer(user, request.Payer, billingProfile);
+            var (firstName, lastName) = _walletUtils.ExtractNames(request.Payer?.FirstName != null ? $"{request.Payer.FirstName} {request.Payer.LastName}" : (billingProfile?.LegalName ?? user?.FullName));
+            var payerEmail = request.Payer?.Email ?? billingProfile?.Email ?? user?.Email ?? "financeiro@ecommercebot.local";
+            var payerFullName = $"{firstName} {lastName}".Trim();
+            var docType = request.Payer?.IdentificationType ?? billingProfile?.DocumentType ?? "CPF";
+            var rawDoc = request.Payer?.IdentificationNumber ?? billingProfile?.DocumentNumber ?? string.Empty;
+            var cleanDoc = _walletUtils.CleanDocumentSpan(rawDoc.AsSpan());
 
             Plan? plan = null;
             if (!string.IsNullOrWhiteSpace(request.PackageId))
@@ -197,90 +202,55 @@ public sealed class WalletService : IWalletService
                 PlanId = plan?.Id,
                 UserId = user?.Id,
                 ExternalReference = externalRef,
-                PayerName = $"{payerRequest.FirstName} {payerRequest.LastName}".Trim(),
-                PayerEmail = payerRequest.Email,
-                PayerDocumentType = payerRequest.Identification?.Type ?? "CPF",
-                PayerDocumentNumber = payerRequest.Identification?.Number,
-                PayerZipCode = payerRequest.Address?.ZipCode,
-                PayerStreetName = payerRequest.Address?.StreetName,
-                PayerStreetNumber = payerRequest.Address?.StreetNumber,
-                PayerComplement = payerRequest.Address?.Complement,
-                PayerNeighborhood = payerRequest.Address?.Neighborhood,
-                PayerCity = payerRequest.Address?.City,
-                PayerFederalUnit = payerRequest.Address?.FederalUnit,
+                PayerName = payerFullName,
+                PayerEmail = payerEmail,
+                PayerDocumentType = docType,
+                PayerDocumentNumber = cleanDoc,
+                PayerZipCode = request.Payer?.Address?.ZipCode ?? billingProfile?.ZipCode,
+                PayerStreetName = request.Payer?.Address?.StreetName ?? billingProfile?.StreetName,
+                PayerStreetNumber = request.Payer?.Address?.StreetNumber ?? billingProfile?.StreetNumber,
+                PayerComplement = request.Payer?.Address?.Complement ?? billingProfile?.Complement,
+                PayerNeighborhood = request.Payer?.Address?.Neighborhood ?? billingProfile?.Neighborhood,
+                PayerCity = request.Payer?.Address?.City ?? billingProfile?.City,
+                PayerFederalUnit = request.Payer?.Address?.FederalUnit ?? billingProfile?.FederalUnit,
                 PaymentMethod = paymentMethodId,
                 TotalAmount = request.Amount,
                 Status = "pending",
                 Items =
                 [
                     new OrderItem
-                {
-                    Title = $"Recarga de Saldo IA (R$ {totalAmountFormatted})",
-                    UnitPrice = request.Amount,
-                    Quantity = 1,
-                    ExternalCode = request.PackageId ?? "WALLET_TOPUP"
-                }
-                ]
-            };
-
-            var mpRequest = new MercadoPagoOrderRequest
-            {
-                Type = "online",
-                ProcessingMode = "automatic",
-                ExternalReference = externalRef,
-                TotalAmount = totalAmountFormatted,
-                Description = $"Recarga de Créditos IA - E-commerce Bot",
-                Payer = payerRequest,
-                Transactions = new MercadoPagoTransactionsRequest
-                {
-                    Payments =
-                    [
-                        new MercadoPagoPaymentRequest
                     {
-                        Amount = totalAmountFormatted,
-                        PaymentMethod = new MercadoPagoPaymentMethodRequest
-                        {
-                            Id = isPix ? "pix" : paymentMethodId,
-                            Type = isPix ? "bank_transfer" : "credit_card",
-                            Token = isPix ? null : request.CardToken,
-                            Installments = isPix ? null : request.Installments,
-                            StatementDescriptor = "ECOMAUTOBOT"
-                        },
-                        ExpirationTime = isPix ? "PT30M" : null
+                        Title = $"Recarga de Saldo IA (R$ {totalAmountFormatted})",
+                        UnitPrice = request.Amount,
+                        Quantity = 1,
+                        ExternalCode = request.PackageId ?? "WALLET_TOPUP"
                     }
-                    ]
-                },
-                Items =
-                [
-                    new MercadoPagoItemRequest
-                {
-                    Title = "Recarga de Créditos",
-                    UnitPrice = totalAmountFormatted,
-                    Quantity = 1,
-                    Description = "Recarga de Saldo de IA",
-                    ExternalCode = request.PackageId ?? "WALLET_TOPUP"
-                }
                 ]
             };
 
-            var mpResponse = await _mercadoPagoGateway.CreateOrderAsync(mpRequest, cancellationToken: cancellationToken);
-            var firstPayment = mpResponse.Transactions?.Payments?.FirstOrDefault();
-
-            // Extrai identificador do pagamento e dados de PIX
-            var numericPaymentId = firstPayment?.Reference?.Id?.ToString();
-            order.MpPaymentId = !string.IsNullOrEmpty(numericPaymentId)
-                ? numericPaymentId
-                : (firstPayment?.Id ?? mpResponse.Id);
-            order.PixQrCode = firstPayment?.PaymentMethod?.QrCode;
-            order.PixQrCodeBase64 = firstPayment?.PaymentMethod?.QrCodeBase64;
-            order.TicketUrl = firstPayment?.PaymentMethod?.TicketUrl;
-            order.PixExpirationDate = isPix ? DateTimeOffset.UtcNow.AddMinutes(30) : null;
-
-
-            // Se for aprovado instantaneamente (cartão de crédito)
-            if (firstPayment?.Status is "approved" || mpResponse.Status is "processed" or "approved")
+            var stripeRequest = new CreatePaymentIntentRequest
             {
-                order.Status = "approved";
+                Amount = request.Amount,
+                Currency = "brl",
+                Description = "Recarga de Créditos IA - E-commerce Bot",
+                CustomerEmail = payerEmail,
+                Metadata = new Dictionary<string, string>
+                {
+                    ["tenant_id"] = tenantId.ToString(),
+                    ["external_reference"] = externalRef,
+                    ["package_id"] = request.PackageId ?? "WALLET_TOPUP",
+                    ["payer_name"] = payerFullName
+                },
+                EnableAutomaticTax = true
+            };
+
+            var stripeResponse = await _stripeGateway.CreatePaymentIntentAsync(stripeRequest, idempotencyKey: externalRef, cancellationToken: cancellationToken);
+
+            order.MpPaymentId = stripeResponse.Id;
+            order.Status = string.Equals(stripeResponse.Status, "succeeded", StringComparison.OrdinalIgnoreCase) ? "approved" : "pending";
+
+            if (string.Equals(stripeResponse.Status, "succeeded", StringComparison.OrdinalIgnoreCase))
+            {
                 order.PaidAt = DateTimeOffset.UtcNow;
                 order.TotalPaidAmount = request.Amount;
             }
@@ -288,7 +258,7 @@ public sealed class WalletService : IWalletService
             // 1. Salva a Order PRIMEIRO (Garante o ID no banco para satisfazer a Foreign Key)
             var savedOrder = await _orderRepository.CreateOrderAsync(order, cancellationToken);
 
-            // Se aprovado instantaneamente (cartão), concede créditos atomicamente uma única vez (idempotente com webhook futuro)
+            // Se aprovado instantaneamente, concede créditos atomicamente uma única vez (idempotente com webhook futuro)
             if (string.Equals(savedOrder.Status, "approved", StringComparison.OrdinalIgnoreCase))
             {
                 var creditsToAdd = plan?.CreditsIncluded > 0
@@ -313,7 +283,7 @@ public sealed class WalletService : IWalletService
                 savedOrder.Id, savedOrder.Status, tenantId);
 
             // 3. Converte para o DTO de contrato limpo da Wallet
-            return _walletUtils.ToRechargeResponseDto(mpResponse, savedOrder);
+            return _walletUtils.ToRechargeResponseDto(stripeResponse, savedOrder);
         }
         catch (ArgumentException)
         {

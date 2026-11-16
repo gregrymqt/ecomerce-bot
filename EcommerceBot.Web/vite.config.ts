@@ -8,6 +8,7 @@ import path from 'path';
 export default defineConfig({
   // Lê o arquivo .env mestre a partir da raiz do monorepo
   envDir: path.resolve(__dirname, '../'),
+  envPrefix: ['VITE_', 'PUBLISHABLE_'],
   plugins: [react(), tailwindcss(), basicSsl()],
   resolve: {
     alias: {

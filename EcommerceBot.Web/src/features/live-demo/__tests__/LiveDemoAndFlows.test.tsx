@@ -9,7 +9,7 @@ import { useCatalogPage } from '@/features/catalog/hooks/useCatalogPage';
 import { productService } from '@/features/catalog/services/product.service';
 import { useUnifiedPayment } from '@/features/wallet/hooks/useUnifiedPayment';
 import { walletService } from '@/features/wallet/services/wallet.service';
-import { mercadoPagoService } from '@/features/wallet/services/mercadoPago.service';
+import { stripeService } from '@/features/wallet/services/stripe.service';
 import { IntegrationsPage } from '@/features/integrations/pages/IntegrationsPage';
 import { MerchantLayout } from '@/layouts/MerchantLayout';
 import { useAuth } from '@/features/auth';
@@ -65,8 +65,12 @@ vi.mock('@/features/wallet/hooks/useBillingProfile', () => ({
   })),
 }));
 
-vi.mock('@/features/wallet/services/mercadoPago.service', () => ({
-  mercadoPagoService: { tokenizeCard: vi.fn() },
+vi.mock('@/features/wallet/services/stripe.service', () => ({
+  stripeService: {
+    tokenizeCard: vi.fn(),
+    getInstance: vi.fn().mockResolvedValue(null),
+    extractErrorMessage: vi.fn((e: unknown) => String(e)),
+  },
   detectPaymentMethodId: vi.fn(() => 'visa'),
 }));
 
@@ -221,7 +225,7 @@ describe('Block 3 Integration Flows: Live Demo, Catalog AI, Checkout, Integratio
       });
     });
 
-    expect(mercadoPagoService.tokenizeCard).not.toHaveBeenCalled();
+    expect(stripeService.tokenizeCard).not.toHaveBeenCalled();
     expect(walletService.processCreditCardRecharge).not.toHaveBeenCalled();
   });
 

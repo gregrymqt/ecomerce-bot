@@ -14,7 +14,7 @@ public static class OptionsConfigurationExtensions
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.Configure<RedisOptions>(configuration.GetSection(RedisOptions.SectionName));
         services.Configure<SecurityOptions>(configuration.GetSection(SecurityOptions.SectionName));
-        services.Configure<MercadoPagoOptions>(configuration.GetSection(MercadoPagoOptions.SectionName));
+        services.Configure<StripeOptions>(configuration.GetSection(StripeOptions.SectionName));
         services.Configure<ResendOptions>(configuration.GetSection(ResendOptions.SectionName));
         services.Configure<ShopifyOptions>(configuration.GetSection(ShopifyOptions.SectionName));
         services.Configure<NuvemshopOptions>(configuration.GetSection(NuvemshopOptions.SectionName));

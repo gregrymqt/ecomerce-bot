@@ -6,7 +6,7 @@
 
 export * from './wallet.service';
 export * from './billing.service';
-export * from './mercadoPago.service';
+export * from './stripe.service';
 export { default as walletService } from './wallet.service';
 export { default as billingService } from './billing.service';
-export { default as mercadoPagoService } from './mercadoPago.service';
+export { default as stripeService } from './stripe.service';

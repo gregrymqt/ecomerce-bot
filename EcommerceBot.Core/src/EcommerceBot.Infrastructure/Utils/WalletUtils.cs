@@ -1,6 +1,6 @@
-
+using System;
 using System.Globalization;
-using EcommerceBot.Application.DTOs.MercadoPago;
+using EcommerceBot.Application.DTOs.Stripe;
 using EcommerceBot.Application.DTOs.Wallet;
 using EcommerceBot.Domain.Entities;
 using EcommerceBot.Domain.Interfaces;
@@ -10,15 +10,10 @@ namespace EcommerceBot.Infrastructure.Utils;
 
 public interface IWalletUtils
 {
-    public MercadoPagoPayerRequest BuildMercadoPagoPayer(
-        User? user,
-        RechargePayerDto? existingPayer,
-        TenantBillingProfile? billingProfile);
-
     public RechargeResponseDto ToRechargeResponseDto(
-    MercadoPagoOrderResponse mpResponse,
-    Order order,
-    int? creditsAdded = null);
+        PaymentIntentResponse paymentIntent,
+        Order order,
+        int? creditsAdded = null);
 
     public (string FirstName, string LastName) ExtractNames(string? rawName);
 
@@ -27,71 +22,26 @@ public interface IWalletUtils
 
 public sealed class WalletUtils : IWalletUtils
 {
-    public MercadoPagoPayerRequest BuildMercadoPagoPayer(
-        User? user,
-        RechargePayerDto? existingPayer,
-        TenantBillingProfile? billingProfile)
-    {
-        var (firstName, lastName) = ExtractNames(existingPayer?.FirstName ?? billingProfile?.LegalName ?? user?.FullName);
-        if (!string.IsNullOrWhiteSpace(existingPayer?.LastName))
-        {
-            lastName = existingPayer.LastName;
-        }
-
-        var docType = existingPayer?.IdentificationType ?? billingProfile?.DocumentType ?? "CPF";
-        var rawDoc = existingPayer?.IdentificationNumber ?? billingProfile?.DocumentNumber ?? string.Empty;
-        var cleanDoc = CleanDocumentSpan(rawDoc.AsSpan());
-
-        var zipCode = existingPayer?.Address?.ZipCode ?? billingProfile?.ZipCode ?? "01001-000";
-        var streetName = existingPayer?.Address?.StreetName ?? billingProfile?.StreetName ?? "Avenida Paulista";
-        var streetNumber = existingPayer?.Address?.StreetNumber ?? billingProfile?.StreetNumber ?? "1000";
-        var neighborhood = existingPayer?.Address?.Neighborhood ?? billingProfile?.Neighborhood ?? "Bela Vista";
-        var city = existingPayer?.Address?.City ?? billingProfile?.City ?? "São Paulo";
-        var federalUnit = existingPayer?.Address?.FederalUnit ?? billingProfile?.FederalUnit ?? "SP";
-        var complement = existingPayer?.Address?.Complement ?? billingProfile?.Complement;
-
-        return new MercadoPagoPayerRequest
-        {
-            Email = existingPayer?.Email ?? billingProfile?.Email ?? user?.Email ?? "financeiro@ecommercebot.local",
-            FirstName = firstName,
-            LastName = lastName,
-            Identification = !string.IsNullOrWhiteSpace(cleanDoc)
-                ? new MercadoPagoIdentificationRequest { Type = docType, Number = cleanDoc }
-                : null,
-            Address = new MercadoPagoAddressRequest
-            {
-                ZipCode = zipCode,
-                StreetName = streetName,
-                StreetNumber = streetNumber,
-                Neighborhood = neighborhood,
-                City = city,
-                FederalUnit = federalUnit,
-                Complement = complement
-            }
-        };
-    }
-
     public RechargeResponseDto ToRechargeResponseDto(
-    MercadoPagoOrderResponse mpResponse,
-    Order order,
-    int? creditsAdded = null)
+        PaymentIntentResponse paymentIntent,
+        Order order,
+        int? creditsAdded = null)
     {
-        var firstPayment = mpResponse.Transactions?.Payments?.FirstOrDefault();
-        var isApproved = string.Equals(order.Status, "approved", StringComparison.OrdinalIgnoreCase);
+        var isApproved = string.Equals(order.Status, "approved", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(paymentIntent.Status, "succeeded", StringComparison.OrdinalIgnoreCase);
 
         return new RechargeResponseDto
         {
             OrderId = order.Id,
-            PaymentId = order.MpPaymentId ?? firstPayment?.Id ?? mpResponse.Id ?? order.Id.ToString(),
-            Status = order.Status,
+            PaymentId = order.MpPaymentId ?? paymentIntent.Id ?? order.Id.ToString(),
+            Status = isApproved ? "approved" : order.Status,
             PaymentMethod = order.PaymentMethod,
             TotalAmount = order.TotalAmount,
             CreditsAdded = isApproved ? creditsAdded : null,
-
-            // Dados exclusivos para PIX
-            PixQrCode = order.PixQrCode ?? firstPayment?.PaymentMethod?.QrCode,
-            PixQrCodeBase64 = order.PixQrCodeBase64 ?? firstPayment?.PaymentMethod?.QrCodeBase64,
-            TicketUrl = order.TicketUrl ?? firstPayment?.PaymentMethod?.TicketUrl,
+            ClientSecret = paymentIntent.ClientSecret,
+            PixQrCode = order.PixQrCode,
+            PixQrCodeBase64 = order.PixQrCodeBase64,
+            TicketUrl = order.TicketUrl,
             ExpirationDate = order.PixExpirationDate
         };
     }
@@ -141,5 +91,4 @@ public sealed class WalletUtils : IWalletUtils
 
         return buffer[..written].ToString();
     }
-
 }

@@ -142,6 +142,10 @@ public sealed record RechargeResponseDto
     [JsonPropertyName("credits_added")]
     public int? CreditsAdded { get; init; }
 
+    [JsonPropertyName("client_secret")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ClientSecret { get; init; }
+
     // Campos preenchidos quando for PIX
     [JsonPropertyName("pix_qr_code")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

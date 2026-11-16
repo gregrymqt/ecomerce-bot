@@ -38,7 +38,7 @@ export interface HomeIntegrationsSummary {
   totalIntegrations: number;
   hasShopify: boolean;
   hasNuvemshop: boolean;
-  hasMercadoPago: boolean;
+  hasStripe: boolean;
   hasByokKeys: boolean;
 }
 
