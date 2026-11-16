@@ -138,40 +138,7 @@ services:
       - internal-net
 
   # ==============================================================================
-  # 4. WORKER DE ALTA PERFORMANCE (Go Worker)
-  # ==============================================================================
-  go-worker:
-    build:
-      context: ../../EcommerceBot.GoWorker
-      dockerfile: Dockerfile
-    container_name: prod-goworker-bot
-    restart: unless-stopped
-    environment:
-      - ENVIRONMENT=${ENVIRONMENT:-production}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - REDIS_URL=${REDIS_URL:-redis://:${REDIS_PASSWORD:-prod_redis_password_secure}@redis:6379/0}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-prod_redis_password_secure}
-      - HEALTH_PORT=8000
-      - SCRAPER_CONCURRENCY=5
-      - SCRAPER_TIMEOUT_SECONDS=30
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 96M
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - internal-net
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:8000/health/ready || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  # ==============================================================================
-  # 5. FRONTEND WEB SPA (React 18 + Vite + Nginx)
+  # 4. FRONTEND WEB SPA (React 18 + Vite + Nginx)
   # ==============================================================================
   web:
     build:

@@ -42,6 +42,14 @@ public static class DependencyInjectionExtensions
                 !type.IsAbstract &&
                 !type.IsInterface))
             .AsMatchingInterface()
+            .WithScopedLifetime()
+
+            // Job Handlers (*JobHandler -> IJobHandler)
+            .AddClasses(classes => classes.Where(type =>
+                typeof(IJobHandler).IsAssignableFrom(type) &&
+                !type.IsAbstract &&
+                !type.IsInterface))
+            .As<IJobHandler>()
             .WithScopedLifetime());
 
         return services;
