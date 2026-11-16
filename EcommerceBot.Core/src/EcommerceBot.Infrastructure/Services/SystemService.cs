@@ -7,8 +7,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using CsvHelper;
-using CsvHelper.Configuration;
 using Dapper;
 using EcommerceBot.Application.DTOs.Messaging;
 using EcommerceBot.Application.DTOs.System;
@@ -303,55 +301,34 @@ public sealed class SystemService : ISystemService
 
         var products = await conn.QueryAsync<dynamic>(new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: cancellationToken));
 
-        var config = new CsvConfiguration(CultureInfo.InvariantCulture) { Delimiter = "," };
-        using var stringWriter = new StringWriter(CultureInfo.InvariantCulture);
-        using var csv = new CsvWriter(stringWriter, config);
+        await using var csv = new Utf8CsvStreamWriter(outputStream);
 
-        csv.WriteField("SKU");
-        csv.WriteField("Title");
-        csv.WriteField("Price");
-        csv.WriteField("OriginalPrice");
-        csv.WriteField("Status");
-        csv.WriteField("Category");
-        csv.WriteField("Brand");
-        csv.WriteField("StockQuantity");
-        csv.WriteField("SeoKeywords");
-        await csv.NextRecordAsync();
+        await csv.WriteFieldAsync("SKU", sanitize: false, cancellationToken);
+        await csv.WriteFieldAsync("Title", sanitize: false, cancellationToken);
+        await csv.WriteFieldAsync("Price", sanitize: false, cancellationToken);
+        await csv.WriteFieldAsync("OriginalPrice", sanitize: false, cancellationToken);
+        await csv.WriteFieldAsync("Status", sanitize: false, cancellationToken);
+        await csv.WriteFieldAsync("Category", sanitize: false, cancellationToken);
+        await csv.WriteFieldAsync("Brand", sanitize: false, cancellationToken);
+        await csv.WriteFieldAsync("StockQuantity", sanitize: false, cancellationToken);
+        await csv.WriteFieldAsync("SeoKeywords", sanitize: false, cancellationToken);
+        await csv.NextRecordAsync(cancellationToken);
 
-        var batchCounter = 0;
         foreach (var p in products)
         {
-            csv.WriteField(SanitizeCsvCell((string?)p.Sku));
-            csv.WriteField(SanitizeCsvCell((string?)p.Title));
-            csv.WriteField(p.Price);
-            csv.WriteField(p.OriginalPrice);
-            csv.WriteField(SanitizeCsvCell((string?)p.Status));
-            csv.WriteField(SanitizeCsvCell((string?)p.Category));
-            csv.WriteField(SanitizeCsvCell((string?)p.Brand));
-            csv.WriteField(p.StockQuantity);
-            csv.WriteField(SanitizeCsvCell(ExtractSeoKeywords((string?)p.EnrichmentMetadata)));
-            await csv.NextRecordAsync();
-
-            batchCounter++;
-            if (batchCounter >= 100)
-            {
-                await FlushBufferAsync(stringWriter, outputStream, cancellationToken);
-                batchCounter = 0;
-            }
+            await csv.WriteFieldAsync((string?)p.Sku, sanitize: true, cancellationToken);
+            await csv.WriteFieldAsync((string?)p.Title, sanitize: true, cancellationToken);
+            await csv.WriteFieldAsync((decimal?)p.Price, cancellationToken);
+            await csv.WriteFieldAsync((decimal?)p.OriginalPrice, cancellationToken);
+            await csv.WriteFieldAsync((string?)p.Status, sanitize: true, cancellationToken);
+            await csv.WriteFieldAsync((string?)p.Category, sanitize: true, cancellationToken);
+            await csv.WriteFieldAsync((string?)p.Brand, sanitize: true, cancellationToken);
+            await csv.WriteFieldAsync((int?)p.StockQuantity, cancellationToken);
+            await csv.WriteFieldAsync(ExtractSeoKeywords((string?)p.EnrichmentMetadata), sanitize: true, cancellationToken);
+            await csv.NextRecordAsync(cancellationToken);
         }
 
-        await FlushBufferAsync(stringWriter, outputStream, cancellationToken);
-        await outputStream.FlushAsync(cancellationToken);
-    }
-
-    private static async Task FlushBufferAsync(StringWriter stringWriter, Stream outputStream, CancellationToken cancellationToken)
-    {
-        var sb = stringWriter.GetStringBuilder();
-        if (sb.Length == 0) return;
-
-        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
-        sb.Clear();
-        await outputStream.WriteAsync(bytes, cancellationToken);
+        await csv.FlushAsync(cancellationToken);
     }
 
     private static string ExtractSeoKeywords(string? enrichmentMetadataJson)
@@ -364,7 +341,17 @@ public sealed class SystemService : ISystemService
             using var doc = JsonDocument.Parse(enrichmentMetadataJson);
             if (doc.RootElement.TryGetProperty("seoKeywords", out var kwEl) && kwEl.ValueKind == JsonValueKind.Array)
             {
-                return string.Join(", ", kwEl.EnumerateArray().Select(e => e.GetString()).Where(s => !string.IsNullOrWhiteSpace(s)));
+                var sb = new StringBuilder();
+                foreach (var el in kwEl.EnumerateArray())
+                {
+                    var s = el.GetString();
+                    if (!string.IsNullOrWhiteSpace(s))
+                    {
+                        if (sb.Length > 0) sb.Append(", ");
+                        sb.Append(s);
+                    }
+                }
+                return sb.ToString();
             }
         }
         catch (JsonException)
@@ -372,13 +359,5 @@ public sealed class SystemService : ISystemService
         }
 
         return string.Empty;
-    }
-
-    private static string SanitizeCsvCell(string? value)
-    {
-        if (string.IsNullOrEmpty(value)) return string.Empty;
-        return value[0] is '=' or '+' or '-' or '@' or '\t' or '\r'
-            ? $"'{value}"
-            : value;
     }
 }

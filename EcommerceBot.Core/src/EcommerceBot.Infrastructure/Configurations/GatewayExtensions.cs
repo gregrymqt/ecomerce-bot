@@ -6,6 +6,7 @@ using EcommerceBot.Application.Interfaces.Gateways;
 using EcommerceBot.Application.Interfaces.Services;
 using EcommerceBot.Infrastructure.Gateways;
 using EcommerceBot.Infrastructure.Options;
+using EcommerceBot.Infrastructure.Scraping;
 using EcommerceBot.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -26,6 +27,13 @@ public static class GatewayExtensions
         services.AddHttpClient<IResendGateway, ResendGateway>();
         services.AddHttpClient<IMercadoPagoGateway, MercadoPagoGateway>();
         services.AddHttpClient<IDiscordAlertService, DiscordAlertService>();
+
+        // Scraper HTTP C# nativo com SocketsHttpHandler seguro (Anti-SSRF + DNS rebinding)
+        services.AddHttpClient<IProductScraper, ProductScraper>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => ProductScraper.CreateSafeSocketsHttpHandler());
 
         // Cliente HTTP de baixo nível para OpenRouter com resiliência Polly
         services.AddHttpClient<IOpenRouterClient, OpenRouterClient>((serviceProvider, client) =>

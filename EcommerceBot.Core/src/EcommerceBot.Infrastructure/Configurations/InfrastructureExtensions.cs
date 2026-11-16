@@ -20,6 +20,7 @@ public static class InfrastructureExtensions
         services.AddRedisInfrastructure(configuration);
         services.AddJwtAuthentication(configuration, environment);
         services.AddMessagingInfrastructure(configuration);
+        services.AddJobQueue(configuration);
         services.AddGateways();
         services.AddCorsConfiguration(configuration, environment);
 

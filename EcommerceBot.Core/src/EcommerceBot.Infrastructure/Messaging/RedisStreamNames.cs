@@ -18,7 +18,6 @@ public static class RedisStreamNames
     public const string DlqEcommerce = "stream:dlq:ecommerce";
 
     // Consumer Groups Canônicos
-    public const string GroupGoWorkerScraper = "go-worker-scraper";
     public const string GroupApiScraped = "api-scraped-consumer";
     public const string GroupApiEmail = "api-email-consumer";
     public const string GroupApiPayments = "api-payments-consumer";
