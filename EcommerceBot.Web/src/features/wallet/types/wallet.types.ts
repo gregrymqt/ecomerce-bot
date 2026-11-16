@@ -7,7 +7,6 @@
  */
 
 import React from 'react';
-import type { CardTokenParams } from './mercadopago.types';
 
 export type TransactionType =
   | 'RECHARGE'
@@ -116,6 +115,7 @@ export interface RechargeResponse {
   pix_qr_code_base64?: string;
   ticket_url?: string;
   expiration_date?: string;
+  client_secret?: string;
 }
 
 export interface PixPaymentData {
@@ -147,14 +147,19 @@ export interface UseWalletReturn {
   refetchWallet: () => Promise<[void, void]>;
 }
 
-export interface CreditCardPaymentFormData extends CardTokenParams {
+export interface CreditCardPaymentFormData {
   cardNumber: string;
   cardholderName: string;
   securityCode: string;
   installments: number;
   expirationMonth: string;
   expirationYear: string;
+  cardExpirationMonth?: string;
+  cardExpirationYear?: string;
   docNumber: string;
+  docType?: string;
+  identificationType?: string;
+  identificationNumber?: string;
 }
 
 export interface WalletBalanceCardProps {

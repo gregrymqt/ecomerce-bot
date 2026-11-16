@@ -32,7 +32,7 @@ const DEFAULT_SUMMARY: HomeIntegrationsSummary = {
   totalIntegrations: 4,
   hasShopify: false,
   hasNuvemshop: false,
-  hasMercadoPago: true,
+  hasStripe: true,
   hasByokKeys: true,
 };
 
@@ -88,11 +88,11 @@ export const IntegrationsStatus: React.FC<IntegrationsStatusProps> = ({
                 <CreditCard className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-semibold text-white">Mercado Pago</h4>
-                <p className="text-xs text-slate-400">Checkout Transparente e PIX</p>
+                <h4 className="text-sm font-semibold text-white">Stripe</h4>
+                <p className="text-xs text-slate-400">Billing, Payments, Tax e Invoicing</p>
               </div>
             </div>
-            {summary.hasMercadoPago ? (
+            {summary.hasStripe ? (
               <Badge variant="success" icon={<CheckCircle2 className="w-3.5 h-3.5" />}>
                 Conectado
               </Badge>

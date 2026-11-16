@@ -2,13 +2,13 @@
  * src/features/wallet/hooks/useCreditCardCheckout.ts
  *
  * Hook especializado para o fluxo de checkout com Cartão de Crédito.
- * Encapsula a tokenização segura PCI-DSS (via mercadoPagoService)
+ * Encapsula a tokenização segura PCI-DSS (via stripeService)
  * e o envio ao backend transacional (via walletService).
  */
 
 import { useState, useCallback } from 'react';
 import { walletService } from '../services/wallet.service';
-import { mercadoPagoService, detectPaymentMethodId } from '../services/mercadoPago.service';
+import { stripeService, detectPaymentMethodId } from '../services/stripe.service';
 import type { CheckoutTarget, CreditCardPaymentFormData as CreditCardFormData } from '../types';
 import type { TenantBillingProfile } from '../types/billing.type';
 import { getErrorMessage } from '@/utils/errors';
@@ -55,8 +55,8 @@ export function useCreditCardCheckout({
       const paymentMethodId = detectPaymentMethodId(formData.cardNumber);
 
       try {
-        // 1. Tokenização criptográfica oficial no Mercado Pago (retorna token length >= 32)
-        const cardToken = await mercadoPagoService.tokenizeCard(formData);
+        // 1. Tokenização segura via Stripe PaymentMethod
+        const cardToken = await stripeService.tokenizeCard(formData);
 
         // 2. Despacho seguro ao backend transacional via recarga de créditos
         const resp = await walletService.processCreditCardRecharge({
@@ -84,7 +84,25 @@ export function useCreditCardCheckout({
           },
         });
 
-        if (resp.status === 'approved' || resp.status === 'APPROVED') {
+        // 3. Suporte a 3D Secure / SCA via client_secret quando necessário
+        if (resp.client_secret && (resp.status === 'requires_action' || resp.status === 'requires_confirmation')) {
+          const stripe = await stripeService.getInstance();
+          if (stripe) {
+            const confirmResult = await stripe.confirmCardPayment(resp.client_secret);
+            if (confirmResult.error) {
+              onPaymentDeclined(stripeService.extractErrorMessage(confirmResult.error));
+              return;
+            }
+          }
+        }
+
+        const isApproved =
+          resp.status === 'approved' ||
+          resp.status === 'APPROVED' ||
+          resp.status === 'succeeded' ||
+          resp.status === 'SUCCEEDED';
+
+        if (isApproved) {
           onPaymentApproved('🎉 Recarga aprovada com sucesso! Seus créditos foram adicionados à carteira.');
           onSuccessPayment?.();
         } else {

@@ -12,7 +12,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Ai;
-using EcommerceBot.Application.DTOs.MercadoPago;
+using EcommerceBot.Application.DTOs.Stripe;
 using EcommerceBot.Application.DTOs.Messaging;
 using EcommerceBot.Application.DTOs.OpenRouter;
 using EcommerceBot.Application.DTOs.Products;
@@ -39,7 +39,7 @@ namespace EcommerceBot.Core.Tests.Logic;
 
 public sealed class Block2LogicMessagingFinancialTests
 {
-    private const string MpWebhookSecret = "mp_super_secret_webhook_key";
+    private const string StripeWebhookSecret = "whsec_test_secret_1234567890abcdef";
 
     // =========================================================================
     // LOG-01 & LOG-05: CatalogService envio em exchange:ecommerce + estorno + BYOK
@@ -128,7 +128,7 @@ public sealed class Block2LogicMessagingFinancialTests
             tenantRepo,
             planRepo,
             new InMemoryOrderRepository(),
-            new FakeMercadoPagoGateway(),
+            new FakeStripeGateway(),
             new FakeBillingProfileRepository(),
             NullLogger<WalletService>.Instance,
             new WalletUtils(),
@@ -154,36 +154,37 @@ public sealed class Block2LogicMessagingFinancialTests
     }
 
     // =========================================================================
-    // LOG-03: MercadoPagoWebhookService (data.id numérico e rollback de idempotência)
+    // LOG-03: StripeWebhookService (validação HMAC e rollback de idempotência)
     // =========================================================================
 
     [Fact]
-    public async Task MercadoPagoWebhookService_ParsesNumericId_AndRollsBackIdempotencyIfPublishFails()
+    public async Task StripeWebhookService_ParsesEvent_AndRollsBackIdempotencyIfPublishFails()
     {
         var redis = new InMemoryRedisService();
         var publish = new FlakyPublishEndpoint { FailCount = 1 };
-        var webhookService = new MercadoPagoWebhookService(
+        var webhookService = new StripeWebhookService(
             redis,
             publish,
-            Options.Create(new MercadoPagoOptions { WebhookSecret = MpWebhookSecret }),
-            NullLogger<MercadoPagoWebhookService>.Instance);
+            Options.Create(new StripeOptions { WebhookSecret = StripeWebhookSecret, PublishableKey = "pk_test_123", SecretKey = "sk_test_123" }),
+            NullLogger<StripeWebhookService>.Instance);
 
-        var resourceId = "987654321";
-        var rawBody = $"{{\"action\":\"payment.updated\",\"data\":{{\"id\":{resourceId}}}}}";
-        // Assina sem data.id na query para exercitar a extração numérica do body (L102) + rollback de idempotência
-        var xSig = ComputeMpSignature(string.Empty, "req-1", MpWebhookSecret);
+        var eventId = "evt_123456789";
+        var resourceId = "pi_987654321";
+        var rawBody = $"{{\"id\":\"{eventId}\",\"object\":\"event\",\"type\":\"payment_intent.succeeded\",\"data\":{{\"object\":{{\"id\":\"{resourceId}\",\"object\":\"payment_intent\"}}}}}}";
+        var stripeSig = Stripe.EventUtility.GenerateSignatureHeader(rawBody, StripeWebhookSecret);
 
         // 1a chamada: Publish falha -> chave de idempotência removida para não engolir retentativa
-        var first = await webhookService.ProcessWebhookAsync(rawBody, null, null, xSig, "req-1");
-        first.Status.Should().Be(WebhookResultStatus.Error);
-        (await redis.KeyExistsAsync($"webhook:idempotency:mp:{resourceId}:payment.updated")).Should().BeFalse();
+        var first = await webhookService.ProcessWebhookAsync(rawBody, stripeSig);
+        first.Status.Should().Be(StripeWebhookResultStatus.Error);
+        (await redis.KeyExistsAsync($"webhook:idempotency:stripe:{eventId}")).Should().BeFalse();
 
-        // 2a chamada (retry do Mercado Pago): agora deve publicar com sucesso
-        var second = await webhookService.ProcessWebhookAsync(rawBody, null, null, xSig, "req-1");
-        second.Status.Should().Be(WebhookResultStatus.Success);
+        // 2a chamada (retry do Stripe): agora deve publicar com sucesso
+        var second = await webhookService.ProcessWebhookAsync(rawBody, stripeSig);
+        second.Status.Should().Be(StripeWebhookResultStatus.Success);
         publish.PublishedMessages.Should().ContainSingle();
         var evt = publish.PublishedMessages.OfType<PaymentReceivedEvent>().Single();
         evt.ResourceId.Should().Be(resourceId);
+        evt.Action.Should().Be("payment_intent.succeeded");
     }
 
     // =========================================================================
@@ -222,15 +223,14 @@ public sealed class Block2LogicMessagingFinancialTests
             PayerEmail = sharedEmail
         });
 
-        var mpGateway = new FakeMercadoPagoGateway
+        var stripeGateway = new FakeStripeGateway
         {
-            OrderResponse = new MercadoPagoOrderResponse
+            IntentResponse = new PaymentIntentResponse
             {
-                Id = "mp_order_1",
-                ExternalReference = "rec_buyer_001",
-                Status = "processed",
-                StatusDetail = "accredited",
-                TotalPaidAmount = 149m
+                Id = "pi_order_1",
+                Status = "succeeded",
+                Amount = 149m,
+                Metadata = new Dictionary<string, string> { ["external_reference"] = "rec_buyer_001" }
             }
         };
 
@@ -241,7 +241,7 @@ public sealed class Block2LogicMessagingFinancialTests
             orderRepo,
             tenantRepo,
             planRepo,
-            mpGateway,
+            stripeGateway,
             redis,
             publish,
             activityRepo,
@@ -250,8 +250,8 @@ public sealed class Block2LogicMessagingFinancialTests
 
         var approvedPayload = new PaymentReceivedEvent
         {
-            ResourceId = "mp_pay_1",
-            Action = "payment.updated",
+            ResourceId = "pi_order_1",
+            Action = "payment_intent.succeeded",
             RawPayload = "{}"
         };
 
@@ -268,14 +268,14 @@ public sealed class Block2LogicMessagingFinancialTests
         (await userRepo.GetByIdAsync(victimUser.Id))!.Role.Should().Be("MEMBER");
 
         // Webhook de estorno/reembolso reverte 500 créditos uma única vez
-        mpGateway.OrderResponse = new MercadoPagoOrderResponse
+        stripeGateway.IntentResponse = new PaymentIntentResponse
         {
-            Id = "mp_order_1",
-            ExternalReference = "rec_buyer_001",
+            Id = "pi_order_1",
             Status = "refunded",
-            TotalPaidAmount = 149m
+            Amount = 149m,
+            Metadata = new Dictionary<string, string> { ["external_reference"] = "rec_buyer_001" }
         };
-        var refundPayload = new PaymentReceivedEvent { ResourceId = "mp_pay_1", Action = "payment.updated", RawPayload = "{}" };
+        var refundPayload = new PaymentReceivedEvent { ResourceId = "pi_order_1", Action = "charge.refunded", RawPayload = "{}" };
         await consumer.Consume(CreateConsumeContext(refundPayload));
         await consumer.Consume(CreateConsumeContext(refundPayload));
 
@@ -283,8 +283,8 @@ public sealed class Block2LogicMessagingFinancialTests
 
         // Pedido não localizado (tenantId = Guid.Empty) não pode gravar RobotActivity
         var countBeforeUnknown = activityRepo.Activities.Count;
-        mpGateway.OrderResponse = new MercadoPagoOrderResponse { Id = "unknown", ExternalReference = "ref-inexistente", Status = "approved" };
-        await consumer.Consume(CreateConsumeContext(new PaymentReceivedEvent { ResourceId = "mp_unknown", Action = "payment.created", RawPayload = "{}" }));
+        stripeGateway.IntentResponse = new PaymentIntentResponse { Id = "unknown", Status = "succeeded", Metadata = new Dictionary<string, string> { ["external_reference"] = "ref-inexistente" } };
+        await consumer.Consume(CreateConsumeContext(new PaymentReceivedEvent { ResourceId = "pi_unknown", Action = "payment_intent.succeeded", RawPayload = "{}" }));
         activityRepo.Activities.Count.Should().Be(countBeforeUnknown);
     }
 
@@ -672,17 +672,36 @@ public sealed class Block2LogicMessagingFinancialTests
         public Task UpdateOrderAsync(Order order, CancellationToken cancellationToken = default) { Orders[order.Id] = order; return Task.CompletedTask; }
     }
 
-    private sealed class FakeMercadoPagoGateway : IMercadoPagoGateway
+    private sealed class FakeStripeGateway : IStripeGateway
     {
-        public MercadoPagoOrderResponse? OrderResponse { get; set; }
-        public Task<MercadoPagoOrderResponse> CreateOrderAsync(MercadoPagoOrderRequest request, string? idempotencyKey = null, CancellationToken cancellationToken = default)
-            => Task.FromResult(new MercadoPagoOrderResponse { Id = "mp_created_1", Status = "pending" });
-        public Task<MercadoPagoOrderResponse?> GetOrderByIdAsync(string orderId, CancellationToken cancellationToken = default)
-            => Task.FromResult(OrderResponse);
-        public Task<MercadoPagoPaymentResponse?> GetPaymentByIdAsync(string paymentId, CancellationToken cancellationToken = default)
-            => Task.FromResult<MercadoPagoPaymentResponse?>(null);
-        public Task<bool> RefundPaymentAsync(string paymentId, decimal? amount = null, CancellationToken cancellationToken = default)
-            => Task.FromResult(true);
+        public PaymentIntentResponse? IntentResponse { get; set; }
+
+        public Task<PaymentIntentResponse> CreatePaymentIntentAsync(CreatePaymentIntentRequest request, string? idempotencyKey = null, CancellationToken cancellationToken = default)
+            => Task.FromResult(new PaymentIntentResponse { Id = "pi_created_1", Status = "pending", Amount = request.Amount });
+
+        public Task<PaymentIntentResponse?> GetPaymentIntentByIdAsync(string paymentIntentId, CancellationToken cancellationToken = default)
+            => Task.FromResult(IntentResponse);
+
+        public Task<RefundResponse> RefundAsync(RefundRequest request, string? idempotencyKey = null, CancellationToken cancellationToken = default)
+            => Task.FromResult(new RefundResponse { Id = "re_1", Status = "succeeded", PaymentIntentId = request.PaymentIntentId });
+
+        public Task<CustomerResponse> CreateCustomerAsync(CreateCustomerRequest request, CancellationToken cancellationToken = default)
+            => Task.FromResult(new CustomerResponse { Id = "cus_1", Email = request.Email });
+
+        public Task<CustomerResponse?> GetCustomerByIdAsync(string customerId, CancellationToken cancellationToken = default)
+            => Task.FromResult<CustomerResponse?>(null);
+
+        public Task<SubscriptionResponse> CreateSubscriptionAsync(CreateSubscriptionRequest request, string? idempotencyKey = null, CancellationToken cancellationToken = default)
+            => Task.FromResult(new SubscriptionResponse { Id = "sub_1", CustomerId = request.CustomerId, Status = "active" });
+
+        public Task<SubscriptionResponse?> GetSubscriptionByIdAsync(string subscriptionId, CancellationToken cancellationToken = default)
+            => Task.FromResult<SubscriptionResponse?>(null);
+
+        public Task<BillingPortalSessionResponse> CreateBillingPortalSessionAsync(CreateBillingPortalSessionRequest request, CancellationToken cancellationToken = default)
+            => Task.FromResult(new BillingPortalSessionResponse { Id = "bps_1", Url = "https://billing.stripe.com/p/session/test" });
+
+        public Task<InvoiceResponse?> GetInvoiceByIdAsync(string invoiceId, CancellationToken cancellationToken = default)
+            => Task.FromResult<InvoiceResponse?>(null);
     }
 
     private sealed class FakeBillingProfileRepository : ITenantBillingProfileRepository

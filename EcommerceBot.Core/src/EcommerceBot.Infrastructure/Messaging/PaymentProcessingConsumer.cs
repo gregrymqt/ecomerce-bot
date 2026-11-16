@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using EcommerceBot.Application.DTOs.Emails;
 using EcommerceBot.Application.DTOs.Messaging;
+using EcommerceBot.Application.DTOs.Stripe;
 using EcommerceBot.Application.Interfaces;
 using EcommerceBot.Application.Security;
 using EcommerceBot.Domain.Entities;
@@ -17,7 +18,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
     private readonly IOrderRepository _orderRepository;
     private readonly ITenantRepository _tenantRepository;
     private readonly IPlanRepository _planRepository;
-    private readonly IMercadoPagoGateway _mercadoPagoGateway;
+    private readonly IStripeGateway _stripeGateway;
     private readonly IRedisService _redisService;
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly IRobotActivityRepository _activityRepository;
@@ -28,7 +29,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
         IOrderRepository orderRepository,
         ITenantRepository tenantRepository,
         IPlanRepository planRepository,
-        IMercadoPagoGateway mercadoPagoGateway,
+        IStripeGateway stripeGateway,
         IRedisService redisService,
         IPublishEndpoint publishEndpoint,
         IRobotActivityRepository activityRepository,
@@ -38,7 +39,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
         _orderRepository = orderRepository;
         _tenantRepository = tenantRepository;
         _planRepository = planRepository;
-        _mercadoPagoGateway = mercadoPagoGateway;
+        _stripeGateway = stripeGateway;
         _redisService = redisService;
         _publishEndpoint = publishEndpoint;
         _activityRepository = activityRepository;
@@ -63,81 +64,83 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
 
         try
         {
-            // 1. Consulta no Mercado Pago (Orders API primeiro, depois Payments API)
+            // 1. Consulta no Stripe Gateway (PaymentIntents ou Invoices)
             string? externalRef = null;
             string? status = null;
             string? statusDetail = null;
             decimal paidAmount = 0m;
             string? payerEmail = null;
 
-            var mpOrder = await _mercadoPagoGateway.GetOrderByIdAsync(resourceId, ct);
-            if (mpOrder != null)
+            var stripeIntent = await _stripeGateway.GetPaymentIntentByIdAsync(resourceId, ct);
+            if (stripeIntent != null)
             {
-                externalRef = mpOrder.ExternalReference;
-                status = mpOrder.Status;
-                statusDetail = mpOrder.StatusDetail;
+                if (stripeIntent.Metadata.TryGetValue("external_reference", out var ext))
+                {
+                    externalRef = ext;
+                }
+                else
+                {
+                    externalRef = stripeIntent.Id;
+                }
 
-                if (decimal.TryParse(mpOrder.TotalPaidAmount?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsedPaid))
-                {
-                    paidAmount = parsedPaid;
-                }
-                else if (decimal.TryParse(mpOrder.TotalAmount?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsedTotal))
-                {
-                    paidAmount = parsedTotal;
-                }
+                status = string.Equals(stripeIntent.Status, "succeeded", StringComparison.OrdinalIgnoreCase)
+                    ? "approved"
+                    : stripeIntent.Status;
+                statusDetail = stripeIntent.Status;
+                paidAmount = stripeIntent.Amount;
             }
             else
             {
-                var mpPayment = await _mercadoPagoGateway.GetPaymentByIdAsync(resourceId, ct);
-                if (mpPayment != null)
+                var stripeInvoice = await _stripeGateway.GetInvoiceByIdAsync(resourceId, ct);
+                if (stripeInvoice != null)
                 {
-                    externalRef = mpPayment.ExternalReference;
-                    status = mpPayment.Status;
-                    statusDetail = mpPayment.StatusDetail;
-                    paidAmount = mpPayment.TransactionAmount ?? 0m;
-                    payerEmail = mpPayment.Payer?.Email;
+                    externalRef = stripeInvoice.Id;
+                    status = string.Equals(stripeInvoice.Status, "paid", StringComparison.OrdinalIgnoreCase)
+                        ? "approved"
+                        : stripeInvoice.Status;
+                    statusDetail = stripeInvoice.Status;
+                    paidAmount = stripeInvoice.AmountPaid;
                 }
             }
 
             // Fallback resiliente: extrai dados do RawPayload do webhook se a consulta à API externa retornar nulo
-            // (ex: simulações no painel do Mercado Pago com IDs fictícios como "123456" ou falhas transitórias de rede)
             if (string.IsNullOrEmpty(externalRef) && !string.IsNullOrWhiteSpace(msg.RawPayload))
             {
                 try
                 {
                     using var doc = JsonDocument.Parse(msg.RawPayload);
                     var root = doc.RootElement;
-                    var dataEl = root.TryGetProperty("data", out var d) ? d : root;
+                    var dataEl = root.TryGetProperty("data", out var d) && d.TryGetProperty("object", out var o) ? o : root;
 
-                    if (dataEl.TryGetProperty("external_reference", out var extRefEl))
+                    if (dataEl.TryGetProperty("metadata", out var metaEl) && metaEl.TryGetProperty("external_reference", out var extRefEl))
                     {
                         externalRef = extRefEl.GetString();
+                    }
+                    else if (dataEl.TryGetProperty("id", out var idEl))
+                    {
+                        externalRef = idEl.GetString();
                     }
 
                     if (dataEl.TryGetProperty("status", out var stEl))
                     {
-                        status = stEl.GetString();
+                        var rawSt = stEl.GetString();
+                        status = string.Equals(rawSt, "succeeded", StringComparison.OrdinalIgnoreCase) || string.Equals(rawSt, "paid", StringComparison.OrdinalIgnoreCase)
+                            ? "approved"
+                            : rawSt;
+                        statusDetail = rawSt;
                     }
 
-                    if (dataEl.TryGetProperty("status_detail", out var stDetEl))
+                    if (dataEl.TryGetProperty("amount", out var amtEl) && amtEl.TryGetInt64(out var cents))
                     {
-                        statusDetail = stDetEl.GetString();
+                        paidAmount = cents / 100m;
                     }
-
-                    if (dataEl.TryGetProperty("total_paid_amount", out var paidEl))
+                    else if (dataEl.TryGetProperty("amount_paid", out var paidAmtEl) && paidAmtEl.TryGetInt64(out var paidCents))
                     {
-                        if (paidEl.ValueKind == JsonValueKind.Number && paidEl.TryGetDecimal(out var dVal))
-                        {
-                            paidAmount = dVal;
-                        }
-                        else if (decimal.TryParse(paidEl.GetString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsedVal))
-                        {
-                            paidAmount = parsedVal;
-                        }
+                        paidAmount = paidCents / 100m;
                     }
 
                     _logger.LogInformation(
-                        "Mercado Pago Webhook Fallback do RawPayload aplicado para ResourceId: {ResourceId}. Ref: {Ref}, Status: {Status}, Detail: {Detail}",
+                        "Stripe Webhook Fallback do RawPayload aplicado para ResourceId: {ResourceId}. Ref: {Ref}, Status: {Status}, Detail: {Detail}",
                         resourceId, externalRef, status, statusDetail);
                 }
                 catch (Exception ex)
@@ -146,7 +149,7 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
                 }
             }
 
-            _logger.LogInformation("Mercado Pago Reconciliation - Ref: {Ref}, Status: {Status}, Detail: {Detail}, Amount: {Amount}",
+            _logger.LogInformation("Stripe Reconciliation - Ref: {Ref}, Status: {Status}, Detail: {Detail}, Amount: {Amount}",
                 externalRef, status, statusDetail, paidAmount);
 
             // 2. Localiza o pedido correspondente no banco
@@ -162,8 +165,10 @@ public sealed class PaymentProcessingConsumer : IConsumer<PaymentReceivedEvent>
             using var tenantScope = tenantId != Guid.Empty ? TenantSessionScope.BeginScope(tenantId) : null;
 
             // 3. Processa aprovação de pagamento
-            var isApproved = (status == "processed" && statusDetail == "accredited") ||
-                             (status == "approved");
+            var isApproved = string.Equals(status, "approved", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(status, "succeeded", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(status, "paid", StringComparison.OrdinalIgnoreCase) ||
+                             (status == "processed" && statusDetail == "accredited");
 
             if (isApproved)
             {

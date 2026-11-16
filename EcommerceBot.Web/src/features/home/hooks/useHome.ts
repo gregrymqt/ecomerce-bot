@@ -57,11 +57,11 @@ export function useHome() {
     const hasNuvemshop = integrations.some(
       (s) => s.platform === 'NUVEMSHOP' && s.status === 'CONNECTED'
     );
-    // Mercado Pago e BYOK são habilitados por padrão no tenant ativo
-    const hasMercadoPago = true;
+    // Stripe e BYOK são habilitados por padrão no tenant ativo
+    const hasStripe = true;
     const hasByokKeys = true;
 
-    let connectedCount = (hasMercadoPago ? 1 : 0) + (hasByokKeys ? 1 : 0);
+    let connectedCount = (hasStripe ? 1 : 0) + (hasByokKeys ? 1 : 0);
     if (hasShopify) connectedCount += 1;
     if (hasNuvemshop) connectedCount += 1;
 
@@ -70,7 +70,7 @@ export function useHome() {
       totalIntegrations: 4,
       hasShopify,
       hasNuvemshop,
-      hasMercadoPago,
+      hasStripe,
       hasByokKeys,
     };
   }, [integrations]);

@@ -25,7 +25,8 @@ public static class GatewayExtensions
         services.AddHttpClient<IEcommerceGateway, ShopifyGateway>();
         services.AddHttpClient<IEcommerceGateway, NuvemshopGateway>();
         services.AddHttpClient<IResendGateway, ResendGateway>();
-        services.AddHttpClient<IMercadoPagoGateway, MercadoPagoGateway>();
+        services.AddScoped<IStripeGateway, StripeGateway>();
+        services.AddScoped<IStripeWebhookService, StripeWebhookService>();
         services.AddHttpClient<IDiscordAlertService, DiscordAlertService>();
 
         // Scraper HTTP C# nativo com SocketsHttpHandler seguro (Anti-SSRF + DNS rebinding)

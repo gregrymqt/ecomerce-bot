@@ -6,7 +6,7 @@ Documento descritivo único do ecossistema **E-commerce Bot**, consolidando arqu
 
 ## 1. Visão Geral & Topologia (Monorepo)
 
-Plataforma SaaS multi-tenant para extração de produtos de e-commerce, enriquecimento de catálogo por IA (OpenRouter), checkout de créditos (Mercado Pago) e sincronização com **Shopify** e **Nuvemshop**.
+Plataforma SaaS multi-tenant para extração de produtos de e-commerce, enriquecimento de catálogo por IA (OpenRouter), checkout e faturamento de créditos (Stripe: Billing, Payments, Tax, Invoicing) e sincronização com **Shopify** e **Nuvemshop**.
 
 ```mermaid
 flowchart TD
@@ -23,7 +23,7 @@ flowchart TD
 | Pilar | Stack | Responsabilidade Principal |
 |---|---|---|
 | **`EcommerceBot.Web`** | React 19, TypeScript, Vite 8, Tailwind CSS v4 | Portal SPA estático (servido via Nginx em produção, sem Node SSR). Camadas estritas `Types -> Services -> Hooks -> Components/Pages`, autenticação JWT via cookie/storage e cliente SSE (`events:tenant:{tenantId}`). |
-| **`EcommerceBot.Core`** | .NET 9 (C#), ASP.NET Core, Dapper, Npgsql, Redis Streams | Core API transacional em Clean Architecture / DDD (`Domain`, `Application`, `Infrastructure`, `Api`) + servidor de observabilidade `EcommerceBot.Diagnostics.Mcp` (`stdio`). Orquestra auth JWT, multi-tenancy com RLS via Npgsql, mensageria via Redis Streams (BackgroundServices), LLM (OpenRouter), pagamentos (Mercado Pago), e-mails Razor (`.cshtml` via Resend) e gateways Shopify/Nuvemshop. |
+| **`EcommerceBot.Core`** | .NET 9 (C#), ASP.NET Core, Dapper, Npgsql, Redis Streams | Core API transacional em Clean Architecture / DDD (`Domain`, `Application`, `Infrastructure`, `Api`) + servidor de observabilidade `EcommerceBot.Diagnostics.Mcp` (`stdio`). Orquestra auth JWT, multi-tenancy com RLS via Npgsql, mensageria via Redis Streams (BackgroundServices), LLM (OpenRouter), pagamentos e faturamento (Stripe: Billing, Payments, Tax, Invoicing), e-mails Razor (`.cshtml` via Resend) e gateways Shopify/Nuvemshop. |
 | **`EcommerceBot.GoWorker`** | Go 1.23, Chi, Chromedp, GoQuery, go-redis | Microsserviço assíncrono de alta performance para web scraping evasivo multi-tier (Tier 1 HTTP seguro + Anti-SSRF em `net.Dialer.Control`, Tier 2 browser stealth + JSON-LD) e consumo de Redis Streams (`stream:scraping:*`). |
 | **`Database.Migrations`** | .NET 9 (C#), DbUp.PostgreSQL, Npgsql | Runner determinístico de scripts PL/pgSQL (`001`–`019`) com Row Level Security (`CREATE POLICY` com `security.fn_tenant_access`), funções de auditoria e bootstrap de SuperAdmin no PostgreSQL 16. |
 | **`infra/`** | Docker Compose, Nginx, Bash | Topologia local (`infra/dev`) e produção VPS (`infra/prod` com Nginx edge, TLS, Workstation GC e scripts de backup/restore PostgreSQL no Cloudflare R2). |
@@ -37,8 +37,8 @@ flowchart TD
    - Go Worker valida `ValidateURLSafety` (Anti-SSRF com `net.Dialer.Control`), extrai HTML/JSON-LD via GoQuery/Chromedp e publica `ScrapedRawProductEvent` em `stream:scraped:results`.
    - `ScrapedProductStreamConsumer` (Core .NET `BackgroundService`) consome com `XREADGROUP`, consulta diretrizes de SEO (`CategorySeoGuidelines`), aciona OpenRouter (`OpenRouterGateway`), persiste em `dbo.products`, registra telemetria em `dbo.llm_usage_logs` e publica evento em `events:tenant:{tenantId}` (SSE).
 2. **Wallet, Checkout & Ledger de Créditos:**
-   - SPA tokeniza cartão via `@mercadopago/sdk-react` ou solicita QR PIX (`POST /api/v1/wallet/recharge`) → `MercadoPagoGateway` cria ordem na API v1 do Mercado Pago e persiste `dbo.orders` / `dbo.order_items`.
-   - Webhook `POST /api/v1/webhooks/mercadopago` valida HMAC `x-signature`, aplica idempotência no Redis e publica no stream `stream:payments:process`.
+   - SPA tokeniza cartão via `@stripe/stripe-js` (Stripe Elements) ou solicita recarga (`POST /api/v1/wallet/recharge`) → `StripeGateway` cria `PaymentIntent` ou `Invoice` com `AutomaticTax` e persiste `dbo.orders` / `dbo.order_items`.
+   - Webhook `POST /api/v1/webhooks/stripe` valida assinatura HMAC (`Stripe-Signature`) com fail-closed via `EventUtility.ConstructEvent`, aplica idempotência no Redis (72h) e publica no stream `stream:payments:process`.
    - `PaymentProcessingStreamConsumer` reconcilia o pagamento, registra entrada/estorno no ledger append-only (`dbo.credit_transactions`), notifica via SSE e dispara notificação em `stream:notifications:email`.
 3. **Integrações Shopify & Nuvemshop:**
    - Conexão via OAuth 2.0 ou token direto cifrado com **AES-256 GCM** em `dbo.store_integrations`.
@@ -101,7 +101,7 @@ O repositório é indexado em `graft/` (nós markdown com spans `file:line` sinc
 3. **Zero fallback estático de secret:** nunca usar `?? "default_secret"` para JWT, AES, chave interna de serviço ou webhook. Lançar `InvalidOperationException` ou retornar `401` (fail-closed).
 4. **Sem escalação de privilégio:** endpoints de perfil (`UpdateProfileAsync`) não podem aceitar nem mutar `Role`. Registros padrão nascem como `MEMBER` e nunca aceitam `TenantId` arbitrário sem autorização/convite.
 5. **Sem colisão de rotas HTTP:** proibido declarar o mesmo caminho de rota em controllers/actions distintos (`AmbiguousMatchException`).
-6. **Verificação de webhook em tempo constante:** Mercado Pago, Shopify, Nuvemshop e Svix/Resend somente via `CryptographicOperations.FixedTimeEquals` + idempotência `SET NX` no Redis por 24h (só após processamento durável/enfileiramento).
+6. **Verificação de webhook em tempo constante:** Stripe (`EventUtility.ConstructEvent`), Shopify, Nuvemshop e Svix/Resend somente via `CryptographicOperations.FixedTimeEquals` + idempotência `SET NX` no Redis por 72h (só após processamento durável/enfileiramento).
 7. **Anti-SSRF em duas camadas:** permitir apenas `http://` e `https://`; bloquear loopback, faixas privadas RFC 1918, link-local/metadata (`169.254.169.254`), `0.0.0.0`, ULA IPv6/loopback mapeado; validar DNS e redirects HTTP tanto na API .NET (`UrlSecurityValidator`) quanto no Go Worker (`ValidateURLSafety` com `net.Dialer.Control`).
 8. **Sem HTML inline em e-mails:** no Core, Razor `.cshtml` em `src/EcommerceBot.Api/Views/Emails/` + ViewModel em `src/EcommerceBot.Application/ViewModels/Emails/` via `IRazorTemplateRenderer`.
 9. **Bootstrapping limpo:** `Program.cs` é apenas orquestração de pipeline; DI/options/middleware ficam em `Configurations/` e `Middlewares/`. Em produção, Workstation GC (`DOTNET_ServerGarbageCollection=0`, `DOTNET_GCHeapHardLimit=0x10000000`, `DOTNET_GCTrimCommit=1`) para proteger o VPS de 4 GB.

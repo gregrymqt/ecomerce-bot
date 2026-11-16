@@ -1,7 +1,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using EcommerceBot.Application.DTOs.MercadoPago;
 using EcommerceBot.Application.DTOs.Wallet;
 using EcommerceBot.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
