@@ -8,14 +8,6 @@
       "env": {
         "PYTHONUNBUFFERED": "1"
       }
-    },
-    "graft": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@nanonets/graft",
-        "mcp"
-      ]
     }
   }
 }
